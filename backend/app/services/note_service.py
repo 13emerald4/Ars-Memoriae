@@ -1,0 +1,88 @@
+"""Note -> card materialization (Anki-style note/card separation, §2)."""
+
+from __future__ import annotations
+
+import uuid
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import Card, Note, NoteType, User
+from app.services.rendering import slots_for
+
+
+async def default_note_type(db: AsyncSession, user: User, template_kind: str) -> NoteType:
+    nt = await db.scalar(
+        select(NoteType).where(
+            NoteType.user_id == user.id, NoteType.template_kind == template_kind
+        )
+    )
+    if nt is None:
+        fields = (
+            {"fields": ["Text", "Extra"]}
+            if template_kind == "cloze"
+            else {"fields": ["Front", "Back"]}
+        )
+        nt = NoteType(
+            user_id=user.id,
+            name=template_kind.replace("_", " ").title(),
+            template_kind=template_kind,
+            fields=fields,
+        )
+        db.add(nt)
+        await db.flush()
+    return nt
+
+
+async def sync_cards(
+    db: AsyncSession,
+    note: Note,
+    note_type: NoteType,
+    deck_id: uuid.UUID,
+    *,
+    tags: list[str] | None = None,
+    priority: int | None = None,
+    origin: str = "manual",
+    origin_extract_id: uuid.UUID | None = None,
+) -> list[Card]:
+    """Create the cards a note implies, and retire cards whose slot vanished.
+
+    Editing a cloze note to drop ``{{c3::…}}`` should not leave a c3 card
+    scheduled forever; but a card with review history is suspended rather than
+    deleted so the history survives (it still exports, and still feeds the
+    optimizer).
+    """
+    wanted = slots_for(note_type.template_kind, note.field_values or {})
+    existing = {
+        c.template_slot: c
+        for c in (await db.scalars(select(Card).where(Card.note_id == note.id))).all()
+    }
+
+    cards: list[Card] = []
+    for slot in wanted:
+        card = existing.get(slot)
+        if card is None:
+            card = Card(
+                note_id=note.id,
+                deck_id=deck_id,
+                template_slot=slot,
+                priority=priority,
+                origin=origin,
+                origin_extract_id=origin_extract_id,
+                tags=list(tags or []),
+            )
+            db.add(card)
+        else:
+            card.suspended = False
+            if tags is not None:
+                card.tags = list(tags)
+            if priority is not None:
+                card.priority = priority
+        cards.append(card)
+
+    for slot, card in existing.items():
+        if slot not in wanted:
+            card.suspended = True
+
+    await db.flush()
+    return cards

@@ -1,0 +1,137 @@
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.security import (
+    create_access_token,
+    decrypt_api_key,
+    hash_password,
+    mask_api_key,
+    verify_password,
+)
+from app.db import get_db
+from app.models import Deck, NoteType, QueueConfig, User
+from app.routers.deps import current_user
+from app.schemas.core import (
+    LoginRequest,
+    QueueConfigOut,
+    QueueConfigUpdate,
+    RegisterRequest,
+    TokenResponse,
+    UserOut,
+    UserUpdate,
+)
+
+router = APIRouter(prefix="/api", tags=["auth"])
+
+# Seeded on registration so a new account can add a card immediately.
+STARTER_NOTE_TYPES = [
+    ("Basic", "basic", {"fields": ["Front", "Back"]}, "short_answer"),
+    ("Cloze", "cloze", {"fields": ["Text", "Extra"]}, "short_answer"),
+    ("Conceptual", "basic", {"fields": ["Front", "Back"]}, "conceptual"),
+    ("Math / Code", "basic", {"fields": ["Front", "Back"]}, "math_code"),
+]
+
+
+def user_out(user: User) -> UserOut:
+    plaintext = decrypt_api_key(user.google_api_key_encrypted)
+    return UserOut(
+        id=str(user.id),
+        email=user.email,
+        desired_retention=user.desired_retention,
+        grading_model=user.grading_model,
+        queue_time_budget_minutes=user.queue_time_budget_minutes,
+        leech_remediation_opt_in=user.leech_remediation_opt_in,
+        daily_new_limit=user.daily_new_limit,
+        daily_review_limit=user.daily_review_limit,
+        backlog_spread_days=user.backlog_spread_days,
+        leech_threshold=user.leech_threshold,
+        llm_grading_consent=user.llm_grading_consent,
+        has_api_key=user.google_api_key_encrypted is not None,
+        api_key_masked=mask_api_key(plaintext) if plaintext else None,
+        fsrs_optimized_at=user.fsrs_optimized_at,
+        grading_bias=user.grading_bias,
+    )
+
+
+@router.post("/auth/register", response_model=TokenResponse, status_code=201)
+async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+    email = body.email.lower()
+    existing = await db.scalar(select(User).where(User.email == email))
+    if existing:
+        raise HTTPException(status.HTTP_409_CONFLICT, "email already registered")
+
+    user = User(email=email, password_hash=hash_password(body.password))
+    db.add(user)
+    await db.flush()
+
+    db.add(QueueConfig(user_id=user.id))
+    db.add(Deck(user_id=user.id, name="Default"))
+    for name, kind, fields, profile in STARTER_NOTE_TYPES:
+        db.add(
+            NoteType(
+                user_id=user.id,
+                name=name,
+                template_kind=kind,
+                fields=fields,
+                grading_profile=profile,
+            )
+        )
+    await db.commit()
+    return TokenResponse(access_token=create_access_token(str(user.id)))
+
+
+@router.post("/auth/login", response_model=TokenResponse)
+async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+    user = await db.scalar(select(User).where(User.email == body.email.lower()))
+    if user is None or not verify_password(body.password, user.password_hash):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid credentials")
+    return TokenResponse(access_token=create_access_token(str(user.id)))
+
+
+@router.get("/me", response_model=UserOut)
+async def me(user: User = Depends(current_user)) -> UserOut:
+    return user_out(user)
+
+
+@router.patch("/me", response_model=UserOut)
+async def update_me(
+    body: UserUpdate, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
+) -> UserOut:
+    for key, value in body.model_dump(exclude_unset=True).items():
+        if value is not None:
+            setattr(user, key, value)
+    await db.commit()
+    await db.refresh(user)
+    return user_out(user)
+
+
+@router.get("/queue-config", response_model=QueueConfigOut)
+async def get_queue_config_endpoint(
+    user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
+) -> QueueConfigOut:
+    from app.services.queue_service import get_queue_config
+
+    cfg = await get_queue_config(db, user)
+    return QueueConfigOut(**{c: getattr(cfg, c) for c in QueueConfigOut.model_fields})
+
+
+@router.patch("/queue-config", response_model=QueueConfigOut)
+async def update_queue_config(
+    body: QueueConfigUpdate,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> QueueConfigOut:
+    from app.services.queue_service import get_queue_config
+
+    cfg = await get_queue_config(db, user)
+    for key, value in body.model_dump(exclude_unset=True).items():
+        if value is not None:
+            setattr(cfg, key, value)
+    if cfg.review_weight + cfg.new_weight + cfg.ir_weight <= 0:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "at least one queue weight must be > 0")
+    await db.commit()
+    await db.refresh(cfg)
+    return QueueConfigOut(**{c: getattr(cfg, c) for c in QueueConfigOut.model_fields})

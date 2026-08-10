@@ -1,0 +1,23 @@
+# secrets — .env.example is the template, .env is yours
+.env
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+backend/dev.db
+backend/bench.db
+*.db
+backend/media/
+
+# node
+node_modules/
+dist/
+.vite/
+
+# editors / os
+.DS_Store
+.idea/
+.vscode/

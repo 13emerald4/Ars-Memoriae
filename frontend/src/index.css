@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-ink text-slate-200 antialiased;
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  ::selection {
+    @apply bg-sky-500/30;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-ink-line bg-ink-soft p-5;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-ink-line
+           bg-ink-soft px-3.5 py-2 text-sm font-medium text-slate-200 transition
+           hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-primary {
+    @apply border-sky-500/40 bg-sky-500/15 text-sky-200 hover:border-sky-400 hover:bg-sky-500/25;
+  }
+  .btn-danger {
+    @apply border-rose-500/40 text-rose-300 hover:border-rose-400 hover:bg-rose-500/15;
+  }
+  .input {
+    @apply w-full rounded-lg border border-ink-line bg-ink px-3 py-2 text-sm text-slate-100
+           outline-none transition placeholder:text-slate-600 focus:border-sky-500/60;
+  }
+  .label {
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-ink-line bg-ink px-2.5
+           py-0.5 text-xs text-slate-400;
+  }
+}

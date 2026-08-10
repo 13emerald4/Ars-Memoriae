@@ -1,0 +1,57 @@
+[project]
+name = "memorization-backend"
+version = "0.1.0"
+description = "Spaced-repetition backend: FSRS scheduling + LLM-graded typed answers + incremental reading"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sqlalchemy>=2.0.30",
+    "asyncpg>=0.29",
+    "aiosqlite>=0.20",
+    "alembic>=1.13",
+    "pydantic[email]>=2.7",
+    "pydantic-settings>=2.3",
+    "python-multipart>=0.0.9",
+    "pyjwt>=2.8",
+    "cryptography>=42.0",
+    "fsrs>=6.0,<7",
+    "google-genai>=1.0",
+    "httpx>=0.27",
+    "beautifulsoup4>=4.12",
+    "apscheduler>=3.10",
+]
+
+[project.optional-dependencies]
+# Personalized FSRS weight refitting (§3). Pulls in torch — large.
+optimizer = ["fsrs[optimizer]>=6.0,<7"]
+dev = ["pytest>=8.2", "pytest-asyncio>=0.23", "httpx>=0.27", "ruff>=0.5"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+# Pinned explicitly so linting doesn't drift with a parent-directory config.
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "C4", "UP", "SIM", "RUF"]
+ignore = [
+    # `x: T = Depends(...)` / `File(...)` is the FastAPI idiom, not a mutable default.
+    "B008",
+    "E501",   # line length is handled by the formatter
+    # `class Grade(str, Enum)` is what the spec's §7.1 schema defines, and it is
+    # the conventional FastAPI form. StrEnum would change str() output.
+    "UP042",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402"]  # conftest sets env vars before importing the app

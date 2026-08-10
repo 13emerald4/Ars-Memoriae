@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: memorization
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d memorization"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        # torch is a ~2GB dependency; only needed for the FSRS parameter
+        # optimizer (§3). Set to 1 to enable personalized weight refitting.
+        INSTALL_FSRS_OPTIMIZER: "0"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - media:/data/media
+      # §12 plugins: mount a directory of .py files and set PLUGIN_DIR to it.
+      # Plugin code runs with the backend's full privileges — self-host only,
+      # never on a shared instance. Try it with the shipped example:
+      #   - ./backend/plugins.example:/srv/plugins:ro
+      # and add PLUGIN_DIR=/srv/plugins to .env
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    env_file: .env
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+
+volumes:
+  pgdata:
+  media:

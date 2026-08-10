@@ -1,0 +1,113 @@
+from __future__ import annotations
+
+import logging
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from app.core import security
+from app.core.config import settings
+from app.jobs import scheduler
+from app.routers import (
+    auth,
+    decks,
+    export,
+    imports,
+    interference,
+    keys,
+    media,
+    optimize,
+    queue,
+    review,
+    sources,
+    stats,
+)
+from app.services import (
+    plugins,
+    queue_service,  # noqa: F401
+    rendering,  # noqa: F401 — registers the §12 seams
+)
+
+logging.basicConfig(level=logging.INFO)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Path(settings.media_root).mkdir(parents=True, exist_ok=True)
+    for problem in security.insecure_defaults():
+        logging.getLogger(__name__).warning("SECURITY: %s", problem)
+    # Plugins load after the first-party strategies, so a plugin can override
+    # a built-in rather than racing it (§12).
+    plugins.load_all()
+    if settings.enable_background_jobs:
+        scheduler.start()
+    yield
+    scheduler.shutdown()
+
+
+app = FastAPI(
+    title="Memorization",
+    version="0.1.0",
+    description=(
+        "Spaced repetition with FSRS scheduling, LLM-graded typed answers, "
+        "SuperMemo-style priority queue, and incremental reading."
+    ),
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origin_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+for router in (
+    auth.router,
+    keys.router,
+    decks.router,
+    queue.router,
+    review.router,
+    sources.router,
+    imports.router,
+    media.router,
+    interference.router,
+    stats.router,
+    export.router,
+    optimize.router,
+):
+    app.include_router(router)
+
+Path(settings.media_root).mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=settings.media_root), name="media")
+
+
+@app.get("/api/plugins")
+async def list_plugins() -> dict:
+    """What the §12 plugin loader picked up, including anything that failed."""
+    from app.services import registry
+
+    return {
+        "plugin_dir": settings.plugin_dir or None,
+        "enabled": bool(settings.plugin_dir),
+        "plugins": [
+            {"name": p.name, "path": p.path, "registered": p.registered, "error": p.error}
+            for p in plugins.loaded()
+        ],
+        "seams": {seam: registry.available(seam) for seam in sorted(plugins.ALLOWED_SEAMS)},
+    }
+
+
+@app.get("/health")
+async def health() -> dict:
+    from app.services.fsrs_service import FSRSService
+
+    return {
+        "status": "ok",
+        "fsrs_optimizer_installed": FSRSService.optimizer_available(),
+        "default_grading_model": settings.default_grading_model,
+    }
