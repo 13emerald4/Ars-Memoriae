@@ -427,94 +427,145 @@ function DeckList({
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
 
+  async function handleDeleteAll() {
+    if (!confirm('Are you sure you want to delete ALL decks? All cards, notes, and progress in them will be permanently deleted.')) {
+      return
+    }
+    setBusy(true)
+    try {
+      await api.deleteAllDecks()
+      onChange()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleDeleteDeck(deck: Deck) {
+    if (!confirm(`Delete deck "${deck.name}" and all its ${deck.card_count} cards?`)) {
+      return
+    }
+    setBusy(true)
+    try {
+      await api.deleteDeck(deck.id, true)
+      onChange()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <Section
       title="Decks"
       description="Per-deck priority and retention are the “% bias per subject” controls."
       actions={
-        <form
-          className="flex gap-2"
-          onSubmit={async (e) => {
-            e.preventDefault()
-            if (!name.trim()) return
-            setBusy(true)
-            try {
-              await api.createDeck({ name: name.trim() })
-              setName('')
-              onChange()
-            } finally {
-              setBusy(false)
-            }
-          }}
-        >
-          <input
-            className="input w-44"
-            placeholder="New deck"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <button className="btn" disabled={busy}>
-            Add
-          </button>
-        </form>
+        <div className="flex flex-wrap items-center gap-2">
+          {decks.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-danger text-xs px-2.5 py-1"
+              disabled={busy}
+              onClick={handleDeleteAll}
+            >
+              Delete all decks
+            </button>
+          )}
+          <form
+            className="flex gap-2"
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!name.trim()) return
+              setBusy(true)
+              try {
+                await api.createDeck({ name: name.trim() })
+                setName('')
+                onChange()
+              } finally {
+                setBusy(false)
+              }
+            }}
+          >
+            <input
+              className="input w-36 text-xs py-1"
+              placeholder="New deck name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <button className="btn text-xs px-2.5 py-1" disabled={busy}>
+              Add deck
+            </button>
+          </form>
+        </div>
       }
     >
       <div className="space-y-2">
-        {decks.map((d) => (
-          <div
-            key={d.id}
-            className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 transition ${
-              selected === d.id ? 'border-sky-500/40 bg-sky-500/5' : 'border-ink-line'
-            }`}
-          >
-            <button className="min-w-0 flex-1 text-left" onClick={() => onSelect(d.id)}>
-              <p className="font-medium text-slate-200">{d.name}</p>
-              <p className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
-                <span className="chip">{d.card_count} cards</span>
-                <span className="chip">{d.due_count} due</span>
-                <span className="chip">{d.new_count} new</span>
-              </p>
-            </button>
+        {decks.length === 0 ? (
+          <p className="text-xs text-slate-500 py-2">No decks created yet. Add one above or import a document.</p>
+        ) : (
+          decks.map((d) => (
+            <div
+              key={d.id}
+              className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 transition ${
+                selected === d.id ? 'border-sky-500/40 bg-sky-500/5' : 'border-ink-line'
+              }`}
+            >
+              <button className="min-w-0 flex-1 text-left" onClick={() => onSelect(d.id)}>
+                <p className="font-medium text-slate-200">{d.name}</p>
+                <p className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
+                  <span className="chip">{d.card_count} cards</span>
+                  <span className="chip">{d.due_count} due</span>
+                  <span className="chip">{d.new_count} new</span>
+                </p>
+              </button>
 
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-xs text-slate-500">
-                priority
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  defaultValue={d.default_priority}
-                  className="w-28"
-                  onMouseUp={async (e) => {
-                    await api.setPriority('deck', d.id, Number((e.target as HTMLInputElement).value))
-                    onChange()
-                  }}
-                />
-                <PriorityBar value={d.default_priority} />
-              </label>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2 text-xs text-slate-500">
+                  priority
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    defaultValue={d.default_priority}
+                    className="w-24"
+                    onMouseUp={async (e) => {
+                      await api.setPriority('deck', d.id, Number((e.target as HTMLInputElement).value))
+                      onChange()
+                    }}
+                  />
+                  <PriorityBar value={d.default_priority} />
+                </label>
 
-              <label className="flex items-center gap-2 text-xs text-slate-500">
-                retention
-                <input
-                  type="number"
-                  step={0.01}
-                  min={0.7}
-                  max={0.99}
-                  defaultValue={d.desired_retention_override ?? ''}
-                  placeholder="default"
-                  className="input w-24 py-1 text-xs"
-                  onBlur={async (e) => {
-                    const raw = e.target.value.trim()
-                    await api.updateDeck(d.id, {
-                      desired_retention_override: raw ? Number(raw) : null,
-                    })
-                    onChange()
-                  }}
-                />
-              </label>
+                <label className="flex items-center gap-2 text-xs text-slate-500">
+                  retention
+                  <input
+                    type="number"
+                    step={0.01}
+                    min={0.7}
+                    max={0.99}
+                    defaultValue={d.desired_retention_override ?? ''}
+                    placeholder="default"
+                    className="input w-20 py-1 text-xs"
+                    onBlur={async (e) => {
+                      const raw = e.target.value.trim()
+                      await api.updateDeck(d.id, {
+                        desired_retention_override: raw ? Number(raw) : null,
+                      })
+                      onChange()
+                    }}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  title={`Delete deck ${d.name}`}
+                  className="rounded p-1 text-xs text-slate-600 hover:bg-rose-500/15 hover:text-rose-300 transition"
+                  onClick={() => handleDeleteDeck(d)}
+                >
+                  ✕
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </Section>
   )

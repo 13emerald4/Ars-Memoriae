@@ -198,17 +198,59 @@ async def update_deck(
     )
 
 
+@router.delete("/decks", status_code=204)
+async def delete_all_decks(
+    user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
+) -> None:
+    """Delete all decks belonging to the current user, cascading associated notes and cards."""
+    deck_ids = (await db.scalars(select(Deck.id).where(Deck.user_id == user.id))).all()
+    if not deck_ids:
+        return
+
+    note_ids = (
+        await db.scalars(
+            select(Card.note_id).where(Card.deck_id.in_(deck_ids)).distinct()
+        )
+    ).all()
+
+    for deck_id in deck_ids:
+        await tree_service.detach_entity_node(db, KnowledgeNode.deck_id == deck_id)
+
+    if note_ids:
+        notes = (await db.scalars(select(Note).where(Note.id.in_(note_ids)))).all()
+        for note in notes:
+            await db.delete(note)
+
+    decks = (await db.scalars(select(Deck).where(Deck.id.in_(deck_ids)))).all()
+    for deck in decks:
+        await db.delete(deck)
+
+    await db.commit()
+
+
 @router.delete("/decks/{deck_id}", status_code=204)
 async def delete_deck(
-    deck_id: str, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
+    deck_id: str,
+    cascade: bool = Query(default=True),
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> None:
     deck = await _owned_deck(db, user, parse_uuid(deck_id))
     count = await db.scalar(select(func.count()).select_from(Card).where(Card.deck_id == deck.id))
-    if count:
+    if count and not cascade:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            f"deck still holds {count} cards — move or delete them first",
+            f"deck still holds {count} cards — move or delete them first, or pass cascade=true",
         )
+    if count and cascade:
+        note_ids = (
+            await db.scalars(select(Card.note_id).where(Card.deck_id == deck.id).distinct())
+        ).all()
+        if note_ids:
+            notes = (await db.scalars(select(Note).where(Note.id.in_(note_ids)))).all()
+            for note in notes:
+                await db.delete(note)
+
     # Topics filed under this deck in the knowledge tree outlive it; lift them
     # to its parent rather than letting the node's FK cascade delete them.
     await tree_service.detach_entity_node(db, KnowledgeNode.deck_id == deck.id)

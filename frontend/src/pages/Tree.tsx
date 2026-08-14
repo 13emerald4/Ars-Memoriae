@@ -15,6 +15,7 @@ export default function Tree() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<unknown>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [highestOrderOnly, setHighestOrderOnly] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -48,7 +49,41 @@ export default function Tree() {
       <Section
         title="Knowledge tree"
         description="Everything you're learning in one hierarchy — topics, decks, articles and the extracts carved out of them. Priority flows down a branch."
-        actions={<NewTopic parentId={null} onDone={load} label="New topic" />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className={`btn px-2.5 py-1 text-xs transition ${
+                highestOrderOnly
+                  ? 'border-sky-500/60 bg-sky-500/15 text-sky-200 ring-1 ring-sky-500/30'
+                  : 'text-slate-400'
+              }`}
+              onClick={() => setHighestOrderOnly(!highestOrderOnly)}
+              title="Show only top-level parent subjects, documents, and decks"
+            >
+              {highestOrderOnly ? '✓ Highest-order parents only' : 'Highest-order parents only'}
+            </button>
+            {!highestOrderOnly && (
+              <>
+                <button
+                  type="button"
+                  className="btn px-2 py-1 text-xs"
+                  onClick={() => setExpanded(new Set(flat.map((f) => f.id)))}
+                >
+                  Expand all
+                </button>
+                <button
+                  type="button"
+                  className="btn px-2 py-1 text-xs"
+                  onClick={() => setExpanded(new Set())}
+                >
+                  Collapse all
+                </button>
+              </>
+            )}
+            <NewTopic parentId={null} onDone={load} label="New topic" />
+          </div>
+        }
       >
         {nodes.length === 0 ? (
           <Empty title="Nothing here yet.">
@@ -63,6 +98,7 @@ export default function Tree() {
                 depth={0}
                 all={flat}
                 expanded={expanded}
+                highestOrderOnly={highestOrderOnly}
                 onToggle={(id) =>
                   setExpanded((prev) => {
                     const next = new Set(prev)
@@ -94,11 +130,20 @@ const KIND_LABEL: Record<TreeNode['kind'], string> = {
   extract: 'extract',
 }
 
+function countDescendants(node: TreeNode): number {
+  let count = node.children.length
+  for (const c of node.children) {
+    count += countDescendants(c)
+  }
+  return count
+}
+
 function NodeRow({
   node,
   depth,
   all,
   expanded,
+  highestOrderOnly = false,
   onToggle,
   onChange,
 }: {
@@ -106,6 +151,7 @@ function NodeRow({
   depth: number
   all: Flat[]
   expanded: Set<string>
+  highestOrderOnly?: boolean
   onToggle: (id: string) => void
   onChange: () => void
 }) {
@@ -139,8 +185,8 @@ function NodeRow({
         style={{ marginLeft: `${depth * 1.25}rem` }}
       >
         <button
-          className={`w-4 shrink-0 text-xs text-slate-600 ${hasChildren ? 'hover:text-slate-300' : 'invisible'}`}
-          onClick={() => onToggle(node.id)}
+          className={`w-4 shrink-0 text-xs text-slate-600 ${hasChildren && !highestOrderOnly ? 'hover:text-slate-300' : 'invisible'}`}
+          onClick={() => !highestOrderOnly && onToggle(node.id)}
           aria-label={isOpen ? 'Collapse' : 'Expand'}
         >
           {isOpen ? '▾' : '▸'}
@@ -173,7 +219,7 @@ function NodeRow({
             title={node.title}
             onClick={() => {
               if (node.extract_id) navigate(`/read/${node.extract_id}`)
-              else if (hasChildren) onToggle(node.id)
+              else if (hasChildren && !highestOrderOnly) onToggle(node.id)
             }}
           >
             {node.title}
@@ -181,6 +227,11 @@ function NodeRow({
         )}
 
         <div className="flex shrink-0 flex-wrap items-center gap-2 text-xs">
+          {hasChildren && highestOrderOnly && (
+            <span className="chip border-sky-500/30 text-sky-200/90 bg-sky-500/10">
+              {countDescendants(node)} sub-item{countDescendants(node) === 1 ? '' : 's'}
+            </span>
+          )}
           {node.locked && (
             <span
               className="chip border-amber-500/40 text-amber-300"
@@ -213,11 +264,6 @@ function NodeRow({
           >
             <PriorityBar value={node.priority} />
           </span>
-        </div>
-
-        {/* Actions stay hidden until hover/focus so a deep tree reads as an
-            outline rather than a wall of buttons. */}
-        <div className="flex shrink-0 items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
           <button
             className="btn px-2 py-1 text-xs"
             disabled={busy || node.locked}
@@ -296,7 +342,8 @@ function NodeRow({
 
       {showCards && <BranchCards nodeId={node.id} depth={depth} />}
 
-      {isOpen &&
+      {!highestOrderOnly &&
+        isOpen &&
         node.children.map((child) => (
           <NodeRow
             key={child.id}
@@ -304,6 +351,7 @@ function NodeRow({
             depth={depth + 1}
             all={all}
             expanded={expanded}
+            highestOrderOnly={highestOrderOnly}
             onToggle={onToggle}
             onChange={onChange}
           />

@@ -155,7 +155,9 @@ export const api = {
   createDeck: (body: { name: string; default_priority?: number; parent_id?: string | null }) =>
     post<Deck>('/api/decks', body),
   updateDeck: (id: string, body: Record<string, unknown>) => patch<Deck>(`/api/decks/${id}`, body),
-  deleteDeck: (id: string) => request<void>(`/api/decks/${id}`, { method: 'DELETE' }),
+  deleteDeck: (id: string, cascade: boolean = true) =>
+    request<void>(`/api/decks/${id}${cascade ? '?cascade=true' : ''}`, { method: 'DELETE' }),
+  deleteAllDecks: () => request<void>('/api/decks', { method: 'DELETE' }),
   noteTypes: () => request<NoteType[]>('/api/note-types'),
   createNoteType: (body: {
     name: string
