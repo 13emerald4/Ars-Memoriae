@@ -34,9 +34,9 @@ class CitedCard(BaseModel):
 
 class GenerateDeckRequest(BaseModel):
     max_cards_per_section: int = Field(default=3, ge=1, le=10)
-    # Bounded because each section is one LLM round trip; a 400-page textbook
-    # would otherwise be 400 calls behind a single button press.
-    max_sections: int = Field(default=15, ge=1, le=100)
+    # Bounded because each section is one LLM round trip; keeping default to 4
+    # prevents API rate throttling on free-tier keys.
+    max_sections: int = Field(default=4, ge=1, le=100)
     start_section: int = Field(default=0, ge=0)
     model: str | None = None
 

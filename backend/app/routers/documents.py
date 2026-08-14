@@ -178,8 +178,10 @@ async def generate_deck(
     service = GradingService(api_key, body.model or user.grading_model)
     semaphore = asyncio.Semaphore(GENERATION_CONCURRENCY)
 
-    async def one(extract: Extract) -> tuple[Extract, list[dict] | str]:
+    async def one(extract: Extract, idx: int) -> tuple[Extract, list[dict] | str]:
         async with semaphore:
+            if idx > 0:
+                await asyncio.sleep(0.4 * idx)
             try:
                 return extract, await service.generate_cards_with_citations(
                     extract.content,
@@ -190,7 +192,7 @@ async def generate_deck(
             except GradingUnavailable as exc:
                 return extract, str(exc)
 
-    results = await asyncio.gather(*(one(e) for e in window))
+    results = await asyncio.gather(*(one(e, i) for i, e in enumerate(window)))
 
     cards: list[CitedCard] = []
     warnings: list[str] = []

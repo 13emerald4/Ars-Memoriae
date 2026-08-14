@@ -99,7 +99,10 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
     setBusy('Generating cards…')
     setError(null)
     try {
-      const out = await api.generateDeck(doc.source_id, { start_section: startSection })
+      const out = await api.generateDeck(doc.source_id, {
+        start_section: startSection,
+        max_sections: 4,
+      })
       setGenerated(out)
       // Everything is pre-selected: the user is reviewing a proposal, not
       // assembling one from scratch.
@@ -164,7 +167,7 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
           </div>
         )}
 
-        {doc && !generated && (
+        {doc && (!generated || generated.degraded) && (
           <div className="flex flex-wrap items-center gap-2">
             <input
               className="input w-56"
@@ -177,7 +180,7 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
               disabled={Boolean(busy)}
               onClick={() => generate(0)}
             >
-              Generate cards
+              {generated?.degraded ? 'Retry generating cards' : 'Generate cards'}
             </button>
           </div>
         )}
@@ -187,11 +190,21 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
 
         {generated?.degraded && (
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-            {generated.reason === 'consent_not_given'
-              ? 'LLM card generation needs your consent — turn it on in Settings.'
-              : generated.reason === 'no_api_key'
-                ? 'Add a Google API key in Settings to generate cards.'
-                : `Generation was unavailable (${generated.reason}).`}
+            <p>
+              {generated.reason === 'consent_not_given'
+                ? 'LLM card generation needs your consent — turn it on in Settings.'
+                : generated.reason === 'no_api_key'
+                  ? 'Add a Google API key in Settings to generate cards.'
+                  : `Card generation was temporarily unavailable (${generated.reason}).`}
+            </p>
+            {generated.warnings.length > 0 && (
+              <p className="mt-1.5 text-xs text-amber-300/80">
+                Details: {generated.warnings[0]}
+              </p>
+            )}
+            <p className="mt-2 text-xs text-slate-400">
+              Free-tier or preview models (like Gemini 3.7 Flash) may experience brief capacity spikes. Click &ldquo;Retry generating cards&rdquo; above or select a different model in Settings.
+            </p>
           </div>
         )}
 

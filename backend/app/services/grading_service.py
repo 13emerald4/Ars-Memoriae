@@ -136,15 +136,15 @@ class GradingService:
 
         async def _call_with_retry(use_schema: bool) -> str:
             last_exc = None
-            for attempt in range(3):
+            for attempt in range(4):
                 try:
                     return await _call(use_schema=use_schema)
                 except Exception as exc:
                     last_exc = exc
-                    if attempt < 2 and _is_retryable(exc):
-                        delay = 1.0 * (2**attempt)
+                    if attempt < 3 and _is_retryable(exc):
+                        delay = 1.5 * (2**attempt)
                         log.warning(
-                            "LLM call failed with retryable error (%s); retrying in %.1fs (attempt %d/3)",
+                            "LLM call failed with retryable error (%s); retrying in %.1fs (attempt %d/4)",
                             exc,
                             delay,
                             attempt + 1,
