@@ -322,6 +322,7 @@ async def confirm_review(
             state_before=state_before,
             elapsed_days=elapsed_days,
             graduated_to_review=state_before != "review" and new_state.get("state") == "review",
+            user_confidence=body.confidence,
         )
     )
 

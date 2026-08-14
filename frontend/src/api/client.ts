@@ -14,6 +14,7 @@ import type {
   JsonImportNote,
   JsonImportRequest,
   JsonImportResult,
+  LearningAnalytics,
   Lesson,
   NoteType,
   QueueConfig,
@@ -139,12 +140,14 @@ export const api = {
     overridden: boolean,
     typed_answer?: string,
     latency_ms?: number,
+    confidence?: number,
   ) =>
     post<ConfirmReviewResponse>(`/api/review/${cardId}/confirm`, {
       final_grade,
       overridden,
       typed_answer,
       latency_ms,
+      confidence,
     }),
 
   // ── decks / notes / cards ───────────────────────────────────────────────
@@ -274,6 +277,8 @@ export const api = {
       body,
     ),
   stats: () => request<Stats>('/api/stats'),
+  learningAnalytics: (days: number = 365) =>
+    request<LearningAnalytics>(`/api/stats/learning-analytics?days=${days}`),
   dismissLeech: (cardId: string) => post<unknown>(`/api/leeches/${cardId}/dismiss`),
   suspendLeech: (cardId: string) => post<unknown>(`/api/leeches/${cardId}/suspend`),
   acceptLeech: (cardId: string) => post<{ applied: string; cards_created: number }>(

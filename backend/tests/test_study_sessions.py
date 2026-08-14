@@ -306,11 +306,12 @@ class TestBankTotals:
 
         me = (await auth_client.get("/api/me")).json()
         now = datetime.now(UTC)
+        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
         placements = [
-            (now - timedelta(hours=2), 100),  # today
-            (now - timedelta(hours=30), 200),  # yesterday, still this week
-            (now - timedelta(days=3), 400),  # this week
-            (now - timedelta(days=10), 800),  # older than a week
+            (today + timedelta(minutes=5), 100),  # today
+            (today - timedelta(hours=10), 200),  # yesterday, still this week
+            (today - timedelta(days=3), 400),  # this week
+            (today - timedelta(days=10), 800),  # older than a week
         ]
 
         async with SessionLocal() as db:

@@ -1,11 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
-import type { Bank, Leech, SisterPair, Stats as StatsData } from '../api/types'
+import type {
+  Bank,
+  ChronotypeHour,
+  DiscriminatedCard,
+  FatiguePoint,
+  LearningAnalytics,
+  Leech,
+  SisterPair,
+  Stats as StatsData,
+  YieldPoint,
+} from '../api/types'
 import { formatBanked } from '../components/SessionTimer'
 import { Empty, ErrorNote, Section, Spinner } from '../components/ui'
 
 export default function Stats() {
   const [stats, setStats] = useState<StatsData | null>(null)
+  const [analytics, setAnalytics] = useState<LearningAnalytics | null>(null)
   const [bank, setBank] = useState<Bank | null>(null)
   const [error, setError] = useState<unknown>(null)
 
@@ -14,6 +25,11 @@ export default function Stats() {
       setStats(await api.stats())
     } catch (err) {
       setError(err)
+    }
+    try {
+      setAnalytics(await api.learningAnalytics())
+    } catch {
+      /* supplementary analytics */
     }
     try {
       setBank(await api.bank())
@@ -30,7 +46,8 @@ export default function Stats() {
   if (!stats) return <Spinner />
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* ── Topline Cards ── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Cards" value={stats.totals.cards} />
         <Stat label="In review" value={stats.totals.review} />
@@ -47,6 +64,41 @@ export default function Stats() {
 
       <Velocity velocity={stats.velocity} />
 
+      {/* ── Learning Science Suite ── */}
+      {analytics && (
+        <div className="space-y-6 rounded-2xl border border-sky-500/20 bg-sky-950/10 p-4 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-line pb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-sky-200">Learning Sciences Analytics</h2>
+              <p className="text-xs text-slate-400">
+                Statistical telemetry grounded in cognitive load, chronobiology, psychometrics, and metacognition.
+              </p>
+            </div>
+            <span className="chip border-sky-500/40 bg-sky-500/10 text-sky-300">
+              Active Optimization Suite
+            </span>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <CognitiveFatigue fatigue={analytics.fatigue} />
+            <CircadianChronotype chronotype={analytics.chronotype} />
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <DesirableDifficultyView difficulty={analytics.desirable_difficulty} />
+            <MetacognitiveCalibration metacognition={analytics.metacognition} />
+          </div>
+
+          <ItemDiscriminationTriage discrimination={analytics.item_discrimination} />
+
+          <EWMAMasteryAndSPRT
+            ewmaScores={analytics.ewma_mastery}
+            sprtVerdicts={analytics.sprt_gating}
+          />
+        </div>
+      )}
+
+      {/* ── Core Review Activity & Retention ── */}
       <Section title="Activity" description="Reviews per day over the last year.">
         <Heatmap data={stats.heatmap} />
       </Section>
@@ -119,6 +171,424 @@ export default function Stats() {
   )
 }
 
+// ── 1. Cognitive Fatigue & Focus Horizon Component ───────────────────────────
+
+function CognitiveFatigue({ fatigue }: { fatigue: LearningAnalytics['fatigue'] }) {
+  const curve = fatigue.curve || []
+  return (
+    <Section
+      title="Cognitive Fatigue & Focus Horizon"
+      description="Recall accuracy and latency decay over continuous session minutes."
+    >
+      <div className="mb-3 rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-base font-semibold text-sky-200">
+              Optimal Focus Block: {fatigue.optimal_focus_minutes}m
+            </span>
+            <span className="chip border-emerald-500/30 text-emerald-300">
+              {Math.round(fatigue.baseline_accuracy * 100)}% Peak Recall
+            </span>
+          </div>
+        </div>
+        <p className="mt-1 text-xs text-slate-400">{fatigue.recommendation}</p>
+      </div>
+
+      {curve.length === 0 ? (
+        <Empty title="Complete timed sessions to measure your focus curve." />
+      ) : (
+        <div className="space-y-2">
+          {curve.map((pt: FatiguePoint) => {
+            const accPct = Math.round(pt.accuracy * 100)
+            const isSlump = pt.elapsed_minutes > fatigue.optimal_focus_minutes
+            return (
+              <div key={pt.minute_bucket} className="flex items-center gap-3 text-xs">
+                <span className="w-14 text-slate-500 tabular-nums">{pt.minute_bucket}</span>
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-ink-line">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      isSlump ? 'bg-amber-400/80' : 'bg-sky-400/80'
+                    }`}
+                    style={{ width: `${accPct}%` }}
+                  />
+                </div>
+                <span className="w-12 text-right tabular-nums text-slate-300">{accPct}%</span>
+                <span className="w-16 text-right tabular-nums text-slate-500">
+                  {pt.avg_latency_ms ? `${Math.round(pt.avg_latency_ms / 100) / 10}s` : '—'}
+                </span>
+              </div>
+            )
+          })}
+          <div className="flex justify-between pt-1 text-[11px] text-slate-600">
+            <span>Elapsed session minutes</span>
+            <span>Accuracy / Latency</span>
+          </div>
+        </div>
+      )}
+    </Section>
+  )
+}
+
+// ── 2. Circadian Chronotype Efficiency ───────────────────────────────────────
+
+function CircadianChronotype({ chronotype }: { chronotype: LearningAnalytics['chronotype'] }) {
+  const hourly = chronotype.hourly || []
+  const maxEff = Math.max(1, ...hourly.map((h: ChronotypeHour) => h.efficiency_score))
+
+  return (
+    <Section
+      title="Circadian Chronotype Efficiency"
+      description="Retrieval velocity and consolidation efficiency by hour of day (0–23)."
+    >
+      <div className="mb-3 rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3">
+        <div className="flex items-center gap-2">
+          <span className="text-base font-semibold text-indigo-200">
+            Peak Window: {chronotype.optimal_study_time || '09:00 - 12:00'}
+          </span>
+          <span className="chip border-indigo-500/30 text-indigo-300">Circadian Peak</span>
+        </div>
+        <p className="mt-1 text-xs text-slate-400">{chronotype.summary}</p>
+      </div>
+
+      <div className="grid grid-cols-12 gap-1 pt-2">
+        {hourly.map((h: ChronotypeHour) => {
+          const isPeak =
+            (h.hour >= chronotype.peak_window_start && h.hour < chronotype.peak_window_end) ||
+            (chronotype.peak_window_start > chronotype.peak_window_end &&
+              (h.hour >= chronotype.peak_window_start || h.hour < chronotype.peak_window_end))
+          const heightPct = h.efficiency_score > 0 ? Math.max(10, (h.efficiency_score / maxEff) * 100) : 4
+
+          return (
+            <div
+              key={h.hour}
+              className="group relative flex flex-col items-center"
+              title={`${h.hour}:00 — ${h.review_count} reviews, ${Math.round(h.accuracy * 100)}% accuracy, ${
+                h.avg_latency_ms ? `${Math.round(h.avg_latency_ms)}ms` : ''
+              }`}
+            >
+              <div className="h-16 w-full flex items-end justify-center rounded bg-ink-line/40 p-0.5">
+                <div
+                  className={`w-full rounded-t transition-all ${
+                    isPeak
+                      ? 'bg-indigo-400 group-hover:bg-indigo-300'
+                      : h.review_count > 0
+                        ? 'bg-slate-500 group-hover:bg-slate-400'
+                        : 'bg-slate-700/30'
+                  }`}
+                  style={{ height: `${heightPct}%` }}
+                />
+              </div>
+              <span className="mt-1 text-[10px] text-slate-500 tabular-nums">
+                {h.hour % 4 === 0 ? `${h.hour}h` : ''}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+      <div className="flex justify-between pt-1 text-[11px] text-slate-600">
+        <span>00:00 (Midnight)</span>
+        <span>12:00 (Noon)</span>
+        <span>23:00 (Night)</span>
+      </div>
+    </Section>
+  )
+}
+
+// ── 3. Desirable Difficulty & Yield Curve ─────────────────────────────────────
+
+function DesirableDifficultyView({ difficulty }: { difficulty: LearningAnalytics['desirable_difficulty'] }) {
+  const curve = difficulty.curve || []
+  return (
+    <Section
+      title="Desirable Difficulty & Yield Curve"
+      description="Memory stability gained (ΔS) relative to retrievability at review time."
+    >
+      <div className="mb-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+        <div className="flex items-center gap-2">
+          <span className="text-base font-semibold text-emerald-200">
+            Target Retention: {Math.round(difficulty.optimal_retention_target * 100)}%
+          </span>
+          <span className="chip border-emerald-500/30 text-emerald-300">Optimal Yield Zone</span>
+        </div>
+        <p className="mt-1 text-xs text-slate-400">{difficulty.summary}</p>
+      </div>
+
+      {curve.length === 0 ? (
+        <Empty title="Review mature cards to generate your retrievability yield curve." />
+      ) : (
+        <div className="space-y-2">
+          {curve.map((pt: YieldPoint) => (
+            <div key={pt.retrievability_bucket} className="flex items-center gap-3 text-xs">
+              <span className="w-16 text-slate-500">{pt.retrievability_bucket}</span>
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-ink-line">
+                <div
+                  className="h-full rounded-full bg-emerald-400/80"
+                  style={{ width: `${Math.min(100, pt.avg_stability_gain * 10)}%` }}
+                />
+              </div>
+              <span className="w-16 text-right tabular-nums text-slate-300">
+                +{pt.avg_stability_gain}d ΔS
+              </span>
+              <span className="w-12 text-right tabular-nums text-slate-500">
+                {pt.review_count} rev
+              </span>
+            </div>
+          ))}
+          <div className="flex justify-between pt-1 text-[11px] text-slate-600">
+            <span>Retrievability (R)</span>
+            <span>Stability gain per review</span>
+          </div>
+        </div>
+      )}
+    </Section>
+  )
+}
+
+// ── 4. Metacognitive Calibration & Brier Score ────────────────────────────────
+
+function MetacognitiveCalibration({ metacognition }: { metacognition: LearningAnalytics['metacognition'] }) {
+  const curve = metacognition.calibration_curve || []
+
+  return (
+    <Section
+      title="Metacognitive Calibration & Brier Score"
+      description="Alignment between pre-recall Judgment of Learning (JOL) and empirical recall."
+    >
+      <div className="mb-3 grid gap-2 sm:grid-cols-3">
+        <div className="rounded-lg border border-ink-line bg-ink p-2.5">
+          <p className="text-[11px] uppercase tracking-wide text-slate-500">Brier Score</p>
+          <p className="mt-0.5 text-xl font-semibold tabular-nums text-slate-100">
+            {metacognition.brier_score.toFixed(3)}
+          </p>
+          <p className="text-[10px] text-slate-500">0.00 = perfect calibration</p>
+        </div>
+        <div className="rounded-lg border border-ink-line bg-ink p-2.5">
+          <p className="text-[11px] uppercase tracking-wide text-slate-500">Overconfidence</p>
+          <p
+            className={`mt-0.5 text-xl font-semibold tabular-nums ${
+              Math.abs(metacognition.overconfidence_index) < 0.08
+                ? 'text-emerald-300'
+                : metacognition.overconfidence_index > 0
+                  ? 'text-rose-300'
+                  : 'text-sky-300'
+            }`}
+          >
+            {metacognition.overconfidence_index > 0 ? '+' : ''}
+            {(metacognition.overconfidence_index * 100).toFixed(1)}%
+          </p>
+          <p className="text-[10px] text-slate-500">predicted vs actual</p>
+        </div>
+        <div className="rounded-lg border border-ink-line bg-ink p-2.5">
+          <p className="text-[11px] uppercase tracking-wide text-slate-500">Hypercorrection</p>
+          <p className="mt-0.5 text-xl font-semibold tabular-nums text-emerald-300">
+            {Math.round(metacognition.hypercorrection_retention * 100)}%
+          </p>
+          <p className="text-[10px] text-slate-500">subsequent recall on errors</p>
+        </div>
+      </div>
+
+      <p className="mb-3 text-xs text-slate-400">{metacognition.calibration_verdict}</p>
+
+      <div className="space-y-2">
+        {curve.map((b) => {
+          const obsPct = Math.round(b.observed_accuracy * 100)
+          const predPct = Math.round(b.predicted_prob * 100)
+          return (
+            <div key={b.confidence_level} className="flex items-center gap-3 text-xs">
+              <span className="w-24 text-slate-400">{b.label}</span>
+              <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-ink-line">
+                <div
+                  className="h-full rounded-full bg-sky-400/80"
+                  style={{ width: `${obsPct}%` }}
+                />
+                {/* Predicted tick mark */}
+                <div
+                  className="absolute top-0 bottom-0 w-0.5 bg-rose-400"
+                  style={{ left: `${predPct}%` }}
+                  title={`Predicted: ${predPct}%`}
+                />
+              </div>
+              <span className="w-12 text-right tabular-nums text-slate-200">{obsPct}%</span>
+              <span className="w-12 text-right tabular-nums text-slate-500">({b.review_count})</span>
+            </div>
+          )
+        })}
+        <div className="flex justify-between pt-1 text-[11px] text-slate-600">
+          <span>Confidence tier</span>
+          <span>Blue bar: observed recall · Red line: expected probability</span>
+        </div>
+      </div>
+    </Section>
+  )
+}
+
+// ── 5. Item Discrimination (r_pb) Diagnostic Triage ──────────────────────────
+
+function ItemDiscriminationTriage({ discrimination }: { discrimination: LearningAnalytics['item_discrimination'] }) {
+  const [tab, setTab] = useState<'ambiguous' | 'high'>('ambiguous')
+  const ambiguous = discrimination.ambiguous_cards || []
+  const high = discrimination.high_discrimination || []
+  const currentList = tab === 'ambiguous' ? ambiguous : high
+
+  return (
+    <Section
+      title={`Psychometric Item Discrimination (${discrimination.overall_deck_r.toFixed(2)} r_pb)`}
+      description="Item Response Theory point-biserial correlation: separates concept benchmarks from ambiguous cards."
+      actions={
+        <div className="flex gap-1.5 text-xs">
+          <button
+            onClick={() => setTab('ambiguous')}
+            className={`btn px-2.5 py-1 ${tab === 'ambiguous' ? 'btn-primary' : ''}`}
+          >
+            Ambiguous cards ({ambiguous.length})
+          </button>
+          <button
+            onClick={() => setTab('high')}
+            className={`btn px-2.5 py-1 ${tab === 'high' ? 'btn-primary' : ''}`}
+          >
+            High discrimination ({high.length})
+          </button>
+        </div>
+      }
+    >
+      {currentList.length === 0 ? (
+        <Empty title={tab === 'ambiguous' ? 'No ambiguous cards detected!' : 'No items analyzed yet.'} />
+      ) : (
+        <div className="space-y-2.5">
+          {currentList.map((c: DiscriminatedCard) => (
+            <div key={c.card_id} className="rounded-lg border border-ink-line bg-ink/60 p-3 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`chip ${
+                      c.classification === 'high'
+                        ? 'border-emerald-500/40 text-emerald-300'
+                        : 'border-rose-500/40 text-rose-300'
+                    }`}
+                  >
+                    r_pb: {c.point_biserial_r.toFixed(2)}
+                  </span>
+                  <span className="chip">{Math.round(c.pass_rate * 100)}% pass rate</span>
+                  {c.deck_name && <span className="chip text-slate-500">{c.deck_name}</span>}
+                </div>
+                <span className="text-slate-500">{c.review_count} reviews</span>
+              </div>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <div className="rounded border border-ink-line bg-ink p-2 text-slate-200">
+                  <span className="text-[10px] uppercase text-slate-500">Front: </span>
+                  {c.front}
+                </div>
+                <div className="rounded border border-ink-line bg-ink p-2 text-slate-400">
+                  <span className="text-[10px] uppercase text-slate-500">Back: </span>
+                  {c.back}
+                </div>
+              </div>
+              <p className="mt-2 text-[11px] text-slate-500">{c.rationale}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
+  )
+}
+
+// ── 6. EWMA Skill Health & Wald's SPRT Gating ─────────────────────────────────
+
+function EWMAMasteryAndSPRT({
+  ewmaScores,
+  sprtVerdicts,
+}: {
+  ewmaScores: LearningAnalytics['ewma_mastery']
+  sprtVerdicts: LearningAnalytics['sprt_gating']
+}) {
+  return (
+    <Section
+      title="Knowledge Tree Mastery: EWMA & Wald's SPRT"
+      description="Recency-weighted mastery health bars (EWMA) and sequential hypothesis testing for prerequisite unlocking (SPRT)."
+    >
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* EWMA Health Bars */}
+        <div>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            EWMA Skill Health Meter (λ = 0.25)
+          </h3>
+          {ewmaScores.length === 0 ? (
+            <Empty title="No topics reviewed in the tree yet." />
+          ) : (
+            <div className="space-y-2">
+              {ewmaScores.slice(0, 8).map((s) => (
+                <div key={s.node_id} className="flex items-center gap-3 text-xs">
+                  <span className="w-32 truncate text-slate-300" title={s.title}>
+                    {s.title}
+                  </span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-ink-line">
+                    <div
+                      className={`h-full rounded-full ${
+                        s.ewma_pct >= 85
+                          ? 'bg-emerald-400/80'
+                          : s.ewma_pct >= 65
+                            ? 'bg-sky-400/80'
+                            : 'bg-amber-400/80'
+                      }`}
+                      style={{ width: `${s.ewma_pct}%` }}
+                    />
+                  </div>
+                  <span className="w-12 text-right tabular-nums text-slate-200">
+                    {s.ewma_pct.toFixed(0)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Wald's SPRT Gating Verdicts */}
+        <div>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Wald's SPRT Prerequisite Verdicts
+          </h3>
+          {sprtVerdicts.length === 0 ? (
+            <Empty title="No prerequisite gates configured. Set prerequisites in the Knowledge Tree." />
+          ) : (
+            <div className="space-y-2">
+              {sprtVerdicts.map((v) => (
+                <div
+                  key={v.node_id}
+                  className="flex items-center justify-between rounded-lg border border-ink-line bg-ink p-2.5 text-xs"
+                >
+                  <div className="min-w-0 flex-1 pr-2">
+                    <p className="truncate font-medium text-slate-200">{v.title}</p>
+                    <p className="text-[10px] text-slate-500">
+                      LLR: {v.log_likelihood_ratio.toFixed(2)} / Bound: [{v.threshold_lower}, {v.threshold_upper}] · {v.cards_evaluated} trials
+                    </p>
+                  </div>
+                  <span
+                    className={`chip font-semibold ${
+                      v.verdict === 'mastered'
+                        ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
+                        : v.verdict === 'unmastered'
+                          ? 'border-rose-500/40 text-rose-300 bg-rose-500/10'
+                          : 'border-amber-500/40 text-amber-300 bg-amber-500/10'
+                    }`}
+                  >
+                    {v.verdict === 'mastered'
+                      ? '🏆 Mastered'
+                      : v.verdict === 'unmastered'
+                        ? '🛑 Unmastered'
+                        : '⏳ Testing'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </Section>
+  )
+}
+
+// ── Standard Helpers ─────────────────────────────────────────────────────────
+
 const PAIR_COPY: Record<string, { label: string; hint: string; tone: string }> = {
   interference: {
     label: 'Confusable',
@@ -137,7 +607,6 @@ const PAIR_COPY: Record<string, { label: string; hint: string; tone: string }> =
   },
 }
 
-/** Sister-card interference (§2, §14 Phase 4). Detected locally — no API cost. */
 function Interference() {
   const [pairs, setPairs] = useState<SisterPair[]>([])
   const [scanning, setScanning] = useState(false)
@@ -237,9 +706,6 @@ function Interference() {
   )
 }
 
-/** The Time Bank: free time earned by hitting a block's card target early.
- *  Velocity, not seat time — an hour billed for twenty minutes of real work
- *  isn't an hour of study. */
 function TimeBank({ bank }: { bank: Bank }) {
   const empty = bank.total_seconds === 0 && bank.recent.length === 0
   return (
@@ -326,14 +792,6 @@ function TimeBank({ bank }: { bank: Bank }) {
   )
 }
 
-/** Alpha's "mastery per hour": concepts mastered against active study time,
- *  not seat time — the same active-hours ledger the Time Bank pays out of, so
- *  a session left open overnight can't inflate the number.
- *
- *  Rate and total are deliberately separate numbers. The rate counts only
- *  what was mastered *inside* a timed block, because that's the only span the
- *  active-hours denominator measures; mixing untimed masteries into it would
- *  let the rate climb without bound. The total counts everything. */
 function Velocity({ velocity }: { velocity: Record<string, number> }) {
   const activeHours = velocity.active_hours ?? 0
   const inBlocks = Math.round(velocity.mastered ?? 0)

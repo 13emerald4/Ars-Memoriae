@@ -24,7 +24,9 @@ from app.models import (
     User,
 )
 from app.routers.deps import current_user, parse_uuid
+from app.schemas.analytics import LearningAnalyticsOut
 from app.schemas.core import LeechOut, StatsOut
+from app.services.learning_analytics_service import compute_learning_analytics
 from app.services.note_service import default_note_type, sync_cards
 from app.services.rendering import render
 
@@ -406,3 +408,15 @@ async def _owned_leech(db: AsyncSession, user: User, card_id: uuid.UUID) -> Card
     if deck is None or deck.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "card not found")
     return card
+
+
+@router.get("/stats/learning-analytics", response_model=LearningAnalyticsOut)
+async def learning_analytics(
+    days: int = Query(default=365, ge=1, le=1095),
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> LearningAnalyticsOut:
+    """Learning Sciences statistical analytics: fatigue curve, chronotype peak,
+    item discrimination (r_pb), desirable difficulty yield, and EWMA/SPRT mastery."""
+    return await compute_learning_analytics(db, user, days=days)
+

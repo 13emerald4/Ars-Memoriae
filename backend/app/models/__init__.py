@@ -476,6 +476,8 @@ class ReviewLog(Base):
     # "review" state — the app's definition of "mastered" (see tree_service's
     # is_mastered). Drives the velocity stat (mastered / active hour).
     graduated_to_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Metacognitive Judgment of Learning (1: Guess, 2: Unsure, 3: Confident, 4: Solid).
+    user_confidence: Mapped[int | None] = mapped_column(SmallInteger)
 
     __table_args__ = (
         CheckConstraint(

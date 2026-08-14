@@ -54,6 +54,7 @@ export default function Review() {
   const [result, setResult] = useState<SubmitAnswerResponse | null>(null)
   const [revealed, setRevealed] = useState(false)
   const [lastOutcome, setLastOutcome] = useState<string | null>(null)
+  const [confidence, setConfidence] = useState<number | null>(null)
 
   // Stuck-state detector: a real-time nudge, not a per-card verdict — it
   // persists across the card transition below rather than being cleared by
@@ -94,6 +95,7 @@ export default function Review() {
       setAnswer('')
       setResult(null)
       setRevealed(false)
+      setConfidence(null)
       setLesson(null)
       setTaught(false)
       setGuideOpen(false)
@@ -213,6 +215,7 @@ export default function Review() {
         overridden,
         answer || undefined,
         Date.now() - shownAt.current,
+        confidence || undefined,
       )
       setLastOutcome(
         `${finalGrade} — next in ${formatInterval(outcome.interval_days)}${
@@ -345,10 +348,36 @@ export default function Review() {
 
           {!revealed && (
             <div className="mt-6">
-              <label className="label" htmlFor="answer">
-                {llmEnabled ? 'Type your answer' : 'Type your answer (optional — grading is manual)'}
-              </label>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <label className="label mb-0" htmlFor="answer">
+                  {llmEnabled ? 'Type your answer' : 'Type your answer (optional — grading is manual)'}
+                </label>
+                <div className="flex items-center gap-1 text-xs">
+                  <span className="mr-1 text-slate-500">Confidence:</span>
+                  {[
+                    { lvl: 1, label: '1: Guess', color: 'border-rose-500/40 text-rose-300' },
+                    { lvl: 2, label: '2: Unsure', color: 'border-amber-500/40 text-amber-300' },
+                    { lvl: 3, label: '3: Likely', color: 'border-sky-500/40 text-sky-300' },
+                    { lvl: 4, label: '4: Solid', color: 'border-emerald-500/40 text-emerald-300' },
+                  ].map(({ lvl, label, color }) => (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => setConfidence(confidence === lvl ? null : lvl)}
+                      className={`rounded border px-2 py-0.5 text-[11px] transition-all ${
+                        confidence === lvl
+                          ? `${color} bg-white/10 font-medium ring-1 ring-inset ring-current`
+                          : 'border-ink-line text-slate-400 hover:text-slate-200'
+                      }`}
+                      title={`Metacognitive Judgment of Learning: ${label}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <textarea
+
                 id="answer"
                 ref={inputRef}
                 className="input min-h-[7rem] resize-y"

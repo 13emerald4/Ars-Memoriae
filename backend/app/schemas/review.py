@@ -124,6 +124,7 @@ class ConfirmReviewRequest(BaseModel):
     overridden: bool = False
     typed_answer: str | None = None
     latency_ms: int | None = None
+    confidence: int | None = Field(default=None, ge=1, le=4)
 
 
 class StuckAlertOut(BaseModel):

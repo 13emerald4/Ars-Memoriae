@@ -392,3 +392,113 @@ export interface QueueConfig {
   seconds_per_review: number
   seconds_per_ir_extract: number
 }
+
+export interface FatiguePoint {
+  minute_bucket: string
+  elapsed_minutes: number
+  review_count: number
+  accuracy: number
+  avg_latency_ms: number
+}
+
+export interface SessionFatigue {
+  curve: FatiguePoint[]
+  optimal_focus_minutes: number
+  baseline_accuracy: number
+  breakpoint_accuracy: number
+  recommendation: string
+}
+
+export interface ChronotypeHour {
+  hour: number
+  review_count: number
+  accuracy: number
+  avg_latency_ms: number
+  avg_stability_gain: number
+  efficiency_score: number
+}
+
+export interface Chronotype {
+  hourly: ChronotypeHour[]
+  peak_window_start: number
+  peak_window_end: number
+  optimal_study_time: string
+  summary: string
+}
+
+export interface DiscriminatedCard {
+  card_id: string
+  front: string
+  back: string
+  deck_name: string | null
+  review_count: number
+  pass_rate: number
+  point_biserial_r: number
+  classification: 'high' | 'moderate' | 'ambiguous'
+  rationale: string
+}
+
+export interface ItemDiscrimination {
+  high_discrimination: DiscriminatedCard[]
+  ambiguous_cards: DiscriminatedCard[]
+  overall_deck_r: number
+}
+
+export interface YieldPoint {
+  retrievability_bucket: string
+  avg_retrievability: number
+  review_count: number
+  avg_stability_gain: number
+  yield_ratio: number
+}
+
+export interface DesirableDifficulty {
+  curve: YieldPoint[]
+  optimal_retention_target: number
+  summary: string
+}
+
+export interface CalibrationBucket {
+  confidence_level: number
+  label: string
+  predicted_prob: number
+  observed_accuracy: number
+  review_count: number
+}
+
+export interface MetacognitiveStats {
+  calibration_curve: CalibrationBucket[]
+  brier_score: number
+  overconfidence_index: number
+  hypercorrection_retention: number
+  calibration_verdict: string
+}
+
+export interface EWMAScore {
+  node_id: string
+  title: string
+  kind: string
+  ewma_pct: number
+  sample_size: number
+}
+
+export interface SPRTVerdict {
+  node_id: string
+  title: string
+  log_likelihood_ratio: number
+  threshold_upper: number
+  threshold_lower: number
+  verdict: 'mastered' | 'unmastered' | 'testing'
+  cards_evaluated: number
+}
+
+export interface LearningAnalytics {
+  fatigue: SessionFatigue
+  chronotype: Chronotype
+  item_discrimination: ItemDiscrimination
+  desirable_difficulty: DesirableDifficulty
+  metacognition: MetacognitiveStats
+  ewma_mastery: EWMAScore[]
+  sprt_gating: SPRTVerdict[]
+}
+
