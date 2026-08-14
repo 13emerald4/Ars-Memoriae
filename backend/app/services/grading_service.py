@@ -118,13 +118,51 @@ class GradingService:
             )
             return resp.text or ""
 
+        def _is_retryable(exc: Exception) -> bool:
+            msg = str(exc).lower()
+            return any(
+                code in msg
+                for code in (
+                    "503",
+                    "429",
+                    "service unavailable",
+                    "resource_exhausted",
+                    "quota",
+                    "overloaded",
+                    "deadline_exceeded",
+                    "timeout",
+                )
+            )
+
+        async def _call_with_retry(use_schema: bool) -> str:
+            last_exc = None
+            for attempt in range(3):
+                try:
+                    return await _call(use_schema=use_schema)
+                except Exception as exc:
+                    last_exc = exc
+                    if attempt < 2 and _is_retryable(exc):
+                        delay = 1.0 * (2**attempt)
+                        log.warning(
+                            "LLM call failed with retryable error (%s); retrying in %.1fs (attempt %d/3)",
+                            exc,
+                            delay,
+                            attempt + 1,
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+                    raise exc
+            if last_exc:
+                raise last_exc
+            return ""
+
         try:
-            return await _call(use_schema=schema is not None)
+            return await _call_with_retry(use_schema=schema is not None)
         except Exception as exc:
             if schema is not None and _is_schema_unsupported(exc):
                 log.info("model %s rejected response_schema; retrying unconstrained", model)
                 try:
-                    return await _call(use_schema=False)
+                    return await _call_with_retry(use_schema=False)
                 except Exception as exc2:
                     raise GradingUnavailable(str(exc2)) from exc2
             raise GradingUnavailable(str(exc)) from exc

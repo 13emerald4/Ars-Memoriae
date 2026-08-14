@@ -42,9 +42,9 @@ from app.services.note_service import default_note_type, sync_cards
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
-# Sections are generated concurrently, but not unboundedly: a free-tier Gemini
-# key will start returning 429s well before the event loop is the bottleneck.
-GENERATION_CONCURRENCY = 4
+# Sections are generated concurrently, but capped to 2 to prevent free-tier
+# Gemini rate spikes (503/429) on large document chunks.
+GENERATION_CONCURRENCY = 2
 
 
 async def _owned_source(db: AsyncSession, user: User, source_id: uuid.UUID) -> Source:
