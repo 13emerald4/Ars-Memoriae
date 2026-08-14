@@ -19,7 +19,7 @@ import logging
 import uuid
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decrypt_api_key
@@ -34,7 +34,7 @@ from app.schemas.documents import (
     GenerateDeckRequest,
     GenerateDeckResponse,
 )
-from app.services import document_service, ir_service
+from app.services import document_service, ir_service, tree_service
 from app.services.document_service import DocumentError
 from app.services.grading_service import GradingService, GradingUnavailable
 from app.services.note_service import default_note_type, sync_cards
@@ -95,11 +95,53 @@ async def upload_document(
             raise HTTPException(status.HTTP_404_NOT_FOUND, "parent node not found")
         node_id = node.id
 
+    target_title = (title or "").strip() or parsed_title
+    raw_text = "\n\n".join(s.text for s in segments)
+
+    # Check for exact identical source for this user to prevent duplicate tree nodes
+    existing_source = await db.scalar(
+        select(Source).where(
+            Source.user_id == user.id,
+            Source.title == target_title,
+            Source.raw_text == raw_text,
+        )
+    )
+    if existing_source is not None:
+        source_node = await db.scalar(
+            select(KnowledgeNode).where(KnowledgeNode.source_id == existing_source.id)
+        )
+        return DocumentOut(
+            source_id=str(existing_source.id),
+            title=existing_source.title,
+            segment_count=len(segments),
+            locators=_distinct_locators([s.locator for s in segments]),
+            node_id=str(source_node.id) if source_node else None,
+        )
+
+    # Clean up any un-cited draft source with the same title from previous upload attempts
+    existing_draft = await db.scalar(
+        select(Source).where(
+            Source.user_id == user.id,
+            Source.title == target_title,
+            Source.for_reading == False,
+        )
+    )
+    if existing_draft is not None:
+        has_citations = await db.scalar(
+            select(func.count(CardReference.id))
+            .join(Extract, Extract.id == CardReference.extract_id)
+            .where(Extract.source_id == existing_draft.id)
+        )
+        if not has_citations:
+            await tree_service.detach_entity_node(db, KnowledgeNode.source_id == existing_draft.id)
+            await db.delete(existing_draft)
+            await db.flush()
+
     source = await ir_service.create_source(
         db,
         user.id,
-        title=(title or "").strip() or parsed_title,
-        raw_text="\n\n".join(s.text for s in segments),
+        title=target_title,
+        raw_text=raw_text,
         priority=max(0, min(100, priority)),
         parent_node_id=node_id,
         segments=[(s.locator, s.text) for s in segments],

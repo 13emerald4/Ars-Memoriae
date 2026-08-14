@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import Card, Deck, KnowledgeNode, User
+from app.models import Card, Deck, Extract, KnowledgeNode, Note, Source, User
 from app.routers.decks import card_out
 from app.routers.deps import current_user, parse_uuid
 from app.schemas.core import CardOut
@@ -188,6 +188,15 @@ async def move_node(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
     await db.commit()
     return {"id": str(node.id), "parent_id": str(node.parent_id) if node.parent_id else None}
+
+
+@router.delete("", status_code=200)
+async def clear_tree(
+    user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
+) -> dict:
+    """Clear the entire knowledge tree, all reading sources & extracts, decks, and cards for the current user."""
+    summary = await tree_service.delete_all_tree(db, user)
+    return {"deleted": True, "summary": summary}
 
 
 @router.delete("/nodes/{node_id}", status_code=200)

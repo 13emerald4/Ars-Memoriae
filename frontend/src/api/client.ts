@@ -208,6 +208,10 @@ export const api = {
 
   // ── knowledge tree ──────────────────────────────────────────────────────
   tree: () => request<{ nodes: TreeNode[] }>('/api/tree'),
+  deleteAllTree: () =>
+    request<{ deleted: boolean; summary: Record<string, number> }>('/api/tree', {
+      method: 'DELETE',
+    }),
   createTopic: (body: { title: string; parent_id?: string | null; priority?: number }) =>
     post<TreeNode>('/api/tree/nodes', body),
   updateNode: (
@@ -238,6 +242,7 @@ export const api = {
     parent_node_id?: string | null
   }) => post<Source>('/api/sources', body),
   deleteSource: (id: string) => request<void>(`/api/sources/${id}`, { method: 'DELETE' }),
+  deleteExtract: (id: string) => request<void>(`/api/extracts/${id}`, { method: 'DELETE' }),
   extractsOf: (sourceId: string) => request<Extract[]>(`/api/sources/${sourceId}/extracts`),
   extract: (id: string) => request<Extract>(`/api/extracts/${id}`),
   splitExtract: (id: string, body: { text?: string; start?: number; end?: number; priority?: number }) =>

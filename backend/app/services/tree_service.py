@@ -37,7 +37,7 @@ from datetime import UTC, datetime
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Card, Deck, Extract, KnowledgeNode, Source, User
+from app.models import Card, Deck, Extract, KnowledgeNode, Note, Source, User
 
 DEFAULT_PRIORITY = 50
 TITLE_CHARS = 80
@@ -499,6 +499,58 @@ async def detach_entity_node(db: AsyncSession, entity_node_filter) -> None:
     for kid in kids:
         kid.parent_id = node.parent_id
     await db.flush()
+
+
+async def delete_all_tree(db: AsyncSession, user: User) -> dict[str, int]:
+    """Delete all knowledge tree items for the user: sources, extracts, decks, notes, cards, and topics."""
+    # 1. Reading sources & extracts
+    sources = (await db.scalars(select(Source).where(Source.user_id == user.id))).all()
+    source_count = len(sources)
+    source_ids = [s.id for s in sources]
+    extract_count = 0
+    if source_ids:
+        extract_ids = (
+            await db.scalars(select(Extract.id).where(Extract.source_id.in_(source_ids)))
+        ).all()
+        extract_count = len(extract_ids)
+        if extract_ids:
+            for card in (
+                await db.scalars(select(Card).where(Card.origin_extract_id.in_(extract_ids)))
+            ).all():
+                card.origin_extract_id = None
+        for source in sources:
+            await db.delete(source)
+
+    # 2. Decks, notes, and cards
+    deck_ids = (await db.scalars(select(Deck.id).where(Deck.user_id == user.id))).all()
+    deck_count = len(deck_ids)
+    if deck_ids:
+        note_ids = (
+            await db.scalars(
+                select(Card.note_id).where(Card.deck_id.in_(deck_ids)).distinct()
+            )
+        ).all()
+        if note_ids:
+            notes = (await db.scalars(select(Note).where(Note.id.in_(note_ids)))).all()
+            for note in notes:
+                await db.delete(note)
+        decks = (await db.scalars(select(Deck).where(Deck.id.in_(deck_ids)))).all()
+        for deck in decks:
+            await db.delete(deck)
+
+    # 3. All remaining knowledge nodes for this user
+    nodes = (await db.scalars(select(KnowledgeNode).where(KnowledgeNode.user_id == user.id))).all()
+    node_count = len(nodes)
+    for node in nodes:
+        await db.delete(node)
+
+    await db.commit()
+    return {
+        "sources": source_count,
+        "extracts": extract_count,
+        "decks": deck_count,
+        "nodes": node_count,
+    }
 
 
 # ── branch scoping ──────────────────────────────────────────────────────────

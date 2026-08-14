@@ -82,6 +82,29 @@ export default function Tree() {
               </>
             )}
             <NewTopic parentId={null} onDone={load} label="New topic" />
+            {nodes.length > 0 && (
+              <button
+                type="button"
+                className="btn btn-danger px-2.5 py-1 text-xs font-medium"
+                onClick={async () => {
+                  if (
+                    !confirm(
+                      'Are you sure you want to delete everything in the Knowledge Tree? This will delete all topics, decks, cards, reading sources, and extracts. This action cannot be undone.',
+                    )
+                  )
+                    return
+                  try {
+                    await api.deleteAllTree()
+                    await load()
+                  } catch (err) {
+                    setError(err)
+                  }
+                }}
+                title="Delete all topics, decks, cards, sources, and extracts"
+              >
+                Delete all
+              </button>
+            )}
           </div>
         }
       >
@@ -326,6 +349,42 @@ function NodeRow({
                 )
                   return
                 void run(() => api.deleteNode(node.id))
+              }}
+            >
+              Delete
+            </button>
+          )}
+          {node.kind === 'source' && node.source_id && (
+            <button
+              className="btn btn-danger px-2 py-1 text-xs"
+              disabled={busy}
+              onClick={() => {
+                if (!confirm(`Delete article “${node.title}”? Cards made from it are kept.`)) return
+                void run(() => api.deleteSource(node.source_id!))
+              }}
+            >
+              Delete
+            </button>
+          )}
+          {node.kind === 'deck' && node.deck_id && (
+            <button
+              className="btn btn-danger px-2 py-1 text-xs"
+              disabled={busy}
+              onClick={() => {
+                if (!confirm(`Delete deck “${node.title}” and its cards?`)) return
+                void run(() => api.deleteDeck(node.deck_id!))
+              }}
+            >
+              Delete
+            </button>
+          )}
+          {node.kind === 'extract' && node.extract_id && (
+            <button
+              className="btn btn-danger px-2 py-1 text-xs"
+              disabled={busy}
+              onClick={() => {
+                if (!confirm(`Delete this extract?`)) return
+                void run(() => api.deleteExtract(node.extract_id!))
               }}
             >
               Delete

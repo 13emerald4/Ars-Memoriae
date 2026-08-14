@@ -84,10 +84,50 @@ async def create_source(
             raise HTTPException(status.HTTP_404_NOT_FOUND, "parent node not found")
         parent_node_id = node.id
 
+    target_title = title or text.strip().split("\n", 1)[0][:120] or "Untitled"
+    if body.url:
+        existing = await db.scalar(
+            select(Source).where(Source.user_id == user.id, Source.url == body.url)
+        )
+        if existing:
+            total, active = await ir_service.source_progress(db, existing.id)
+            return SourceOut(
+                id=str(existing.id),
+                title=existing.title,
+                url=existing.url,
+                priority=existing.priority,
+                status=existing.status,
+                created_at=existing.created_at,
+                extract_count=total,
+                active_extract_count=active,
+                for_reading=existing.for_reading,
+            )
+    else:
+        existing = await db.scalar(
+            select(Source).where(
+                Source.user_id == user.id,
+                Source.title == target_title,
+                Source.raw_text == text,
+            )
+        )
+        if existing:
+            total, active = await ir_service.source_progress(db, existing.id)
+            return SourceOut(
+                id=str(existing.id),
+                title=existing.title,
+                url=existing.url,
+                priority=existing.priority,
+                status=existing.status,
+                created_at=existing.created_at,
+                extract_count=total,
+                active_extract_count=active,
+                for_reading=existing.for_reading,
+            )
+
     source = await ir_service.create_source(
         db,
         user.id,
-        title=title or text.strip().split("\n", 1)[0][:120] or "Untitled",
+        title=target_title,
         raw_text=text,
         url=body.url,
         priority=body.priority,
@@ -166,6 +206,33 @@ async def update_source(
     return {"id": str(source.id), "status": source.status, "priority": source.priority}
 
 
+@router.delete("/sources", status_code=204)
+async def delete_all_sources(
+    user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
+) -> None:
+    """Delete all reading sources/documents belonging to the user."""
+    sources = (await db.scalars(select(Source).where(Source.user_id == user.id))).all()
+    if not sources:
+        return
+
+    source_ids = [s.id for s in sources]
+    extract_ids = (
+        await db.scalars(select(Extract.id).where(Extract.source_id.in_(source_ids)))
+    ).all()
+
+    if extract_ids:
+        for card in (
+            await db.scalars(select(Card).where(Card.origin_extract_id.in_(extract_ids)))
+        ).all():
+            card.origin_extract_id = None
+
+    for source in sources:
+        await tree_service.detach_entity_node(db, KnowledgeNode.source_id == source.id)
+        await db.delete(source)
+
+    await db.commit()
+
+
 @router.delete("/sources/{source_id}", status_code=204)
 async def delete_source(
     source_id: str, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
@@ -194,6 +261,20 @@ async def get_extract(
 ) -> ExtractOut:
     extract, source = await _owned_extract(db, user, parse_uuid(extract_id))
     return _extract_out(extract, source)
+
+
+@router.delete("/extracts/{extract_id}", status_code=204)
+async def delete_extract(
+    extract_id: str, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
+) -> None:
+    extract, _ = await _owned_extract(db, user, parse_uuid(extract_id))
+    for card in (
+        await db.scalars(select(Card).where(Card.origin_extract_id == extract.id))
+    ).all():
+        card.origin_extract_id = None
+    await tree_service.detach_entity_node(db, KnowledgeNode.extract_id == extract.id)
+    await db.delete(extract)
+    await db.commit()
 
 
 @router.post("/extracts/{extract_id}/split", response_model=ExtractOut, status_code=201)
