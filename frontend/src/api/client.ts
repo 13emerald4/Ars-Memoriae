@@ -198,6 +198,7 @@ export const api = {
       max_sections?: number
       start_section?: number
       model?: string
+      thinking_budget?: number
     } = {},
   ) => post<GenerateDeckResponse>(`/api/documents/${sourceId}/generate-deck`, body),
   acceptDeck: (sourceId: string, deck: string, cards: CitedCard[]) =>
@@ -241,8 +242,10 @@ export const api = {
     post<Extract>(`/api/extracts/${id}/split`, body),
   scheduleExtract: (id: string, body: { days?: number; status?: string; priority?: number }) =>
     post<Extract>(`/api/extracts/${id}/schedule`, body),
-  generateCards: (id: string, body: { text?: string; max_cards?: number }) =>
-    post<GenerateCardsResponse>(`/api/extracts/${id}/generate-cards`, body),
+  generateCards: (
+    id: string,
+    body: { text?: string; max_cards?: number; model?: string; thinking_budget?: number },
+  ) => post<GenerateCardsResponse>(`/api/extracts/${id}/generate-cards`, body),
   acceptCards: (id: string, deck_id: string, cards: SuggestedCard[]) =>
     post<{ cards_created: number }>(`/api/extracts/${id}/accept-cards`, { deck_id, cards }),
 

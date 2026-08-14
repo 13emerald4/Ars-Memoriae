@@ -102,17 +102,26 @@ class GradingService:
             self._client = genai.Client(api_key=self.api_key)
         return self._client
 
-    async def _generate(self, prompt: str, model: str, schema: dict | None = None) -> str:
+    async def _generate(
+        self,
+        prompt: str,
+        model: str,
+        schema: dict | None = None,
+        thinking_budget: int | None = None,
+    ) -> str:
         from google.genai import types
 
         client = self._get_client()
 
-        async def _call(use_schema: bool) -> str:
-            config = None
+        async def _call(use_schema: bool, use_thinking: bool = True) -> str:
+            kwargs = {}
             if use_schema and schema is not None:
-                config = types.GenerateContentConfig(
-                    response_mime_type="application/json", response_schema=schema
-                )
+                kwargs["response_mime_type"] = "application/json"
+                kwargs["response_schema"] = schema
+            if use_thinking and thinking_budget is not None and thinking_budget > 0:
+                kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=thinking_budget)
+
+            config = types.GenerateContentConfig(**kwargs) if kwargs else None
             resp = await client.aio.models.generate_content(
                 model=model, contents=prompt, config=config
             )
@@ -134,11 +143,11 @@ class GradingService:
                 )
             )
 
-        async def _call_with_retry(use_schema: bool) -> str:
+        async def _call_with_retry(use_schema: bool, use_thinking: bool = True) -> str:
             last_exc = None
             for attempt in range(4):
                 try:
-                    return await _call(use_schema=use_schema)
+                    return await _call(use_schema=use_schema, use_thinking=use_thinking)
                 except Exception as exc:
                     last_exc = exc
                     if attempt < 3 and _is_retryable(exc):
@@ -157,12 +166,14 @@ class GradingService:
             return ""
 
         try:
-            return await _call_with_retry(use_schema=schema is not None)
+            return await _call_with_retry(
+                use_schema=schema is not None, use_thinking=thinking_budget is not None
+            )
         except Exception as exc:
-            if schema is not None and _is_schema_unsupported(exc):
-                log.info("model %s rejected response_schema; retrying unconstrained", model)
+            if (schema is not None or thinking_budget is not None) and _is_schema_unsupported(exc):
+                log.info("model %s rejected schema or thinking_config; retrying unconstrained", model)
                 try:
-                    return await _call_with_retry(use_schema=False)
+                    return await _call_with_retry(use_schema=False, use_thinking=False)
                 except Exception as exc2:
                     raise GradingUnavailable(str(exc2)) from exc2
             raise GradingUnavailable(str(exc)) from exc
@@ -219,9 +230,17 @@ class GradingService:
 
     # ── IR card generation (§8.3) — reuses this same client ─────────────────
 
-    async def generate_cards(self, passage: str, max_cards: int = 5) -> list[dict]:
+    async def generate_cards(
+        self,
+        passage: str,
+        max_cards: int = 5,
+        model: str | None = None,
+        thinking_budget: int | None = None,
+    ) -> list[dict]:
         raw = await self._generate(
-            CARD_GEN_PROMPT.format(passage=passage[:8000], max_cards=max_cards), self.model
+            CARD_GEN_PROMPT.format(passage=passage[:8000], max_cards=max_cards),
+            model or self.model,
+            thinking_budget=thinking_budget,
         )
         data = parse_json(raw)
         cards = data.get("cards") if isinstance(data, dict) else None
@@ -243,7 +262,12 @@ class GradingService:
         return [c for c in out if c["front"] or c["cloze_text"]]
 
     async def generate_cards_with_citations(
-        self, passage: str, locator: str, max_cards: int = 5, model: str | None = None
+        self,
+        passage: str,
+        locator: str,
+        max_cards: int = 5,
+        model: str | None = None,
+        thinking_budget: int | None = None,
     ) -> list[dict]:
         """Cards from a document passage, each carrying the span it came from.
 
@@ -257,6 +281,7 @@ class GradingService:
                 passage=passage[:8000], max_cards=max_cards, locator=locator or "this document"
             ),
             model or self.model,
+            thinking_budget=thinking_budget,
         )
         data = parse_json(raw)
         cards = data.get("cards") if isinstance(data, dict) else None

@@ -343,6 +343,24 @@ function GradingPanel({ user, onChange }: { user: User; onChange: () => Promise<
 
         {/* Quick Selection Menu */}
         <div>
+          {user.grading_model.startsWith('gemma') && (
+            <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3.5 text-xs text-amber-200">
+              <p className="font-semibold text-amber-100 flex items-center gap-1.5">
+                <span>⚠️</span> Gemma Model Selected on Google AI Studio Key
+              </p>
+              <p className="mt-1 leading-relaxed text-amber-200/90">
+                Google AI Studio keys (<code className="font-mono">aistudio.google.com</code>) serve the hosted <strong>Gemini</strong> models. Gemma is an open-weights model designed for local deployment (Ollama/vLLM) or Vertex AI endpoints, so calling it with an AI Studio key returns <code>404 NOT FOUND</code>.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary mt-2.5 text-xs py-1 px-3"
+                onClick={() => selectModel('gemini-2.5-flash')}
+              >
+                Switch to Gemini 2.5 Flash (Recommended)
+              </button>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-semibold text-slate-200">Select Grading Model</h3>
@@ -412,6 +430,11 @@ function GradingPanel({ user, onChange }: { user: User; onChange: () => Promise<
                     <p className="mt-2 text-xs text-slate-400 leading-relaxed">
                       {m.description}
                     </p>
+                    {m.family === 'gemma' && (
+                      <span className="mt-2 block rounded bg-amber-500/10 border border-amber-500/30 p-1.5 text-[10px] text-amber-300 leading-tight">
+                        Requires Vertex AI or self-hosted endpoint (not hosted on Google AI Studio keys).
+                      </span>
+                    )}
                   </div>
 
                   <div className="mt-3 flex items-center justify-between border-t border-ink-line/60 pt-2 text-xs">

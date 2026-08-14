@@ -61,9 +61,28 @@ export default function Decks() {
 /** Upload a document -> the model proposes cards that each cite the passage
  *  they came from -> you approve -> the citations are kept and shown during
  *  review, after you answer. Nothing is written until you accept. */
+const GENERATION_MODELS = [
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', badge: 'Recommended (Fast)' },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', badge: 'Fast & High Quota' },
+  { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', badge: 'Max Throughput' },
+  { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash', badge: 'Hybrid Preview' },
+  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', badge: 'Frontier Reasoning' },
+  { id: 'gemini-2.0-pro-exp-02-05', name: 'Gemini 2.0 Pro Exp', badge: 'Deep Reasoning' },
+]
+
+const THINKING_LEVELS = [
+  { id: 'dynamic', label: 'Dynamic (Default)', budget: undefined, hint: 'Model decides' },
+  { id: 'off', label: 'Off (0 tokens)', budget: 0, hint: 'Fastest output' },
+  { id: 'low', label: 'Low (1k tokens)', budget: 1024, hint: 'Quick checks' },
+  { id: 'med', label: 'Medium (2k tokens)', budget: 2048, hint: 'Balanced' },
+  { id: 'high', label: 'High (8k tokens)', budget: 8192, hint: 'Complex STEM/proofs' },
+]
+
 function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
   const [doc, setDoc] = useState<DocumentUpload | null>(null)
   const [deckName, setDeckName] = useState('')
+  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash')
+  const [selectedThinking, setSelectedThinking] = useState('dynamic')
   const [generated, setGenerated] = useState<GenerateDeckResponse | null>(null)
   const [chosen, setChosen] = useState<Set<number>>(new Set())
   const [accepted, setAccepted] = useState<AcceptDeckResponse | null>(null)
@@ -99,9 +118,12 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
     setBusy('Generating cards…')
     setError(null)
     try {
+      const thinkingBudget = THINKING_LEVELS.find((t) => t.id === selectedThinking)?.budget
       const out = await api.generateDeck(doc.source_id, {
         start_section: startSection,
         max_sections: 4,
+        model: selectedModel,
+        thinking_budget: thinkingBudget,
       })
       setGenerated(out)
       // Everything is pre-selected: the user is reviewing a proposal, not
@@ -168,20 +190,58 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
         )}
 
         {doc && (!generated || generated.degraded) && (
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              className="input w-56"
-              placeholder="Deck name"
-              value={deckName}
-              onChange={(e) => setDeckName(e.target.value)}
-            />
-            <button
-              className="btn btn-primary"
-              disabled={Boolean(busy)}
-              onClick={() => generate(0)}
-            >
-              {generated?.degraded ? 'Retry generating cards' : 'Generate cards'}
-            </button>
+          <div className="space-y-3 rounded-lg border border-ink-line bg-ink/40 p-3.5">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">Deck name</label>
+                <input
+                  className="input w-full text-xs"
+                  placeholder="Deck name"
+                  value={deckName}
+                  onChange={(e) => setDeckName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">Model</label>
+                <select
+                  className="input w-full text-xs"
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                >
+                  {GENERATION_MODELS.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} — {m.badge}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">Thinking level</label>
+                <select
+                  className="input w-full text-xs"
+                  value={selectedThinking}
+                  onChange={(e) => setSelectedThinking(e.target.value)}
+                >
+                  {THINKING_LEVELS.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label} ({t.hint})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                className="btn btn-primary"
+                disabled={Boolean(busy)}
+                onClick={() => generate(0)}
+              >
+                {generated?.degraded ? 'Retry generating cards' : 'Generate cards'}
+              </button>
+            </div>
           </div>
         )}
 

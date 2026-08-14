@@ -201,11 +201,29 @@ function SourceLibrary() {
 
 // ── the extract workspace ───────────────────────────────────────────────────
 
+const GENERATION_MODELS = [
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', badge: 'Recommended' },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', badge: 'Fast & High Quota' },
+  { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', badge: 'Max Throughput' },
+  { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash', badge: 'Hybrid Preview' },
+  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', badge: 'Frontier Reasoning' },
+]
+
+const THINKING_LEVELS = [
+  { id: 'dynamic', label: 'Dynamic (Default)', budget: undefined },
+  { id: 'off', label: 'Off (0 tokens)', budget: 0 },
+  { id: 'low', label: 'Low (1k tokens)', budget: 1024 },
+  { id: 'med', label: 'Medium (2k tokens)', budget: 2048 },
+  { id: 'high', label: 'High (8k tokens)', budget: 8192 },
+]
+
 function ExtractWorkspace({ extractId }: { extractId: string }) {
   const navigate = useNavigate()
   const [extract, setExtract] = useState<Extract | null>(null)
   const [decks, setDecks] = useState<Deck[]>([])
   const [deckId, setDeckId] = useState('')
+  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash')
+  const [selectedThinking, setSelectedThinking] = useState('dynamic')
   const [selection, setSelection] = useState('')
   const [suggestions, setSuggestions] = useState<SuggestedCard[]>([])
   const [chosen, setChosen] = useState<Set<number>>(new Set())
@@ -254,10 +272,13 @@ function ExtractWorkspace({ extractId }: { extractId: string }) {
     setBusy('suggest')
     setError(null)
     setSuggestions([])
+    const thinkingBudget = THINKING_LEVELS.find((t) => t.id === selectedThinking)?.budget
     try {
       const resp = await api.generateCards(extractId, {
         text: selection || undefined,
         max_cards: 5,
+        model: selectedModel,
+        thinking_budget: thinkingBudget,
       })
       if (resp.degraded) {
         setNotice(
@@ -380,11 +401,45 @@ function ExtractWorkspace({ extractId }: { extractId: string }) {
         </div>
       )}
 
-      {!selection && (
-        <button className="btn btn-primary" onClick={suggest} disabled={busy === 'suggest'}>
-          {busy === 'suggest' ? 'Thinking…' : 'LLM assist: suggest cards from this whole extract'}
-        </button>
-      )}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-line bg-ink/30 p-3 text-xs">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 font-medium">Model:</span>
+            <select
+              className="input py-1 text-xs"
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+            >
+              {GENERATION_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name} ({m.badge})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 font-medium">Thinking:</span>
+            <select
+              className="input py-1 text-xs"
+              value={selectedThinking}
+              onChange={(e) => setSelectedThinking(e.target.value)}
+            >
+              {THINKING_LEVELS.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {!selection && (
+          <button className="btn btn-primary text-xs" onClick={suggest} disabled={busy === 'suggest'}>
+            {busy === 'suggest' ? 'Thinking…' : 'LLM assist: suggest cards from this whole extract'}
+          </button>
+        )}
+      </div>
 
       {notice && (
         <p className="rounded-lg border border-sky-500/25 bg-sky-500/5 px-4 py-3 text-sm text-sky-200/90">

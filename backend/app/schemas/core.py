@@ -250,6 +250,8 @@ class ExtractScheduleRequest(BaseModel):
 class GenerateCardsRequest(BaseModel):
     text: str | None = None  # highlighted span; defaults to the whole extract
     max_cards: int = Field(default=5, ge=1, le=10)
+    model: str | None = None
+    thinking_budget: int | None = Field(default=None)
 
 
 class SuggestedCard(BaseModel):

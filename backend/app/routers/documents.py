@@ -188,6 +188,7 @@ async def generate_deck(
                     extract.locator or "",
                     body.max_cards_per_section,
                     model=body.model or user.grading_model,
+                    thinking_budget=body.thinking_budget,
                 )
             except GradingUnavailable as exc:
                 return extract, str(exc)

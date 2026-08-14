@@ -39,6 +39,7 @@ class GenerateDeckRequest(BaseModel):
     max_sections: int = Field(default=4, ge=1, le=100)
     start_section: int = Field(default=0, ge=0)
     model: str | None = None
+    thinking_budget: int | None = Field(default=None)
 
 
 class GenerateDeckResponse(BaseModel):

@@ -271,9 +271,10 @@ async def generate_cards(
     if not api_key:
         return GenerateCardsResponse(degraded=True, reason="no_api_key")
 
+    target_model = body.model or user.grading_model
     try:
-        raw = await GradingService(api_key, user.grading_model).generate_cards(
-            passage, body.max_cards
+        raw = await GradingService(api_key, target_model).generate_cards(
+            passage, body.max_cards, model=target_model, thinking_budget=body.thinking_budget
         )
     except GradingUnavailable as exc:
         return GenerateCardsResponse(degraded=True, reason=str(exc))
