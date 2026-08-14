@@ -23,7 +23,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.models import Extract, Source
+from app.models import Extract, KnowledgeNode, Source
+from app.services import tree_service
 
 DEFAULT_REVISIT_DAYS = 3
 PRIORITY_DECAY = 5  # points shed each time an extract is processed
@@ -190,23 +191,62 @@ async def create_source(
     raw_text: str,
     url: str | None = None,
     priority: int = 50,
+    parent_node_id=None,
+    segments: list[tuple[str | None, str]] | None = None,
+    for_reading: bool = True,
 ) -> Source:
     source = Source(
-        user_id=user_id, title=title[:300], raw_text=raw_text, url=url, priority=priority
+        user_id=user_id,
+        title=title[:300],
+        raw_text=raw_text,
+        url=url,
+        priority=priority,
+        for_reading=for_reading,
     )
     db.add(source)
     await db.flush()
 
+    # The source becomes a branch of the knowledge tree, with its chunks hanging
+    # underneath — so reading material lands in the same hierarchy as the cards
+    # it will eventually produce.
+    source_node = KnowledgeNode(
+        user_id=user_id,
+        kind="source",
+        title=source.title,
+        source_id=source.id,
+        priority=priority,
+        parent_id=parent_node_id,
+    )
+    db.add(source_node)
+    await db.flush()
+
     now = datetime.now(UTC)
-    for position, chunk in enumerate(chunk_text(raw_text)):
+    # A document upload supplies its own segmentation, because the page or
+    # heading a chunk came from is what makes a card's citation usable; pasted
+    # text and URLs have no such structure and fall back to length chunking.
+    pieces: list[tuple[str | None, str]] = (
+        segments if segments is not None else [(None, c) for c in chunk_text(raw_text)]
+    )
+    for position, (locator, chunk) in enumerate(pieces):
+        extract = Extract(
+            source_id=source.id,
+            content=chunk,
+            position=position,
+            locator=locator,
+            # The first extract is available immediately; later ones are
+            # staggered so a 40-chunk article does not flood the queue.
+            next_shown_at=now if position == 0 else None,
+        )
+        db.add(extract)
+        await db.flush()
         db.add(
-            Extract(
-                source_id=source.id,
-                content=chunk,
+            KnowledgeNode(
+                user_id=user_id,
+                kind="extract",
+                title=tree_service.snippet(chunk),
+                extract_id=extract.id,
+                parent_id=source_node.id,
                 position=position,
-                # The first extract is available immediately; later ones are
-                # staggered so a 40-chunk article does not flood the queue.
-                next_shown_at=now if position == 0 else None,
             )
         )
     await db.flush()
@@ -222,9 +262,16 @@ async def split_extract(
     end: int | None,
     priority: int | None,
     remove_from_parent: bool,
+    source: Source | None = None,
 ) -> Extract:
     """Carve a smaller extract out of a larger one — the core SuperMemo loop:
-    read a bit, extract the important sub-part, postpone the rest (§8.2)."""
+    read a bit, extract the important sub-part, postpone the rest (§8.2).
+
+    The child is filed *beneath the parent* in the knowledge tree. That lineage
+    is the point of the loop and it used to be discarded: both fragments landed
+    as siblings under the source, so after a few passes you could no longer see
+    which idea came out of which passage.
+    """
     content = parent.content
     if text:
         fragment = text.strip()
@@ -246,6 +293,20 @@ async def split_extract(
         next_shown_at=datetime.now(UTC),
     )
     db.add(child)
+    await db.flush()
+
+    if source is not None:
+        parent_node = await tree_service.ensure_extract_node(db, source.user_id, parent, source)
+        db.add(
+            KnowledgeNode(
+                user_id=source.user_id,
+                kind="extract",
+                title=tree_service.snippet(fragment),
+                extract_id=child.id,
+                parent_id=parent_node.id,
+                position=parent.position,
+            )
+        )
 
     if remove_from_parent and idx >= 0:
         remainder = (content[:idx] + content[idx + len(fragment) :]).strip()

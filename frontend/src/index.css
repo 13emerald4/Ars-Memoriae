@@ -42,3 +42,42 @@
            py-0.5 text-xs text-slate-400;
   }
 }
+
+/* Session timer: the clock flashes through the spectrum when time is up.
+   hue-rotate cycles the hue continuously (a smoother rainbow than stepping
+   through discrete colour stops) while the opacity pulse supplies the flash. */
+@keyframes timer-rainbow {
+  from {
+    filter: hue-rotate(0deg);
+  }
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+
+@keyframes timer-flash {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.timer-finished {
+  color: #ff3b6b;
+  animation:
+    timer-rainbow 1.6s linear infinite,
+    timer-flash 0.85s ease-in-out infinite;
+}
+
+/* A full-screen flashing clock is exactly what a vestibular or photosensitivity
+   trigger looks like. Honour the OS setting: keep the colour change, drop the
+   motion. */
+@media (prefers-reduced-motion: reduce) {
+  .timer-finished {
+    animation: none;
+    color: #ff3b6b;
+  }
+}

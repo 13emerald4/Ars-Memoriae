@@ -27,6 +27,7 @@ from app.models import (
     QueueConfig,
     ReviewLog,
     Source,
+    StudySession,
     User,
 )
 from app.routers.deps import current_user
@@ -78,6 +79,13 @@ async def export_all(
         else []
     )
     imports = (await db.scalars(select(Import).where(Import.user_id == user.id))).all()
+    study_sessions = (
+        await db.scalars(
+            select(StudySession)
+            .where(StudySession.user_id == user.id)
+            .order_by(StudySession.started_at)
+        )
+    ).all()
     cfg: QueueConfig = await get_queue_config(db, user)
 
     payload = {
@@ -173,6 +181,7 @@ async def export_all(
                 "overridden": r.overridden,
                 "state_before": r.state_before,
                 "elapsed_days": r.elapsed_days,
+                "graduated_to_review": r.graduated_to_review,
             }
             for r in logs
         ],
@@ -221,6 +230,22 @@ async def export_all(
             }
             for i in imports
         ],
+        "study_sessions": [
+            {
+                "id": str(s.id),
+                "started_at": _iso(s.started_at),
+                "ended_at": _iso(s.ended_at),
+                "planned_seconds": s.planned_seconds,
+                "active_seconds": s.active_seconds,
+                "focus_goal": s.focus_goal,
+                "goal_cards": s.goal_cards,
+                "cards_reviewed": s.cards_reviewed,
+                "banked_seconds": s.banked_seconds,
+                "distraction": s.distraction,
+                "next_time_plan": s.next_time_plan,
+            }
+            for s in study_sessions
+        ],
     }
 
     import json
@@ -259,7 +284,7 @@ async def export_review_logs_csv(
     async def stream():
         yield (
             b"reviewed_at,card_id,deck,slot,final_grade,llm_grade,llm_confidence,"
-            b"overridden,latency_ms,state_before,elapsed_days\n"
+            b"overridden,latency_ms,state_before,elapsed_days,graduated_to_review\n"
         )
         for log, slot, deck_name in rows:
             yield (
@@ -267,7 +292,8 @@ async def export_review_logs_csv(
                 f'"{(deck_name or "").replace(chr(34), chr(34) * 2)}",{slot},'
                 f"{log.final_grade},{log.llm_grade or ''},{log.llm_confidence or ''},"
                 f"{int(log.overridden)},{log.latency_ms or ''},{log.state_before or ''},"
-                f"{log.elapsed_days if log.elapsed_days is not None else ''}\n"
+                f"{log.elapsed_days if log.elapsed_days is not None else ''},"
+                f"{int(log.graduated_to_review)}\n"
             ).encode()
 
     return StreamingResponse(

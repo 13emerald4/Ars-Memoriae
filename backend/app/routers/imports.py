@@ -1,4 +1,4 @@
-"""POST /api/import/apkg (§11)."""
+"""POST /api/import/apkg, POST /api/import/json (§11)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,9 +16,10 @@ from app.core.config import settings
 from app.db import get_db
 from app.models import Card, Deck, Import, MediaAsset, Note, NoteType, ReviewLog, User
 from app.routers.deps import current_user
-from app.schemas.core import ImportResult
+from app.schemas.core import ImportResult, JsonImportNote, JsonImportRequest, JsonImportResult
 from app.services import apkg_importer as apkg
 from app.services.fsrs_service import GRADE_TO_RATING, FSRSService
+from app.services.note_service import default_note_type, sync_cards
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/import", tags=["import"])
@@ -62,6 +63,101 @@ async def import_apkg(
             tmp.cleanup()
 
     return result
+
+
+@router.post("/json", response_model=JsonImportResult, status_code=201)
+async def import_json(
+    body: JsonImportRequest | list[JsonImportNote],
+    deck: str | None = Query(
+        default=None, max_length=200, description="Deck name — required when the body is a bare array"
+    ),
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> JsonImportResult:
+    """Bulk-create notes/cards from a JSON payload — the non-Anki upload path.
+
+    Accepts either ``{"deck": "...", "notes": [...]}`` or a bare array of
+    notes with the deck name given as ``?deck=`` — a plain array is what most
+    scripted/LLM flashcard exports actually look like, and there's no reason
+    to make every caller hand-wrap one in an envelope first.
+
+    One request targets one deck (created if it doesn't already exist by
+    name). A malformed row is skipped and reported in ``warnings`` rather than
+    failing the whole batch, mirroring how the .apkg importer handles rows
+    that don't map cleanly: a hand-edited JSON file is exactly the case where
+    one bad entry in five hundred shouldn't cost you the other 499.
+    """
+    if isinstance(body, list):
+        deck_name = (deck or "").strip()
+        if not deck_name:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "a bare array of notes needs a deck name — pass ?deck=<name>",
+            )
+        notes, deck_priority = body, None
+    else:
+        deck_name, notes, deck_priority = body.deck, body.notes, body.priority
+
+    # `JsonImportRequest.notes` already enforces this via Field(), but a bare
+    # array bypasses that schema entirely, so it's checked again here.
+    if not notes:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "at least one note is required")
+    if len(notes) > 5000:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "at most 5000 notes per import")
+
+    existing = await db.scalar(select(Deck).where(Deck.user_id == user.id, Deck.name == deck_name))
+    deck_created = existing is None
+    deck_row = existing or Deck(
+        user_id=user.id, name=deck_name, default_priority=deck_priority if deck_priority is not None else 50
+    )
+    if deck_created:
+        db.add(deck_row)
+        await db.flush()
+
+    warnings: list[str] = []
+    notes_created = 0
+    cards_created = 0
+
+    for i, item in enumerate(notes):
+        is_cloze = item.kind == "cloze"
+        if is_cloze:
+            if not (item.cloze_text or "").strip():
+                warnings.append(f"note {i}: kind is \"cloze\" but cloze_text is empty — skipped")
+                continue
+            field_values = {"Text": item.cloze_text, "Extra": item.back or ""}
+        else:
+            if not (item.front or "").strip() or not (item.back or "").strip():
+                warnings.append(f"note {i}: front and back are both required — skipped")
+                continue
+            field_values = {"Front": item.front, "Back": item.back}
+
+        nt = await default_note_type(db, user, "cloze" if is_cloze else "basic")
+        note = Note(user_id=user.id, note_type_id=nt.id, field_values=field_values)
+        db.add(note)
+        await db.flush()
+        cards = await sync_cards(
+            db, note, nt, deck_row.id, tags=item.tags, priority=item.priority, origin="manual"
+        )
+        notes_created += 1
+        cards_created += len(cards)
+
+    record = Import(
+        user_id=user.id,
+        filename=f"json:{deck_name}",
+        notes_mapped=notes_created,
+        cards_mapped=cards_created,
+        warnings=warnings,
+    )
+    db.add(record)
+    await db.commit()
+
+    return JsonImportResult(
+        deck_id=str(deck_row.id),
+        deck_created=deck_created,
+        notes_created=notes_created,
+        cards_created=cards_created,
+        warnings=warnings,
+    )
 
 
 async def _ingest(

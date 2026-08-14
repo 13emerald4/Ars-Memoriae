@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
-import type { Leech, SisterPair, Stats as StatsData } from '../api/types'
+import type { Bank, Leech, SisterPair, Stats as StatsData } from '../api/types'
+import { formatBanked } from '../components/SessionTimer'
 import { Empty, ErrorNote, Section, Spinner } from '../components/ui'
 
 export default function Stats() {
   const [stats, setStats] = useState<StatsData | null>(null)
+  const [bank, setBank] = useState<Bank | null>(null)
   const [error, setError] = useState<unknown>(null)
 
   const load = useCallback(async () => {
@@ -12,6 +14,11 @@ export default function Stats() {
       setStats(await api.stats())
     } catch (err) {
       setError(err)
+    }
+    try {
+      setBank(await api.bank())
+    } catch {
+      /* the bank is supplementary — never block the rest of Stats on it */
     }
   }, [])
 
@@ -35,6 +42,10 @@ export default function Stats() {
           hint="Days until recall falls to 90%"
         />
       </div>
+
+      {bank && <TimeBank bank={bank} />}
+
+      <Velocity velocity={stats.velocity} />
 
       <Section title="Activity" description="Reviews per day over the last year.">
         <Heatmap data={stats.heatmap} />
@@ -221,6 +232,159 @@ function Interference() {
             )
           })}
         </div>
+      )}
+    </Section>
+  )
+}
+
+/** The Time Bank: free time earned by hitting a block's card target early.
+ *  Velocity, not seat time — an hour billed for twenty minutes of real work
+ *  isn't an hour of study. */
+function TimeBank({ bank }: { bank: Bank }) {
+  const empty = bank.total_seconds === 0 && bank.recent.length === 0
+  return (
+    <Section
+      title="Time bank"
+      description="Time earned back by finishing a block's card target early. Start a block from the Review page."
+    >
+      {empty ? (
+        <Empty title="No banked time yet.">
+          Start a timed block with a card target and finish it early — whatever's left on the
+          clock lands here.
+        </Empty>
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-500">Today</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-emerald-300">
+                {formatBanked(bank.today_seconds)}
+              </p>
+              <p className="mt-0.5 text-xs text-slate-600">
+                {bank.goals_met_today}/{bank.sessions_today} targets met
+              </p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-500">Last 7 days</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-100">
+                {formatBanked(bank.week_seconds)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-500">All time</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-100">
+                {formatBanked(bank.total_seconds)}
+              </p>
+            </div>
+          </div>
+
+          {bank.recent.length > 0 && (
+            <div className="mt-5 space-y-1.5">
+              <p className="label">Recent blocks</p>
+              {bank.recent.map((s) => (
+                <div
+                  key={s.id}
+                  className="rounded-lg border border-ink-line px-3 py-2 text-xs"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <span className="text-slate-300">
+                        {s.focus_goal || <span className="text-slate-600">no stated goal</span>}
+                      </span>
+                      <span className="ml-2 text-slate-600">
+                        {new Date(s.started_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="chip">
+                        {s.cards_reviewed}
+                        {s.goal_cards > 0 && `/${s.goal_cards}`} cards
+                      </span>
+                      <span className="chip">{formatBanked(s.active_seconds)} active</span>
+                      {s.banked_seconds > 0 ? (
+                        <span className="chip border-emerald-500/40 text-emerald-300">
+                          +{formatBanked(s.banked_seconds)}
+                        </span>
+                      ) : (
+                        <span className="chip text-slate-600">—</span>
+                      )}
+                    </div>
+                  </div>
+                  {(s.distraction || s.next_time_plan) && (
+                    <div className="mt-1.5 space-y-0.5 border-t border-ink-line/60 pt-1.5 text-slate-500">
+                      {s.distraction && <p>Distracted by: {s.distraction}</p>}
+                      {s.next_time_plan && <p>Next time: {s.next_time_plan}</p>}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </Section>
+  )
+}
+
+/** Alpha's "mastery per hour": concepts mastered against active study time,
+ *  not seat time — the same active-hours ledger the Time Bank pays out of, so
+ *  a session left open overnight can't inflate the number.
+ *
+ *  Rate and total are deliberately separate numbers. The rate counts only
+ *  what was mastered *inside* a timed block, because that's the only span the
+ *  active-hours denominator measures; mixing untimed masteries into it would
+ *  let the rate climb without bound. The total counts everything. */
+function Velocity({ velocity }: { velocity: Record<string, number> }) {
+  const activeHours = velocity.active_hours ?? 0
+  const inBlocks = Math.round(velocity.mastered ?? 0)
+  const total = Math.round(velocity.mastered_total ?? 0)
+  const untimed = Math.max(0, total - inBlocks)
+
+  return (
+    <Section
+      title="Velocity"
+      description="Concepts mastered per active hour — efficiency, not time spent."
+    >
+      {activeHours > 0 ? (
+        <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-500">Per hour</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-sky-300">
+                {(velocity.per_hour ?? 0).toFixed(2)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Mastered in blocks
+              </p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-100">
+                {inBlocks}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-500">Active hours</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-100">
+                {activeHours.toFixed(1)}
+              </p>
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-slate-600">
+            {total} mastered in total
+            {untimed > 0 && (
+              <>
+                {' '}
+                — {untimed} of those outside a timed block, so they don't count toward the rate.
+              </>
+            )}
+          </p>
+        </>
+      ) : (
+        <Empty title="No timed blocks yet.">
+          Velocity is measured against the Time Bank — start a timed block on Review so there's
+          active time to divide mastered cards by.
+          {total > 0 && <> You've mastered {total} so far outside timed blocks.</>}
+        </Empty>
       )}
     </Section>
   )

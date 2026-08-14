@@ -20,6 +20,11 @@ class QueueItem(BaseModel):
     id: str
     deck_or_source_id: str
     front: str | None = None  # populated when kind == "card"
+    # The card's reference answer, sent up front so "show answer" is a local
+    # UI reveal rather than a round trip — grading (POST .../answer) is a
+    # separate, LLM-backed opinion about a *typed* answer, not the only way
+    # to learn what the card's back says.
+    back: str | None = None
     extract_content: str | None = None  # populated when kind == "extract"
     priority: int
     # Beyond the §7.1 minimum, so the UI can label and route without a
@@ -33,6 +38,9 @@ class QueueItem(BaseModel):
     note_id: str | None = None
     # Populated for image-occlusion cards so the UI can draw the masks (Phase 4).
     occlusion: dict | None = None
+    # Where this card's answer comes from in the uploaded document. Sent with
+    # the card so the reveal can show the reading without a round trip.
+    references: list[dict] = Field(default_factory=list)
 
 
 class SessionSummary(BaseModel):
@@ -53,6 +61,9 @@ class SubmitAnswerRequest(BaseModel):
 
 class SubmitAnswerResponse(BaseModel):
     suggested_grade: Grade
+    # 0-100 correctness score — the primary grading feedback (§4.1). None in
+    # manual/degraded mode, where there is no automated assessment to show.
+    score: float | None = None
     confidence: float
     matched_points: list[str] = Field(default_factory=list)
     missed_points: list[str] = Field(default_factory=list)
@@ -65,6 +76,47 @@ class SubmitAnswerResponse(BaseModel):
     model_used: str | None = None
     cached: bool = False
     degraded_reason: str | None = None
+    # Informational only — response time never factors into the grade (§4.1).
+    latency_note: str | None = None
+
+
+class LessonOut(BaseModel):
+    """Learn & Practice: what to teach before this card's question."""
+
+    # False only when the card has no citations to teach from — the mode is
+    # built on the document-import path's references.
+    available: bool
+    # Why the lesson is absent, or why it fell back to the raw source.
+    reason: str | None = None
+    body: str = ""
+    key_points: list[str] = Field(default_factory=list)
+    # False when the body is the cited passage verbatim rather than a written
+    # lesson, so the UI can label it honestly.
+    generated: bool = False
+    model_used: str | None = None
+    cached: bool = False
+    citations: list[dict] = Field(default_factory=list)
+
+
+class SocraticTurn(BaseModel):
+    role: str  # "guide" | "student"
+    text: str = Field(max_length=1000)
+
+
+class SocraticRequest(BaseModel):
+    """The conversation so far, plus whatever the student just typed. Empty
+    `message` on an empty `history` means "just started — ask an opener"."""
+
+    history: list[SocraticTurn] = Field(default_factory=list, max_length=20)
+    message: str = Field(default="", max_length=1000)
+
+
+class SocraticResponse(BaseModel):
+    message: str
+    on_track: bool = False
+    degraded: bool = False
+    degraded_reason: str | None = None
+    model_used: str | None = None
 
 
 class ConfirmReviewRequest(BaseModel):
@@ -72,6 +124,16 @@ class ConfirmReviewRequest(BaseModel):
     overridden: bool = False
     typed_answer: str | None = None
     latency_ms: int | None = None
+
+
+class StuckAlertOut(BaseModel):
+    """A real-time nudge that this stretch is going badly (§ Stuck-state
+    detector) — accuracy or per-answer time crossing a line, not a per-card
+    verdict like leech flagging."""
+
+    reason: str  # "accuracy" | "latency"
+    message: str
+    suggested_break_minutes: int
 
 
 class ConfirmReviewResponse(BaseModel):
@@ -82,3 +144,4 @@ class ConfirmReviewResponse(BaseModel):
     interval_days: float
     lapse_count: int
     leech_flagged: bool = False
+    stuck_alert: StuckAlertOut | None = None

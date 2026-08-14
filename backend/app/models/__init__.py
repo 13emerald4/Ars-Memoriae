@@ -140,6 +140,11 @@ class Source(Base):
     url: Mapped[str | None] = mapped_column(Text)
     priority: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=50)
     status: Mapped[str] = mapped_column(Text, nullable=False, default="active")
+    # False for a document uploaded purely to generate cards from: its extracts
+    # exist to be cited, not to be surfaced as something to read, so they must
+    # never enter the composed queue's IR stream (§9). True (the default) is
+    # the original Incremental Reading source — paste text/URL, read it.
+    for_reading: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
@@ -164,6 +169,10 @@ class Extract(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     priority: Mapped[int | None] = mapped_column(SmallInteger)  # NULL = inherit source
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Where in the document this came from — "p. 42", "§ 3.1". Populated when a
+    # source was uploaded as a document; NULL for pasted text and URLs, whose
+    # chunks have no citable location.
+    locator: Mapped[str | None] = mapped_column(Text)
     next_shown_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(Text, nullable=False, default="active")
 
@@ -175,6 +184,82 @@ class Extract(Base):
     )
 
     source: Mapped[Source] = relationship(back_populates="extracts")
+
+
+class KnowledgeNode(Base):
+    """A node in the unified knowledge tree — SuperMemo's contribution (§2).
+
+    Decks hold cards and sources hold reading material, but neither can hold
+    the *other*, so "everything I know about pharmacology" had nowhere to live.
+    This is one hierarchy over both: a branch can mix topics, decks, sources
+    and extracts freely, and an extract carved out of another extract hangs
+    beneath it, which is the lineage the IR loop was already creating but
+    throwing away.
+
+    The tree *overlays* the existing tables rather than replacing them — a node
+    points at the deck/source/extract it stands for, and pure ``topic`` nodes
+    point at nothing. Scheduling still reads priority off the entities
+    themselves, so there is exactly one number the scheduler can see; the tree
+    is what *writes* that number down a branch (see tree_service.cascade).
+    """
+
+    __tablename__ = "knowledge_nodes"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("knowledge_nodes.id", ondelete="CASCADE")
+    )
+    kind: Mapped[str] = mapped_column(Text, nullable=False, default="topic")
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # NULL = inherit from the nearest ancestor that sets one (§9 priority).
+    priority: Mapped[int | None] = mapped_column(SmallInteger)
+    collapsed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Mastery gating: this node stays locked (its cards excluded from the
+    # queue) until `requires_node_id`'s subtree mastery reaches
+    # `mastery_threshold`. NULL requires_node_id = ungated, the default for
+    # every node. SET NULL on delete: removing the prerequisite un-gates
+    # rather than cascading the lock into a dangling reference.
+    requires_node_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("knowledge_nodes.id", ondelete="SET NULL")
+    )
+    mastery_threshold: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=90)
+
+    deck_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("decks.id", ondelete="CASCADE")
+    )
+    source_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("sources.id", ondelete="CASCADE")
+    )
+    extract_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("extracts.id", ondelete="CASCADE")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('topic','deck','source','extract')", name="ck_nodes_kind"
+        ),
+        CheckConstraint("priority BETWEEN 0 AND 100", name="ck_nodes_priority"),
+        Index("idx_nodes_user_parent", "user_id", "parent_id", "position"),
+        # The gating check runs on every review (queue composition, §9) as a
+        # short-circuit "does this user use gating at all" existence scan —
+        # keeps it index-only for the common case of no prerequisites set.
+        Index("idx_nodes_user_requires", "user_id", "requires_node_id"),
+        # One node per entity, so the backfill in tree_service is idempotent.
+        UniqueConstraint("deck_id", name="uq_nodes_deck"),
+        UniqueConstraint("source_id", name="uq_nodes_source"),
+        UniqueConstraint("extract_id", name="uq_nodes_extract"),
+    )
+
+    @property
+    def entity_id(self) -> uuid.UUID | None:
+        return self.deck_id or self.source_id or self.extract_id
 
 
 class Note(Base):
@@ -244,6 +329,129 @@ class Card(Base):
         return self.priority if self.priority is not None else self.deck.default_priority
 
 
+class CardReference(Base):
+    """Where in the source document a card's answer actually comes from.
+
+    A card generated from an uploaded document carries the passage that
+    supports it, so after answering you are shown *the reading*, not just the
+    back of the card — which is the difference between "you got it wrong" and
+    "go read this paragraph".
+
+    ``quote`` is a verbatim span the model copied out of the passage, and
+    ``quote_verified`` records whether we actually found that span in the
+    source text. An unverified quote is a hallucinated citation, and the whole
+    point of a citation is that it can be trusted, so the UI shows the real
+    extract instead of a quote we could not confirm.
+
+    ``source_id``/``extract_id`` are SET NULL rather than CASCADE: deleting the
+    reading material should not silently strip the provenance off cards that
+    are still being studied.
+    """
+
+    __tablename__ = "card_references"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=_uuid)
+    card_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("cards.id", ondelete="CASCADE"), nullable=False
+    )
+    source_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("sources.id", ondelete="SET NULL")
+    )
+    extract_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("extracts.id", ondelete="SET NULL")
+    )
+    quote: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    quote_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    locator: Mapped[str | None] = mapped_column(Text)
+    source_title: Mapped[str | None] = mapped_column(Text)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+    __table_args__ = (Index("idx_card_references_card", "card_id", "position"),)
+
+
+class CardLesson(Base):
+    """The short teaching text shown before a card in Learn & Practice mode.
+
+    Written from the card's own citations (see :class:`CardReference`) — which
+    is why the mode is only offered on cards that have them. A lesson invented
+    without a source is exactly the failure this app refuses elsewhere.
+
+    Cached per card because it is deterministic teaching material, not a
+    response to anything the user typed: regenerating it on every pass would
+    burn a call per card per review and, worse, let the explanation drift
+    between sessions when the underlying passage never changed.
+    """
+
+    __tablename__ = "card_lessons"
+
+    card_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("cards.id", ondelete="CASCADE"), primary_key=True
+    )
+    body: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    key_points: Mapped[list] = mapped_column(JSONType, nullable=False, default=list)
+    model_used: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+
+class StudySession(Base):
+    """One timed study block, and the free time finishing it early earned.
+
+    The Time Bank mechanic: you commit to a duration and a card target up
+    front, and whatever you *don't* spend once the target is met is banked as
+    time you've earned back. Tracking velocity rather than seat time is the
+    point — an hour billed for twenty minutes of real work is not an hour of
+    study, and a system that rewards the clock teaches you to sit still.
+
+    Server-side rather than localStorage (where the countdown itself lives):
+    a bank that evaporates when browser storage is cleared isn't a record of
+    anything. This is longitudinal data like the review log — it belongs in
+    the database and in the export.
+    """
+
+    __tablename__ = "study_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    # NULL while the session is still open.
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    planned_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Time actually spent: planned minus whatever was left on the clock at the
+    # end. Pausing therefore doesn't count as study time, which is correct and
+    # needs no separate pause ledger.
+    active_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # The §2 micro-goal: "what one thing will you master in this block?"
+    focus_goal: Mapped[str | None] = mapped_column(Text)
+    goal_cards: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Counted server-side from review_logs at close — the client never gets to
+    # assert how much work it did.
+    cards_reviewed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Only earned when the card target was actually met.
+    banked_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Post-session reflection — the executive-function coach's exit half of
+    # the focus_goal question. Filled in after the block ends, never during,
+    # so it's separate from finish_session rather than an argument to it.
+    distraction: Mapped[str | None] = mapped_column(Text)
+    next_time_plan: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (
+        Index("idx_study_sessions_user", "user_id", "started_at"),
+    )
+
+    @property
+    def goal_met(self) -> bool:
+        return self.goal_cards > 0 and self.cards_reviewed >= self.goal_cards
+
+
 class ReviewLog(Base):
     __tablename__ = "review_logs"
 
@@ -264,6 +472,10 @@ class ReviewLog(Base):
     # Retained for the FSRS optimizer, which needs the pre-review state.
     state_before: Mapped[str | None] = mapped_column(Text)
     elapsed_days: Mapped[float | None] = mapped_column(Float)
+    # True when this review is the one that graduated the card into FSRS's
+    # "review" state — the app's definition of "mastered" (see tree_service's
+    # is_mastered). Drives the velocity stat (mastered / active hour).
+    graduated_to_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     __table_args__ = (
         CheckConstraint(
@@ -390,10 +602,13 @@ class SisterPair(Base):
 __all__ = [
     "Base",
     "Card",
+    "CardLesson",
+    "CardReference",
     "Deck",
     "Extract",
     "GradingCache",
     "Import",
+    "KnowledgeNode",
     "LeechSuggestion",
     "MediaAsset",
     "Note",
@@ -402,6 +617,7 @@ __all__ = [
     "ReviewLog",
     "SisterPair",
     "Source",
+    "StudySession",
     "User",
     "utcnow",
 ]

@@ -1,20 +1,33 @@
 import type {
+  AcceptDeckResponse,
+  Bank,
   Card,
+  CitedCard,
   ConfirmReviewResponse,
   Deck,
+  DocumentUpload,
   Extract,
   GenerateCardsResponse,
+  GenerateDeckResponse,
   Grade,
   ImportResult,
+  JsonImportNote,
+  JsonImportRequest,
+  JsonImportResult,
+  Lesson,
   NoteType,
   QueueConfig,
   QueueItem,
   SessionSummary,
   SisterPair,
+  SocraticResponse,
+  SocraticTurn,
   Source,
   Stats,
+  StudySession,
   SubmitAnswerResponse,
   SuggestedCard,
+  TreeNode,
   User,
 } from './types'
 
@@ -87,12 +100,37 @@ export const api = {
   models: () => request<{ models: string[]; error?: string }>('/api/models'),
 
   // ── queue (§9) ──────────────────────────────────────────────────────────
-  nextItem: () => request<QueueItem | null>('/api/queue/next'),
-  session: () => request<SessionSummary>('/api/queue/session'),
+  // `branch` scopes the session to one knowledge-tree subtree.
+  nextItem: (branch?: string | null) =>
+    request<QueueItem | null>(`/api/queue/next${branch ? `?branch=${branch}` : ''}`),
+  session: (branch?: string | null) =>
+    request<SessionSummary>(`/api/queue/session${branch ? `?branch=${branch}` : ''}`),
   queueConfig: () => request<QueueConfig>('/api/queue-config'),
   updateQueueConfig: (body: Partial<QueueConfig>) => patch<QueueConfig>('/api/queue-config', body),
 
+  // ── study sessions & the Time Bank ──────────────────────────────────────
+  startSession: (body: {
+    planned_minutes: number
+    goal_cards?: number
+    focus_goal?: string | null
+  }) => post<StudySession>('/api/sessions/start', body),
+  finishSession: (id: string, remaining_seconds: number) =>
+    post<StudySession>(`/api/sessions/${id}/finish`, { remaining_seconds }),
+  reflectOnSession: (id: string, distraction: string, next_time_plan: string) =>
+    post<StudySession>(`/api/sessions/${id}/reflect`, {
+      distraction: distraction.trim() || undefined,
+      next_time_plan: next_time_plan.trim() || undefined,
+    }),
+  bank: () => request<Bank>('/api/sessions/bank'),
+
   // ── review (§7.1) ───────────────────────────────────────────────────────
+  // Learn & Practice — fetched on demand, since the mode is opt-in and each
+  // lesson may cost a generation.
+  lesson: (cardId: string) => request<Lesson>(`/api/review/${cardId}/lesson`),
+  // Socratic AI Guide — one diagnostic question at a time, never the answer.
+  // Stateless: the full turn history goes up with every message.
+  guide: (cardId: string, history: SocraticTurn[], message: string) =>
+    post<SocraticResponse>(`/api/review/${cardId}/guide`, { history, message }),
   submitAnswer: (cardId: string, typed_answer: string, latency_ms: number) =>
     post<SubmitAnswerResponse>(`/api/review/${cardId}/answer`, { typed_answer, latency_ms }),
   confirmReview: (
@@ -142,10 +180,57 @@ export const api = {
   setPriority: (target: 'deck' | 'card' | 'source' | 'extract', id: string, priority: number) =>
     patch<{ priority: number }>('/api/priority', { target, id, priority }),
 
+  // ── documents -> cited decks ────────────────────────────────────────────
+  uploadDocument: (file: File, opts: { title?: string; parent_node_id?: string } = {}) => {
+    const form = new FormData()
+    form.append('file', file)
+    if (opts.title) form.append('title', opts.title)
+    if (opts.parent_node_id) form.append('parent_node_id', opts.parent_node_id)
+    return request<DocumentUpload>('/api/documents', { method: 'POST', body: form })
+  },
+  generateDeck: (
+    sourceId: string,
+    body: {
+      max_cards_per_section?: number
+      max_sections?: number
+      start_section?: number
+      model?: string
+    } = {},
+  ) => post<GenerateDeckResponse>(`/api/documents/${sourceId}/generate-deck`, body),
+  acceptDeck: (sourceId: string, deck: string, cards: CitedCard[]) =>
+    post<AcceptDeckResponse>(`/api/documents/${sourceId}/accept-deck`, { deck, cards }),
+
+  // ── knowledge tree ──────────────────────────────────────────────────────
+  tree: () => request<{ nodes: TreeNode[] }>('/api/tree'),
+  createTopic: (body: { title: string; parent_id?: string | null; priority?: number }) =>
+    post<TreeNode>('/api/tree/nodes', body),
+  updateNode: (
+    id: string,
+    body: {
+      title?: string
+      priority?: number
+      collapsed?: boolean
+      cascade?: boolean
+      // Present-but-null clears the prerequisite; absent leaves it alone.
+      requires_node_id?: string | null
+      mastery_threshold?: number
+    },
+  ) => patch<{ entities_updated: number }>(`/api/tree/nodes/${id}`, body),
+  moveNode: (id: string, parent_id: string | null) =>
+    post<{ id: string; parent_id: string | null }>(`/api/tree/nodes/${id}/move`, { parent_id }),
+  deleteNode: (id: string) =>
+    request<{ children_promoted: number }>(`/api/tree/nodes/${id}`, { method: 'DELETE' }),
+  branchCards: (id: string) => request<Card[]>(`/api/tree/nodes/${id}/cards`),
+
   // ── incremental reading (§8) ────────────────────────────────────────────
   sources: () => request<Source[]>('/api/sources'),
-  createSource: (body: { title?: string; raw_text?: string; url?: string; priority?: number }) =>
-    post<Source>('/api/sources', body),
+  createSource: (body: {
+    title?: string
+    raw_text?: string
+    url?: string
+    priority?: number
+    parent_node_id?: string | null
+  }) => post<Source>('/api/sources', body),
   deleteSource: (id: string) => request<void>(`/api/sources/${id}`, { method: 'DELETE' }),
   extractsOf: (sourceId: string) => request<Extract[]>(`/api/sources/${sourceId}/extracts`),
   extract: (id: string) => request<Extract>(`/api/extracts/${id}`),
@@ -181,6 +266,13 @@ export const api = {
     return request<ImportResult>('/api/import/apkg', { method: 'POST', body: form })
   },
   importHistory: () => request<ImportResult[]>('/api/import/history'),
+  // A bare array of notes is accepted too — the deck name then travels as a
+  // query param instead of living inside the body.
+  importJson: (body: JsonImportRequest | JsonImportNote[], deckForArray?: string) =>
+    post<JsonImportResult>(
+      `/api/import/json${Array.isArray(body) && deckForArray ? `?deck=${encodeURIComponent(deckForArray)}` : ''}`,
+      body,
+    ),
   stats: () => request<Stats>('/api/stats'),
   dismissLeech: (cardId: string) => post<unknown>(`/api/leeches/${cardId}/dismiss`),
   suspendLeech: (cardId: string) => post<unknown>(`/api/leeches/${cardId}/suspend`),

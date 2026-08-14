@@ -208,6 +208,22 @@ async def test_queue_interleaves_cards_and_extracts(auth_client):
     assert extract_item["source_title"] == "Reading"
 
 
+async def test_due_extracts_endpoint_survives_naive_timestamps(auth_client):
+    """GET /api/extracts compares next_shown_at against an aware `now`, and
+    SQLite returns naive datetimes even for timezone-aware columns — which
+    made this endpoint raise outright rather than return a list."""
+    await auth_client.post(
+        "/api/sources", json={"title": "Due now", "raw_text": "First fact.\n\nSecond fact."}
+    )
+    resp = await auth_client.get("/api/extracts")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert isinstance(body, list)
+    # The first chunk is scheduled immediately, so it is due right now.
+    assert len(body) >= 1
+    assert body[0]["content"]
+
+
 async def test_deleting_a_source_keeps_the_cards_it_produced(auth_client):
     deck_id = (await auth_client.post("/api/decks", json={"name": "Survivors"})).json()["id"]
     source = (

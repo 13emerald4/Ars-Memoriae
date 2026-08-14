@@ -23,13 +23,19 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, false, func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Card, Deck, Extract, QueueConfig, ReviewLog, Source, User
+from app.models import Card, CardReference, Deck, Extract, QueueConfig, ReviewLog, Source, User
 from app.services import registry
 from app.services.fsrs_service import FSRSService
 from app.services.rendering import occlusion_payload, render
+from app.services.tree_service import (
+    BranchScope,
+    branch_scope,
+    has_any_gating,
+    locked_entity_ids,
+)
 
 OVERDUE_BOOST_MAX = 25.0  # priority points a fully-forgotten card can gain
 MIN_SECONDS_PER_ITEM = 3.0
@@ -68,6 +74,7 @@ class ComposedItem:
     estimated_seconds: float = 12.0
     note_id: str | None = None
     occlusion: dict | None = None
+    references: list[dict] = field(default_factory=list)
 
 
 @dataclass
@@ -161,15 +168,52 @@ def _effective_priority_sql():
     return func.coalesce(Card.priority, Deck.default_priority)
 
 
-def _eligible_filter(user: User):
-    return (
+def _eligible_filter(
+    user: User,
+    scope: BranchScope | None = None,
+    locked_deck_ids: set | None = None,
+):
+    """Ownership + suspension, plus the branch restriction when one is set,
+    plus mastery gating when the user has any configured.
+
+    A card is inside a branch either because its deck is, or because it was
+    carved out of an extract that is (``origin_extract_id``) — so studying an
+    article's branch covers the cards it produced, not just the reading left.
+    """
+    conditions = [
         Deck.user_id == user.id,
         Card.suspended.is_(False),
         Card.leech_flag.is_(False),
-    )
+    ]
+    if scope is not None:
+        reachable = []
+        if scope.deck_ids:
+            reachable.append(Card.deck_id.in_(scope.deck_ids))
+        if scope.extract_ids:
+            reachable.append(Card.origin_extract_id.in_(scope.extract_ids))
+        # An empty branch matches nothing, rather than silently matching all.
+        conditions.append(or_(*reachable) if reachable else false())
+    if locked_deck_ids:
+        conditions.append(Card.deck_id.notin_(locked_deck_ids))
+    return tuple(conditions)
 
 
-async def eligible_counts(db: AsyncSession, user: User, now: datetime) -> dict[str, int]:
+def _extract_scope_filter(scope: BranchScope | None, locked_source_ids: set | None = None):
+    conditions = []
+    if scope is not None:
+        conditions.append(Extract.id.in_(scope.extract_ids) if scope.extract_ids else false())
+    if locked_source_ids:
+        conditions.append(Source.id.notin_(locked_source_ids))
+    return and_(*conditions) if conditions else true()
+
+
+async def eligible_counts(
+    db: AsyncSession,
+    user: User,
+    now: datetime,
+    scope: BranchScope | None = None,
+    locked_deck_ids: set | None = None,
+) -> dict[str, int]:
     """Exact pool sizes via COUNT, independent of how many rows we then fetch.
 
     The session header and the §3.1 backlog-smoothing arithmetic both need real
@@ -185,7 +229,7 @@ async def eligible_counts(db: AsyncSession, user: User, now: datetime) -> dict[s
                 select(func.count())
                 .select_from(Card)
                 .join(Deck, Deck.id == Card.deck_id)
-                .where(*_eligible_filter(user), *extra)
+                .where(*_eligible_filter(user, scope, locked_deck_ids), *extra)
             )
             or 0
         )
@@ -197,7 +241,12 @@ async def eligible_counts(db: AsyncSession, user: User, now: datetime) -> dict[s
 
 
 async def fetch_due_candidates(
-    db: AsyncSession, user: User, now: datetime, limit: int
+    db: AsyncSession,
+    user: User,
+    now: datetime,
+    limit: int,
+    scope: BranchScope | None = None,
+    locked_deck_ids: set | None = None,
 ) -> list[Card]:
     """Bounded candidate pool for due reviews, ranked in SQL.
 
@@ -214,21 +263,32 @@ async def fetch_due_candidates(
     rows = await db.execute(
         select(Card)
         .join(Deck, Deck.id == Card.deck_id)
-        .where(*_eligible_filter(user), Card.state != "new", Card.due.isnot(None), Card.due <= now)
+        .where(
+            *_eligible_filter(user, scope, locked_deck_ids),
+            Card.state != "new",
+            Card.due.isnot(None),
+            Card.due <= now,
+        )
         .order_by(_effective_priority_sql().desc(), Card.due.asc())
         .limit(limit)
     )
     return list(rows.scalars())
 
 
-async def fetch_new_candidates(db: AsyncSession, user: User, limit: int) -> list[Card]:
+async def fetch_new_candidates(
+    db: AsyncSession,
+    user: User,
+    limit: int,
+    scope: BranchScope | None = None,
+    locked_deck_ids: set | None = None,
+) -> list[Card]:
     """New cards rank purely on priority — no boost — so SQL is exact here."""
     if limit <= 0:
         return []
     rows = await db.execute(
         select(Card)
         .join(Deck, Deck.id == Card.deck_id)
-        .where(*_eligible_filter(user), Card.state == "new")
+        .where(*_eligible_filter(user, scope, locked_deck_ids), Card.state == "new")
         .order_by(_effective_priority_sql().desc(), Card.id)
         .limit(limit)
     )
@@ -236,7 +296,12 @@ async def fetch_new_candidates(db: AsyncSession, user: User, limit: int) -> list
 
 
 async def _eligible_extracts(
-    db: AsyncSession, user: User, now: datetime, limit: int = 200
+    db: AsyncSession,
+    user: User,
+    now: datetime,
+    limit: int = 200,
+    scope: BranchScope | None = None,
+    locked_source_ids: set | None = None,
 ) -> list[tuple[Extract, Source]]:
     rows = await db.execute(
         select(Extract, Source)
@@ -244,8 +309,10 @@ async def _eligible_extracts(
         .where(
             Source.user_id == user.id,
             Source.status == "active",
+            Source.for_reading.is_(True),
             Extract.status == "active",
             or_(Extract.next_shown_at.is_(None), Extract.next_shown_at <= now),
+            _extract_scope_filter(scope, locked_source_ids),
         )
         .order_by(func.coalesce(Extract.priority, Source.priority).desc())
         .limit(limit)
@@ -253,7 +320,13 @@ async def _eligible_extracts(
     return list(rows.all())
 
 
-async def count_eligible_extracts(db: AsyncSession, user: User, now: datetime) -> int:
+async def count_eligible_extracts(
+    db: AsyncSession,
+    user: User,
+    now: datetime,
+    scope: BranchScope | None = None,
+    locked_source_ids: set | None = None,
+) -> int:
     return int(
         await db.scalar(
             select(func.count())
@@ -262,8 +335,10 @@ async def count_eligible_extracts(db: AsyncSession, user: User, now: datetime) -
             .where(
                 Source.user_id == user.id,
                 Source.status == "active",
+                Source.for_reading.is_(True),
                 Extract.status == "active",
                 or_(Extract.next_shown_at.is_(None), Extract.next_shown_at <= now),
+                _extract_scope_filter(scope, locked_source_ids),
             )
         )
         or 0
@@ -315,6 +390,47 @@ def _card_item(card: Card, effective: float, seconds: float) -> ComposedItem:
         if kind == "image_occlusion"
         else None,
     )
+
+
+async def attach_references(db: AsyncSession, items: list[ComposedItem]) -> None:
+    """Load each card's document citations in one query, after the cut.
+
+    Runs on the *final* item list rather than inside ``_card_item`` so the cost
+    is bounded by what the session actually shows — one extra query for a
+    25-item preview, and for ``/queue/next`` a single row. Building it into
+    per-card rendering would put a query behind every candidate the ranker
+    merely considered.
+    """
+    card_ids = [_as_uuid(i.id) for i in items if i.kind == "card"]
+    if not card_ids:
+        return
+
+    rows = (
+        await db.execute(
+            select(CardReference, Extract.content)
+            .outerjoin(Extract, Extract.id == CardReference.extract_id)
+            .where(CardReference.card_id.in_(card_ids))
+            .order_by(CardReference.position, CardReference.created_at)
+        )
+    ).all()
+    if not rows:
+        return
+
+    by_card: dict[str, list[dict]] = {}
+    for ref, passage in rows:
+        by_card.setdefault(str(ref.card_id), []).append(
+            {
+                "quote": ref.quote or "",
+                "quote_verified": ref.quote_verified,
+                "locator": ref.locator,
+                "source_title": ref.source_title,
+                "extract_id": str(ref.extract_id) if ref.extract_id else None,
+                "passage": passage,
+            }
+        )
+    for item in items:
+        if item.kind == "card":
+            item.references = by_card.get(item.id, [])
 
 
 def space_sisters(
@@ -379,7 +495,12 @@ def _interleave(streams: list[list[ComposedItem]]) -> list[ComposedItem]:
 
 
 async def compose_session(
-    db: AsyncSession, user: User, *, now: datetime | None = None, limit: int | None = None
+    db: AsyncSession,
+    user: User,
+    *,
+    now: datetime | None = None,
+    limit: int | None = None,
+    branch=None,
 ) -> SessionPlan:
     now = now or datetime.now(UTC)
     cfg = await get_queue_config(db, user)
@@ -387,8 +508,21 @@ async def compose_session(
         weights=user.fsrs_parameters, desired_retention=user.desired_retention, fuzz=False
     )
 
+    # A branch restricts the whole composition to one part of the knowledge
+    # tree — everything below still runs unchanged, it just draws from less.
+    scope = await branch_scope(db, user, branch) if branch else None
+
+    # Mastery gating (§ Tree): excluded up front so every downstream query —
+    # counts, candidates, extracts — simply never sees a locked card. The
+    # existence check keeps this at one indexed query for the overwhelmingly
+    # common case of no prerequisites configured.
+    locked_deck_ids: set = set()
+    locked_source_ids: set = set()
+    if await has_any_gating(db, user):
+        locked_deck_ids, locked_source_ids = await locked_entity_ids(db, user)
+
     # Counts come from COUNT(*); only a bounded pool of rows is ever loaded.
-    counts = await eligible_counts(db, user, now)
+    counts = await eligible_counts(db, user, now, scope, locked_deck_ids)
     reviews_done, new_done = await _counts_today(db, user, now)
 
     # ── §3.1 caps ───────────────────────────────────────────────────────────
@@ -399,10 +533,14 @@ async def compose_session(
     )
     new_cap = max(0, user.daily_new_limit - new_done)
 
-    due_cards = await fetch_due_candidates(db, user, now, candidate_pool_size(review_cap))
-    new_cards = await fetch_new_candidates(db, user, new_cap)
-    extract_rows = await _eligible_extracts(db, user, now)
-    ir_total = await count_eligible_extracts(db, user, now)
+    due_cards = await fetch_due_candidates(
+        db, user, now, candidate_pool_size(review_cap), scope, locked_deck_ids
+    )
+    new_cards = await fetch_new_candidates(db, user, new_cap, scope, locked_deck_ids)
+    extract_rows = await _eligible_extracts(
+        db, user, now, scope=scope, locked_source_ids=locked_source_ids
+    )
+    ir_total = await count_eligible_extracts(db, user, now, scope, locked_source_ids)
 
     # ── §9.2 ranking ────────────────────────────────────────────────────────
     ranked_due = sorted(
@@ -489,6 +627,7 @@ async def compose_session(
 
     if limit:
         items = items[:limit]
+    await attach_references(db, items)
 
     notes: list[str] = []
     if overdue_total and review_cap < counts["due_total"]:
@@ -498,6 +637,17 @@ async def compose_session(
         )
     if not user.llm_grading_consent:
         notes.append("LLM grading is off — answers are graded manually.")
+    if scope is not None:
+        notes.append(
+            f"Scoped to the “{scope.title}” branch — "
+            f"{len(scope.deck_ids)} deck(s) and {len(scope.extract_ids)} extract(s)."
+            if not scope.empty
+            else f"The “{scope.title}” branch has nothing in it yet."
+        )
+    if locked_deck_ids or locked_source_ids:
+        notes.append(
+            "Some material is locked behind a mastery gate — check the Tree to see what's next."
+        )
 
     return SessionPlan(
         items=items,
@@ -521,8 +671,8 @@ async def compose_session(
     )
 
 
-async def next_item(db: AsyncSession, user: User) -> ComposedItem | None:
-    plan = await compose_session(db, user, limit=1)
+async def next_item(db: AsyncSession, user: User, *, branch=None) -> ComposedItem | None:
+    plan = await compose_session(db, user, limit=1, branch=branch)
     return plan.items[0] if plan.items else None
 
 
@@ -530,13 +680,22 @@ registry.register("queue_composer", "priority_time_budget", compose_session, def
 
 
 async def compose_due_date_only(
-    db: AsyncSession, user: User, *, now: datetime | None = None, limit: int | None = None
+    db: AsyncSession,
+    user: User,
+    *,
+    now: datetime | None = None,
+    limit: int | None = None,
+    branch=None,
 ) -> SessionPlan:
     """The Phase-1 composer (§14.1 step 5): strict due-date order, no priority
     weighting. Kept registered as an alternative strategy — it is the fallback
     if a user turns priority composition off, and it is what the queue tests
     compare against."""
     now = now or datetime.now(UTC)
+    scope = await branch_scope(db, user, branch) if branch else None
+    locked_deck_ids: set = set()
+    if await has_any_gating(db, user):
+        locked_deck_ids, _ = await locked_entity_ids(db, user)
     reviews_done, new_done = await _counts_today(db, user, now)
     review_cap = max(0, user.daily_review_limit - reviews_done)
     new_cap = max(0, user.daily_new_limit - new_done)
@@ -545,17 +704,23 @@ async def compose_due_date_only(
     due_rows = await db.execute(
         select(Card)
         .join(Deck, Deck.id == Card.deck_id)
-        .where(*_eligible_filter(user), Card.state != "new", Card.due.isnot(None), Card.due <= now)
+        .where(
+            *_eligible_filter(user, scope, locked_deck_ids),
+            Card.state != "new",
+            Card.due.isnot(None),
+            Card.due <= now,
+        )
         .order_by(Card.due.asc())
         .limit(review_cap)
     )
     due_cards = list(due_rows.scalars())
-    new_cards = await fetch_new_candidates(db, user, new_cap)
+    new_cards = await fetch_new_candidates(db, user, new_cap, scope, locked_deck_ids)
 
     items = [_card_item(c, float(c.effective_priority), 12.0) for c in due_cards]
     items += [_card_item(c, float(c.effective_priority), 12.0) for c in new_cards]
     if limit:
         items = items[:limit]
+    await attach_references(db, items)
     return SessionPlan(
         items=items,
         counts={"review": len(due_cards), "new": len(new_cards)},

@@ -14,6 +14,7 @@ from app.jobs import scheduler
 from app.routers import (
     auth,
     decks,
+    documents,
     export,
     imports,
     interference,
@@ -22,8 +23,10 @@ from app.routers import (
     optimize,
     queue,
     review,
+    sessions,
     sources,
     stats,
+    tree,
 )
 from app.services import (
     plugins,
@@ -70,9 +73,12 @@ for router in (
     auth.router,
     keys.router,
     decks.router,
+    tree.router,
     queue.router,
     review.router,
+    sessions.router,
     sources.router,
+    documents.router,
     imports.router,
     media.router,
     interference.router,

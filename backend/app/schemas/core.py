@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 # ── auth & settings ─────────────────────────────────────────────────────────
 
@@ -199,6 +199,8 @@ class SourceCreate(BaseModel):
     raw_text: str | None = None
     url: str | None = None
     priority: int = Field(default=50, ge=0, le=100)
+    # File the new source under a knowledge-tree branch instead of the root.
+    parent_node_id: str | None = None
 
 
 class SourceOut(BaseModel):
@@ -210,6 +212,9 @@ class SourceOut(BaseModel):
     created_at: datetime
     extract_count: int = 0
     active_extract_count: int = 0
+    # False for a document uploaded to generate cards from — it never appears
+    # in the composed Review queue as something to read (§9).
+    for_reading: bool = True
 
 
 class ExtractOut(BaseModel):
@@ -219,6 +224,8 @@ class ExtractOut(BaseModel):
     content: str
     priority: int
     position: int
+    # "p. 42" / "§ 3.1" for uploaded documents; None for pasted text and URLs.
+    locator: str | None = None
     next_shown_at: datetime | None
     status: str
 
@@ -267,6 +274,55 @@ class AcceptCardsRequest(BaseModel):
 # ── import (§11) ────────────────────────────────────────────────────────────
 
 
+class JsonImportNote(BaseModel):
+    kind: str = "basic"  # "basic" | "cloze"
+    front: str | None = Field(default=None, max_length=20_000)
+    back: str | None = Field(default=None, max_length=20_000)
+    cloze_text: str | None = Field(default=None, max_length=20_000)
+    tags: list[str] = Field(default_factory=list, max_length=50)
+    priority: int | None = Field(default=None, ge=0, le=100)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_common_flashcard_shapes(cls, data):
+        """LLM flashcard generators overwhelmingly export ``card_type`` /
+        ``question`` / ``answer`` rather than our ``kind`` / ``front`` /
+        ``back`` — translate instead of forcing every upload through one exact
+        vocabulary. Only fills in fields the caller didn't already set, so an
+        upload already using our names is untouched."""
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        card_type = data.get("card_type")
+        if "kind" not in data and card_type:
+            data["kind"] = "cloze" if str(card_type).strip().lower() == "cloze" else "basic"
+        is_cloze = data.get("kind", "basic") == "cloze"
+
+        question = data.get("question")
+        if question is not None:
+            data.setdefault("cloze_text" if is_cloze else "front", question)
+        answer = data.get("answer")
+        if answer is not None:
+            data.setdefault("back", answer)
+        return data
+
+
+class JsonImportRequest(BaseModel):
+    deck: str = Field(min_length=1, max_length=200)
+    # Only applied if `deck` doesn't already exist — an upload into an
+    # existing deck should never silently change its priority.
+    priority: int | None = Field(default=None, ge=0, le=100)
+    notes: list[JsonImportNote] = Field(min_length=1, max_length=5000)
+
+
+class JsonImportResult(BaseModel):
+    deck_id: str
+    deck_created: bool
+    notes_created: int
+    cards_created: int
+    warnings: list[str] = Field(default_factory=list)
+
+
 class ImportResult(BaseModel):
     id: str
     filename: str
@@ -301,4 +357,5 @@ class StatsOut(BaseModel):
     totals: dict[str, float]
     grading: dict[str, float]
     ir_throughput: dict[str, int]
+    velocity: dict[str, float]
     leeches: list[LeechOut] = Field(default_factory=list)

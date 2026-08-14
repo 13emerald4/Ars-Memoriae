@@ -7,9 +7,13 @@ import Read from './pages/Read'
 import Review from './pages/Review'
 import Settings from './pages/Settings'
 import Stats from './pages/Stats'
+import Tree from './pages/Tree'
+import Tutorial from './pages/Tutorial'
 
 const NAV = [
+  { to: '/tutorial', label: 'Start here' },
   { to: '/review', label: 'Review' },
+  { to: '/tree', label: 'Tree' },
   { to: '/read', label: 'Read' },
   { to: '/decks', label: 'Decks' },
   { to: '/stats', label: 'Stats' },
@@ -57,7 +61,9 @@ export default function App() {
       <main className="mx-auto max-w-4xl px-6 py-8">
         <Routes>
           <Route path="/" element={<Navigate to="/review" replace />} />
+          <Route path="/tutorial" element={<Tutorial />} />
           <Route path="/review" element={<Review />} />
+          <Route path="/tree" element={<Tree />} />
           <Route path="/read" element={<Read />} />
           <Route path="/read/:extractId" element={<Read />} />
           <Route path="/decks" element={<Decks />} />

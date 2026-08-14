@@ -152,6 +152,14 @@ function SourceLibrary() {
                   <span className="chip">{s.extract_count} extracts</span>
                   <span className="chip">priority {s.priority}</span>
                   <span className="chip">{s.status}</span>
+                  {!s.for_reading && (
+                    <span
+                      className="chip text-slate-500"
+                      title="Uploaded for card generation — never auto-surfaced in Review"
+                    >
+                      reference only
+                    </span>
+                  )}
                   {s.url && (
                     <a
                       href={s.url}

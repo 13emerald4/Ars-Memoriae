@@ -140,6 +140,20 @@ async def test_queue_returns_items_and_respects_new_limit(auth_client):
     assert nxt.json()["kind"] == "card"
 
 
+async def test_queue_item_carries_the_reference_answer(auth_client):
+    """The whole point of §4.3's "leaving LLM grading off is a full path, not
+    a degraded one" promise: with no consent/API key, "show answer" has
+    nothing to fetch it from except the queue item itself."""
+    deck_id = await _deck(auth_client, "Reveal deck")
+    await _note(auth_client, deck_id, "2 + 2?", "4")
+
+    nxt = await auth_client.get("/api/queue/next")
+    assert nxt.status_code == 200, nxt.text
+    body = nxt.json()
+    assert body["kind"] == "card"
+    assert body["back"] == "4"
+
+
 async def test_queue_orders_by_priority(auth_client):
     deck_id = await _deck(auth_client, "Priority deck")
     await _note(auth_client, deck_id, "low priority", "x", priority=10)

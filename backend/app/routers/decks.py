@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import Card, Deck, Extract, Note, NoteType, Source, User
+from app.models import Card, Deck, Extract, KnowledgeNode, Note, NoteType, Source, User
 from app.routers.deps import current_user, parse_uuid
 from app.schemas.core import (
     CardOut,
@@ -24,6 +24,7 @@ from app.schemas.core import (
     NoteUpdate,
     PriorityUpdate,
 )
+from app.services import tree_service
 from app.services.note_service import default_note_type, sync_cards
 from app.services.rendering import occlusion_payload, render
 
@@ -208,6 +209,9 @@ async def delete_deck(
             status.HTTP_409_CONFLICT,
             f"deck still holds {count} cards — move or delete them first",
         )
+    # Topics filed under this deck in the knowledge tree outlive it; lift them
+    # to its parent rather than letting the node's FK cascade delete them.
+    await tree_service.detach_entity_node(db, KnowledgeNode.deck_id == deck.id)
     await db.delete(deck)
     await db.commit()
 

@@ -33,11 +33,52 @@ export interface SisterPair {
   back_b: string
 }
 
+/** Where a card's answer comes from in an uploaded document. */
+export interface CardReference {
+  quote: string
+  /** False when the model's quote couldn't be found in the source — a
+   *  hallucinated citation, which the UI must not present as real. */
+  quote_verified: boolean
+  locator: string | null
+  source_title: string | null
+  extract_id: string | null
+  passage: string | null
+}
+
+/** Learn & Practice: what to teach before a card's question. */
+export interface Lesson {
+  /** False when the card has no citations to teach from. */
+  available: boolean
+  reason: string | null
+  body: string
+  key_points: string[]
+  /** False when `body` is the cited passage verbatim rather than a written
+   *  lesson — the UI must label that honestly. */
+  generated: boolean
+  model_used: string | null
+  cached: boolean
+  citations: CardReference[]
+}
+
+export interface SocraticTurn {
+  role: 'guide' | 'student'
+  text: string
+}
+
+export interface SocraticResponse {
+  message: string
+  on_track: boolean
+  degraded: boolean
+  degraded_reason: string | null
+  model_used: string | null
+}
+
 export interface QueueItem {
   kind: 'card' | 'extract'
   id: string
   deck_or_source_id: string
   front: string | null
+  back: string | null
   extract_content: string | null
   priority: number
   effective_priority: number
@@ -48,6 +89,47 @@ export interface QueueItem {
   grading_profile: string | null
   note_id: string | null
   occlusion: OcclusionPayload | null
+  references: CardReference[]
+}
+
+export interface CitedCard {
+  kind: string
+  front: string
+  back: string
+  cloze_text: string | null
+  quote: string
+  quote_verified: boolean
+  locator: string | null
+  extract_id: string | null
+}
+
+export interface DocumentUpload {
+  source_id: string
+  title: string
+  segment_count: number
+  locators: string[]
+  node_id: string | null
+}
+
+export interface GenerateDeckResponse {
+  source_id: string
+  title: string
+  cards: CitedCard[]
+  sections_used: number
+  sections_total: number
+  next_section: number | null
+  degraded: boolean
+  reason: string | null
+  warnings: string[]
+}
+
+export interface AcceptDeckResponse {
+  deck_id: string
+  deck_created: boolean
+  notes_created: number
+  cards_created: number
+  references_created: number
+  warnings: string[]
 }
 
 export interface SessionSummary {
@@ -60,6 +142,9 @@ export interface SessionSummary {
 
 export interface SubmitAnswerResponse {
   suggested_grade: Grade
+  // 0-100 correctness score — the primary grading feedback. Null in
+  // manual/degraded mode, where there is no automated assessment.
+  score: number | null
   confidence: number
   matched_points: string[]
   missed_points: string[]
@@ -71,6 +156,14 @@ export interface SubmitAnswerResponse {
   model_used: string | null
   cached: boolean
   degraded_reason: string | null
+  // Informational only — response time never factors into the grade.
+  latency_note: string | null
+}
+
+export interface StuckAlert {
+  reason: 'accuracy' | 'latency'
+  message: string
+  suggested_break_minutes: number
 }
 
 export interface ConfirmReviewResponse {
@@ -81,6 +174,7 @@ export interface ConfirmReviewResponse {
   interval_days: number
   lapse_count: number
   leech_flagged: boolean
+  stuck_alert: StuckAlert | null
 }
 
 export interface User {
@@ -110,6 +204,34 @@ export interface Deck {
   card_count: number
   due_count: number
   new_count: number
+}
+
+/** A node in the knowledge tree. Counts are rolled up over the whole subtree,
+ *  so a collapsed branch still says what is waiting inside it. */
+export interface TreeNode {
+  id: string
+  parent_id: string | null
+  kind: 'topic' | 'deck' | 'source' | 'extract'
+  title: string
+  position: number
+  collapsed: boolean
+  priority: number
+  priority_inherited: boolean
+  card_count: number
+  due_count: number
+  new_count: number
+  extract_count: number
+  deck_id: string | null
+  source_id: string | null
+  extract_id: string | null
+  // Mastery gating — rolled up over this node's whole subtree, the same way
+  // card_count is. Only topic/deck nodes participate meaningfully.
+  mastery_pct: number
+  locked: boolean
+  requires_node_id: string | null
+  requires_title: string | null
+  mastery_threshold: number
+  children: TreeNode[]
 }
 
 export interface NoteType {
@@ -149,6 +271,9 @@ export interface Source {
   created_at: string
   extract_count: number
   active_extract_count: number
+  // False for a document uploaded to generate cards from — it never appears
+  // in the Review queue as something to read.
+  for_reading: boolean
 }
 
 export interface Extract {
@@ -194,7 +319,31 @@ export interface Stats {
   totals: Record<string, number>
   grading: Record<string, number>
   ir_throughput: Record<string, number>
+  velocity: Record<string, number>
   leeches: Leech[]
+}
+
+export interface JsonImportNote {
+  kind?: 'basic' | 'cloze'
+  front?: string
+  back?: string
+  cloze_text?: string
+  tags?: string[]
+  priority?: number
+}
+
+export interface JsonImportRequest {
+  deck: string
+  priority?: number
+  notes: JsonImportNote[]
+}
+
+export interface JsonImportResult {
+  deck_id: string
+  deck_created: boolean
+  notes_created: number
+  cards_created: number
+  warnings: string[]
 }
 
 export interface ImportResult {
@@ -207,6 +356,33 @@ export interface ImportResult {
   decks_created: number
   warnings: string[]
   fsrs_optimized: boolean
+}
+
+/** One timed study block. Finishing its card target early banks the unspent
+ *  time as earned free time. */
+export interface StudySession {
+  id: string
+  started_at: string
+  ended_at: string | null
+  planned_seconds: number
+  active_seconds: number
+  focus_goal: string | null
+  goal_cards: number
+  cards_reviewed: number
+  banked_seconds: number
+  goal_met: boolean
+  distraction: string | null
+  next_time_plan: string | null
+}
+
+export interface Bank {
+  today_seconds: number
+  week_seconds: number
+  total_seconds: number
+  sessions_today: number
+  goals_met_today: number
+  current: StudySession | null
+  recent: StudySession[]
 }
 
 export interface QueueConfig {

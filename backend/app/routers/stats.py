@@ -12,7 +12,17 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import Card, Deck, Extract, LeechSuggestion, Note, ReviewLog, Source, User
+from app.models import (
+    Card,
+    Deck,
+    Extract,
+    LeechSuggestion,
+    Note,
+    ReviewLog,
+    Source,
+    StudySession,
+    User,
+)
 from app.routers.deps import current_user, parse_uuid
 from app.schemas.core import LeechOut, StatsOut
 from app.services.note_service import default_note_type, sync_cards
@@ -44,6 +54,8 @@ async def stats(
                 ReviewLog.state_before,
                 ReviewLog.elapsed_days,
                 ReviewLog.latency_ms,
+                ReviewLog.graduated_to_review,
+                ReviewLog.card_id,
             )
             .join(Card, Card.id == ReviewLog.card_id)
             .join(Deck, Deck.id == Card.deck_id)
@@ -55,12 +67,25 @@ async def stats(
     total_latency = 0
     latency_n = 0
     graded_by_llm = agreed = overridden = 0
+    # A set, not a counter: a lapsed card graduates again on recovery, and
+    # "concepts mastered" means the concept, not the graduation event.
+    mastered_cards: set[uuid.UUID] = set()
     # Retention bucketed by how long the card was left — the "did I actually
     # remember it after N days" curve, not a running average.
     bucket_hit: dict[str, int] = defaultdict(int)
     bucket_total: dict[str, int] = defaultdict(int)
 
-    for reviewed_at, final_grade, llm_grade, was_overridden, state_before, elapsed, latency in logs:
+    for (
+        reviewed_at,
+        final_grade,
+        llm_grade,
+        was_overridden,
+        state_before,
+        elapsed,
+        latency,
+        graduated,
+        log_card_id,
+    ) in logs:
         heatmap[_day(reviewed_at)] += 1
         if latency:
             total_latency += latency
@@ -71,10 +96,55 @@ async def stats(
                 agreed += 1
         if was_overridden:
             overridden += 1
+        if graduated:
+            mastered_cards.add(log_card_id)
         if state_before == "review" and elapsed is not None:
             bucket_total[_interval_bucket(elapsed)] += 1
             if final_grade != "again":
                 bucket_hit[_interval_bucket(elapsed)] += 1
+
+    # Velocity (§ Velocity dashboard): mastered concepts per active hour, not
+    # seat time. Active hours come from the Time Bank's own ledger — the same
+    # server-counted number bank_totals reports — rather than wall-clock
+    # elapsed, so a session left open overnight can't inflate the divisor.
+    active_seconds_in_window = await db.scalar(
+        select(func.sum(StudySession.active_seconds)).where(
+            StudySession.user_id == user.id,
+            StudySession.ended_at.isnot(None),
+            StudySession.started_at >= since,
+        )
+    )
+    active_hours = (active_seconds_in_window or 0) / 3600.0
+
+    # The rate's numerator must be drawn from the same time the denominator
+    # measures. Counting *every* graduation against only timed-block hours
+    # lets untimed study inflate the rate without bound — 20 cards mastered
+    # outside any block, divided by one five-minute block, reported "240 an
+    # hour". So only graduations that happened inside a completed session
+    # count here; `mastered_total` below still reports the rest.
+    #
+    # DISTINCT card: a card that lapses and recovers graduates more than once,
+    # and "concepts mastered" should count the concept, not the event.
+    mastered_in_sessions = await db.scalar(
+        select(func.count(func.distinct(ReviewLog.card_id)))
+        .select_from(ReviewLog)
+        .join(Card, Card.id == ReviewLog.card_id)
+        .join(Deck, Deck.id == Card.deck_id)
+        .where(
+            Deck.user_id == user.id,
+            ReviewLog.reviewed_at >= since,
+            ReviewLog.graduated_to_review.is_(True),
+            select(StudySession.id)
+            .where(
+                StudySession.user_id == user.id,
+                StudySession.ended_at.isnot(None),
+                StudySession.started_at <= ReviewLog.reviewed_at,
+                StudySession.ended_at >= ReviewLog.reviewed_at,
+            )
+            .exists(),
+        )
+    )
+    mastered_in_sessions = int(mastered_in_sessions or 0)
 
     retention = {
         bucket: round(bucket_hit[bucket] / bucket_total[bucket], 4)
@@ -171,6 +241,16 @@ async def stats(
             "extracts_active": int(extracts_active or 0),
             "extracts_done": int(extracts_done or 0),
             "cards_from_reading": int(cards_from_ir or 0),
+        },
+        velocity={
+            # The pair that forms the rate: both measured over timed blocks.
+            "mastered": float(mastered_in_sessions),
+            "active_hours": round(active_hours, 2),
+            "per_hour": (
+                round(mastered_in_sessions / active_hours, 2) if active_hours > 0 else 0.0
+            ),
+            # Everything mastered in the window, timed or not — progress, not rate.
+            "mastered_total": float(len(mastered_cards)),
         },
         leeches=await _leeches(db, user),
     )

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decrypt_api_key
 from app.db import get_db
-from app.models import Card, Deck, Extract, Note, Source, User
+from app.models import Card, Deck, Extract, KnowledgeNode, Note, Source, User
 from app.routers.deps import current_user, parse_uuid
 from app.schemas.core import (
     AcceptCardsRequest,
@@ -24,7 +24,7 @@ from app.schemas.core import (
     SourceOut,
     SuggestedCard,
 )
-from app.services import ir_service
+from app.services import ir_service, tree_service
 from app.services.grading_service import GradingService, GradingUnavailable
 from app.services.note_service import default_note_type, sync_cards
 
@@ -54,6 +54,7 @@ def _extract_out(extract: Extract, source: Source) -> ExtractOut:
         content=extract.content,
         priority=extract.priority if extract.priority is not None else source.priority,
         position=extract.position,
+        locator=extract.locator,
         next_shown_at=extract.next_shown_at,
         status=extract.status,
     )
@@ -76,6 +77,13 @@ async def create_source(
     if not text or not text.strip():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "supply raw_text or a fetchable url")
 
+    parent_node_id = None
+    if body.parent_node_id:
+        node = await db.get(KnowledgeNode, parse_uuid(body.parent_node_id, "parent_node_id"))
+        if node is None or node.user_id != user.id:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "parent node not found")
+        parent_node_id = node.id
+
     source = await ir_service.create_source(
         db,
         user.id,
@@ -83,6 +91,7 @@ async def create_source(
         raw_text=text,
         url=body.url,
         priority=body.priority,
+        parent_node_id=parent_node_id,
     )
     await db.commit()
     total, active = await ir_service.source_progress(db, source.id)
@@ -95,6 +104,7 @@ async def create_source(
         created_at=source.created_at,
         extract_count=total,
         active_extract_count=active,
+        for_reading=source.for_reading,
     )
 
 
@@ -120,6 +130,7 @@ async def list_sources(
                 created_at=s.created_at,
                 extract_count=total,
                 active_extract_count=active,
+                for_reading=s.for_reading,
             )
         )
     return out
@@ -170,6 +181,9 @@ async def delete_source(
             await db.scalars(select(Card).where(Card.origin_extract_id.in_(extract_ids)))
         ).all():
             card.origin_extract_id = None
+    # Anything the user filed *under* this source in the tree is theirs, not the
+    # source's — lift it out before the node's FK cascade takes the subtree.
+    await tree_service.detach_entity_node(db, KnowledgeNode.source_id == source.id)
     await db.delete(source)
     await db.commit()
 
@@ -199,6 +213,7 @@ async def split_extract(
             end=body.end,
             priority=body.priority,
             remove_from_parent=body.remove_from_parent,
+            source=source,
         )
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
@@ -316,8 +331,19 @@ async def due_extracts(
     rows = await db.execute(
         select(Extract, Source)
         .join(Source, Source.id == Extract.source_id)
-        .where(Source.user_id == user.id, Extract.status == "active")
+        .where(Source.user_id == user.id, Source.for_reading.is_(True), Extract.status == "active")
         .order_by(Extract.next_shown_at.is_(None), Extract.next_shown_at)
         .limit(100)
     )
-    return [_extract_out(e, s) for e, s in rows.all() if (e.next_shown_at or now) <= now]
+
+    def due(extract: Extract) -> bool:
+        # SQLite hands back naive datetimes even for timezone-aware columns
+        # (see the models docstring on dialect portability), so comparing one
+        # straight against an aware `now` raises. Same normalisation as
+        # queue_service._aware.
+        shown_at = extract.next_shown_at
+        if shown_at is None:
+            return True
+        return (shown_at if shown_at.tzinfo else shown_at.replace(tzinfo=UTC)) <= now
+
+    return [_extract_out(e, s) for e, s in rows.all() if due(e)]

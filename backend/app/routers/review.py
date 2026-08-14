@@ -25,10 +25,14 @@ from app.schemas.review import (
     ConfirmReviewRequest,
     ConfirmReviewResponse,
     Grade,
+    LessonOut,
+    SocraticRequest,
+    SocraticResponse,
+    StuckAlertOut,
     SubmitAnswerRequest,
     SubmitAnswerResponse,
 )
-from app.services import leech_service
+from app.services import leech_service, lesson_service, stuck_service
 from app.services.fsrs_service import GRADE_TO_RATING, FSRSService
 from app.services.grading_service import (
     GRADES,
@@ -36,6 +40,7 @@ from app.services.grading_service import (
     GradingUnavailable,
     apply_bias,
     disagrees_with_heuristic,
+    grade_for_score,
     heuristic_overlap,
 )
 from app.services.rendering import render, select_grading_profile
@@ -67,7 +72,22 @@ async def _disputed_recently(db: AsyncSession, card_id: uuid.UUID) -> bool:
     return len(flags) == 2 and all(flags)
 
 
-def _manual(reference: str, reason: str) -> SubmitAnswerResponse:
+def format_latency(latency_ms: int | None) -> str | None:
+    """A neutral FYI about response time, shown to the user but never fed to
+    the grader — how long recall took says nothing about whether it was
+    correct, which is the whole reason grading no longer sees it (§4.1)."""
+    if not latency_ms or latency_ms <= 0:
+        return None
+    seconds = latency_ms // 1000
+    if seconds < 1:
+        return "answered in under a second"
+    if seconds < 60:
+        return f"answered in {seconds}s"
+    minutes, rem = divmod(seconds, 60)
+    return f"answered in {minutes}m {rem}s" if rem else f"answered in {minutes}m"
+
+
+def _manual(reference: str, reason: str, latency_note: str | None = None) -> SubmitAnswerResponse:
     """§4.3 — the fallback is a real opt-out, not a degraded error state: the
     user gets the reference answer and the four buttons, same as Phase 1."""
     return SubmitAnswerResponse(
@@ -78,6 +98,7 @@ def _manual(reference: str, reason: str) -> SubmitAnswerResponse:
         degraded_reason=reason,
         reference_answer=reference,
         needs_confirmation=True,
+        latency_note=latency_note,
     )
 
 
@@ -93,13 +114,17 @@ async def submit_answer(
     front, back = render(
         note.note_type.template_kind, note.field_values or {}, card.template_slot
     )
+    # Computed once and attached to every response shape below — including the
+    # manual fallback — since it's informational only and has no bearing on
+    # whether grading is available.
+    latency_note = format_latency(body.latency_ms)
 
     if not user.llm_grading_consent:
-        return _manual(back, "consent_not_given")
+        return _manual(back, "consent_not_given", latency_note)
 
     api_key = decrypt_api_key(user.google_api_key_encrypted)
     if not api_key:
-        return _manual(back, "no_api_key")
+        return _manual(back, "no_api_key", latency_note)
 
     # §4.3 cache: identical resubmits must not burn API calls.
     answer_hash = new_answer_hash(body.typed_answer)
@@ -108,7 +133,7 @@ async def submit_answer(
 
     if cached is not None:
         result = dict(cached.response)
-        return _build_response(result, back, overlap, user, cached=True)
+        return _build_response(result, back, overlap, user, cached=True, latency_note=latency_note)
 
     profile = select_grading_profile(note.note_type.grading_profile, note.note_type.template_kind)
     service = GradingService(api_key, user.grading_model)
@@ -117,28 +142,45 @@ async def submit_answer(
             front=front,
             back=back,
             user_answer=body.typed_answer,
-            latency_ms=body.latency_ms,
             profile=profile,
             card_type=note.note_type.template_kind,
             force_escalate=await _disputed_recently(db, card.id),
         )
     except GradingUnavailable as exc:
-        return _manual(back, str(exc))
+        return _manual(back, str(exc), latency_note)
 
     db.add(GradingCache(card_id=card.id, answer_hash=answer_hash, response=result))
     await db.commit()
-    return _build_response(result, back, overlap, user)
+    return _build_response(result, back, overlap, user, latency_note=latency_note)
 
 
 def _build_response(
-    result: dict, reference: str, overlap: float, user: User, cached: bool = False
+    result: dict,
+    reference: str,
+    overlap: float,
+    user: User,
+    cached: bool = False,
+    latency_note: str | None = None,
 ) -> SubmitAnswerResponse:
-    grade = apply_bias(result["grade"], user.grading_bias)
+    # Calibration is applied to the score, and the suggested grade is derived
+    # from that same calibrated number — so the % the user reads and the grade
+    # button highlighted for them always agree.
+    raw_score = result.get("score")
+    if raw_score is None:
+        # A cache entry written before scoring existed: no score to show, but
+        # its stored grade is still perfectly usable.
+        score = None
+        grade = result["grade"]
+    else:
+        score = apply_bias(int(raw_score), user.grading_bias)
+        grade = grade_for_score(score)
+
     # §4.3 sanity check: the model and the cheap heuristic disagreeing, or the
     # model being unsure, means asking the user instead of auto-accepting.
     needs_confirmation = disagrees_with_heuristic(grade, overlap) or result["confidence"] < 0.5
     return SubmitAnswerResponse(
         suggested_grade=Grade(grade),
+        score=score,
         confidence=result["confidence"],
         matched_points=result.get("matched_points", []),
         missed_points=result.get("missed_points", []),
@@ -148,6 +190,62 @@ def _build_response(
         heuristic_overlap=round(overlap, 3),
         model_used=result.get("model_used"),
         cached=cached,
+        latency_note=latency_note,
+    )
+
+
+@router.get("/{card_id}/lesson", response_model=LessonOut)
+async def card_lesson(
+    card_id: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> LessonOut:
+    """Learn & Practice: the lesson to read before answering this card.
+
+    Fetched on demand rather than bundled into the queue item — the mode is
+    opt-in and each lesson may cost a generation, so composing a session
+    shouldn't pay for lessons nobody asked to see.
+    """
+    card = await _owned_card(db, user, parse_uuid(card_id))
+    return LessonOut(**await lesson_service.get_lesson(db, user, card))
+
+
+@router.post("/{card_id}/guide", response_model=SocraticResponse)
+async def socratic_guide(
+    card_id: str,
+    body: SocraticRequest,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SocraticResponse:
+    """The Socratic AI Guide: one diagnostic question at a time, never the
+    answer. Stateless — the client resends the conversation each turn, same
+    as the lesson gate needs no citation to exist here (this works off any
+    card's front/back, not just ones carved from a document)."""
+    card = await _owned_card(db, user, parse_uuid(card_id))
+    note = card.note
+    front, back = render(
+        note.note_type.template_kind, note.field_values or {}, card.template_slot
+    )
+
+    if not user.llm_grading_consent:
+        return SocraticResponse(message="", degraded=True, degraded_reason="consent_not_given")
+    api_key = decrypt_api_key(user.google_api_key_encrypted)
+    if not api_key:
+        return SocraticResponse(message="", degraded=True, degraded_reason="no_api_key")
+
+    service = GradingService(api_key, user.grading_model)
+    try:
+        result = await service.ask_socratic_question(
+            front=front,
+            back=back,
+            history=[(t.role, t.text) for t in body.history],
+            latest=body.message,
+        )
+    except GradingUnavailable as exc:
+        return SocraticResponse(message="", degraded=True, degraded_reason=str(exc))
+
+    return SocraticResponse(
+        message=result["message"], on_track=result["on_track"], model_used=user.grading_model
     )
 
 
@@ -204,6 +302,12 @@ async def confirm_review(
             llm_reasoning = cached.response.get("reasoning")
             llm_confidence = cached.response.get("confidence")
 
+    # Computed against history only — called before this review's own row
+    # exists, so the query never has to exclude its own result.
+    stuck_alert = await stuck_service.check_stuck(
+        db, user, final_grade=body.final_grade.value, latency_ms=body.latency_ms
+    )
+
     db.add(
         ReviewLog(
             card_id=card.id,
@@ -217,6 +321,7 @@ async def confirm_review(
             overridden=body.overridden,
             state_before=state_before,
             elapsed_days=elapsed_days,
+            graduated_to_review=state_before != "review" and new_state.get("state") == "review",
         )
     )
 
@@ -246,4 +351,13 @@ async def confirm_review(
         interval_days=round((due - now).total_seconds() / 86400.0, 4),
         lapse_count=card.lapse_count,
         leech_flagged=leech_flagged,
+        stuck_alert=(
+            StuckAlertOut(
+                reason=stuck_alert.reason,
+                message=stuck_alert.message,
+                suggested_break_minutes=stuck_alert.suggested_break_minutes,
+            )
+            if stuck_alert
+            else None
+        ),
     )

@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api } from '../api/client'
-import type { Card, Deck, ImportResult, NoteType, OcclusionShape } from '../api/types'
+import { api, ApiError } from '../api/client'
+import type {
+  AcceptDeckResponse,
+  Card,
+  Deck,
+  DocumentUpload,
+  GenerateDeckResponse,
+  ImportResult,
+  JsonImportResult,
+  NoteType,
+  OcclusionShape,
+} from '../api/types'
 import { OcclusionEditor } from '../components/Occlusion'
 import { Empty, ErrorNote, PriorityBar, RichText, Section, Spinner } from '../components/ui'
 
@@ -41,8 +51,292 @@ export default function Decks() {
           <Browser deckId={selected} onChange={load} />
         </>
       )}
+      <DocumentDeckPanel onImported={load} />
       <ImportPanel onImported={load} />
+      <JsonImportPanel onImported={load} />
     </div>
+  )
+}
+
+/** Upload a document -> the model proposes cards that each cite the passage
+ *  they came from -> you approve -> the citations are kept and shown during
+ *  review, after you answer. Nothing is written until you accept. */
+function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
+  const [doc, setDoc] = useState<DocumentUpload | null>(null)
+  const [deckName, setDeckName] = useState('')
+  const [generated, setGenerated] = useState<GenerateDeckResponse | null>(null)
+  const [chosen, setChosen] = useState<Set<number>>(new Set())
+  const [accepted, setAccepted] = useState<AcceptDeckResponse | null>(null)
+  const [busy, setBusy] = useState('')
+  const [error, setError] = useState<unknown>(null)
+
+  function reset() {
+    setDoc(null)
+    setGenerated(null)
+    setChosen(new Set())
+    setAccepted(null)
+    setError(null)
+  }
+
+  async function upload(file: File) {
+    setBusy('Reading the document…')
+    setError(null)
+    setGenerated(null)
+    setAccepted(null)
+    try {
+      const uploaded = await api.uploadDocument(file)
+      setDoc(uploaded)
+      if (!deckName.trim()) setDeckName(uploaded.title)
+    } catch (err) {
+      setError(err)
+    } finally {
+      setBusy('')
+    }
+  }
+
+  async function generate(startSection = 0) {
+    if (!doc) return
+    setBusy('Generating cards…')
+    setError(null)
+    try {
+      const out = await api.generateDeck(doc.source_id, { start_section: startSection })
+      setGenerated(out)
+      // Everything is pre-selected: the user is reviewing a proposal, not
+      // assembling one from scratch.
+      setChosen(new Set(out.cards.map((_, i) => i)))
+    } catch (err) {
+      setError(err)
+    } finally {
+      setBusy('')
+    }
+  }
+
+  async function accept() {
+    if (!doc || !generated) return
+    const cards = generated.cards.filter((_, i) => chosen.has(i))
+    if (cards.length === 0) return
+    setBusy('Creating cards…')
+    setError(null)
+    try {
+      setAccepted(await api.acceptDeck(doc.source_id, deckName.trim() || doc.title, cards))
+      onImported()
+    } catch (err) {
+      setError(err)
+    } finally {
+      setBusy('')
+    }
+  }
+
+  return (
+    <Section
+      title="Generate a deck from a document"
+      description="Upload a PDF, Markdown, or text file. Each generated card keeps a citation into the reading, shown after you answer it during review."
+      actions={
+        doc && (
+          <button className="btn px-2 py-1 text-xs" onClick={reset}>
+            Start over
+          </button>
+        )
+      }
+    >
+      <div className="space-y-4">
+        {!doc ? (
+          <input
+            type="file"
+            accept=".pdf,.txt,.md,.markdown,.html,.htm,.rst"
+            disabled={Boolean(busy)}
+            className="block w-full text-sm text-slate-400 file:mr-4 file:rounded-lg file:border-0 file:bg-sky-500/15 file:px-4 file:py-2 file:text-sm file:text-sky-200 hover:file:bg-sky-500/25"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) void upload(file)
+              e.target.value = ''
+            }}
+          />
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="chip">{doc.title}</span>
+            <span className="chip">{doc.segment_count} sections</span>
+            {doc.locators.slice(0, 4).map((l) => (
+              <span key={l} className="chip text-slate-500">
+                {l}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {doc && !generated && (
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              className="input w-56"
+              placeholder="Deck name"
+              value={deckName}
+              onChange={(e) => setDeckName(e.target.value)}
+            />
+            <button
+              className="btn btn-primary"
+              disabled={Boolean(busy)}
+              onClick={() => generate(0)}
+            >
+              Generate cards
+            </button>
+          </div>
+        )}
+
+        {busy && <Spinner label={busy} />}
+        <ErrorNote error={error} />
+
+        {generated?.degraded && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            {generated.reason === 'consent_not_given'
+              ? 'LLM card generation needs your consent — turn it on in Settings.'
+              : generated.reason === 'no_api_key'
+                ? 'Add a Google API key in Settings to generate cards.'
+                : `Generation was unavailable (${generated.reason}).`}
+          </div>
+        )}
+
+        {generated && !generated.degraded && !accepted && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-slate-500">
+                {chosen.size} of {generated.cards.length} selected · sections{' '}
+                {generated.sections_used}/{generated.sections_total}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  className="btn px-2 py-1 text-xs"
+                  onClick={() =>
+                    setChosen(
+                      chosen.size === generated.cards.length
+                        ? new Set()
+                        : new Set(generated.cards.map((_, i) => i)),
+                    )
+                  }
+                >
+                  {chosen.size === generated.cards.length ? 'Select none' : 'Select all'}
+                </button>
+                {generated.next_section !== null && (
+                  <button
+                    className="btn px-2 py-1 text-xs"
+                    disabled={Boolean(busy)}
+                    onClick={() => generate(generated.next_section!)}
+                  >
+                    Next sections
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {generated.cards.length === 0 ? (
+              <Empty title="The model proposed no cards for these sections." />
+            ) : (
+              <div className="space-y-2">
+                {generated.cards.map((card, i) => (
+                  <label
+                    key={i}
+                    className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition ${
+                      chosen.has(i) ? 'border-sky-500/40 bg-sky-500/5' : 'border-ink-line'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={chosen.has(i)}
+                      onChange={() =>
+                        setChosen((prev) => {
+                          const next = new Set(prev)
+                          next.has(i) ? next.delete(i) : next.add(i)
+                          return next
+                        })
+                      }
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-slate-200">
+                        {card.kind === 'cloze' ? card.cloze_text : card.front}
+                      </p>
+                      {card.kind !== 'cloze' && (
+                        <p className="mt-1 text-sm text-slate-500">{card.back}</p>
+                      )}
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                        <span className="chip">{card.kind}</span>
+                        {card.locator && <span className="chip text-sky-300">{card.locator}</span>}
+                        {!card.quote_verified && (
+                          <span
+                            className="chip text-amber-300"
+                            title="The model's quote wasn't found in the source, so the full passage is cited instead."
+                          >
+                            passage cited
+                          </span>
+                        )}
+                      </div>
+                      {card.quote && (
+                        <blockquote className="mt-2 border-l-2 border-sky-500/40 pl-3 text-xs italic text-slate-400">
+                          “{card.quote}”
+                        </blockquote>
+                      )}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {generated.warnings.length > 0 && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">
+                  Notes from generation
+                </p>
+                <ul className="mt-2 space-y-1.5 text-sm text-amber-100/90">
+                  {generated.warnings.map((w, i) => (
+                    <li key={i}>· {w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                className="input w-56"
+                placeholder="Deck name"
+                value={deckName}
+                onChange={(e) => setDeckName(e.target.value)}
+              />
+              <button
+                className="btn btn-primary"
+                disabled={Boolean(busy) || chosen.size === 0}
+                onClick={accept}
+              >
+                Create {chosen.size} card{chosen.size === 1 ? '' : 's'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {accepted && (
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="chip">{accepted.deck_created ? 'created' : 'reused'} deck</span>
+              <span className="chip">{accepted.notes_created} notes</span>
+              <span className="chip">{accepted.cards_created} cards</span>
+              <span className="chip">{accepted.references_created} citations</span>
+            </div>
+            <p className="text-xs text-slate-500">
+              Review these cards and the reading will appear once you answer.
+            </p>
+            {generated?.next_section !== null && generated?.next_section !== undefined && (
+              <button
+                className="btn px-2 py-1 text-xs"
+                onClick={() => {
+                  setAccepted(null)
+                  void generate(generated.next_section!)
+                }}
+              >
+                Generate the next sections
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </Section>
   )
 }
 
@@ -532,6 +826,129 @@ function ImportPanel({ onImported }: { onImported: () => void }) {
           )}
         </div>
       )}
+    </Section>
+  )
+}
+
+const JSON_IMPORT_EXAMPLE = `[
+  { "front": "hablar", "back": "to speak", "tags": ["verbs"] },
+  { "kind": "cloze", "cloze_text": "The {{c1::mitochondrion}} is the powerhouse." }
+]
+
+or wrap it: { "deck": "Spanish", "notes": [ ... ] }
+or paste straight from an LLM export: { "card_type": "qa", "question": "...", "answer": "..." }`
+
+/** Bulk-create notes/cards from a hand-written or scripted JSON file — the
+ *  non-Anki upload path. One request targets one deck (created if missing).
+ *  Accepts a bare array (deck name comes from the field below) or an
+ *  envelope with "deck" already inside it — and either "front"/"back" or the
+ *  "card_type"/"question"/"answer" vocabulary common in LLM flashcard exports. */
+function JsonImportPanel({ onImported }: { onImported: () => void }) {
+  const [deckName, setDeckName] = useState('')
+  const [text, setText] = useState('')
+  const [result, setResult] = useState<JsonImportResult | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+  const [open, setOpen] = useState(false)
+
+  async function submit() {
+    setBusy(true)
+    setError(null)
+    setResult(null)
+    try {
+      const parsed = JSON.parse(text)
+      if (Array.isArray(parsed)) {
+        if (!deckName.trim()) throw new ApiError(400, 'Enter a deck name for this import.')
+        setResult(await api.importJson(parsed, deckName.trim()))
+      } else {
+        // An explicit deck name in the field overrides one already in the
+        // JSON, so re-uploading the same file into a different deck needs no
+        // hand-editing.
+        setResult(await api.importJson({ ...parsed, deck: deckName.trim() || parsed.deck }))
+      }
+      onImported()
+    } catch (err) {
+      setError(err instanceof SyntaxError ? new ApiError(400, `Invalid JSON: ${err.message}`) : err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!open) {
+    return (
+      <Section title="Import from JSON" description="Bulk-create notes from a JSON file — no Anki required.">
+        <button className="btn" onClick={() => setOpen(true)}>
+          Paste or upload JSON
+        </button>
+      </Section>
+    )
+  }
+
+  return (
+    <Section
+      title="Import from JSON"
+      description="One deck per upload (created if it doesn't exist). A bare array of notes works, and question/answer-style fields from LLM exports are understood too."
+      actions={
+        <button className="btn px-2 py-1 text-xs" onClick={() => setOpen(false)}>
+          Close
+        </button>
+      }
+    >
+      <div className="space-y-3">
+        <input
+          className="input"
+          placeholder="Deck name (required for a bare array; overrides one already in the JSON)"
+          value={deckName}
+          onChange={(e) => setDeckName(e.target.value)}
+        />
+        <input
+          type="file"
+          accept=".json,application/json"
+          disabled={busy}
+          className="block w-full text-sm text-slate-400 file:mr-4 file:rounded-lg file:border-0 file:bg-sky-500/15 file:px-4 file:py-2 file:text-sm file:text-sky-200 hover:file:bg-sky-500/25"
+          onChange={async (e) => {
+            const file = e.target.files?.[0]
+            if (!file) return
+            setText(await file.text())
+            if (!deckName.trim()) setDeckName(file.name.replace(/\.json$/i, ''))
+            e.target.value = ''
+          }}
+        />
+        <textarea
+          className="input min-h-[10rem] font-mono text-xs"
+          placeholder={JSON_IMPORT_EXAMPLE}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+        <button className="btn btn-primary" onClick={submit} disabled={busy || !text.trim()}>
+          {busy ? 'Importing…' : 'Import'}
+        </button>
+        <ErrorNote error={error} />
+
+        {result && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="chip">
+                {result.deck_created ? 'created' : 'reused'} deck
+              </span>
+              <span className="chip">{result.notes_created} notes</span>
+              <span className="chip">{result.cards_created} cards</span>
+            </div>
+            {result.warnings.length > 0 && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">
+                  Skipped rows
+                </p>
+                <ul className="mt-2 space-y-1.5 text-sm text-amber-100/90">
+                  {result.warnings.map((w, i) => (
+                    <li key={i}>· {w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </Section>
   )
 }
