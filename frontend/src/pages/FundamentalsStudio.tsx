@@ -12,13 +12,13 @@ import { CodeTestConsole } from '../components/CodeTestConsole'
 import { ErrorNote, Spinner } from '../components/ui'
 
 const TRACKS = [
-  { id: 'track_0_python_basics', label: '🟢 Track 0: Python Basics', icon: '🐍' },
-  { id: 'track_1_pythonic_fluency', label: '🔵 Track 1: Pythonic Fluency', icon: '⚡' },
-  { id: 'track_2_data_structures', label: '🟣 Track 2: Data Structures', icon: '🧱' },
-  { id: 'track_3_algorithmic_scaffolds', label: '🟡 Track 3: Algorithmic Scaffolds', icon: '📐' },
-  { id: 'track_4_custom_sorting', label: '🟠 Track 4: Custom Sorting', icon: '🔀' },
-  { id: 'track_5_bit_manipulation', label: '🔴 Track 5: Bit Manipulation', icon: '🔢' },
-  { id: 'track_6_complexity_math', label: '🟤 Track 6: Math & Complexity', icon: '⏱' },
+  { id: 'track_0_python_basics', label: '🟢 Track 0: Python Basics & Numerics (Guttag Ch. 2–3)', icon: '🐍' },
+  { id: 'track_1_pythonic_fluency', label: '🔵 Track 1: Structured Types & Aliasing (Guttag Ch. 4–5)', icon: '⚡' },
+  { id: 'track_2_data_structures', label: '🟣 Track 2: Abstract Data Types & Queues (Guttag Ch. 10)', icon: '🧱' },
+  { id: 'track_3_algorithmic_scaffolds', label: '🟡 Track 3: Recursion & Scaffolds (Guttag Ch. 6, 12, 15)', icon: '📐' },
+  { id: 'track_4_custom_sorting', label: '🟠 Track 4: Divide-and-Conquer Sorting (Guttag Ch. 12)', icon: '🔀' },
+  { id: 'track_5_bit_manipulation', label: '🔴 Track 5: Binary Encodings & Bits (Guttag Ch. 3.4)', icon: '🔢' },
+  { id: 'track_6_complexity_math', label: '🟤 Track 6: Asymptotic Complexity & Math (Guttag Ch. 11)', icon: '⏱' },
 ]
 
 export default function FundamentalsStudio() {
@@ -153,14 +153,17 @@ export default function FundamentalsStudio() {
       {/* Header Banner */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-ink-line pb-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
             <span className="text-2xl">🛠</span>
             <h1 className="text-xl font-bold tracking-tight text-slate-100">
               Pre-LeetCode Fundamentals Studio
             </h1>
+            <span className="chip border-sky-500/40 bg-sky-950/40 text-sky-300 text-[11px] font-semibold">
+              🏛️ Grounded in MIT 6.0001 (John V. Guttag)
+            </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Build cognitive reflex automaticity on Python basics, core data structures, and algorithmic scaffolds before solving LeetCode.
+            Build computational fluency and reflex automaticity across Guttag's foundational Python concepts, data structures, and algorithmic scaffolds before tackling LeetCode.
           </p>
         </div>
 

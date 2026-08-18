@@ -37,57 +37,50 @@ router = APIRouter(prefix="/api/code", tags=["code_practice"])
 
 
 async def ensure_catalog_seeded(db: AsyncSession) -> None:
-    """Seeds the default fundamentals and problem catalogs if not already present."""
-    count_stmt = select(func.count()).select_from(CodeProblem).where(CodeProblem.user_id.is_(None))
-    count = (await db.execute(count_stmt)).scalar() or 0
-    if count > 0:
-        return
+    """Seeds or refreshes the default fundamentals and problem catalogs."""
+    stmt = select(CodeProblem).where(CodeProblem.user_id.is_(None))
+    existing_probs = {p.slug: p for p in (await db.execute(stmt)).scalars().all()}
 
-    # Seed Fundamentals
-    for item in FUNDAMENTALS_CATALOG:
-        prob = CodeProblem(
-            id=uuid.uuid4(),
-            user_id=None,
-            kind=item.get("kind", "fundamental"),
-            track=item.get("track"),
-            title=item["title"],
-            slug=item["slug"],
-            difficulty=item.get("difficulty", "Easy"),
-            category=item.get("category", "Python Basics"),
-            tags=item.get("tags", []),
-            description=item["description"],
-            examples=item.get("examples", []),
-            constraints=item.get("constraints", []),
-            starter_codes=item.get("starter_codes", {}),
-            solutions=item.get("solutions", {}),
-            editorial=item.get("editorial"),
-            test_cases=item.get("test_cases", []),
-            hints=item.get("hints", []),
-        )
-        db.add(prob)
-
-    # Seed Problems
-    for item in PROBLEMS_CATALOG:
-        prob = CodeProblem(
-            id=uuid.uuid4(),
-            user_id=None,
-            kind=item.get("kind", "problem"),
-            track=item.get("track"),
-            title=item["title"],
-            slug=item["slug"],
-            difficulty=item.get("difficulty", "Easy"),
-            category=item.get("category", "General"),
-            tags=item.get("tags", []),
-            description=item["description"],
-            examples=item.get("examples", []),
-            constraints=item.get("constraints", []),
-            starter_codes=item.get("starter_codes", {}),
-            solutions=item.get("solutions", {}),
-            editorial=item.get("editorial"),
-            test_cases=item.get("test_cases", []),
-            hints=item.get("hints", []),
-        )
-        db.add(prob)
+    all_catalog_items = list(FUNDAMENTALS_CATALOG) + list(PROBLEMS_CATALOG)
+    for item in all_catalog_items:
+        slug = item["slug"]
+        if slug in existing_probs:
+            prob = existing_probs[slug]
+            prob.title = item["title"]
+            prob.kind = item.get("kind", prob.kind)
+            prob.track = item.get("track", prob.track)
+            prob.difficulty = item.get("difficulty", prob.difficulty)
+            prob.category = item.get("category", prob.category)
+            prob.tags = item.get("tags", prob.tags)
+            prob.description = item["description"]
+            prob.examples = item.get("examples", prob.examples)
+            prob.constraints = item.get("constraints", prob.constraints)
+            prob.starter_codes = item.get("starter_codes", prob.starter_codes)
+            prob.solutions = item.get("solutions", prob.solutions)
+            prob.editorial = item.get("editorial", prob.editorial)
+            prob.test_cases = item.get("test_cases", prob.test_cases)
+            prob.hints = item.get("hints", prob.hints)
+        else:
+            prob = CodeProblem(
+                id=uuid.uuid4(),
+                user_id=None,
+                kind=item.get("kind", "fundamental"),
+                track=item.get("track"),
+                title=item["title"],
+                slug=item["slug"],
+                difficulty=item.get("difficulty", "Easy"),
+                category=item.get("category", "General"),
+                tags=item.get("tags", []),
+                description=item["description"],
+                examples=item.get("examples", []),
+                constraints=item.get("constraints", []),
+                starter_codes=item.get("starter_codes", {}),
+                solutions=item.get("solutions", {}),
+                editorial=item.get("editorial"),
+                test_cases=item.get("test_cases", []),
+                hints=item.get("hints", []),
+            )
+            db.add(prob)
 
     await db.commit()
 
