@@ -4,6 +4,9 @@ import type {
   Bank,
   Card,
   CitedCard,
+  CodeProblemOut,
+  CodeProblemSummary,
+  CodeSubmissionOut,
   ConfirmReviewResponse,
   Deck,
   DecomposeCardResponse,
@@ -22,15 +25,18 @@ import type {
   NoteType,
   QueueConfig,
   QueueItem,
+  RunCodeResponse,
   SequentialClozeResponse,
   SessionSummary,
   SisterPair,
+  SocraticCodeResponse,
   SocraticResponse,
   SocraticTurn,
   Source,
   Stats,
   StudySession,
   SubmitAnswerResponse,
+  SubmitCodeResponse,
   SuggestedCard,
   TreeNode,
   User,
@@ -341,4 +347,46 @@ export const api = {
     post<DecomposeCardResponse>('/api/memory/decompose', { front, back }),
   eventReadiness: (deckId?: string) =>
     request<EventReadiness>(`/api/memory/event-readiness${deckId ? `?deck_id=${deckId}` : ''}`),
+
+  // ── code practice & pre-leetcode fundamentals ───────────────────────────
+  listCodeProblems: (params?: {
+    kind?: string
+    track?: string
+    category?: string
+    difficulty?: string
+    search?: string
+  }) => {
+    const qs = new URLSearchParams()
+    if (params?.kind) qs.set('kind', params.kind)
+    if (params?.track) qs.set('track', params.track)
+    if (params?.category) qs.set('category', params.category)
+    if (params?.difficulty) qs.set('difficulty', params.difficulty)
+    if (params?.search) qs.set('search', params.search)
+    const qStr = qs.toString()
+    return request<CodeProblemSummary[]>(`/api/code/problems${qStr ? `?${qStr}` : ''}`)
+  },
+  getCodeProblem: (idOrSlug: string) => request<CodeProblemOut>(`/api/code/problems/${idOrSlug}`),
+  runCode: (
+    idOrSlug: string,
+    body: { code: string; language?: string; custom_test_cases?: any[] },
+  ) => post<RunCodeResponse>(`/api/code/problems/${idOrSlug}/run`, body),
+  submitCode: (
+    idOrSlug: string,
+    body: { code: string; language?: string; deck_id?: string },
+  ) => post<SubmitCodeResponse>(`/api/code/problems/${idOrSlug}/submit`, body),
+  socraticCodeHint: (
+    idOrSlug: string,
+    body: { code: string; language?: string; hint_type?: string },
+  ) => post<SocraticCodeResponse>(`/api/code/problems/${idOrSlug}/socratic`, body),
+  forgeProblem: (body: { topic: string; difficulty?: string; target_language?: string }) =>
+    post<CodeProblemOut>('/api/code/problems/forge', body),
+  exportProblemToCard: (idOrSlug: string, deckId: string) =>
+    post<{ note_id: string; card_id?: string; message: string }>(
+      `/api/code/problems/${idOrSlug}/export-card`,
+      { deck_id: deckId },
+    ),
+  listCodeSubmissions: (problemId?: string, limit = 20) =>
+    request<CodeSubmissionOut[]>(
+      `/api/code/submissions?limit=${limit}${problemId ? `&problem_id=${problemId}` : ''}`,
+    ),
 }

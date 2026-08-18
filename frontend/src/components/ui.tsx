@@ -94,3 +94,30 @@ export function PriorityBar({ value }: { value: number }) {
     </span>
   )
 }
+
+export function Modal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string
+  onClose: () => void
+  children: ReactNode
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-2xl border border-ink-line bg-[#0d1117] p-6 shadow-2xl space-y-4">
+        <div className="flex items-center justify-between border-b border-ink-line/80 pb-3">
+          <h3 className="text-base font-bold text-slate-100">{title}</h3>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1 text-slate-400 hover:bg-ink-soft hover:text-slate-200 transition"
+          >
+            ✕
+          </button>
+        </div>
+        <div>{children}</div>
+      </div>
+    </div>
+  )
+}

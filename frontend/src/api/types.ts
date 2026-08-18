@@ -566,3 +566,85 @@ export interface LearningAnalytics {
   sprt_gating: SPRTVerdict[]
 }
 
+export interface CodeProblemSummary {
+  id: string
+  kind: 'fundamental' | 'problem'
+  track: string | null
+  title: string
+  slug: string
+  difficulty: 'Easy' | 'Medium' | 'Hard'
+  category: string
+  tags: string[]
+  has_submission: boolean
+  last_status: string | null
+}
+
+export interface CodeProblemOut {
+  id: string
+  kind: 'fundamental' | 'problem'
+  track: string | null
+  title: string
+  slug: string
+  difficulty: 'Easy' | 'Medium' | 'Hard'
+  category: string
+  tags: string[]
+  description: string
+  examples: Array<{ input: string; output: string; explanation?: string }>
+  constraints: string[]
+  starter_codes: Record<string, string>
+  solutions: Record<string, string>
+  editorial: string | null
+  test_cases: Array<{ input: any; expected: any }>
+  hints: string[]
+  created_at: string
+}
+
+export interface TestCaseResult {
+  test_index: number
+  passed: boolean
+  input: any
+  expected: any
+  actual: any
+  stdout: string
+  error: string | null
+  runtime_ms: number
+}
+
+export interface RunCodeResponse {
+  status: string
+  passed_count: number
+  total_count: number
+  runtime_ms: number
+  error: string | null
+  results: TestCaseResult[]
+}
+
+export interface SubmitCodeResponse {
+  submission_id: string
+  status: string
+  passed_count: number
+  total_count: number
+  runtime_ms: number
+  error?: string | null
+  results: TestCaseResult[]
+  fsrs_scheduled: boolean
+  fsrs_next_review: string | null
+}
+
+export interface SocraticCodeResponse {
+  hint: string
+}
+
+export interface CodeSubmissionOut {
+  id: string
+  problem_id: string
+  language: string
+  code: string
+  status: string
+  passed_tests: number
+  total_tests: number
+  runtime_ms: number | null
+  created_at: string
+}
+
+

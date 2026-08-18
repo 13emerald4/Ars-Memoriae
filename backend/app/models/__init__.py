@@ -610,11 +610,70 @@ class SisterPair(Base):
     )
 
 
+class CodeProblem(Base):
+    """A coding challenge or Pre-LeetCode fundamental drill."""
+
+    __tablename__ = "code_problems"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
+    kind: Mapped[str] = mapped_column(Text, nullable=False, default="problem")  # "fundamental" | "problem"
+    track: Mapped[str | None] = mapped_column(Text, nullable=True)  # track_0_python_basics, track_1_pythonic_fluency, etc.
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    slug: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    difficulty: Mapped[str] = mapped_column(Text, nullable=False, default="Easy")  # Easy, Medium, Hard
+    category: Mapped[str] = mapped_column(Text, nullable=False, default="General")
+    tags: Mapped[list[str]] = mapped_column(JSONType, nullable=False, default=list)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    examples: Mapped[list[dict]] = mapped_column(JSONType, nullable=False, default=list)
+    constraints: Mapped[list[str]] = mapped_column(JSONType, nullable=False, default=list)
+    starter_codes: Mapped[dict[str, str]] = mapped_column(JSONType, nullable=False, default=dict)
+    solutions: Mapped[dict[str, str]] = mapped_column(JSONType, nullable=False, default=dict)
+    editorial: Mapped[str | None] = mapped_column(Text, nullable=True)
+    test_cases: Mapped[list[dict]] = mapped_column(JSONType, nullable=False, default=list)
+    hints: Mapped[list[str]] = mapped_column(JSONType, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )
+
+
+class CodeSubmission(Base):
+    """User code submission record and execution history."""
+
+    __tablename__ = "code_submissions"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    problem_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("code_problems.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    language: Mapped[str] = mapped_column(Text, nullable=False, default="python")
+    code: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="Accepted")
+    passed_tests: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_tests: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    runtime_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
+    memory_kb: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ai_feedback: Mapped[dict | None] = mapped_column(JSONType, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+
 __all__ = [
     "Base",
     "Card",
     "CardLesson",
     "CardReference",
+    "CodeProblem",
+    "CodeSubmission",
     "Deck",
     "Extract",
     "GradingCache",

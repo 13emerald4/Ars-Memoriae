@@ -12,6 +12,7 @@ import type {
   SubmitAnswerResponse,
 } from '../api/types'
 import { GRADES } from '../api/types'
+import { CodeEditor } from '../components/CodeEditor'
 import { OcclusionCard } from '../components/Occlusion'
 import SessionTimer, { formatClock, REVIEW_EVENT } from '../components/SessionTimer'
 import { Empty, ErrorNote, RichText, Spinner } from '../components/ui'
@@ -537,15 +538,27 @@ export default function Review() {
                   ))}
                 </div>
               </div>
-              <textarea
-
-                id="answer"
-                ref={inputRef}
-                className="input min-h-[7rem] resize-y"
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                placeholder="Recall it from memory, then commit…"
-              />
+              {item.grading_profile === 'math_code' ? (
+                <div className="my-2">
+                  <CodeEditor
+                    code={answer}
+                    onChange={setAnswer}
+                    language="python"
+                    height="180px"
+                    onRun={llmEnabled ? grade : reveal}
+                    onSubmit={llmEnabled ? grade : reveal}
+                  />
+                </div>
+              ) : (
+                <textarea
+                  id="answer"
+                  ref={inputRef}
+                  className="input min-h-[7rem] resize-y"
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  placeholder="Recall it from memory, then commit…"
+                />
+              )}
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 {llmEnabled ? (
                   <button

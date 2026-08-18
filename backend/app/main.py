@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.jobs import scheduler
 from app.routers import (
     auth,
+    code_practice,
     decks,
     documents,
     export,
@@ -74,6 +75,7 @@ app.add_middleware(
 for router in (
     auth.router,
     keys.router,
+    code_practice.router,
     decks.router,
     tree.router,
     queue.router,
