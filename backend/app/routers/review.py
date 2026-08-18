@@ -87,7 +87,14 @@ def format_latency(latency_ms: int | None) -> str | None:
     return f"answered in {minutes}m {rem}s" if rem else f"answered in {minutes}m"
 
 
-def _manual(reference: str, reason: str, latency_note: str | None = None) -> SubmitAnswerResponse:
+def _manual(
+    reference: str,
+    reason: str,
+    latency_note: str | None = None,
+    automaticity_exceeded: bool = False,
+    automaticity_threshold_ms: int | None = None,
+    automaticity_note: str | None = None,
+) -> SubmitAnswerResponse:
     """§4.3 — the fallback is a real opt-out, not a degraded error state: the
     user gets the reference answer and the four buttons, same as Phase 1."""
     return SubmitAnswerResponse(
@@ -99,6 +106,9 @@ def _manual(reference: str, reason: str, latency_note: str | None = None) -> Sub
         reference_answer=reference,
         needs_confirmation=True,
         latency_note=latency_note,
+        automaticity_exceeded=automaticity_exceeded,
+        automaticity_threshold_ms=automaticity_threshold_ms,
+        automaticity_note=automaticity_note,
     )
 
 
@@ -119,12 +129,37 @@ async def submit_answer(
     # whether grading is available.
     latency_note = format_latency(body.latency_ms)
 
+    auto_exceeded = bool(
+        user.automaticity_threshold_ms
+        and body.latency_ms
+        and body.latency_ms > user.automaticity_threshold_ms
+    )
+    auto_note = (
+        f"Latency ({round(body.latency_ms / 1000.0, 1)}s) exceeded automaticity threshold ({round(user.automaticity_threshold_ms / 1000.0, 1)}s)."
+        if auto_exceeded and user.automaticity_threshold_ms
+        else None
+    )
+
     if not user.llm_grading_consent:
-        return _manual(back, "consent_not_given", latency_note)
+        return _manual(
+            back,
+            "consent_not_given",
+            latency_note,
+            auto_exceeded,
+            user.automaticity_threshold_ms,
+            auto_note,
+        )
 
     api_key = decrypt_api_key(user.google_api_key_encrypted)
     if not api_key:
-        return _manual(back, "no_api_key", latency_note)
+        return _manual(
+            back,
+            "no_api_key",
+            latency_note,
+            auto_exceeded,
+            user.automaticity_threshold_ms,
+            auto_note,
+        )
 
     # §4.3 cache: identical resubmits must not burn API calls.
     answer_hash = new_answer_hash(body.typed_answer)
@@ -133,7 +168,15 @@ async def submit_answer(
 
     if cached is not None:
         result = dict(cached.response)
-        return _build_response(result, back, overlap, user, cached=True, latency_note=latency_note)
+        return _build_response(
+            result,
+            back,
+            overlap,
+            user,
+            cached=True,
+            latency_note=latency_note,
+            latency_ms=body.latency_ms,
+        )
 
     profile = select_grading_profile(note.note_type.grading_profile, note.note_type.template_kind)
     service = GradingService(api_key, user.grading_model)
@@ -147,11 +190,25 @@ async def submit_answer(
             force_escalate=await _disputed_recently(db, card.id),
         )
     except GradingUnavailable as exc:
-        return _manual(back, str(exc), latency_note)
+        return _manual(
+            back,
+            str(exc),
+            latency_note,
+            auto_exceeded,
+            user.automaticity_threshold_ms,
+            auto_note,
+        )
 
     db.add(GradingCache(card_id=card.id, answer_hash=answer_hash, response=result))
     await db.commit()
-    return _build_response(result, back, overlap, user, latency_note=latency_note)
+    return _build_response(
+        result,
+        back,
+        overlap,
+        user,
+        latency_note=latency_note,
+        latency_ms=body.latency_ms,
+    )
 
 
 def _build_response(
@@ -161,6 +218,7 @@ def _build_response(
     user: User,
     cached: bool = False,
     latency_note: str | None = None,
+    latency_ms: int | None = None,
 ) -> SubmitAnswerResponse:
     # Calibration is applied to the score, and the suggested grade is derived
     # from that same calibrated number — so the % the user reads and the grade
@@ -175,9 +233,24 @@ def _build_response(
         score = apply_bias(int(raw_score), user.grading_bias)
         grade = grade_for_score(score)
 
+    automaticity_exceeded = False
+    automaticity_note = None
+    if user.automaticity_threshold_ms and latency_ms and latency_ms > user.automaticity_threshold_ms:
+        automaticity_exceeded = True
+        automaticity_note = (
+            f"Latency ({round(latency_ms / 1000.0, 1)}s) exceeded automaticity threshold "
+            f"({round(user.automaticity_threshold_ms / 1000.0, 1)}s) — graded as Hard for automaticity."
+        )
+        if grade in ("good", "easy"):
+            grade = "hard"
+
     # §4.3 sanity check: the model and the cheap heuristic disagreeing, or the
     # model being unsure, means asking the user instead of auto-accepting.
-    needs_confirmation = disagrees_with_heuristic(grade, overlap) or result["confidence"] < 0.5
+    needs_confirmation = (
+        disagrees_with_heuristic(grade, overlap)
+        or result["confidence"] < 0.5
+        or automaticity_exceeded
+    )
     return SubmitAnswerResponse(
         suggested_grade=Grade(grade),
         score=score,
@@ -191,6 +264,9 @@ def _build_response(
         model_used=result.get("model_used"),
         cached=cached,
         latency_note=latency_note,
+        automaticity_exceeded=automaticity_exceeded,
+        automaticity_threshold_ms=user.automaticity_threshold_ms,
+        automaticity_note=automaticity_note,
     )
 
 
@@ -269,7 +345,11 @@ async def confirm_review(
         elapsed_days = (now - lr).total_seconds() / 86400.0
 
     # Per-deck desired retention is the "% bias per subject" knob (§16 Appendix).
-    retention = deck.desired_retention_override or user.desired_retention
+    # In Event Horizon mode, retention target dynamically ramps to peak_retention_target.
+    target_event = deck.target_event_date or user.target_event_date
+    retention = deck.desired_retention_override or (
+        user.peak_retention_target if target_event else user.desired_retention
+    )
     fsrs = FSRSService(weights=user.fsrs_parameters, desired_retention=retention)
 
     fsrs_card = FSRSService.to_fsrs_card(
@@ -283,6 +363,13 @@ async def confirm_review(
     _, new_state = fsrs.schedule(
         fsrs_card, GRADE_TO_RATING[body.final_grade.value], now, body.latency_ms
     )
+
+    # Event Horizon interval compression: ensure scheduled card due date
+    # does not drift past the target competition/exam date.
+    if target_event and "due" in new_state and new_state["due"]:
+        new_state["due"] = FSRSService.compress_for_event_horizon(
+            new_state["due"], now, target_event
+        )
 
     # A lapse is a *review-state* card being failed — relearning failures inside
     # the same lapse do not each count again (matches Anki's definition).
@@ -323,6 +410,7 @@ async def confirm_review(
             elapsed_days=elapsed_days,
             graduated_to_review=state_before != "review" and new_state.get("state") == "review",
             user_confidence=body.confidence,
+            is_blitz=body.is_blitz,
         )
     )
 
@@ -343,6 +431,11 @@ async def confirm_review(
     await db.commit()
     await db.refresh(card)
 
+    auto_exceeded = bool(
+        user.automaticity_threshold_ms
+        and body.latency_ms
+        and body.latency_ms > user.automaticity_threshold_ms
+    )
     due = card.due if card.due.tzinfo else card.due.replace(tzinfo=UTC)
     return ConfirmReviewResponse(
         next_due=due,
@@ -361,4 +454,5 @@ async def confirm_review(
             if stuck_alert
             else None
         ),
+        automaticity_exceeded=auto_exceeded,
     )

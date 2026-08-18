@@ -1,11 +1,14 @@
 import type {
   AcceptDeckResponse,
+  AtomicityLintResult,
   Bank,
   Card,
   CitedCard,
   ConfirmReviewResponse,
   Deck,
+  DecomposeCardResponse,
   DocumentUpload,
+  EventReadiness,
   Extract,
   GenerateCardsResponse,
   GenerateDeckResponse,
@@ -19,6 +22,7 @@ import type {
   NoteType,
   QueueConfig,
   QueueItem,
+  SequentialClozeResponse,
   SessionSummary,
   SisterPair,
   SocraticResponse,
@@ -141,6 +145,7 @@ export const api = {
     typed_answer?: string,
     latency_ms?: number,
     confidence?: number,
+    is_blitz?: boolean,
   ) =>
     post<ConfirmReviewResponse>(`/api/review/${cardId}/confirm`, {
       final_grade,
@@ -148,6 +153,7 @@ export const api = {
       typed_answer,
       latency_ms,
       confidence,
+      is_blitz: Boolean(is_blitz),
     }),
 
   // ── decks / notes / cards ───────────────────────────────────────────────
@@ -317,4 +323,22 @@ export const api = {
     a.click()
     URL.revokeObjectURL(url)
   },
+
+  // ── memory athlete / champion methods (§Features 4, 5, & 6) ─────────────
+  lintAtomicity: (front: string, back: string, templateKind?: string) =>
+    post<AtomicityLintResult>('/api/memory/lint-atomicity', {
+      front,
+      back,
+      template_kind: templateKind || 'basic',
+    }),
+  createSequentialCloze: (body: {
+    title: string
+    steps: string[]
+    window_size?: number
+    deck_id?: string
+  }) => post<SequentialClozeResponse>('/api/memory/sequential-cloze', body),
+  decomposeCard: (front: string, back: string) =>
+    post<DecomposeCardResponse>('/api/memory/decompose', { front, back }),
+  eventReadiness: (deckId?: string) =>
+    request<EventReadiness>(`/api/memory/event-readiness${deckId ? `?deck_id=${deckId}` : ''}`),
 }

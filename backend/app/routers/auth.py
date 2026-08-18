@@ -53,6 +53,10 @@ def user_out(user: User) -> UserOut:
         api_key_masked=mask_api_key(plaintext) if plaintext else None,
         fsrs_optimized_at=user.fsrs_optimized_at,
         grading_bias=user.grading_bias,
+        automaticity_threshold_ms=user.automaticity_threshold_ms,
+        target_event_date=user.target_event_date,
+        target_event_title=user.target_event_title,
+        peak_retention_target=user.peak_retention_target,
     )
 
 

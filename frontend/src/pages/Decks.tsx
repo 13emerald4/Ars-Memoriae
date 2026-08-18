@@ -2,14 +2,17 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../api/client'
 import type {
   AcceptDeckResponse,
+  AtomicityLintResult,
   Card,
   Deck,
+  DecomposedCardItem,
   DocumentUpload,
   GenerateDeckResponse,
   ImportResult,
   JsonImportResult,
   NoteType,
   OcclusionShape,
+  SequentialClozeItem,
 } from '../api/types'
 import { OcclusionEditor } from '../components/Occlusion'
 import { Empty, ErrorNote, PriorityBar, RichText, Section, Spinner } from '../components/ui'
@@ -47,6 +50,7 @@ export default function Decks() {
       {selected && (
         <>
           <AddNote deckId={selected} noteTypes={noteTypes} onAdded={load} />
+          <SequentialClozePanel deckId={selected} onAdded={load} />
           <AddOcclusion deckId={selected} onAdded={load} />
           <Browser deckId={selected} onChange={load} />
         </>
@@ -588,8 +592,67 @@ function AddNote({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<unknown>(null)
 
+  // 🧠 Memory Champion: Extreme Atomicity Linter & AI Decomposition (§Feature 5)
+  const [atomicity, setAtomicity] = useState<AtomicityLintResult | null>(null)
+  const [decomposedCards, setDecomposedCards] = useState<DecomposedCardItem[] | null>(null)
+  const [decomposing, setDecomposing] = useState(false)
+
   const noteType = noteTypes.find((n) => n.id === noteTypeId) ?? noteTypes[0]
   const isCloze = noteType?.template_kind === 'cloze'
+
+  // Debounced Atomicity Linting
+  useEffect(() => {
+    if (isCloze || (!front.trim() && !back.trim())) {
+      setAtomicity(null)
+      return
+    }
+    const timer = setTimeout(() => {
+      api
+        .lintAtomicity(front, back, noteType?.template_kind)
+        .then(setAtomicity)
+        .catch(() => setAtomicity(null))
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [front, back, isCloze, noteType])
+
+  async function handleDecompose() {
+    if (!front.trim() || !back.trim()) return
+    setDecomposing(true)
+    setError(null)
+    try {
+      const resp = await api.decomposeCard(front, back)
+      setDecomposedCards(resp.cards)
+    } catch (err) {
+      setError(err)
+    } finally {
+      setDecomposing(false)
+    }
+  }
+
+  async function handleAddAllDecomposed() {
+    if (!decomposedCards || decomposedCards.length === 0) return
+    setBusy(true)
+    setError(null)
+    try {
+      for (const card of decomposedCards) {
+        await api.createNote({
+          deck_id: deckId,
+          note_type_id: noteTypeId,
+          field_values: { Front: card.front, Back: card.back },
+          tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
+        })
+      }
+      setFront('')
+      setBack('')
+      setDecomposedCards(null)
+      setAtomicity(null)
+      onAdded()
+    } catch (err) {
+      setError(err)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -605,6 +668,8 @@ function AddNote({
       setFront('')
       setBack('')
       setClozeText('')
+      setAtomicity(null)
+      setDecomposedCards(null)
       onAdded()
     } catch (err) {
       setError(err)
@@ -619,13 +684,37 @@ function AddNote({
       description="The note type picks the grading rubric the LLM uses (§4.5)."
     >
       <form onSubmit={submit} className="space-y-3">
-        <select className="input" value={noteTypeId} onChange={(e) => setNoteTypeId(e.target.value)}>
-          {noteTypes.map((n) => (
-            <option key={n.id} value={n.id}>
-              {n.name} · {n.template_kind} · {n.grading_profile}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <select
+            className="input max-w-xs"
+            value={noteTypeId}
+            onChange={(e) => setNoteTypeId(e.target.value)}
+          >
+            {noteTypes.map((n) => (
+              <option key={n.id} value={n.id}>
+                {n.name} · {n.template_kind} · {n.grading_profile}
+              </option>
+            ))}
+          </select>
+
+          {/* Atomicity Badge */}
+          {atomicity && !isCloze && (
+            <div className="flex items-center gap-2 text-xs">
+              <span
+                className={`chip font-medium ${
+                  atomicity.score >= 90
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                    : atomicity.score >= 70
+                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                    : 'border-rose-500/40 bg-rose-500/10 text-rose-300'
+                }`}
+              >
+                Atomicity: {atomicity.score}/100{' '}
+                {atomicity.is_atomic ? '✓ Atomic (1 Idea)' : '⚠ Compound / Complex'}
+              </span>
+            </div>
+          )}
+        </div>
 
         {isCloze ? (
           <textarea
@@ -638,7 +727,7 @@ function AddNote({
         ) : (
           <textarea
             className="input min-h-[4rem]"
-            placeholder="Front"
+            placeholder="Front (Prompt/Question)"
             value={front}
             onChange={(e) => setFront(e.target.value)}
             required
@@ -646,11 +735,68 @@ function AddNote({
         )}
         <textarea
           className="input min-h-[4rem]"
-          placeholder={isCloze ? 'Extra (optional)' : 'Back'}
+          placeholder={isCloze ? 'Extra (optional)' : 'Back (Answer/Recall Target)'}
           value={back}
           onChange={(e) => setBack(e.target.value)}
           required={!isCloze}
         />
+
+        {/* Atomicity Issues & AI Decomposition Helper */}
+        {atomicity && !atomicity.is_atomic && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 space-y-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-semibold text-amber-200">
+                🧠 Memory Athlete Advice: Non-atomic cards cause retrieval interference &amp; slower reaction times.
+              </p>
+              <button
+                type="button"
+                className="rounded border border-amber-500/40 bg-amber-500/20 px-2.5 py-1 text-xs font-medium text-amber-100 hover:bg-amber-500/30 transition flex items-center gap-1"
+                disabled={decomposing}
+                onClick={handleDecompose}
+              >
+                {decomposing ? '🤖 Decomposing with AI…' : '⚡ 1-Click AI Decompose'}
+              </button>
+            </div>
+            <ul className="space-y-1 text-amber-300/90">
+              {atomicity.issues.map((issue, idx) => (
+                <li key={idx} className="flex items-start gap-1.5">
+                  <span>·</span>
+                  <span>
+                    <strong>{issue.message}:</strong> {issue.suggestion}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Decomposed Cards Preview */}
+        {decomposedCards && decomposedCards.length > 0 && (
+          <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-emerald-200">
+                AI Suggested Atomic Breakdown ({decomposedCards.length} cards):
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary px-2.5 py-1 text-xs"
+                onClick={handleAddAllDecomposed}
+                disabled={busy}
+              >
+                ✓ Add All {decomposedCards.length} Atomic Cards to Deck
+              </button>
+            </div>
+            <div className="space-y-2">
+              {decomposedCards.map((c, i) => (
+                <div key={i} className="rounded border border-ink-line bg-ink/70 p-2.5 text-xs space-y-1">
+                  <p className="text-slate-300 font-medium">Q: {c.front}</p>
+                  <p className="text-emerald-300">A: {c.back}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <input
           className="input"
           placeholder="tags, comma separated"
@@ -667,6 +813,156 @@ function AddNote({
           </p>
         )}
       </form>
+    </Section>
+  )
+}
+
+/** 🔗 Sequential Overlapping Chain Clozes (§Feature 5) */
+function SequentialClozePanel({
+  deckId,
+  onAdded,
+}: {
+  deckId: string
+  onAdded: () => void
+}) {
+  const [title, setTitle] = useState('')
+  const [stepsText, setStepsText] = useState('')
+  const [windowSize, setWindowSize] = useState(1)
+  const [previewCards, setPreviewCards] = useState<SequentialClozeItem[]>([])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
+  const steps = stepsText
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean)
+
+  function handlePreview() {
+    if (steps.length < 2) return
+    setError(null)
+    api
+      .createSequentialCloze({
+        title: title || 'Ordered Chain',
+        steps,
+        window_size: windowSize,
+      })
+      .then((res) => setPreviewCards(res.cards))
+      .catch((err) => setError(err))
+  }
+
+  async function handleCreateChain() {
+    if (steps.length < 2) return
+    setBusy(true)
+    setError(null)
+    setSuccessMsg(null)
+    try {
+      const res = await api.createSequentialCloze({
+        title: title || 'Ordered Chain',
+        steps,
+        window_size: windowSize,
+        deck_id: deckId,
+      })
+      setSuccessMsg(`Created ${res.cards_created} sequential chain cards in this deck!`)
+      setTitle('')
+      setStepsText('')
+      setPreviewCards([])
+      onAdded()
+    } catch (err) {
+      setError(err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Section
+      title="🔗 Sequential Chain Clozes"
+      description="Memory athlete technique for ordered algorithms, protocols, cycles, and chronological events ($S_{k-1} \to [S_k] \to S_{k+1}$)."
+    >
+      <div className="space-y-3">
+        <input
+          className="input"
+          placeholder="Chain Title (e.g. Krebs Cycle, CPR Protocol, Sorting Algorithm)"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+        <textarea
+          className="input min-h-[7rem] font-mono text-sm leading-relaxed"
+          placeholder={`Enter ordered steps (one per line):\n1. Glucose phosphorylation\n2. Glucose-6-phosphate isomerization\n3. Phosphofructokinase phosphorylation\n4. Fructose-1,6-bisphosphate cleavage`}
+          value={stepsText}
+          onChange={(e) => setStepsText(e.target.value)}
+        />
+
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <span>Context Window:</span>
+            <button
+              type="button"
+              className={`chip ${windowSize === 1 ? 'border-sky-500/40 text-sky-300' : ''}`}
+              onClick={() => setWindowSize(1)}
+            >
+              1 Prev &amp; 1 Next
+            </button>
+            <button
+              type="button"
+              className={`chip ${windowSize === 2 ? 'border-sky-500/40 text-sky-300' : ''}`}
+              onClick={() => setWindowSize(2)}
+            >
+              2 Prev &amp; 2 Next
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="btn"
+              disabled={steps.length < 2}
+              onClick={handlePreview}
+            >
+              👁 Preview Chain
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy || steps.length < 2}
+              onClick={handleCreateChain}
+            >
+              {busy ? 'Creating Cards…' : `Create ${steps.length} Chain Cards`}
+            </button>
+          </div>
+        </div>
+
+        {successMsg && (
+          <p className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs text-emerald-200">
+            ✓ {successMsg}
+          </p>
+        )}
+
+        <ErrorNote error={error} />
+
+        {previewCards.length > 0 && (
+          <div className="space-y-2 pt-2 border-t border-ink-line">
+            <p className="text-xs font-semibold text-slate-300">
+              Chain Preview ({previewCards.length} cards):
+            </p>
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {previewCards.map((c, i) => (
+                <div key={i} className="rounded border border-ink-line bg-ink/70 p-3 text-xs space-y-1.5">
+                  <div className="flex items-center justify-between text-slate-500 text-[10px]">
+                    <span>Step {c.step_index} of {c.total_steps}</span>
+                    <span className="chip text-[10px]">Chain Cloze</span>
+                  </div>
+                  <p className="text-slate-200 whitespace-pre-line leading-relaxed">{c.front}</p>
+                  <p className="text-emerald-300 border-t border-ink-line/50 pt-1">
+                    <strong>Target:</strong> {c.back}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </Section>
   )
 }

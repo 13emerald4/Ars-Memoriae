@@ -406,6 +406,44 @@ class GradingService:
             "cards": [c for c in (cards or []) if isinstance(c, dict)],
         }
 
+    async def decompose_card_atomicity(self, front: str, back: str) -> list[dict[str, str]]:
+        """Decomposes a complex, non-atomic card into 2-4 atomic question-answer pairs."""
+        prompt = (
+            "You are a cognitive science and spaced repetition expert specializing in the "
+            "Minimum Information Principle (SuperMemo Rule 4).\n"
+            "The user has a flashcard that is too complex, lengthy, or tests multiple facts at once.\n"
+            "Deconstruct it into 2 to 4 simple, concise, and atomic flashcards. Each card must test exactly "
+            "ONE fact with a clear, concise question and a short, direct answer (under 15 words).\n\n"
+            f"Original Card Prompt:\n{front}\n\n"
+            f"Original Card Answer:\n{back}\n\n"
+            "Output JSON with a 'cards' array of objects with 'front' and 'back' fields."
+        )
+        schema = {
+            "type": "OBJECT",
+            "properties": {
+                "cards": {
+                    "type": "ARRAY",
+                    "items": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "front": {"type": "STRING"},
+                            "back": {"type": "STRING"},
+                        },
+                        "required": ["front", "back"],
+                    },
+                }
+            },
+            "required": ["cards"],
+        }
+        raw = await self._generate(prompt, self.model, response_schema=schema)
+        data = parse_json(raw)
+        cards = data.get("cards") if isinstance(data, dict) else []
+        out = []
+        for c in cards:
+            if isinstance(c, dict) and c.get("front") and c.get("back"):
+                out.append({"front": str(c["front"]).strip(), "back": str(c["back"]).strip()})
+        return out
+
     async def verify_key(self) -> list[str]:
         """Confirm a pasted key works and report the models it can reach, so
         Settings can show real IDs rather than trusting our configured default."""

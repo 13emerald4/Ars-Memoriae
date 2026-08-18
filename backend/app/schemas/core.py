@@ -40,6 +40,10 @@ class UserOut(BaseModel):
     api_key_masked: str | None = None
     fsrs_optimized_at: datetime | None = None
     grading_bias: float = 0.0
+    automaticity_threshold_ms: int | None = 3000
+    target_event_date: datetime | None = None
+    target_event_title: str | None = None
+    peak_retention_target: float | None = 0.95
 
 
 class UserUpdate(BaseModel):
@@ -52,6 +56,10 @@ class UserUpdate(BaseModel):
     backlog_spread_days: int | None = Field(default=None, ge=1, le=60)
     leech_threshold: int | None = Field(default=None, ge=2, le=100)
     llm_grading_consent: bool | None = None
+    automaticity_threshold_ms: int | None = Field(default=None, ge=500, le=30000)
+    target_event_date: datetime | None = None
+    target_event_title: str | None = None
+    peak_retention_target: float | None = Field(default=None, ge=0.7, le=0.99)
 
 
 class ApiKeyRequest(BaseModel):
@@ -89,6 +97,8 @@ class DeckCreate(BaseModel):
     parent_id: str | None = None
     desired_retention_override: float | None = Field(default=None, ge=0.7, le=0.99)
     default_priority: int = Field(default=50, ge=0, le=100)
+    target_event_date: datetime | None = None
+    target_event_title: str | None = None
 
 
 class DeckUpdate(BaseModel):
@@ -96,6 +106,8 @@ class DeckUpdate(BaseModel):
     parent_id: str | None = None
     desired_retention_override: float | None = Field(default=None, ge=0.7, le=0.99)
     default_priority: int | None = Field(default=None, ge=0, le=100)
+    target_event_date: datetime | None = None
+    target_event_title: str | None = None
 
 
 class DeckOut(BaseModel):
@@ -107,6 +119,8 @@ class DeckOut(BaseModel):
     card_count: int = 0
     due_count: int = 0
     new_count: int = 0
+    target_event_date: datetime | None = None
+    target_event_title: str | None = None
 
 
 class NoteTypeCreate(BaseModel):
@@ -361,3 +375,78 @@ class StatsOut(BaseModel):
     ir_throughput: dict[str, int]
     velocity: dict[str, float]
     leeches: list[LeechOut] = Field(default_factory=list)
+
+
+# ── memory champion / athlete schemas ──────────────────────────────────────
+
+
+class AtomicityIssueOut(BaseModel):
+    severity: str  # "info" | "warning" | "danger"
+    code: str
+    message: str
+    suggestion: str
+
+
+class AtomicityLintRequest(BaseModel):
+    front: str
+    back: str
+    template_kind: str = "basic"
+
+
+class AtomicityLintResponse(BaseModel):
+    score: int
+    is_atomic: bool
+    word_count_front: int
+    word_count_back: int
+    word_count_total: int
+    issues: list[AtomicityIssueOut] = Field(default_factory=list)
+
+
+class SequentialClozeRequest(BaseModel):
+    title: str
+    steps: list[str] = Field(min_length=2)
+    window_size: int = 1
+    deck_id: str | None = None
+
+
+class SequentialClozeItem(BaseModel):
+    step_index: int
+    total_steps: int
+    front: str
+    back: str
+    target_step: str
+    context_before: list[str] = Field(default_factory=list)
+    context_after: list[str] = Field(default_factory=list)
+
+
+class SequentialClozeResponse(BaseModel):
+    cards: list[SequentialClozeItem] = Field(default_factory=list)
+    notes_created: int = 0
+    cards_created: int = 0
+
+
+class DecomposeCardRequest(BaseModel):
+    front: str
+    back: str
+
+
+class DecomposedCardItem(BaseModel):
+    front: str
+    back: str
+
+
+class DecomposeCardResponse(BaseModel):
+    cards: list[DecomposedCardItem] = Field(default_factory=list)
+
+
+class EventReadinessResponse(BaseModel):
+    target_event_date: datetime | None = None
+    target_event_title: str | None = None
+    days_remaining: float | None = None
+    is_active: bool = False
+    projected_retention: float = 0.0
+    total_cards_count: int = 0
+    due_cards_count: int = 0
+    unstable_cards_count: int = 0
+    estimated_daily_reviews_needed: int = 0
+    status_label: str = "No event set"

@@ -78,6 +78,10 @@ class SubmitAnswerResponse(BaseModel):
     degraded_reason: str | None = None
     # Informational only — response time never factors into the grade (§4.1).
     latency_note: str | None = None
+    # Memory Athlete / Automaticity Latency Thresholding (§Feature 4)
+    automaticity_exceeded: bool = False
+    automaticity_threshold_ms: int | None = None
+    automaticity_note: str | None = None
 
 
 class LessonOut(BaseModel):
@@ -125,6 +129,7 @@ class ConfirmReviewRequest(BaseModel):
     typed_answer: str | None = None
     latency_ms: int | None = None
     confidence: int | None = Field(default=None, ge=1, le=4)
+    is_blitz: bool = False
 
 
 class StuckAlertOut(BaseModel):
@@ -146,3 +151,4 @@ class ConfirmReviewResponse(BaseModel):
     lapse_count: int
     leech_flagged: bool = False
     stuck_alert: StuckAlertOut | None = None
+    automaticity_exceeded: bool = False

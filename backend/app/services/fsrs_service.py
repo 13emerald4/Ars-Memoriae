@@ -139,6 +139,40 @@ class FSRSService:
         """R — probability of recall right now. Drives overdue-boost in §9."""
         return self.scheduler.get_card_retrievability(card, at or datetime.now(UTC))
 
+    @staticmethod
+    def compress_for_event_horizon(
+        due: datetime,
+        reviewed_at: datetime,
+        target_event_date: datetime | None,
+        taper_buffer_days: float = 1.5,
+    ) -> datetime:
+        """Compresses interval if scheduled due date extends past the target event date.
+
+        Ensures cards peak during the competition/exam overlearning window (1-2 days prior).
+        """
+        if not target_event_date:
+            return due
+
+        event_aware = (
+            target_event_date if target_event_date.tzinfo else target_event_date.replace(tzinfo=UTC)
+        )
+        review_aware = (
+            reviewed_at if reviewed_at.tzinfo else reviewed_at.replace(tzinfo=UTC)
+        )
+        due_aware = due if due.tzinfo else due.replace(tzinfo=UTC)
+
+        time_to_event = event_aware - review_aware
+        if time_to_event <= timedelta(hours=6):
+            return due
+
+        if due_aware >= event_aware:
+            buffer_seconds = min(time_to_event.total_seconds() * 0.25, taper_buffer_days * 86400.0)
+            target_due = event_aware - timedelta(seconds=buffer_seconds)
+            if target_due > review_aware:
+                return target_due
+
+        return due
+
     # ── parameter optimization (§3) ─────────────────────────────────────────
 
     @staticmethod

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
-import type { QueueConfig, User } from '../api/types'
+import type { EventReadiness, QueueConfig, User } from '../api/types'
 import { ErrorNote, Section, Spinner } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
 
@@ -102,21 +102,19 @@ const RECENT_MODELS: ModelOption[] = [
     name: 'Gemma 2 (2B)',
     family: 'gemma',
     familyLabel: 'Gemma',
-    badge: 'Compact Open',
+    badge: 'Fast & Tiny',
     badgeTone: 'border-amber-500/40 text-amber-300 bg-amber-500/10',
-    description: 'Ultra-compact 2B open model designed for rapid inference with minimal footprint.',
+    description: 'Ultra-lightweight 2B model for instantaneous grading checks.',
   },
 ]
 
-function isRecentModel(m: string): boolean {
-  const s = m.toLowerCase()
-  // Filter out older 1.0, 1.5, legacy previews and non-text models
+function isRecentModel(modelId: string): boolean {
+  const s = modelId.toLowerCase()
   if (
-    s.startsWith('gemini-1.0') ||
-    s.startsWith('gemini-1.5') ||
-    s.includes('-001') ||
-    s.includes('-002') ||
+    s.includes('1.5') ||
+    s.includes('1.0') ||
     s.includes('embedding') ||
+    s.includes('vision') ||
     s.includes('aqa') ||
     s.includes('imagen') ||
     s.includes('native-audio') ||
@@ -152,6 +150,7 @@ export default function Settings() {
       <ErrorNote error={error} />
       <ApiKeyPanel user={user} onChange={refresh} />
       <GradingPanel user={user} onChange={refresh} />
+      <MemoryChampionPanel user={user} onChange={refresh} />
       <SchedulingPanel user={user} onChange={refresh} />
       <QueuePanel cfg={queueCfg} onChange={load} />
       <DataPanel user={user} />
@@ -492,6 +491,165 @@ function GradingPanel({ user, onChange }: { user: User; onChange: () => Promise<
               </div>
             )}
           </div>
+        </div>
+      </div>
+    </Section>
+  )
+}
+
+function MemoryChampionPanel({ user, onChange }: { user: User; onChange: () => Promise<void> }) {
+  const [readiness, setReadiness] = useState<EventReadiness | null>(null)
+  const [loadingReadiness, setLoadingReadiness] = useState(false)
+
+  const save = async (patch: Partial<User>) => {
+    await api.updateMe(patch)
+    await onChange()
+    void fetchReadiness()
+  }
+
+  const fetchReadiness = useCallback(() => {
+    setLoadingReadiness(true)
+    api
+      .eventReadiness()
+      .then(setReadiness)
+      .catch(() => setReadiness(null))
+      .finally(() => setLoadingReadiness(false))
+  }, [])
+
+  useEffect(() => {
+    fetchReadiness()
+  }, [fetchReadiness, user.target_event_date])
+
+  const thresholdSec = ((user.automaticity_threshold_ms ?? 3000) / 1000).toFixed(1)
+  const eventDateStr = user.target_event_date
+    ? new Date(user.target_event_date).toISOString().slice(0, 10)
+    : ''
+
+  return (
+    <Section
+      title="🧠 Memory Champion & Athlete Settings"
+      description="Competitive memory athlete protocols: reaction latency automaticity gating and Event Horizon peak-performance taper scheduling."
+    >
+      <div className="space-y-6">
+        {/* Automaticity Latency Threshold (§Feature 4) */}
+        <div>
+          <Field
+            label={`Automaticity Reaction Threshold (${thresholdSec}s)`}
+            hint="Retrievals taking longer than this threshold are flagged as sluggish/effortful and scored as Hard to build reflex automaticity."
+          >
+            <div className="flex items-center gap-4 mt-2">
+              <input
+                type="range"
+                min={500}
+                max={10000}
+                step={250}
+                defaultValue={user.automaticity_threshold_ms ?? 3000}
+                className="flex-1"
+                onMouseUp={(e) =>
+                  save({ automaticity_threshold_ms: Number((e.target as HTMLInputElement).value) })
+                }
+              />
+              <span className="w-16 font-mono text-sm font-semibold text-amber-300 text-right">
+                {thresholdSec}s
+              </span>
+            </div>
+          </Field>
+        </div>
+
+        {/* Event Horizon Peak Taper (§Feature 6) */}
+        <div className="border-t border-ink-line pt-4 space-y-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            🎯 Target Event Horizon (Competition / Exam Taper)
+          </p>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Event Title" hint="e.g. Memory Championship, USMLE, Bar Exam">
+              <input
+                type="text"
+                className="input"
+                defaultValue={user.target_event_title ?? ''}
+                placeholder="Target Competition / Exam"
+                onBlur={(e) => save({ target_event_title: e.target.value.trim() || null })}
+              />
+            </Field>
+
+            <Field label="Target Event Date" hint="When intervals compress for peak recall">
+              <input
+                type="date"
+                className="input"
+                defaultValue={eventDateStr}
+                onChange={(e) => {
+                  const val = e.target.value
+                  save({ target_event_date: val ? new Date(val).toISOString() : null })
+                }}
+              />
+            </Field>
+
+            <Field label="Peak Retention Target" hint="Target retention on event day (e.g. 0.95)">
+              <input
+                type="number"
+                step={0.01}
+                min={0.7}
+                max={0.99}
+                className="input"
+                defaultValue={user.peak_retention_target ?? 0.95}
+                onBlur={(e) => save({ peak_retention_target: Number(e.target.value) })}
+              />
+            </Field>
+          </div>
+
+          {/* Live Event Readiness Telemetry Card */}
+          {loadingReadiness ? (
+            <p className="text-xs text-slate-500 italic">Calculating event readiness telemetry…</p>
+          ) : readiness?.is_active ? (
+            <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-bold text-sky-200 uppercase tracking-wide">
+                    {readiness.target_event_title || 'Active Target Event'}
+                  </span>
+                </div>
+                <span className="chip border-sky-500/40 text-sky-300 font-semibold">
+                  {readiness.status_label}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-lg border border-ink-line/60 bg-ink/60 p-2.5 text-center">
+                  <p className="text-[10px] text-slate-400">Countdown</p>
+                  <p className="font-mono text-xl font-bold text-amber-300">
+                    {readiness.days_remaining}d
+                  </p>
+                  <p className="text-[9px] text-slate-500">until event</p>
+                </div>
+
+                <div className="rounded-lg border border-ink-line/60 bg-ink/60 p-2.5 text-center">
+                  <p className="text-[10px] text-slate-400">Projected Retention</p>
+                  <p className="font-mono text-xl font-bold text-emerald-400">
+                    {Math.round(readiness.projected_retention * 100)}%
+                  </p>
+                  <p className="text-[9px] text-slate-500">at event horizon</p>
+                </div>
+
+                <div className="rounded-lg border border-ink-line/60 bg-ink/60 p-2.5 text-center">
+                  <p className="text-[10px] text-slate-400">Unstable Cards</p>
+                  <p className="font-mono text-xl font-bold text-rose-300">
+                    {readiness.unstable_cards_count}
+                  </p>
+                  <p className="text-[9px] text-slate-500">stability &lt; 7d</p>
+                </div>
+
+                <div className="rounded-lg border border-ink-line/60 bg-ink/60 p-2.5 text-center">
+                  <p className="text-[10px] text-slate-400">Required Pace</p>
+                  <p className="font-mono text-xl font-bold text-sky-300">
+                    ~{readiness.estimated_daily_reviews_needed}
+                  </p>
+                  <p className="text-[9px] text-slate-500">reviews / day</p>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </Section>

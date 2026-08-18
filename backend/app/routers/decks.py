@@ -135,6 +135,8 @@ async def list_decks(
             card_count=counts.get(d.id, 0),
             due_count=due.get(d.id, 0),
             new_count=new.get(d.id, 0),
+            target_event_date=d.target_event_date,
+            target_event_title=d.target_event_title,
         )
         for d in decks
     ]
@@ -154,6 +156,8 @@ async def create_deck(
         parent_id=parent_id,
         desired_retention_override=body.desired_retention_override,
         default_priority=body.default_priority,
+        target_event_date=body.target_event_date,
+        target_event_title=body.target_event_title,
     )
     db.add(deck)
     await db.commit()
@@ -164,6 +168,8 @@ async def create_deck(
         parent_id=str(deck.parent_id) if deck.parent_id else None,
         desired_retention_override=deck.desired_retention_override,
         default_priority=deck.default_priority,
+        target_event_date=deck.target_event_date,
+        target_event_title=deck.target_event_title,
     )
 
 
@@ -195,6 +201,8 @@ async def update_deck(
         parent_id=str(deck.parent_id) if deck.parent_id else None,
         desired_retention_override=deck.desired_retention_override,
         default_priority=deck.default_priority,
+        target_event_date=deck.target_event_date,
+        target_event_title=deck.target_event_title,
     )
 
 

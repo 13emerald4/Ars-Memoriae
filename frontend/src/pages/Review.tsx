@@ -56,6 +56,23 @@ export default function Review() {
   const [lastOutcome, setLastOutcome] = useState<string | null>(null)
   const [confidence, setConfidence] = useState<number | null>(null)
 
+  // ⚡ Memory Athlete: Blitz Sprint Mode & Automaticity Telemetry (§Feature 4)
+  const [blitzActive, setBlitzActive] = useState(false)
+  const [blitzDurationSec, setBlitzDurationSec] = useState(60)
+  const [blitzTimeRemainingSec, setBlitzTimeRemainingSec] = useState(60)
+  const [blitzCardsAnswered, setBlitzCardsAnswered] = useState(0)
+  const [blitzCorrectCount, setBlitzCorrectCount] = useState(0)
+  const [blitzLatencies, setBlitzLatencies] = useState<number[]>([])
+  const [blitzSummaryOpen, setBlitzSummaryOpen] = useState(false)
+  const [blitzStats, setBlitzStats] = useState<{
+    total: number
+    correct: number
+    avgLatencySec: number
+    cpm: number
+    automaticityRate: number
+  } | null>(null)
+  const [liveElapsedMs, setLiveElapsedMs] = useState(0)
+
   // Stuck-state detector: a real-time nudge, not a per-card verdict — it
   // persists across the card transition below rather than being cleared by
   // `load()`, so it survives until the user acts on or dismisses it.
@@ -84,6 +101,69 @@ export default function Review() {
 
   const shownAt = useRef<number>(Date.now())
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // Live timer for automaticity reaction time
+  useEffect(() => {
+    if (!item || item.kind !== 'card' || revealed) {
+      setLiveElapsedMs(0)
+      return
+    }
+    const interval = setInterval(() => {
+      setLiveElapsedMs(Date.now() - shownAt.current)
+    }, 100)
+    return () => clearInterval(interval)
+  }, [item, revealed])
+
+  // Blitz countdown timer
+  useEffect(() => {
+    if (!blitzActive) return
+    const timer = setInterval(() => {
+      setBlitzTimeRemainingSec((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          // Sprint Finished! Compute summary
+          setBlitzActive(false)
+          const total = blitzCardsAnswered
+          const correct = blitzCorrectCount
+          const avgLatency =
+            blitzLatencies.length > 0
+              ? blitzLatencies.reduce((a, b) => a + b, 0) / blitzLatencies.length / 1000.0
+              : 0
+          const autoThreshold = user?.automaticity_threshold_ms ?? 3000
+          const autoCount = blitzLatencies.filter((l) => l <= autoThreshold).length
+          const autoRate = total > 0 ? Math.round((autoCount / total) * 100) : 100
+          const cpm = Math.round((total / (blitzDurationSec / 60)) * 10) / 10
+
+          setBlitzStats({
+            total,
+            correct,
+            avgLatencySec: Math.round(avgLatency * 10) / 10,
+            cpm,
+            automaticityRate: autoRate,
+          })
+          setBlitzSummaryOpen(true)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [blitzActive, blitzCardsAnswered, blitzCorrectCount, blitzLatencies, blitzDurationSec, user])
+
+  function startBlitz(durationSec: number) {
+    setBlitzDurationSec(durationSec)
+    setBlitzTimeRemainingSec(durationSec)
+    setBlitzCardsAnswered(0)
+    setBlitzCorrectCount(0)
+    setBlitzLatencies([])
+    setBlitzActive(true)
+    setBlitzSummaryOpen(false)
+    setBlitzStats(null)
+  }
+
+  function stopBlitz() {
+    setBlitzActive(false)
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -208,19 +288,30 @@ export default function Review() {
   async function confirm(finalGrade: Grade) {
     if (!item || item.kind !== 'card') return
     const overridden = Boolean(result && !result.degraded_to_manual && result.suggested_grade !== finalGrade)
+    const latency = Date.now() - shownAt.current
+
+    if (blitzActive) {
+      setBlitzCardsAnswered((prev) => prev + 1)
+      if (finalGrade === 'good' || finalGrade === 'easy') {
+        setBlitzCorrectCount((prev) => prev + 1)
+      }
+      setBlitzLatencies((prev) => [...prev, latency])
+    }
+
     try {
       const outcome = await api.confirmReview(
         item.id,
         finalGrade,
         overridden,
         answer || undefined,
-        Date.now() - shownAt.current,
+        latency,
         confidence || undefined,
+        blitzActive,
       )
       setLastOutcome(
         `${finalGrade} — next in ${formatInterval(outcome.interval_days)}${
           outcome.leech_flagged ? ' · flagged as a leech' : ''
-        }`,
+        }${outcome.automaticity_exceeded ? ' · ⚠️ latency exceeded automaticity threshold' : ''}`,
       )
       if (outcome.stuck_alert) setStuckAlert(outcome.stuck_alert)
       // Let the session timer refresh its progress toward the card target.
@@ -231,7 +322,7 @@ export default function Review() {
     }
   }
 
-  // Keyboard: 1-4 grade after reveal, Ctrl/Cmd+Enter submits the typed answer.
+  // Keyboard: 1-4 grade after reveal, Space or Ctrl/Cmd+Enter submits/reveals answer.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!item || item.kind !== 'card') return
@@ -242,13 +333,19 @@ export default function Review() {
       // without this, Ctrl+Enter during the lesson silently reveals the
       // answer before the question is ever shown.
       if (learnMode && !taught) return
+
       if (revealed && e.key >= '1' && e.key <= '4') {
         e.preventDefault()
         void confirm(GRADES[Number(e.key) - 1])
       }
-      if (!revealed && e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      if (!revealed && (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) {
         e.preventDefault()
         void (llmEnabled && answer.trim() ? grade() : reveal())
+      }
+      // Blitz fast-action: In Blitz Mode without active typing, Spacebar reveals
+      if (!revealed && blitzActive && e.key === ' ' && document.activeElement !== inputRef.current) {
+        e.preventDefault()
+        void reveal()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -325,14 +422,78 @@ export default function Review() {
 
     return (
       <div className="space-y-6">
-        <SessionHeader session={session} outcome={lastOutcome} branchActive={Boolean(branch)} onClearBranch={clearBranch} learnMode={learnMode} onToggleLearnMode={toggleLearnMode} />
+        <SessionHeader
+          session={session}
+          outcome={lastOutcome}
+          branchActive={Boolean(branch)}
+          onClearBranch={clearBranch}
+          learnMode={learnMode}
+          onToggleLearnMode={toggleLearnMode}
+          blitzActive={blitzActive}
+          onStartBlitz={startBlitz}
+        />
+
+        {blitzActive && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-amber-200">
+              <span className="flex items-center gap-1.5 text-sm">
+                ⚡ <strong>BLITZ SPRINT:</strong> {blitzTimeRemainingSec}s remaining
+              </span>
+              <div className="flex items-center gap-3">
+                <span>{blitzCardsAnswered} cards answered</span>
+                <span>
+                  {blitzCardsAnswered > 0
+                    ? ((blitzCardsAnswered / Math.max(1, blitzDurationSec - blitzTimeRemainingSec)) * 60).toFixed(0)
+                    : 0}{' '}
+                  CPM
+                </span>
+                <button
+                  type="button"
+                  className="rounded border border-amber-500/50 bg-amber-500/20 px-2 py-0.5 text-xs text-amber-100 hover:bg-amber-500/30"
+                  onClick={stopBlitz}
+                >
+                  Stop Sprint
+                </button>
+              </div>
+            </div>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-amber-950/60">
+              <div
+                className="h-full bg-gradient-to-r from-amber-400 to-amber-200 transition-all duration-1000 ease-linear"
+                style={{ width: `${Math.max(0, (blitzTimeRemainingSec / blitzDurationSec) * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="card">
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-            <span className="chip">{item.deck_name}</span>
-            <span className="chip">{item.state}</span>
-            {item.grading_profile && <span className="chip">{item.grading_profile}</span>}
-            <span className="chip">priority {item.priority}</span>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="chip">{item.deck_name}</span>
+              <span className="chip">{item.state}</span>
+              {item.grading_profile && <span className="chip">{item.grading_profile}</span>}
+              <span className="chip">priority {item.priority}</span>
+            </div>
+
+            {/* Reaction Latency & Automaticity Telemetry (§Feature 4) */}
+            {!revealed && liveElapsedMs > 0 && (
+              <span
+                className={`chip font-mono text-[11px] font-medium transition-colors ${
+                  liveElapsedMs < 1500
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                    : liveElapsedMs <= (user?.automaticity_threshold_ms ?? 3000)
+                    ? 'border-sky-500/40 bg-sky-500/10 text-sky-300'
+                    : 'border-rose-500/40 bg-rose-500/10 text-rose-300 animate-pulse'
+                }`}
+                title={`Live retrieval reaction time (Automaticity threshold: ${((user?.automaticity_threshold_ms ?? 3000) / 1000).toFixed(1)}s)`}
+              >
+                ⏱ {(liveElapsedMs / 1000).toFixed(1)}s{' '}
+                {liveElapsedMs < 1500
+                  ? '⚡ Reflex'
+                  : liveElapsedMs <= (user?.automaticity_threshold_ms ?? 3000)
+                  ? 'Fluent'
+                  : 'Latent'}
+              </span>
+            )}
           </div>
 
           {item.occlusion ? (
@@ -514,6 +675,15 @@ export default function Review() {
         <BreakOverlay until={breakUntil} onDone={() => setBreakUntil(null)} />
       ) : (
         renderBody()
+      )}
+
+      {blitzSummaryOpen && blitzStats && (
+        <BlitzScorecardModal
+          stats={blitzStats}
+          durationSec={blitzDurationSec}
+          onRestart={(sec) => startBlitz(sec)}
+          onClose={() => setBlitzSummaryOpen(false)}
+        />
       )}
     </div>
   )
@@ -891,6 +1061,12 @@ function GradeReasoning({ result }: { result: SubmitAnswerResponse }) {
           second look before you accept it.
         </p>
       )}
+
+      {result.automaticity_exceeded && (
+        <p className="mt-3 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          ⚡ {result.automaticity_note || 'Reaction latency exceeded target automaticity threshold.'}
+        </p>
+      )}
     </div>
   )
 }
@@ -958,6 +1134,8 @@ function SessionHeader({
   onClearBranch,
   learnMode,
   onToggleLearnMode,
+  blitzActive,
+  onStartBlitz,
 }: {
   session: SessionSummary | null
   outcome?: string | null
@@ -965,6 +1143,8 @@ function SessionHeader({
   onClearBranch?: () => void
   learnMode?: boolean
   onToggleLearnMode?: () => void
+  blitzActive?: boolean
+  onStartBlitz?: (sec: number) => void
 }) {
   if (!session) return null
   const { counts, caps } = session
@@ -989,6 +1169,35 @@ function SessionHeader({
           <span className="chip">{caps.reviews_done_today} done today</span>
         )}
         {planned === 0 && <span className="chip">queue clear</span>}
+
+        {/* ⚡ Blitz Mode Sprint Triggers */}
+        {onStartBlitz && !blitzActive && (
+          <div className="flex items-center gap-1">
+            <span className="text-[11px] text-amber-400 font-medium">⚡ Blitz Sprint:</span>
+            <button
+              className="chip hover:border-amber-500/40 hover:text-amber-300"
+              onClick={() => onStartBlitz(30)}
+              title="Start high-speed 30 second sprint"
+            >
+              30s
+            </button>
+            <button
+              className="chip hover:border-amber-500/40 hover:text-amber-300"
+              onClick={() => onStartBlitz(60)}
+              title="Start high-speed 60 second sprint"
+            >
+              60s
+            </button>
+            <button
+              className="chip hover:border-amber-500/40 hover:text-amber-300"
+              onClick={() => onStartBlitz(90)}
+              title="Start high-speed 90 second sprint"
+            >
+              90s
+            </button>
+          </div>
+        )}
+
         {onToggleLearnMode && (
           <button
             className={`chip ml-auto transition ${
@@ -1013,6 +1222,88 @@ function SessionHeader({
           {note}
         </p>
       ))}
+    </div>
+  )
+}
+
+/** ⚡ Blitz Sprint Summary Scorecard Modal */
+function BlitzScorecardModal({
+  stats,
+  durationSec,
+  onRestart,
+  onClose,
+}: {
+  stats: {
+    total: number
+    correct: number
+    avgLatencySec: number
+    cpm: number
+    automaticityRate: number
+  }
+  durationSec: number
+  onRestart: (sec: number) => void
+  onClose: () => void
+}) {
+  const accuracy = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-md rounded-xl border border-amber-500/40 bg-ink-card p-6 shadow-2xl space-y-5">
+        <div className="text-center space-y-1">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/20 text-2xl text-amber-400 mb-1">
+            ⚡
+          </div>
+          <h2 className="text-xl font-bold text-slate-100">Sprint Complete!</h2>
+          <p className="text-xs text-slate-400">{durationSec}s Memory Athlete Speed Run</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg border border-ink-line bg-ink/60 p-3 text-center">
+            <p className="text-xs text-slate-400">Cards Answered</p>
+            <p className="font-mono text-2xl font-bold text-amber-300">{stats.total}</p>
+            <p className="text-[10px] text-slate-500">{stats.cpm} cards / min</p>
+          </div>
+          <div className="rounded-lg border border-ink-line bg-ink/60 p-3 text-center">
+            <p className="text-xs text-slate-400">Accuracy</p>
+            <p className={`font-mono text-2xl font-bold ${accuracy >= 85 ? 'text-emerald-400' : 'text-amber-400'}`}>
+              {accuracy}%
+            </p>
+            <p className="text-[10px] text-slate-500">{stats.correct} correct</p>
+          </div>
+          <div className="rounded-lg border border-ink-line bg-ink/60 p-3 text-center">
+            <p className="text-xs text-slate-400">Avg Reaction Time</p>
+            <p className="font-mono text-2xl font-bold text-sky-300">{stats.avgLatencySec}s</p>
+            <p className="text-[10px] text-slate-500">per retrieval</p>
+          </div>
+          <div className="rounded-lg border border-ink-line bg-ink/60 p-3 text-center">
+            <p className="text-xs text-slate-400">Automaticity Rate</p>
+            <p className="font-mono text-2xl font-bold text-emerald-300">{stats.automaticityRate}%</p>
+            <p className="text-[10px] text-slate-500">reflexes &lt; 3.0s</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 pt-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-primary flex-1 justify-center text-xs"
+              onClick={() => onRestart(durationSec)}
+            >
+              🔄 Retry {durationSec}s Sprint
+            </button>
+            <button
+              type="button"
+              className="btn flex-1 justify-center text-xs"
+              onClick={() => onRestart(durationSec === 30 ? 60 : 30)}
+            >
+              ⚡ Switch to {durationSec === 30 ? '60s' : '30s'}
+            </button>
+          </div>
+          <button type="button" className="btn justify-center text-xs text-slate-400" onClick={onClose}>
+            Return to Normal Review
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

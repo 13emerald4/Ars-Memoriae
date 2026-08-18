@@ -71,6 +71,11 @@ class User(Base):
     llm_grading_consent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # §4.3 per-user calibration bias (signed, in grade steps).
     grading_bias: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    # Memory Champion / Automaticity & Event Horizon fields
+    automaticity_threshold_ms: Mapped[int | None] = mapped_column(Integer, nullable=True, default=3000)
+    target_event_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    target_event_title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    peak_retention_target: Mapped[float | None] = mapped_column(Float, nullable=True, default=0.95)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
@@ -91,6 +96,8 @@ class Deck(Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     desired_retention_override: Mapped[float | None] = mapped_column(Float)
     default_priority: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=50)
+    target_event_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    target_event_title: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
@@ -478,6 +485,8 @@ class ReviewLog(Base):
     graduated_to_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # Metacognitive Judgment of Learning (1: Guess, 2: Unsure, 3: Confident, 4: Solid).
     user_confidence: Mapped[int | None] = mapped_column(SmallInteger)
+    # Memory Champion: Flag indicating if review was performed during a timed Blitz Sprint.
+    is_blitz: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     __table_args__ = (
         CheckConstraint(

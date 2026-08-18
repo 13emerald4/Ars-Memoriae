@@ -158,6 +158,9 @@ export interface SubmitAnswerResponse {
   degraded_reason: string | null
   // Informational only — response time never factors into the grade.
   latency_note: string | null
+  automaticity_exceeded?: boolean
+  automaticity_threshold_ms?: number | null
+  automaticity_note?: string | null
 }
 
 export interface StuckAlert {
@@ -175,6 +178,7 @@ export interface ConfirmReviewResponse {
   lapse_count: number
   leech_flagged: boolean
   stuck_alert: StuckAlert | null
+  automaticity_exceeded?: boolean
 }
 
 export interface User {
@@ -193,6 +197,10 @@ export interface User {
   api_key_masked: string | null
   fsrs_optimized_at: string | null
   grading_bias: number
+  automaticity_threshold_ms?: number | null
+  target_event_date?: string | null
+  target_event_title?: string | null
+  peak_retention_target?: number | null
 }
 
 export interface Deck {
@@ -204,6 +212,62 @@ export interface Deck {
   card_count: number
   due_count: number
   new_count: number
+  target_event_date?: string | null
+  target_event_title?: string | null
+}
+
+export interface AtomicityIssue {
+  severity: 'info' | 'warning' | 'danger'
+  code: string
+  message: string
+  suggestion: string
+}
+
+export interface AtomicityLintResult {
+  score: number
+  is_atomic: boolean
+  word_count_front: number
+  word_count_back: number
+  word_count_total: number
+  issues: AtomicityIssue[]
+}
+
+export interface SequentialClozeItem {
+  step_index: number
+  total_steps: number
+  front: string
+  back: string
+  target_step: string
+  context_before: string[]
+  context_after: string[]
+}
+
+export interface SequentialClozeResponse {
+  cards: SequentialClozeItem[]
+  notes_created: number
+  cards_created: number
+}
+
+export interface DecomposedCardItem {
+  front: string
+  back: string
+}
+
+export interface DecomposeCardResponse {
+  cards: DecomposedCardItem[]
+}
+
+export interface EventReadiness {
+  target_event_date: string | null
+  target_event_title: string | null
+  days_remaining: number | null
+  is_active: boolean
+  projected_retention: number
+  total_cards_count: number
+  due_cards_count: number
+  unstable_cards_count: number
+  estimated_daily_reviews_needed: number
+  status_label: string
 }
 
 /** A node in the knowledge tree. Counts are rolled up over the whole subtree,
