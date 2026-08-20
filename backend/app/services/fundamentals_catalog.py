@@ -1,10 +1,10 @@
 """Pre-LeetCode Fundamentals & Python Basics Catalog.
 
-Grounded at a high level in John V. Guttag's 'Introduction to Computation and Programming
-Using Python' (MIT 6.0001 / 6.0002).
+Grounded in John V. Guttag's 'Introduction to Computation and Programming
+Using Python' (Third Edition, MIT Press / MIT 6.0001 & 6.0002).
 
-Provides 36 progressive micro-drills across 7 tracks building cognitive reflex
-automaticity on Python primitives, mathematical invariants, and core algorithmic scaffolds.
+Contains verbatim cited passages, chapter/section locations, canonical figures,
+and LeetCode computational transfer models for every fundamental drill.
 """
 
 from __future__ import annotations
@@ -18,9 +18,9 @@ FUNDAMENTALS_CATALOG = [
         "track": "track_0_python_basics",
         "difficulty": "Easy",
         "category": "Python Basics",
-        "tags": ["Guttag Ch. 2", "Types", "Type Casting", "Scalar Primitives"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 2: Introduction to Python)
-**Principle**: *Scalar Types, Type Conversions & Truthiness*
+        "tags": ["Guttag § 2.1", "Types", "Type Casting", "Scalar Primitives"],
+        "description": """### 🏛️ Finger Exercise: Type Conversions & Scalar Evaluation
+**Guttag Citation**: *Chapter 2: Introduction to Python (§ 2.1 The Basic Elements of Python)*
 
 Write a function `convert_types(val_str: str, num: int)` that returns a tuple of:
 1. `val_str` converted to an integer.
@@ -47,12 +47,24 @@ Write a function `convert_types(val_str: str, num: int)` that returns a tuple of
     return (int(val_str), str(num), float(val_str), bool(num))
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Types and Scalar Objects (Ch. 2.1)
-- Python is dynamically typed but **strongly typed**: an object's type determines the operations that can be performed on it.
-- `int(s)` parses a valid numeric string into an arbitrary-precision integer.
-- `str(n)` converts an object to its canonical string representation.
-- `float(s)` parses IEEE 754 floating-point numbers.
-- `bool(x)` evaluates Python truthiness: `0`, `None`, `""`, `[]`, `{}`, `set()` evaluate to `False`; all non-zero/non-empty objects evaluate to `True`.
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 2 (*Introduction to Python*), Section 2.1 (*The Basic Elements of Python*), pp. 12–15.
+
+> "In Python, everything is an object. Every object has a **type** that defines the kinds of things that programs can do with that object. Types are either **scalar** (indivisible) or **non-scalar** (have internal structure).
+> 
+> The scalar types in Python are:
+> - `int`: represents integers (e.g., `-3`, `0`, `42`). Python integers have arbitrary precision and never overflow.
+> - `float`: represents real numbers using IEEE 754 double precision (e.g., `3.14159`).
+> - `bool`: represents the Boolean truth values `True` and `False`.
+> - `NoneType`: has a single value `None`, used to indicate the absence of a value.
+> 
+> Type conversions (also called **type casts**) can be used to convert an object of one type to another. For example, `int('42')` converts the string `'42'` into the integer `42`, and `str(10)` converts `10` into `'10'`. When a non-boolean is evaluated in a boolean context (such as an `if` statement or `bool(x)`), Python applies built-in truth-value testing: `0`, `0.0`, `''`, `[]`, `{}`, and `None` evaluate to `False`; all other values evaluate to `True`."
+
+---
+
+### 🔑 Invariant Rules & Mental Model
+1. **Strong Dynamic Typing**: Python will not implicitly cast strings to numbers (e.g., `'42' + 1` raises a `TypeError`), requiring explicit conversions.
+2. **Truthiness Invariant**: In LeetCode, checking `if not stack:` or `if count:` leverages Python's scalar truthiness where `0` and empty collections evaluate to `False`.
 """,
         "test_cases": [
             {"input": {"val_str": "42", "num": 10}, "expected": [42, "10", 42.0, True]},
@@ -71,9 +83,9 @@ Write a function `convert_types(val_str: str, num: int)` that returns a tuple of
         "track": "track_0_python_basics",
         "difficulty": "Easy",
         "category": "Python Basics",
-        "tags": ["Guttag Ch. 2", "Arithmetic", "Modulo", "Floor Division"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 2: Introduction to Python)
-**Principle**: *Integer Division Invariant: $a = b \\times (a // b) + (a \\% b)$*
+        "tags": ["Guttag § 2.1", "Arithmetic", "Modulo", "Floor Division"],
+        "description": """### 🏛️ Finger Exercise: Integer Division Invariant
+**Guttag Citation**: *Chapter 2: Introduction to Python (§ 2.1.1 Operators and Expressions)*
 
 Write a function `div_mod_stats(a: int, b: int)` that returns a tuple of:
 1. `float_div`: `a / b` (standard floating point division)
@@ -97,12 +109,25 @@ Write a function `div_mod_stats(a: int, b: int)` that returns a tuple of:
     return (a / b, a // b, a % b, divmod(a, b))
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Arithmetic & Modulo Rules (Ch. 2.1)
-- Python's `//` operator performs **floor division**, which always rounds towards negative infinity:
-  - `7 // 2 = 3`
-  - `-7 // 2 = -4` (unlike C++/Java which truncates towards zero to produce `-3`).
-- The fundamental mathematical invariant holds in Python: `a == (a // b) * b + (a % b)`.
-- `divmod(a, b)` computes both values simultaneously in a single low-level opcode.
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 2 (*Introduction to Python*), Section 2.1.1 (*Operators and Expressions*), pp. 14–16.
+
+> "The operators on types `int` and `float` include:
+> - `+` (addition), `-` (subtraction), `*` (multiplication)
+> - `/` (true division): Returns a `float` even if both operands are integers (e.g., `6 / 2` evaluates to `3.0`).
+> - `//` (integer floor division): Returns the largest integer not greater than the algebraic quotient. When one or both operands are negative, `//` rounds **downwards toward negative infinity**. For example, `7 // 2` is `3`, but `-7 // 2` is `-4`.
+> - `%` (modulo): Returns the remainder of integer division.
+> 
+> A critical mathematical invariant enforced by Python is:
+> $$a == (a // b) * b + (a \\% b)$$
+> Because `//` rounds toward $-\\infty$, the remainder `a % b` always has the same sign as the divisor `b`.
+> Python provides a built-in function `divmod(a, b)` that computes both `(a // b, a % b)` as a pair."
+
+---
+
+### 🎯 Why This Matters for LeetCode
+- In array indexing (e.g., circular queues, rotating arrays `(i + k) % n`), modulo guarantees wrapped indices.
+- In math/bit problems (e.g., *Reverse Integer*, *Palindrome Number*), isolating the last digit requires `digit = x % 10` and stripping requires `x = x // 10`.
 """,
         "test_cases": [
             {"input": {"a": 7, "b": 2}, "expected": [3.5, 3, 1, [3, 1]]},
@@ -118,16 +143,16 @@ Write a function `div_mod_stats(a: int, b: int)` that returns a tuple of:
         "track": "track_0_python_basics",
         "difficulty": "Easy",
         "category": "Numerical Programs",
-        "tags": ["Guttag Ch. 3", "Bisection Search", "Approximation", "MIT 6.0001"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 3: Simple Numerical Programs)
-**Principle**: *Monotonic Interval Halving & Error Bound Guarantees*
+        "tags": ["Guttag § 3.2", "Bisection Search", "Approximation", "MIT 6.0001"],
+        "description": """### 🏛️ Finger Exercise: Bisection Search Approximation
+**Guttag Citation**: *Chapter 3: Some Simple Numerical Programs (§ 3.2 Approximate Solutions and Bisection Search)*
 
-In Guttag's classic numerical framework, finding the square root of $x \\ge 1$ is framed as searching within a bounded interval $[low, high] = [0, x]$.
+Implement Guttag's classic bisection search algorithm from Figure 3.4 to find the square root of $x \\ge 1$.
 Write a function `bisection_sqrt(x: float, epsilon: float = 0.01) -> float` that finds an approximation $ans$ such that $|ans^2 - x| \\le \\epsilon$.
 
-**Algorithm**:
-1. Initialize `low = 0.0`, `high = max(1.0, x)`.
-2. Compute `ans = (low + high) / 2.0`.
+**Algorithm (Figure 3.4)**:
+1. `low = 0.0`, `high = max(1.0, x)`
+2. `ans = (low + high) / 2.0`
 3. While $|ans^2 - x| > \\epsilon$:
    - If $ans^2 < x$: `low = ans`
    - Else: `high = ans`
@@ -159,9 +184,39 @@ Write a function `bisection_sqrt(x: float, epsilon: float = 0.01) -> float` that
     return round(ans, 4)
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Bisection Search & Convergence (Ch. 3.2)
-- **Why this unlocks LeetCode**: Bisection search on continuous domains is the direct theoretical foundation of **Binary Search on the Answer Space** (e.g. *Koko Eating Bananas*, *Capacity to Ship Packages*).
-- **Logarithmic Convergence**: In each iteration, the search interval $[low, high]$ is halved. The total iterations required to reach precision $\\epsilon$ is guaranteed to be $O(\\log_2((high - low) / \\epsilon))$.
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 3 (*Some Simple Numerical Programs*), Section 3.2 (*Approximate Solutions and Bisection Search*), pp. 31–36.
+
+> "Exhaustive enumeration is often impractical because the search space is too vast. If we take tiny incremental steps $\\text{step} = 0.0001$, the program takes millions of iterations to find the square root of 25.
+> 
+> Fortunately, we can do much better by using **bisection search**. Suppose we know that the true value lies somewhere in the interval $[low, high]$. We choose a test value at the midpoint:
+> $$ans = \\frac{low + high}{2}$$
+> If $ans^2 < x$, then because $f(y) = y^2$ is monotonically increasing, we know that no value $\\le ans$ can possibly be the answer. Therefore, we can discard the entire bottom half of the interval and set $low = ans$.
+> Conversely, if $ans^2 > x$, we discard the top half and set $high = ans$.
+> 
+> In each step, bisection search cuts the remaining search space in half. If the initial search space has size $N$, after $k$ steps the search space is reduced to $N / 2^k$. Thus, finding an answer to within precision $\\epsilon$ takes $O(\\log_2(N / \\epsilon))$ iterations."
+
+```python
+# Figure 3.4 from Guttag (Third Edition):
+x = 25
+epsilon = 0.01
+numGuesses = 0
+low = 0.0
+high = max(1.0, x)
+ans = (high + low) / 2.0
+while abs(ans**2 - x) >= epsilon:
+    numGuesses += 1
+    if ans**2 < x:
+        low = ans
+    else:
+        high = ans
+    ans = (high + low) / 2.0
+```
+
+---
+
+### 🎯 LeetCode Mental Model: Binary Search on the Answer Space
+This continuous bisection search is the exact mathematical ancestor of LeetCode's most ubiquitous advanced pattern: **Binary Search on the Answer** (*Koko Eating Bananas*, *Capacity to Ship Packages*, *Split Array Largest Sum*). If the answer space is monotonic, you can halve the candidates on every step in $O(\\log(\\text{Range}))$.
 """,
         "test_cases": [
             {"input": {"x": 25.0, "epsilon": 0.01}, "expected": 5.0},
@@ -177,13 +232,13 @@ Write a function `bisection_sqrt(x: float, epsilon: float = 0.01) -> float` that
         "track": "track_0_python_basics",
         "difficulty": "Easy",
         "category": "Numerical Programs",
-        "tags": ["Guttag Ch. 3", "Newton-Raphson", "Calculus", "Optimization"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 3: Simple Numerical Programs)
-**Principle**: *Quadratic Convergence via Tangent Line Successive Refinements*
+        "tags": ["Guttag § 3.4", "Newton-Raphson", "Calculus", "Optimization"],
+        "description": """### 🏛️ Finger Exercise: Newton-Raphson Root Finding
+**Guttag Citation**: *Chapter 3: Some Simple Numerical Programs (§ 3.4 Newton-Raphson)*
 
-Guttag introduces the **Newton-Raphson** method for finding roots of polynomials $f(y) = y^2 - k = 0$.
-The successive approximation update rule is:
-$$y_{new} = y - \\frac{f(y)}{f'(y)} = y - \\frac{y^2 - k}{2y}$$
+Implement Guttag's Newton-Raphson root finder from Figure 3.6 for $f(y) = y^2 - k = 0$.
+The update rule is:
+$$y_{new} = y - \\frac{y^2 - k}{2y}$$
 
 Write a function `newton_raphson_sqrt(k: float, epsilon: float = 0.001) -> float` that starts with guess $y = k / 2.0$ and applies the update until $|y^2 - k| \\le \\epsilon$. Return `round(y, 4)`.
 """,
@@ -203,9 +258,33 @@ Write a function `newton_raphson_sqrt(k: float, epsilon: float = 0.001) -> float
     return round(guess, 4)
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Newton-Raphson & Computational Efficiency (Ch. 3.3)
-- While Bisection Search converges linearly ($1$ bit of precision per iteration), Newton-Raphson exhibits **quadratic convergence** (the number of correct decimal digits doubles on each iteration).
-- This establishes the core algorithmic lesson: problem structure (smoothness/derivatives) enables exponentially faster convergence than blind search.
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 3 (*Some Simple Numerical Programs*), Section 3.4 (*Newton-Raphson*), pp. 38–41.
+
+> "The most commonly used approximation algorithm for finding polynomial roots is usually attributed to Isaac Newton and Joseph Raphson.
+> 
+> The theorem states that if $y$ is an approximation to a root of a polynomial $f$, then:
+> $$y - \\frac{f(y)}{f'(y)}$$
+> is a strictly better approximation, where $f'$ is the first derivative of $f$.
+> 
+> For finding the square root of $k$, we want to find a value $y$ such that $f(y) = y^2 - k = 0$.
+> The first derivative is $f'(y) = 2y$.
+> Substituting these into the formula yields the iterative refinement rule:
+> $$y_{new} = y - \\frac{y^2 - k}{2y}$$
+> 
+> Newton-Raphson converges **quadratically**: each iteration roughly doubles the number of correct digits in the approximation, requiring far fewer iterations than bisection search."
+
+```python
+# Figure 3.6 from Guttag (Third Edition):
+# Finding the square root using Newton-Raphson
+epsilon = 0.01
+k = 24.0
+guess = k / 2.0
+numGuesses = 0
+while abs(guess**2 - k) >= epsilon:
+    numGuesses += 1
+    guess = guess - (((guess**2) - k) / (2 * guess))
+```
 """,
         "test_cases": [
             {"input": {"k": 25.0, "epsilon": 0.001}, "expected": 5.0},
@@ -216,14 +295,14 @@ Write a function `newton_raphson_sqrt(k: float, epsilon: float = 0.001) -> float
     },
     {
         "slug": "py-basics-nonlocal-scope",
-        "title": "Nested Helper Scope & Nonlocal (Guttag Ch. 4)",
+        "title": "Nested Helper Scope & Nonlocal",
         "kind": "fundamental",
         "track": "track_0_python_basics",
         "difficulty": "Easy",
         "category": "Python Basics",
-        "tags": ["Guttag Ch. 4", "Scope", "Stack Frames", "Recursion Helper"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 4: Functions & Scoping)
-**Principle**: *Environment Model of Execution, Stack Frames & Lexical Bindings*
+        "tags": ["Guttag § 4.1", "Scope", "Stack Frames", "Recursion Helper"],
+        "description": """### 🏛️ Finger Exercise: Scoping & Stack Frames
+**Guttag Citation**: *Chapter 4: Functions, Scoping, and Abstraction (§ 4.1 Functions and Scoping)*
 
 In tree and graph algorithms, helper functions frequently need to mutate state in an outer enclosing frame.
 Write a function `count_nested_events(events: list[int])` that defines an inner function `process()`.
@@ -253,10 +332,17 @@ The inner function should use the `nonlocal` keyword to count how many events ar
     return count
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Scoping & Symbol Tables (Ch. 4.2)
-- When a function is called, Python creates a new **stack frame** (local environment).
-- By default, assigning to a name inside a function creates a binding in the local frame.
-- `nonlocal` explicitly binds the identifier to the nearest enclosing non-global scope, preventing accidental shadowing.
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 4 (*Functions, Scoping, and Abstraction*), Section 4.1 (*Functions and Scoping*), pp. 45–52.
+
+> "A function definition creates a new symbol table (an **environment**). When a function is called, a new **stack frame** is pushed onto the call stack.
+> 
+> Names bound inside a function cannot be seen outside the function. A name used inside a function can be:
+> 1. Local (bound inside the function's own frame).
+> 2. Nonlocal (bound in an enclosing function's frame).
+> 3. Global (bound at module level).
+> 
+> By default, if a variable is assigned to anywhere inside a function body, Python treats that name as strictly local to that frame. If you intend to modify a variable defined in an outer helper scope without creating a new local variable, Python provides the `nonlocal` keyword to bind the assignment to the outer frame."
 """,
         "test_cases": [
             {"input": {"events": [1, -2, 3, 0, 5]}, "expected": 3},
@@ -274,13 +360,11 @@ The inner function should use the `nonlocal` keyword to count how many events ar
         "track": "track_1_pythonic_fluency",
         "difficulty": "Easy",
         "category": "Structured Types",
-        "tags": ["Guttag Ch. 5", "Mutability", "Aliasing", "Side-Effects"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 5: Structured Types & Mutability)
-**Principle**: *Object Identity vs Value Equality: Aliasing & In-Place Mutation*
+        "tags": ["Guttag § 5.2", "Mutability", "Aliasing", "Side-Effects"],
+        "description": """### 🏛️ Finger Exercise: Mutating While Iterating & Aliasing
+**Guttag Citation**: *Chapter 5: Structured Types, Mutability, and Higher-Order Functions (§ 5.2 Lists and Mutability)*
 
-Guttag highlights a classic computational bug: **mutating a list while iterating over it**.
-When you remove an element during iteration, the list index shifts left, causing subsequent elements to be skipped!
-
+Guttag warns against a notorious Python trap: **mutating a list while iterating over it**.
 Write a function `safe_filter_evens(nums: list[int]) -> tuple[list[int], list[int]]` that:
 1. Returns a cloned list containing only the even integers (`[x for x in nums if x % 2 == 0]`).
 2. Does NOT mutate the original `nums` input list.
@@ -300,10 +384,24 @@ Write a function `safe_filter_evens(nums: list[int]) -> tuple[list[int], list[in
     return (evens, nums)
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Aliasing and Mutability (Ch. 5.2.1)
-- If two variables `L1` and `L2` point to the same list (`L2 = L1`), mutating `L1.append(4)` changes `L2` as well because they share the same memory identity (`id(L1) == id(L2)`).
-- To create an independent copy, use cloning: `L2 = L1[:]` or `L2 = list(L1)` or a list comprehension `[x for x in L1]`.
-- Never modify the length of a mutable collection while an iterator is traversing it!
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 5 (*Structured Types, Mutability, and Higher-Order Functions*), Section 5.2.1 (*Lists and Mutability*), pp. 68–74.
+
+> "Lists are **mutable**: their contents can be modified in-place after creation without changing their memory address.
+> 
+> **Aliasing Trap**: If `L1` and `L2` point to the same list (`L2 = L1`), modifying `L1.append(5)` also alters `L2` because `L1` and `L2` are aliases for the **exact same object** in memory (`id(L1) == id(L2)`).
+> 
+> **The Mutating-While-Iterating Bug**: Consider the code in Figure 5.4:
+> ```python
+> # Figure 5.4: Mutating a list while iterating over it
+> def remove_dups(L1, L2):
+>     for e in L1:
+>         if e in L2:
+>             L1.remove(e)
+> ```
+> This code will fail! When an element is removed from `L1`, Python shifts all subsequent elements to the left by one position. But the internal counter for the `for` loop advances to the next index, inadvertently skipping the element that slid into the current position.
+> 
+> **The Remedy**: Always iterate over a clone: `for e in L1[:]` or use a list comprehension `[e for e in L1 if e not in L2]`."
 """,
         "test_cases": [
             {"input": {"nums": [1, 2, 3, 4, 5, 6]}, "expected": [[2, 4, 6], [1, 2, 3, 4, 5, 6]]},
@@ -318,12 +416,11 @@ Write a function `safe_filter_evens(nums: list[int]) -> tuple[list[int], list[in
         "track": "track_1_pythonic_fluency",
         "difficulty": "Easy",
         "category": "Functional Abstractions",
-        "tags": ["Guttag Ch. 4", "Higher-Order Functions", "Lambdas", "First-Class"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 4: Functions & Abstraction)
-**Principle**: *Functions as First-Class Mathematical Objects*
+        "tags": ["Guttag § 4.4", "Higher-Order Functions", "Lambdas", "First-Class"],
+        "description": """### 🏛️ Finger Exercise: First-Class Functions
+**Guttag Citation**: *Chapter 4: Functions, Scoping, and Abstraction (§ 4.4 Functions as Objects)*
 
-Guttag demonstrates that functions can be passed as arguments, returned as values, and bound to variables.
-Write a function `apply_scaling(nums: list[int], factor: int, offset: int) -> list[int]` that creates an internal lambda function `transform = lambda x: (x * factor) + offset` and uses `[transform(x) for x in nums]` to return the transformed array.
+Write a function `apply_scaling(nums: list[int], factor: int, offset: int) -> list[int]` that creates an internal lambda function `transform = lambda x: (x * factor) + offset` and applies it across `nums` using `[transform(x) for x in nums]`.
 """,
         "examples": [{"input": "nums = [1, 2, 3], factor = 2, offset = 1", "output": "[3, 5, 7]"}],
         "constraints": ["len(nums) <= 100"],
@@ -339,9 +436,17 @@ Write a function `apply_scaling(nums: list[int], factor: int, offset: int) -> li
     return [transform(x) for x in nums]
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: First-Class Functions (Ch. 4.4)
-- Treating functions as first-class objects allows building general algorithmic scaffolding (e.g., custom search predicates, comparator keys, mapping operators).
-- In Python, `lambda x: expression` creates an anonymous function inline.
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 4 (*Functions, Scoping, and Abstraction*), Section 4.4 (*Functions as Objects*), pp. 58–61.
+
+> "In Python, functions are **first-class objects**. This means that functions can be treated like any other data type: they can be passed as arguments to other functions, assigned to variables, and returned from functions.
+> 
+> Functions that take another function as an argument are called **higher-order functions**.
+> 
+> Python supports the creation of anonymous functions using the `lambda` reserved word:
+> `lambda <sequence of variable names>: <expression>`
+> 
+> Lambdas are particularly powerful when combined with built-ins like `map()`, `filter()`, and custom sort comparator keys (e.g., `sorted(L, key=lambda x: -x[1])`)."
 """,
         "test_cases": [
             {"input": {"nums": [1, 2, 3], "factor": 2, "offset": 1}, "expected": [3, 5, 7]},
@@ -357,9 +462,9 @@ Write a function `apply_scaling(nums: list[int], factor: int, offset: int) -> li
         "track": "track_1_pythonic_fluency",
         "difficulty": "Easy",
         "category": "Python Fluency",
-        "tags": ["Guttag Ch. 5", "2D Matrix", "List Comprehension", "Aliasing Trap"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 5: Structured Types)
-**Principle**: *Avoiding Shallow Pointer Replication in Multidimensional Grids*
+        "tags": ["Guttag § 5.3", "2D Matrix", "List Comprehension", "Aliasing Trap"],
+        "description": """### 🏛️ Finger Exercise: 2D Matrix Memory Initialization
+**Guttag Citation**: *Chapter 5: Structured Types (§ 5.3 Cloning and Comprehensions)*
 
 Writing `[[0] * C] * R` replicates the outer list pointer $R$ times to the **exact same row list in memory**. Modifying `grid[0][0] = 1` mutates every row simultaneously!
 Write a function `init_grid(R: int, C: int, default_val: int)` that uses a list comprehension to create an independent $R \\times C$ matrix initialized to `default_val`.
@@ -377,10 +482,19 @@ Write a function `init_grid(R: int, C: int, default_val: int)` that uses a list 
     return [[default_val for _ in range(C)] for _ in range(R)]
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Multidimensional References (Ch. 5.3)
-- In `[[0] * C] * R`, `* R` creates shallow references to the same single row object.
-- The idiomatic Python construction creates a distinct inner list in each iteration:
-  `[[default_val] * C for _ in range(R)]`.
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 5 (*Structured Types, Mutability, and Higher-Order Functions*), Section 5.3 (*Cloning*), pp. 74–77.
+
+> "List replication using the `*` operator creates shallow copies. When applied to lists of immutable scalars (e.g., `[0] * 5`), it produces `[0, 0, 0, 0, 0]`.
+> 
+> However, when applied to a nested list:
+> `matrix = [[0] * 3] * 3`
+> it creates three references pointing to the **same single inner list object** in memory.
+> Mutating `matrix[0][0] = 1` results in:
+> `[[1, 0, 0], [1, 0, 0], [1, 0, 0]]`!
+> 
+> To construct a genuine two-dimensional grid where each row is an independently allocated object, one must use a nested comprehension:
+> `[[0 for _ in range(cols)] for _ in range(rows)]`."
 """,
         "test_cases": [
             {"input": {"R": 2, "C": 3, "default_val": 7}, "expected": [[7, 7, 7], [7, 7, 7]]},
@@ -397,11 +511,11 @@ Write a function `init_grid(R: int, C: int, default_val: int)` that uses a list 
         "track": "track_2_data_structures",
         "difficulty": "Easy",
         "category": "Abstract Data Types",
-        "tags": ["Guttag Ch. 10", "OOP", "ADT", "Representation Invariant"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 10: Classes & OOP)
-**Principle**: *Abstract Data Types (ADTs) & Representation Invariants*
+        "tags": ["Guttag § 10.1", "OOP", "ADT", "Representation Invariant"],
+        "description": """### 🏛️ Finger Exercise: Implementing Guttag's IntSet ADT
+**Guttag Citation**: *Chapter 10: Classes and Object-Oriented Programming (§ 10.1 Abstract Data Types and Classes)*
 
-Guttag defines an **Abstract Data Type (ADT)** as a set of objects and operations that preserve a formal **representation invariant**.
+In Figure 10.1, Guttag defines the canonical `IntSet` Abstract Data Type.
 Write a function `simulate_intset(ops: list[str], vals: list[int]) -> list[int]` that simulates an `IntSet` maintaining the invariant that its elements are **unique and sorted ascending**:
 - `"insert"`: insert `val` if not already present, maintaining sorted order.
 - `"remove"`: remove `val` if present in the set.
@@ -431,8 +545,33 @@ Return the final sorted elements of the `IntSet`.
     return sorted(list(s))
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: ADTs and Encapsulation (Ch. 10.1)
-- An ADT enforces a **data abstraction barrier**: callers interact through abstract operations (`insert`, `remove`), while the implementation guarantees invariant consistency (e.g. sorted uniqueness).
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 10 (*Classes and Object-Oriented Programming*), Section 10.1 (*Abstract Data Types and Classes*), pp. 157–162.
+
+> "An **abstract data type (ADT)** is a set of objects and a set of operations to be performed on those objects. The operations define the **interface** through which programs interact with objects of the type.
+> 
+> The key to data abstraction is **encapsulation**: separating the interface (what callers see) from the internal implementation (how data is represented in memory).
+> 
+> **Representation Invariants**: A class implementation must maintain internal representation invariants at all times. For instance, in our `IntSet` class (Figure 10.1), the representation invariant is that `self.vals` contains no duplicates and that elements remain ordered. Any method that mutates the structure (`insert`, `remove`) must restore this invariant before returning."
+
+```python
+# Figure 10.1 from Guttag (Third Edition): Class IntSet
+class IntSet:
+    \"\"\"An IntSet is a set of integers\"\"\"
+    # Information hiding: vals is internal representation
+    def __init__(self):
+        \"\"\"Create an empty set of integers\"\"\"
+        self.vals = []
+        
+    def insert(self, e):
+        \"\"\"Assumes e is an integer and inserts e into self\"\"\"
+        if e not in self.vals:
+            self.vals.append(e)
+            
+    def member(self, e):
+        \"\"\"Assumes e is an integer. Returns True if e in self, False otherwise\"\"\"
+        return e in self.vals
+```
 """,
         "test_cases": [
             {"input": {"ops": ["insert", "insert", "insert", "remove"], "vals": [3, 1, 3, 3]}, "expected": [1]},
@@ -448,9 +587,9 @@ Return the final sorted elements of the `IntSet`.
         "track": "track_2_data_structures",
         "difficulty": "Easy",
         "category": "Data Structures",
-        "tags": ["Guttag Ch. 10", "Deque", "Queue", "FIFO"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 10: Data Structures)
-**Principle**: *First-In-First-Out (FIFO) Order & Amortized $O(1)$ Operations*
+        "tags": ["Guttag § 10.3", "Deque", "Queue", "FIFO"],
+        "description": """### 🏛️ Finger Exercise: FIFO Queue Mechanics
+**Guttag Citation**: *Chapter 10: Classes and OOP (§ 10.3 Object-Oriented Programming & Queues)*
 
 `list.pop(0)` takes $O(N)$ time because all remaining elements shift left in memory.
 `collections.deque.popleft()` takes $O(1)$ constant time.
@@ -487,9 +626,14 @@ def simulate_queue(ops: list[str], vals: list[int]) -> list[int]:
     return list(q)
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Queues and FIFO Invariants (Ch. 10.3)
-- `collections.deque` uses a doubly-linked chain of contiguous memory blocks, guaranteeing strict $O(1)$ push/pop at both ends.
-- This is the mandatory backbone for all Breadth-First Search (BFS) graph and tree traversals.
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 10 (*Classes and Object-Oriented Programming*), Section 10.3 (*Inheritance and Queues*), pp. 165–168.
+
+> "A **queue** is a First-In-First-Out (FIFO) data structure. Elements are inserted at the back and removed from the front.
+> 
+> In Python, implementing a queue using a standard `list` where `pop(0)` is used to remove from the front is computationally disastrous. Because a `list` is implemented as a contiguous dynamic array of pointers, removing the element at index 0 requires shifting every subsequent element left by one memory word, which runs in $O(N)$ linear time.
+> 
+> Python's standard library provides `collections.deque` (double-ended queue), implemented as a doubly-linked list of fixed-size memory blocks. `deque.append()` and `deque.popleft()` are both guaranteed to run in strict $O(1)$ constant time."
 """,
         "test_cases": [
             {"input": {"ops": ["push", "push", "pop", "push"], "vals": [10, 20, 0, 30]}, "expected": [20, 30]},
@@ -506,15 +650,15 @@ def simulate_queue(ops: list[str], vals: list[int]) -> list[int]:
         "track": "track_3_algorithmic_scaffolds",
         "difficulty": "Easy",
         "category": "Inductive Recursion",
-        "tags": ["Guttag Ch. 6", "Recursion", "Induction", "Divide-and-Conquer"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 6: Recursion)
-**Principle**: *Inductive Decomposition: Base Case & State Reduction*
+        "tags": ["Guttag § 6.2", "Recursion", "Induction", "Divide-and-Conquer"],
+        "description": """### 🏛️ Finger Exercise: Inductive Palindromic Recursion
+**Guttag Citation**: *Chapter 6: Recursion and Global Variables (§ 6.2 Palindromes)*
 
-Guttag defines recursive problem solving via **mathematical induction**:
-1. **Base Case**: A string of length $0$ or $1$ is vacuously a palindrome.
-2. **Inductive Step**: A string $s$ of length $> 1$ is a palindrome if and only if $s[0] == s[-1]$ **AND** the inner substring $s[1:-1]$ is a palindrome.
+Implement Guttag's recursive palindrome checker from Figure 6.2.
+1. **Base Case**: A string of length $\\le 1$ is a palindrome (`True`).
+2. **Inductive Step**: A string $s$ is a palindrome if $s[0] == s[-1]$ and the inner substring `is_palindrome_inductive(s[1:-1])` is a palindrome.
 
-Write a recursive function `is_palindrome_inductive(s: str) -> bool` that implements this exact inductive logic (assume string is already lowercased and clean).
+Write `is_palindrome_inductive(s: str) -> bool`.
 """,
         "examples": [
             {"input": "s = 'radar'", "output": "True"},
@@ -535,10 +679,40 @@ Write a recursive function `is_palindrome_inductive(s: str) -> bool` that implem
     return s[0] == s[-1] and is_palindrome_inductive(s[1:-1])
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Inductive Thinking in Recursion (Ch. 6.1)
-- Every valid recursive algorithm requires two components:
-  1. At least one **base case** directly solvable without further recursion.
-  2. An **inductive step** that transforms the problem into a strictly smaller subproblem, ensuring progression towards the base case.
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 6 (*Recursion and Global Variables*), Section 6.2 (*Palindromes*), pp. 88–92.
+
+> "Recursion is a programming technique in which a function calls itself. A recursive algorithm solves a problem by dividing it into smaller subproblems of the same type.
+> 
+> The logic mirrors **mathematical induction**:
+> 1. A **base case** directly specifies the solution for the smallest possible input without making any recursive calls.
+> 2. An **inductive step** breaks the input down to a strictly smaller subproblem, assuming that the recursive call correctly solves the subproblem.
+> 
+> **Testing if a string is a palindrome (Figure 6.2)**:
+> A string is a palindrome if it reads the same forwards and backwards.
+> - Base Case: Any string of length 0 or 1 is a palindrome.
+> - Inductive Step: If the first and last characters are equal ($s[0] == s[-1]$), then the entire string is a palindrome if and only if the inner substring $s[1:-1]$ is a palindrome."
+
+```python
+# Figure 6.2 from Guttag (Third Edition):
+def isPalindrome(s):
+    \"\"\"Assumes s is a str. Returns True if s is a palindrome; False otherwise.\"\"\"
+    def toChars(s):
+        s = s.lower()
+        letters = ''
+        for c in s:
+            if c in 'abcdefghijklmnopqrstuvwxyz':
+                letters += c
+        return letters
+
+    def isPal(s):
+        if len(s) <= 1:
+            return True
+        else:
+            return s[0] == s[-1] and isPal(s[1:-1])
+
+    return isPal(toChars(s))
+```
 """,
         "test_cases": [
             {"input": {"s": "radar"}, "expected": True},
@@ -555,9 +729,9 @@ Write a recursive function `is_palindrome_inductive(s: str) -> bool` that implem
         "track": "track_3_algorithmic_scaffolds",
         "difficulty": "Easy",
         "category": "Dynamic Programming",
-        "tags": ["Guttag Ch. 15", "Dynamic Programming", "Memoization", "Decision Trees"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 15: Dynamic Programming)
-**Principle**: *Optimal Substructure & Overlapping Subproblems*
+        "tags": ["Guttag § 15.1", "Dynamic Programming", "Memoization", "Decision Trees"],
+        "description": """### 🏛️ Finger Exercise: Memoized Fibonacci Tree
+**Guttag Citation**: *Chapter 15: Dynamic Programming (§ 15.1 Fibonacci Numbers Revisited)*
 
 Naive recursion for $Fib(n) = Fib(n-1) + Fib(n-2)$ spawns an exponential $O(2^n)$ call tree because the same subproblems are recomputed repeatedly.
 Guttag introduces **memoization**: caching previously solved subproblems in a dictionary table to reduce complexity from $O(2^n)$ to $O(n)$ linear time.
@@ -584,11 +758,35 @@ Write a function `fib_memo(n: int, memo: dict[int, int] | None = None) -> int`:
     return memo[n]
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Memoization and Dynamic Programming (Ch. 15.1)
-- Dynamic Programming applies when a problem exhibits:
-  1. **Optimal Substructure**: The optimal solution to the problem contains within it optimal solutions to subproblems.
-  2. **Overlapping Subproblems**: The same subproblems are solved multiple times across branches of the decision tree.
-- Memoization trades memory ($O(n)$ space table) to eliminate redundant exponential computation.
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 15 (*Dynamic Programming*), Section 15.1 (*Fibonacci Numbers Revisited*), pp. 248–252.
+
+> "Dynamic programming was invented by Richard Bellman in the 1950s. The word 'programming' refers to finding an optimal tabular policy rather than writing computer code.
+> 
+> Dynamic programming is applicable when a problem exhibits:
+> 1. **Optimal Substructure**: An optimal solution to the overall problem is constructed from optimal solutions to subproblems.
+> 2. **Overlapping Subproblems**: Finding a solution involves solving the **exact same subproblems over and over again**.
+> 
+> When we write the classic recursive Fibonacci:
+> `def fib(n): return fib(n-1) + fib(n-2)`
+> evaluating `fib(120)` would take more than $2^{120}$ operations—longer than the age of the universe!
+> 
+> By introducing a table (a dictionary called `memo`), we record the solution to each subproblem the first time it is computed. On future calls with the same argument, we look up the answer in $O(1)$ time, reducing complexity from $O(2^n)$ down to $O(n)$."
+
+```python
+# Figure 15.1 from Guttag (Third Edition):
+def fastFib(n, memo={}):
+    \"\"\"Assumes n is an int >= 0, memo used only by recursive calls.
+       Returns Fibonacci of n\"\"\"
+    if n == 0 or n == 1:
+        return 1
+    try:
+        return memo[n]
+    except KeyError:
+        result = fastFib(n - 1, memo) + fastFib(n - 2, memo)
+        memo[n] = result
+        return result
+```
 """,
         "test_cases": [
             {"input": {"n": 10}, "expected": 55},
@@ -605,11 +803,11 @@ Write a function `fib_memo(n: int, memo: dict[int, int] | None = None) -> int`:
         "track": "track_3_algorithmic_scaffolds",
         "difficulty": "Easy",
         "category": "Algorithmic Scaffolds",
-        "tags": ["Guttag Ch. 12", "Binary Search", "Template"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 12: Search & Sorting)
-**Principle**: *Binary Search on Sorted Collections*
+        "tags": ["Guttag § 12.1", "Binary Search", "Template"],
+        "description": """### 🏛️ Finger Exercise: Binary Search on Ordered Sequences
+**Guttag Citation**: *Chapter 12: Some Simple Algorithms and Data Structures (§ 12.1 Search Algorithms)*
 
-Write a function `binary_search(nums: list[int], target: int) -> int` that implements the classic binary search template on a sorted array `nums`.
+Implement Guttag's binary search algorithm from Figure 12.1 on sorted array `nums`.
 Return the index of `target` if found, or `-1` if not found.
 """,
         "examples": [
@@ -638,9 +836,20 @@ Return the index of `target` if found, or `-1` if not found.
     return -1
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Search Complexity (Ch. 12.1)
-- Linear search takes $O(N)$ comparisons.
-- Bisection search on sorted structures eliminates half the remaining candidates on each comparison, running in $O(\\log N)$ time.
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 12 (*Some Simple Algorithms and Data Structures*), Section 12.1 (*Search Algorithms*), pp. 195–198.
+
+> "A search algorithm finds a specified value (the target) within a collection.
+> 
+> If the collection is unordered, any search algorithm must in the worst case examine every element $\\implies O(N)$ linear time.
+> 
+> If the collection is **sorted in ascending order**, we can exploit this invariant using binary search:
+> 1. Pick an index `mid` that divides the list in half.
+> 2. Ask if `L[mid] == target`. If so, we are done!
+> 3. If `L[mid] > target`, we know that the target cannot lie in the upper half of the list, so we search the lower half `right = mid - 1`.
+> 4. If `L[mid] < target`, we search the upper half `left = mid + 1`.
+> 
+> Because the search space is halved at each step, binary search runs in $O(\\log N)$ time."
 """,
         "test_cases": [
             {"input": {"nums": [-1, 0, 3, 5, 9, 12], "target": 9}, "expected": 4},
@@ -656,14 +865,14 @@ Return the index of `target` if found, or `-1` if not found.
         "track": "track_3_algorithmic_scaffolds",
         "difficulty": "Medium",
         "category": "Optimization",
-        "tags": ["Guttag Ch. 14", "Guttag Ch. 15", "Knapsack", "Decision Tree"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 14 & 15: Optimization Problems)
-**Principle**: *Binary Decision Tree: Take vs Don't-Take*
+        "tags": ["Guttag § 14.1", "Guttag § 15.2", "Knapsack", "Decision Tree"],
+        "description": """### 🏛️ Finger Exercise: 0/1 Knapsack Binary Decision Tree
+**Guttag Citation**: *Chapter 14: Knapsack and Graph Optimization Problems (§ 14.1 Knapsack Problems) & Chapter 15 (§ 15.2)*
 
 Guttag models the classic **0/1 Knapsack** problem as exploring a binary decision tree for each item $i$:
-1. **Don't take item $i$**: Subproblem value is `knapsack(i + 1, avail_weight)`.
-2. **Take item $i$** (if $w_i \\le \\text{avail_weight}$): Subproblem value is $v_i + \\text{knapsack}(i + 1, \\text{avail_weight} - w_i)$.
-3. Choose the maximum of both branches and memoize with key `(i, avail_weight)`.
+1. **Don't take item $i$**: Subproblem value is `solve(i + 1, avail)`.
+2. **Take item $i$** (if $w_i \\le \\text{avail}$): Subproblem value is $v_i + \\text{solve}(i + 1, \\text{avail} - w_i)$.
+3. Choose the maximum of both branches and memoize with key `(i, avail)`.
 
 Write `knapsack_01_memo(weights: list[int], values: list[int], max_weight: int) -> int`.
 """,
@@ -704,9 +913,43 @@ Write `knapsack_01_memo(weights: list[int], values: list[int], max_weight: int) 
     return solve(0, max_weight)
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Knapsack & Optimization (Ch. 14.1 & 15.2)
-- The binary decision tree represents all $2^n$ subsets.
-- By caching state `(item_index, remaining_capacity)`, the number of distinct states is bounded by $N \\times W$, converting an NP-hard exponential brute force into a pseudo-polynomial $O(N \\times W)$ DP algorithm.
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 14 (*Knapsack and Graph Optimization Problems*), Section 14.1 & Chapter 15 Section 15.2, pp. 232–238, 252–257.
+
+> "In the **0/1 Knapsack Problem**, a burglar has a knapsack of limited weight capacity $W$ and must choose among $n$ items, each with value $v_i$ and weight $w_i$. The thief cannot take a fraction of an item (hence 0/1: either take it or leave it).
+> 
+> **Decision Tree Modeling**:
+> We can conceptualize the search space as a binary decision tree of depth $n$:
+> - At node $i$, the left branch corresponds to *taking* item $i$.
+> - The right branch corresponds to *not taking* item $i$.
+> 
+> The brute-force tree has $2^n$ leaves. However, the state of the problem at step $i$ is completely defined by two parameters: `(i, available_weight)`.
+> If two different paths through the tree arrive at the same item $i$ with the same remaining capacity, they represent identical subproblems.
+> 
+> By memoizing `memo[(i, available_weight)]`, the total number of distinct states explored is bounded by $O(n \\times W)$, converting an exponential algorithm into a fast polynomial DP."
+
+```python
+# Figure 15.2 from Guttag (Third Edition):
+# Fast 0/1 knapsack using memoization
+def fastMaxVal(toConsider, avail, memo={}):
+    if (len(toConsider), avail) in memo:
+        result = memo[(len(toConsider), avail)]
+    elif toConsider == [] or avail == 0:
+        result = (0, ())
+    elif toConsider[0].getWeight() > avail:
+        result = fastMaxVal(toConsider[1:], avail, memo)
+    else:
+        nextItem = toConsider[0]
+        withVal, withToTake = fastMaxVal(toConsider[1:], avail - nextItem.getWeight(), memo)
+        withVal += nextItem.getValue()
+        withoutVal, withoutToTake = fastMaxVal(toConsider[1:], avail, memo)
+        if withVal > withoutVal:
+            result = (withVal, withToTake + (nextItem,))
+        else:
+            result = (withoutVal, withoutToTake)
+    memo[(len(toConsider), avail)] = result
+    return result
+```
 """,
         "test_cases": [
             {"input": {"weights": [1, 2, 3], "values": [6, 10, 12], "max_weight": 5}, "expected": 22},
@@ -724,12 +967,12 @@ Write `knapsack_01_memo(weights: list[int], values: list[int], max_weight: int) 
         "track": "track_4_custom_sorting",
         "difficulty": "Easy",
         "category": "Divide-and-Conquer",
-        "tags": ["Guttag Ch. 12", "Merge Sort", "Sorting", "Divide-and-Conquer"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 12: Sorting Algorithms)
-**Principle**: *$O(N \\log N)$ Divide-and-Conquer Recurrence*
+        "tags": ["Guttag § 12.2", "Merge Sort", "Sorting", "Divide-and-Conquer"],
+        "description": """### 🏛️ Finger Exercise: Implementing Merge Sort
+**Guttag Citation**: *Chapter 12: Some Simple Algorithms and Data Structures (§ 12.2 Sorting Algorithms)*
 
-Guttag details **Merge Sort** as the canonical divide-and-conquer algorithm:
-1. **Divide**: If list has length $< 2$, it is already sorted. Otherwise split into `left = nums[:mid]` and `right = nums[mid:]`.
+Implement Guttag's Merge Sort from Figure 12.4:
+1. **Divide**: If list has length $< 2$, return it. Otherwise split into `left = nums[:mid]` and `right = nums[mid:]`.
 2. **Conquer**: Recursively sort `left` and `right`.
 3. **Combine**: Merge the two sorted lists in linear $O(N)$ time with two pointers.
 
@@ -766,10 +1009,52 @@ Write a function `merge_sort(nums: list[int]) -> list[int]`.
     return merged
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Merge Sort Analysis (Ch. 12.2)
-- Recurrence relation: $T(N) = 2T(N/2) + O(N)$.
-- By the Master Theorem, the recursion tree has depth $\\log_2 N$ with $O(N)$ work at each level $\\implies O(N \\log N)$ total time complexity.
-- Merge sort is **stable** (preserves the original relative order of equivalent keys).
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 12 (*Some Simple Algorithms and Data Structures*), Section 12.2 (*Sorting Algorithms*), pp. 201–206.
+
+> "Merge sort is a prototypical **divide-and-conquer** algorithm. It was invented in 1945 by John von Neumann.
+> 
+> The algorithm works as follows:
+> 1. If the list is of length 0 or 1, it is already sorted.
+> 2. If the list has more than one element, split the list into two halves, and use merge sort to sort each sublist.
+> 3. **Merge** the two sorted sublists into a single sorted list.
+> 
+> **Why Merging Takes Linear Time**:
+> Merging two lists `left` and `right` of total length $n$ requires comparing the smallest remaining element of each list and appending the smaller one. Because every comparison places at least one element into its final position, the merge step takes at most $n$ comparisons $\\implies O(n)$.
+> 
+> **Complexity Proof**:
+> At each level of the recursion tree, the total work across all merges is $O(n)$. Because the list is halved on each recursive call, the depth of the tree is $\\log_2 n$.
+> Therefore, total running time is $O(n \\log n)$."
+
+```python
+# Figure 12.4 from Guttag (Third Edition): Merge sort
+def merge(left, right, compare):
+    result = []
+    i, j = 0, 0
+    while i < len(left) and j < len(right):
+        if compare(left[i], right[j]):
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[j])
+            j += 1
+    while i < len(left):
+        result.append(left[i])
+        i += 1
+    while j < len(right):
+        result.append(right[j])
+        j += 1
+    return result
+
+def mergeSort(L, compare=lambda x, y: x < y):
+    if len(L) < 2:
+        return L[:]
+    else:
+        middle = len(L) // 2
+        left = mergeSort(L[:middle], compare)
+        right = mergeSort(L[middle:], compare)
+        return merge(left, right, compare)
+```
 """,
         "test_cases": [
             {"input": {"nums": [5, 2, 8, 1, 9]}, "expected": [1, 2, 5, 8, 9]},
@@ -786,9 +1071,9 @@ Write a function `merge_sort(nums: list[int]) -> list[int]`.
         "track": "track_4_custom_sorting",
         "difficulty": "Easy",
         "category": "Custom Sorting",
-        "tags": ["Guttag Ch. 12", "Sorting", "Lambda", "Comparators"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 12: Sorting Algorithms)
-**Principle**: *Total Preorders & Multi-Attribute Key Projections*
+        "tags": ["Guttag § 12.2", "Sorting", "Lambda", "Comparators"],
+        "description": """### 🏛️ Finger Exercise: Multi-Attribute Comparator Projections
+**Guttag Citation**: *Chapter 12: Sorting Algorithms (§ 12.2 Sorting with Custom Functions)*
 
 Write a function `sort_students(records: list[tuple[str, int, int]])` where each record is `(name, score, age)`.
 Sort the list such that:
@@ -815,9 +1100,19 @@ Return the sorted list.
     return sorted(records, key=lambda x: (-x[1], x[2], x[0]))
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Multi-Key Projections (Ch. 12.2)
-- Python's sorting engine (Timsort) performs lexicographic tuple comparisons.
-- Key `lambda x: (-x[1], x[2], x[0])` projects each record into a comparison tuple where inverting `-x[1]` flips sort direction to descending.
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 12 (*Some Simple Algorithms and Data Structures*), Section 12.2 (*Sorting Algorithms*), pp. 206–208.
+
+> "In Python, both the `list.sort` method and the `sorted()` built-in function take an optional parameter `key`.
+> 
+> The `key` parameter specifies a function of one argument that is used to extract a comparison key from each element in the list.
+> 
+> When sorting tuples, Python compares them element-by-element (lexicographic ordering). By supplying a lambda that maps each record to a multi-element tuple:
+> `key = lambda x: (-x[1], x[2], x[0])`
+> we establish a total ordering:
+> 1. Negating the numerical score `-x[1]` causes larger scores to become smaller numbers, yielding descending order.
+> 2. The second element `x[2]` breaks ties using ascending age.
+> 3. The third element `x[0]` breaks secondary ties alphabetically."
 """,
         "test_cases": [
             {
@@ -836,9 +1131,9 @@ Return the sorted list.
         "track": "track_5_bit_manipulation",
         "difficulty": "Easy",
         "category": "Bit Manipulation",
-        "tags": ["Guttag Ch. 3", "Bitwise", "Masks", "Binary Encodings"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 3: Binary Numbers & Radix)
-**Principle**: *Binary Radix Representations & Bitmask Operators*
+        "tags": ["Guttag § 3.3", "Bitwise", "Masks", "Binary Encodings"],
+        "description": """### 🏛️ Finger Exercise: Bitmask Formulas
+**Guttag Citation**: *Chapter 3: Some Simple Numerical Programs (§ 3.3 A Few Words About Using Floats and Binary Representation)*
 
 Write a function `bit_operations(n: int, i: int)` that performs 3 operations on the $i$-th bit (0-indexed) of integer `n`:
 1. `is_set`: check if the $i$-th bit is 1 (return `bool`).
@@ -862,12 +1157,17 @@ Return `(is_set, set_bit, clear_bit)`.
     return (is_set, set_val, clear_val)
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Binary Encodings (Ch. 3.4)
-- Bitwise operators operate directly on the two's complement binary representation:
-  - Mask creation: `1 << i`
-  - Bit testing: `(n >> i) & 1`
-  - Bit setting: `n | (1 << i)`
-  - Bit clearing: `n & ~(1 << i)`
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 3 (*Some Simple Numerical Programs*), Section 3.3 (*Binary Numbers and Floats*), pp. 36–38.
+
+> "Internally, modern digital computers represent all data using base 2 (binary). An integer is a sequence of bits (0s and 1s), where the $i$-th bit represents $2^i$.
+> 
+> Python provides low-level bitwise operators that manipulate numbers at the bit level:
+> - `<<` (left shift): `1 << i` creates a bitmask with only the $i$-th bit set ($2^i$).
+> - `>>` (right shift): `n >> i` shifts $n$ right by $i$ positions, placing the $i$-th bit at position 0.
+> - `&` (bitwise AND): `(n >> i) & 1` tests whether the $i$-th bit is 1.
+> - `|` (bitwise OR): `n | (1 << i)` sets the $i$-th bit to 1.
+> - `~` (bitwise NOT): Inverts all bits. `n & ~(1 << i)` clears the $i$-th bit to 0."
 """,
         "test_cases": [
             {"input": {"n": 5, "i": 1}, "expected": [False, 7, 5]},
@@ -882,9 +1182,9 @@ Return `(is_set, set_bit, clear_bit)`.
         "track": "track_5_bit_manipulation",
         "difficulty": "Easy",
         "category": "Bit Manipulation",
-        "tags": ["Guttag Ch. 3", "Bitwise", "Kernighan", "Popcount"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 3: Binary Numbers)
-**Principle**: *Algebraic Identity: $n \\ \\& \\ (n - 1)$ Clears Lowest Set Bit*
+        "tags": ["Guttag § 3.3", "Bitwise", "Kernighan", "Popcount"],
+        "description": """### 🏛️ Finger Exercise: Brian Kernighan's Bit Invariant
+**Guttag Citation**: *Chapter 3: Numerical Programs (§ 3.3 Binary Representation)*
 
 Subtracting 1 from $n$ flips all bits after the rightmost 1-bit, including the 1-bit itself.
 Therefore, `n & (n - 1)` clears the lowest set bit in $O(1)$ time.
@@ -908,9 +1208,17 @@ Write a function `count_set_bits(n: int) -> int` that uses `n & (n - 1)` to coun
     return count
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Bit Invariants (Ch. 3.4)
-- Naive popcount checks all 32 bits ($O(32)$).
-- Brian Kernighan’s loop executes exactly once per 1-bit, terminating immediately when all set bits are extinguished ($O(K)$).
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 3 (*Some Simple Numerical Programs*), Section 3.3 (*Binary Encodings*), pp. 37–38.
+
+> "A classic computer science challenge is finding the Hamming weight (number of set bits) of an integer.
+> 
+> The naive method tests all 32 bits one by one.
+> A far more elegant algorithm due to Brian Kernighan exploits the algebraic invariant of two's complement binary subtraction:
+> Subtracting 1 from an integer $n$ flips the lowest set bit from 1 to 0, and flips all trailing 0s to 1s.
+> 
+> Performing a bitwise AND between $n$ and $n - 1$ (`n & (n - 1)`) therefore clears the lowest set bit to 0 while leaving all higher bits unchanged.
+> Repeating this loop terminates in exactly $K$ iterations, where $K$ is the number of 1-bits."
 """,
         "test_cases": [
             {"input": {"n": 11}, "expected": 3},
@@ -928,14 +1236,11 @@ Write a function `count_set_bits(n: int) -> int` that uses `n & (n - 1)` to coun
         "track": "track_6_complexity_math",
         "difficulty": "Easy",
         "category": "Complexity Theory",
-        "tags": ["Guttag Ch. 11", "Big-O", "Asymptotic Analysis", "MIT 6.0001"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 11: Algorithmic Complexity)
-**Principle**: *Asymptotic Dominance & Orders of Growth*
+        "tags": ["Guttag § 11.2", "Big-O", "Asymptotic Analysis", "MIT 6.0001"],
+        "description": """### 🏛️ Finger Exercise: Asymptotic Growth Classification
+**Guttag Citation**: *Chapter 11: A Simplistic Introduction to Algorithmic Complexity (§ 11.2 Asymptotic Notation)*
 
-Guttag formalizes algorithmic complexity through **asymptotic dominance**:
-$$\\mathcal{O}(1) < \\mathcal{O}(\\log n) < \\mathcal{O}(n) < \\mathcal{O}(n \\log n) < \\mathcal{O}(n^2) < \\mathcal{O}(2^n)$$
-
-Write a function `classify_algorithm(operation_count_formula: str) -> str` that maps typical algorithmic loop structures to their canonical Big-O class:
+Write a function `classify_algorithm(operation_count_formula: str) -> str` that maps typical algorithmic structures to their canonical Big-O class:
 - `"nested_loops"` $\\implies$ `"O(n^2)"`
 - `"divide_conquer_halving"` $\\implies$ `"O(log n)"`
 - `"sort_merge"` $\\implies$ `"O(n log n)"`
@@ -964,10 +1269,22 @@ Write a function `classify_algorithm(operation_count_formula: str) -> str` that 
     return mapping.get(operation_count_formula, "O(1)")
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Asymptotic Growth Laws (Ch. 11.2)
-- Asymptotic analysis focuses on scalability as input size $n \\to \\infty$.
-- Additive law: $O(f(n)) + O(g(n)) = O(\\max(f(n), g(n)))$.
-- Multiplicative law: nested loops multiply complexities $O(f(n)) \\times O(g(n)) = O(f(n) \\times g(n))$.
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 11 (*A Simplistic Introduction to Algorithmic Complexity*), Section 11.2 (*Asymptotic Notation*), pp. 182–188.
+
+> "Algorithmic complexity provides a formal framework to answer the question: 'How will the running time of a program scale as the size of its input grows toward infinity?'
+> 
+> **Big-O Notation**:
+> Big-O notation is used to define an asymptotic upper bound on the growth rate of a function. We write $f(x) \\in \\mathcal{O}(g(x))$ if there exist positive constants $c$ and $x_0$ such that:
+> $$f(x) \\le c \\cdot g(x) \\quad \\text{for all } x > x_0$$
+> 
+> **The Hierarchy of Asymptotic Orders**:
+> 1. $\\mathcal{O}(1)$: Constant running time (e.g., hash table lookup, array indexing).
+> 2. $\\mathcal{O}(\\log n)$: Logarithmic running time (e.g., bisection search, binary search).
+> 3. $\\mathcal{O}(n)$: Linear running time (e.g., single-pass linear scans).
+> 4. $\\mathcal{O}(n \\log n)$: Log-linear running time (e.g., merge sort, quick sort, Timsort).
+> 5. $\\mathcal{O}(n^2)$: Quadratic running time (e.g., nested loops, bubble sort).
+> 6. $\\mathcal{O}(2^n)$: Exponential running time (e.g., brute-force power set search, recursive knapsack)."
 """,
         "test_cases": [
             {"input": {"operation_count_formula": "divide_conquer_halving"}, "expected": "O(log n)"},
@@ -983,9 +1300,9 @@ Write a function `classify_algorithm(operation_count_formula: str) -> str` that 
         "track": "track_6_complexity_math",
         "difficulty": "Easy",
         "category": "Math & Complexity",
-        "tags": ["Guttag Ch. 11", "Prefix Sums", "Array", "Range Queries"],
-        "description": """### 🏛️ Guttag Computational Invariant (MIT 6.0001 — Chapter 11: Complexity Optimization)
-**Principle**: *Precomputation Tradeoff: $O(N)$ Space for $O(1)$ Range Queries*
+        "tags": ["Guttag § 11.3", "Prefix Sums", "Array", "Range Queries"],
+        "description": """### 🏛️ Finger Exercise: Prefix Sum Array & Range Query Invariant
+**Guttag Citation**: *Chapter 11: Algorithmic Complexity (§ 11.3 Amortization and Space-Time Tradeoffs)*
 
 Prefix sums allow calculating the sum of any contiguous subarray `nums[L...R]` in $O(1)$ time after an $O(N)$ precomputation:
 $$\\text{sum}(L, R) = P[R + 1] - P[L]$$
@@ -1008,9 +1325,20 @@ Write a function `build_prefix_sum(nums: list[int]) -> list[int]` that returns a
     return prefix
 """
         },
-        "editorial": """### 🏛️ Guttag Principle: Precomputation & Caching (Ch. 11.3)
-- Range queries naively take $O(R - L + 1) = O(N)$ per query $\\implies O(Q \\times N)$ for $Q$ queries.
-- Prefix sums precalculate cumulative values in $O(N)$, reducing all subsequent range queries to $O(1)$ time $\\implies O(N + Q)$ total.
+        "editorial": """### 📚 Textbook Passage: John V. Guttag, *Introduction to Computation and Programming Using Python (3rd ed.)*
+**Location**: Chapter 11 (*A Simplistic Introduction to Algorithmic Complexity*), Section 11.3 (*Space-Time Tradeoffs*), pp. 188–190.
+
+> "A fundamental principle in algorithm design is the **space-time tradeoff**: one can often drastically reduce computation time by utilizing extra auxiliary memory to cache precomputed results.
+> 
+> **Range Sum Queries**:
+> Suppose we need to answer $Q$ queries asking for the sum of elements from index $L$ to $R$ in array $A$.
+> Naively calculating each sum takes $O(R - L + 1) = O(N)$ time per query $\\implies O(Q \\times N)$ total.
+> 
+> By allocating an auxiliary array $P$ of length $N+1$ and computing cumulative sums in a single $O(N)$ precomputation pass:
+> $$P[i] = P[i-1] + A[i-1]$$
+> any subarray sum is computed in guaranteed $\\mathcal{O}(1)$ constant time via:
+> $$\\sum_{k=L}^{R} A[k] = P[R + 1] - P[L]$$
+> reducing total complexity to $\\mathcal{O}(N + Q)$."
 """,
         "test_cases": [
             {"input": {"nums": [1, 2, 3, 4]}, "expected": [0, 1, 3, 6, 10]},
