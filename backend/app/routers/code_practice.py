@@ -87,6 +87,7 @@ async def ensure_catalog_seeded(db: AsyncSession) -> None:
 
 async def _get_problem(db: AsyncSession, id_or_slug: str, user: User) -> CodeProblem:
     """Finds a problem by UUID id or string slug."""
+    await ensure_catalog_seeded(db)
     try:
         prob_id = uuid.UUID(id_or_slug)
         stmt = select(CodeProblem).where(
