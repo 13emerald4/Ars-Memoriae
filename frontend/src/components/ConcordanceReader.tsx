@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
+  ConcordanceCategory,
   ConcordanceEntry,
   GUTTAG_CONCORDANCE_LEXICON,
 } from '../services/concordance_engine'
@@ -17,10 +18,20 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
   const [pinnedEntry, setPinnedEntry] = useState<ConcordanceEntry | null>(null)
   const [showLexiconModal, setShowLexiconModal] = useState(false)
   const [lexiconSearch, setLexiconSearch] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string>('All')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  // Build combined regex from all lexicon patterns
-  const tokenRegex =
-    /\b(scalars?|scalar objects?|aliasing|aliases|aliased|alias|bisection search|bisection|newton-raphson|newton\'s method|representation invariants?|rep invariants?|inductive step|mathematical induction|base case|abstract data types?|ADTs?|nonlocal|stack frames?|activation records?|lexical scope|memoization|memoized|memo table|divide[- ]and[- ]conquer|big[- ]o|asymptotic notation|asymptotic complexity|fifo|deque|double[- ]ended queue|queue|modulo|remainder|floor division|divmod|bitmasks?|bitwise|set bits?|hamming weight|popcount|space[- ]time tradeoffs?|prefix sums?|precomputation|decision trees?|0\/1 knapsack|knapsack problems?)\b/gi
+  // Compile unified multi-pattern regex from all lexicon entries, sorted by longest pattern first
+  const masterRegex = useMemo(() => {
+    const rawPatterns = GUTTAG_CONCORDANCE_LEXICON.map((entry) => {
+      // Strip leading and trailing \b, /, etc.
+      const source = entry.patterns.source
+      return source.replace(/^\\b/, '').replace(/\\b$/, '')
+    })
+    // Sort descending by pattern string length to prioritize multi-word matches
+    rawPatterns.sort((a, b) => b.length - a.length)
+    return new RegExp(`\\b(${rawPatterns.join('|')})\\b`, 'gi')
+  }, [])
 
   const handleMouseEnter = (
     e: React.MouseEvent<HTMLSpanElement>,
@@ -36,6 +47,13 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
 
   const handleMouseLeave = () => {
     setHoveredEntry(null)
+  }
+
+  const copyDefinition = (entry: ConcordanceEntry) => {
+    const textToCopy = `[${entry.id}] ${entry.term} (${entry.primaryLocation}): ${entry.definition}`
+    void navigator.clipboard.writeText(textToCopy)
+    setCopiedId(entry.id)
+    setTimeout(() => setCopiedId(null), 2500)
   }
 
   const renderRichText = (text: string) => {
@@ -117,12 +135,12 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
     let lastIndex = 0
     let match: RegExpExecArray | null
 
-    tokenRegex.lastIndex = 0
-    while ((match = tokenRegex.exec(line)) !== null) {
+    masterRegex.lastIndex = 0
+    while ((match = masterRegex.exec(line)) !== null) {
       const matchText = match[0]
       const startIndex = match.index
 
-      // Push preceding text
+      // Push preceding plain text
       if (startIndex > lastIndex) {
         parts.push(line.substring(lastIndex, startIndex))
       }
@@ -140,11 +158,11 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
             onMouseEnter={(e) => handleMouseEnter(e, entry)}
             onMouseLeave={handleMouseLeave}
             onClick={() => setPinnedEntry(entry)}
-            className="inline-flex items-center gap-0.5 rounded px-1 py-0.2 text-sky-200 font-semibold border-b-2 border-dotted border-sky-400/80 bg-sky-500/10 hover:bg-sky-500/25 hover:text-white cursor-pointer transition select-none"
+            className="inline-flex items-center gap-0.5 rounded px-1 py-0.2 text-sky-200 font-semibold border-b border-dashed border-sky-400/80 bg-sky-500/10 hover:bg-sky-500/25 hover:text-white cursor-pointer transition select-none"
             title={`Strong's Concordance: ${entry.id} - ${entry.term}`}
           >
             <span>{matchText}</span>
-            <span className="text-[9px] font-mono text-sky-400 opacity-80">
+            <span className="text-[8px] font-mono text-sky-400 opacity-75">
               [{entry.id}]
             </span>
           </span>
@@ -153,7 +171,7 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
         parts.push(matchText)
       }
 
-      lastIndex = tokenRegex.lastIndex
+      lastIndex = masterRegex.lastIndex
     }
 
     if (lastIndex < line.length) {
@@ -163,12 +181,30 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
     return parts
   }
 
-  const filteredLexicon = GUTTAG_CONCORDANCE_LEXICON.filter(
-    (e) =>
+  const categories: Array<ConcordanceCategory | 'All'> = [
+    'All',
+    'Primitives & Types',
+    'Memory & Runtime Architecture',
+    'Data Structures & ADTs',
+    'Algorithmic Paradigms',
+    'Complexity & Analysis',
+    'Bitwise & Binary Arithmetic',
+    'Sorting & Searching',
+    'Functions & Abstractions',
+  ]
+
+  const filteredLexicon = GUTTAG_CONCORDANCE_LEXICON.filter((e) => {
+    const matchesSearch =
       e.term.toLowerCase().includes(lexiconSearch.toLowerCase()) ||
       e.definition.toLowerCase().includes(lexiconSearch.toLowerCase()) ||
-      e.id.toLowerCase().includes(lexiconSearch.toLowerCase())
-  )
+      e.id.toLowerCase().includes(lexiconSearch.toLowerCase()) ||
+      e.leetCodeRelevance.toLowerCase().includes(lexiconSearch.toLowerCase())
+
+    const matchesCategory =
+      selectedCategory === 'All' || e.category === selectedCategory
+
+    return matchesSearch && matchesCategory
+  })
 
   return (
     <div className="relative space-y-4">
@@ -177,10 +213,10 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
         <div className="flex items-center gap-2">
           <span className="text-sm">📖</span>
           <span className="font-semibold text-sky-200">
-            Strong's Computational Concordance Active
+            Exhaustive Strong's CS Concordance Active
           </span>
           <span className="text-[10px] text-slate-400">
-            (Hover over highlighted terms to view MIT definitions & cross-chapter references)
+            ({GUTTAG_CONCORDANCE_LEXICON.length} indexed terms — hover any highlighted concept for formal definition & cross-references)
           </span>
         </div>
 
@@ -188,7 +224,7 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
           onClick={() => setShowLexiconModal(true)}
           className="flex items-center gap-1.5 rounded-md bg-sky-500/20 border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/30 transition shadow"
         >
-          <span>🔍 Browse Concordance Index</span>
+          <span>🔍 Browse All {GUTTAG_CONCORDANCE_LEXICON.length} Concordance Terms</span>
         </button>
       </div>
 
@@ -202,11 +238,11 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
         <div
           style={{
             position: 'fixed',
-            left: Math.min(hoveredEntry.x, window.innerWidth - 380),
+            left: Math.min(hoveredEntry.x, window.innerWidth - 420),
             top: hoveredEntry.y,
             zIndex: 9999,
           }}
-          className="w-96 rounded-xl border border-sky-500/50 bg-[#0d131f] p-4 text-xs shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 pointer-events-none"
+          className="w-[400px] rounded-xl border border-sky-500/50 bg-[#0d131f] p-4 text-xs shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 pointer-events-none"
         >
           <div className="flex items-center justify-between border-b border-sky-500/20 pb-2 mb-2">
             <div className="flex items-center gap-2">
@@ -231,13 +267,13 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
               📚 Primary Reference: {hoveredEntry.entry.primaryLocation}
             </p>
             <p className="text-slate-400">
-              📑 Appears in <strong>{hoveredEntry.entry.occurrences.length} other chapters</strong> (Click term to open full concordance drawer).
+              📑 Appears in <strong>{hoveredEntry.entry.occurrences.length} other chapters</strong> (Click term to open full cross-chapter concordance).
             </p>
           </div>
         </div>
       )}
 
-      {/* PINNED DETAILED CONCORDANCE DRAWER / MODAL */}
+      {/* PINNED DETAILED CONCORDANCE MODAL */}
       {pinnedEntry && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <div className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl border border-sky-500/40 bg-[#0d131f] shadow-2xl overflow-hidden">
@@ -256,12 +292,22 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setPinnedEntry(null)}
-                className="rounded-lg p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/10"
-              >
-                ✕
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => copyDefinition(pinnedEntry)}
+                  className="rounded-lg border border-sky-500/30 bg-sky-950/40 px-2.5 py-1 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/20 transition"
+                  title="Copy definition"
+                >
+                  {copiedId === pinnedEntry.id ? '✓ Copied' : '📋 Copy'}
+                </button>
+                <button
+                  onClick={() => setPinnedEntry(null)}
+                  className="rounded-lg p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/10"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* Modal Scrollable Body */}
@@ -331,7 +377,7 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
       {/* FULL CONCORDANCE SEARCH / BROWSE MODAL */}
       {showLexiconModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl border border-sky-500/40 bg-[#0d131f] shadow-2xl overflow-hidden">
+          <div className="w-full max-w-4xl max-h-[88vh] flex flex-col rounded-2xl border border-sky-500/40 bg-[#0d131f] shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between border-b border-sky-500/30 bg-[#121927] px-6 py-4">
               <div className="flex items-center gap-2.5">
                 <span className="text-xl">📚</span>
@@ -340,7 +386,7 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
                     Guttag MIT 6.0001 Strong's Concordance Lexicon
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Search definitions and cross-chapter occurrences across all chapters of the curriculum
+                    Search {GUTTAG_CONCORDANCE_LEXICON.length} computer science definitions and cross-chapter occurrences
                   </p>
                 </div>
               </div>
@@ -352,20 +398,37 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
               </button>
             </div>
 
-            {/* Search Bar */}
-            <div className="p-4 border-b border-ink-line/60 bg-[#090d14]">
+            {/* Search & Category Filter Bar */}
+            <div className="p-4 border-b border-ink-line/60 bg-[#090d14] space-y-3">
               <input
                 type="text"
                 value={lexiconSearch}
                 onChange={(e) => setLexiconSearch(e.target.value)}
-                placeholder="Search any term (e.g., Aliasing, Bisection, Representation Invariant, Memoization)..."
+                placeholder="Search any computer science concept (e.g., Aliasing, Bisection, Binary Search, Big-O, Memoization, Representation Invariant)..."
                 className="w-full rounded-xl border border-sky-500/30 bg-[#0d131f] px-4 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-400"
                 autoFocus
               />
+
+              {/* Category Filter Chips */}
+              <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold transition ${
+                      selectedCategory === cat
+                        ? 'bg-sky-500 text-white shadow'
+                        : 'bg-[#121927] text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Lexicon List */}
-            <div className="p-6 overflow-y-auto space-y-4 text-xs">
+            {/* Lexicon Grid List */}
+            <div className="p-6 overflow-y-auto space-y-3 text-xs max-h-[550px]">
               {filteredLexicon.map((entry) => (
                 <div
                   key={entry.id}
@@ -397,7 +460,7 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
                     <span className="text-sky-300 font-mono">
                       📍 {entry.primaryLocation}
                     </span>
-                    <span>{entry.occurrences.length} cross-chapter references ➔</span>
+                    <span className="text-sky-400 font-semibold">{entry.occurrences.length} cross-chapter references ➔</span>
                   </div>
                 </div>
               ))}
