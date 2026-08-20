@@ -43,6 +43,19 @@ export default function FundamentalsStudio() {
   const [timerSec, setTimerSec] = useState<number>(60)
   const [timerRunning, setTimerRunning] = useState<boolean>(false)
 
+  // Fullscreen reading mode
+  const [isFullscreenReading, setIsFullscreenReading] = useState<boolean>(false)
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreenReading) {
+        setIsFullscreenReading(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isFullscreenReading])
+
   const loadDrills = useCallback(async () => {
     try {
       setLoading(true)
@@ -284,27 +297,37 @@ export default function FundamentalsStudio() {
                 </button>
               </div>
 
-              {/* Prev / Next Controls */}
-              <div className="flex items-center gap-1">
+              {/* Prev / Next & Fullscreen Controls */}
+              <div className="flex items-center gap-1.5">
                 <button
-                  disabled={currentIndex <= 0}
-                  onClick={() => setSelectedDrillSlug(drills[currentIndex - 1].slug)}
-                  className="btn px-2 py-0.5 text-xs disabled:opacity-40"
-                  title="Previous drill"
+                  onClick={() => setIsFullscreenReading(true)}
+                  className="flex items-center gap-1 rounded-lg border border-sky-500/30 bg-sky-950/40 px-2 py-1 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/20 hover:text-white transition shadow-sm"
+                  title="Open Fullscreen Focus Reading Mode (Esc to exit)"
                 >
-                  ◀
+                  <span>⛶ Fullscreen</span>
                 </button>
-                <span className="text-[11px] text-slate-500 font-mono">
-                  {currentIndex + 1}/{drills.length}
-                </span>
-                <button
-                  disabled={currentIndex >= drills.length - 1}
-                  onClick={() => setSelectedDrillSlug(drills[currentIndex + 1].slug)}
-                  className="btn px-2 py-0.5 text-xs disabled:opacity-40"
-                  title="Next drill"
-                >
-                  ▶
-                </button>
+
+                <div className="flex items-center gap-1 border-l border-ink-line/80 pl-1.5">
+                  <button
+                    disabled={currentIndex <= 0}
+                    onClick={() => setSelectedDrillSlug(drills[currentIndex - 1].slug)}
+                    className="btn px-2 py-0.5 text-xs disabled:opacity-40"
+                    title="Previous drill"
+                  >
+                    ◀
+                  </button>
+                  <span className="text-[11px] text-slate-500 font-mono">
+                    {currentIndex + 1}/{drills.length}
+                  </span>
+                  <button
+                    disabled={currentIndex >= drills.length - 1}
+                    onClick={() => setSelectedDrillSlug(drills[currentIndex + 1].slug)}
+                    className="btn px-2 py-0.5 text-xs disabled:opacity-40"
+                    title="Next drill"
+                  >
+                    ▶
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -338,9 +361,19 @@ export default function FundamentalsStudio() {
                         {drillDetail.category}
                       </span>
                     </div>
-                    <span className="text-[11px] font-mono text-slate-400">
-                      📖 In-depth chapter reading (~4–6 min)
-                    </span>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setIsFullscreenReading(true)}
+                        className="flex items-center gap-1 rounded-md border border-sky-500/40 bg-sky-950/40 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/30 hover:text-white transition shadow"
+                        title="Expand to Fullscreen Focus Reading Mode"
+                      >
+                        <span>⛶ Fullscreen Mode</span>
+                      </button>
+                      <span className="text-[11px] font-mono text-slate-400">
+                        📖 ~4–6 min
+                      </span>
+                    </div>
                   </div>
 
                   {drillDetail.editorial ? (
@@ -518,6 +551,108 @@ export default function FundamentalsStudio() {
               onSubmit={handleSubmit}
               submitting={submitting}
             />
+          </div>
+        </div>
+      )}
+
+      {/* FULLSCREEN FOCUS READING OVERLAY */}
+      {isFullscreenReading && drillDetail && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-[#080c14] text-slate-100 backdrop-blur-lg animate-in fade-in duration-150">
+          {/* Top Fullscreen Control Bar */}
+          <div className="flex flex-wrap items-center justify-between border-b border-sky-500/30 bg-[#0d131f] px-6 py-3 shadow-lg">
+            <div className="flex items-center gap-3">
+              <span className="chip border-sky-400 bg-sky-950 text-sky-300 font-semibold text-xs">
+                🏛️ MIT 6.0001 Focus Mode
+              </span>
+              <div>
+                <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                  <span>{drillDetail.title}</span>
+                  <span className="text-xs text-slate-400 font-normal">({drillDetail.category})</span>
+                </h2>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Prev / Next Controls */}
+              <div className="flex items-center gap-1 bg-[#161f2e] border border-ink-line/80 rounded-lg p-1">
+                <button
+                  disabled={currentIndex <= 0}
+                  onClick={() => setSelectedDrillSlug(drills[currentIndex - 1].slug)}
+                  className="btn px-2 py-0.5 text-xs disabled:opacity-40"
+                  title="Previous drill"
+                >
+                  ◀
+                </button>
+                <span className="text-xs text-slate-400 font-mono px-2">
+                  {currentIndex + 1} / {drills.length}
+                </span>
+                <button
+                  disabled={currentIndex >= drills.length - 1}
+                  onClick={() => setSelectedDrillSlug(drills[currentIndex + 1].slug)}
+                  className="btn px-2 py-0.5 text-xs disabled:opacity-40"
+                  title="Next drill"
+                >
+                  ▶
+                </button>
+              </div>
+
+              <button
+                onClick={() => {
+                  setIsFullscreenReading(false)
+                  setActiveTab('question')
+                }}
+                className="btn btn-primary px-3.5 py-1.5 text-xs font-bold shadow"
+              >
+                Proceed to Question ➔
+              </button>
+
+              <button
+                onClick={() => setIsFullscreenReading(false)}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition"
+                title="Exit Fullscreen (Esc)"
+              >
+                <span>✕ Exit Fullscreen</span>
+                <kbd className="text-[10px] font-mono bg-black/40 px-1.5 py-0.5 rounded text-slate-400">Esc</kbd>
+              </button>
+            </div>
+          </div>
+
+          {/* Fullscreen Reading Container */}
+          <div className="flex-1 overflow-y-auto px-6 py-8">
+            <div className="max-w-4xl mx-auto space-y-6">
+              {drillDetail.editorial ? (
+                <ConcordanceReader content={drillDetail.editorial} />
+              ) : (
+                <p className="text-slate-400 italic">No textbook excerpt available.</p>
+              )}
+
+              {/* Canonical Solution Snippet */}
+              {drillDetail.solutions?.python && (
+                <div className="space-y-2 pt-4 border-t border-ink-line/60">
+                  <p className="font-semibold text-slate-400 uppercase text-xs tracking-wider">
+                    Canonical Textbook Pattern:
+                  </p>
+                  <pre className="rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-5 text-emerald-300 font-mono overflow-x-auto whitespace-pre text-sm shadow-inner">
+                    {drillDetail.solutions.python}
+                  </pre>
+                </div>
+              )}
+
+              <div className="pt-6 pb-12 flex justify-between items-center border-t border-ink-line/60">
+                <span className="text-xs text-slate-400">
+                  Ready to apply the concept? Transition to the interactive coding exercise.
+                </span>
+                <button
+                  onClick={() => {
+                    setIsFullscreenReading(false)
+                    setActiveTab('question')
+                  }}
+                  className="btn btn-primary px-6 py-2.5 text-sm font-bold shadow-xl"
+                >
+                  Proceed to Question ➔
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
