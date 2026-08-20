@@ -8,6 +8,7 @@ import type {
   SubmitCodeResponse,
 } from '../api/types'
 import { CodeEditor } from '../components/CodeEditor'
+import { CodeSocraticTutor } from '../components/CodeSocraticTutor'
 import { CodeTestConsole } from '../components/CodeTestConsole'
 import { ErrorNote, Spinner } from '../components/ui'
 
@@ -26,6 +27,8 @@ export default function FundamentalsStudio() {
   const [drills, setDrills] = useState<CodeProblemSummary[]>([])
   const [selectedDrillSlug, setSelectedDrillSlug] = useState<string | null>(null)
   const [drillDetail, setDrillDetail] = useState<CodeProblemOut | null>(null)
+  const [activeTab, setActiveTab] = useState<'textbook' | 'question' | 'socratic'>('textbook')
+
   const [code, setCode] = useState<string>('')
   const [decks, setDecks] = useState<Deck[]>([])
   const [loading, setLoading] = useState(true)
@@ -74,6 +77,7 @@ export default function FundamentalsStudio() {
         const starter = detail.starter_codes?.python || detail.starter_codes?.typescript || ''
         setCode(starter)
         setRunResult(null)
+        setActiveTab('textbook')
         setTimerSec(60)
         setTimerRunning(false)
       })
@@ -145,6 +149,7 @@ export default function FundamentalsStudio() {
   if (loading && drills.length === 0) return <Spinner />
 
   const currentIndex = drills.findIndex((d) => d.slug === selectedDrillSlug)
+  const isFailed = runResult && runResult.status !== 'Accepted'
 
   return (
     <div className="space-y-6">
@@ -163,7 +168,7 @@ export default function FundamentalsStudio() {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Build computational fluency and reflex automaticity across Guttag's foundational Python concepts, data structures, and algorithmic scaffolds before tackling LeetCode.
+            Follow the 3-step learning loop: <strong>1. Textbook Concept</strong> ➔ <strong>2. Solve Question</strong> ➔ <strong>3. Socratic AI Guide (if stuck/failed)</strong>.
           </p>
         </div>
 
@@ -236,101 +241,252 @@ export default function FundamentalsStudio() {
       {/* Main Split-Pane Workbench */}
       {drillDetail && (
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Left Column: Drill Description & Rule */}
-          <div className="space-y-4 rounded-xl border border-ink-line bg-[#0d1117] p-5 shadow-xl">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-line/60 pb-3">
-              <div className="flex items-center gap-2">
-                <span className="chip border-emerald-500/40 text-emerald-300">
-                  {drillDetail.difficulty}
-                </span>
-                <span className="chip border-slate-700 text-slate-400">
-                  {drillDetail.category}
-                </span>
+          {/* Left Column: 3-Step Guided Workflow */}
+          <div className="flex flex-col rounded-xl border border-ink-line bg-[#0d1117] overflow-hidden shadow-2xl">
+            {/* Step Navigation Tabs */}
+            <div className="flex items-center justify-between border-b border-ink-line/80 bg-[#161b22] px-3 py-2 text-xs">
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setActiveTab('textbook')}
+                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-medium transition ${
+                    activeTab === 'textbook'
+                      ? 'bg-sky-500/20 text-sky-200 font-bold border border-sky-500/40 shadow'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span>📖 1. Guttag Lesson</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('question')}
+                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-medium transition ${
+                    activeTab === 'question'
+                      ? 'bg-sky-500/20 text-sky-200 font-bold border border-sky-500/40 shadow'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span>✍️ 2. Question</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('socratic')}
+                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-medium transition ${
+                    activeTab === 'socratic'
+                      ? 'bg-purple-500/20 text-purple-200 font-bold border border-purple-500/40 shadow'
+                      : isFailed
+                      ? 'text-amber-300 font-bold animate-pulse bg-amber-500/10 border border-amber-500/30'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span>🤖 3. Socratic Guide</span>
+                  {isFailed && <span className="h-2 w-2 rounded-full bg-rose-400" />}
+                </button>
               </div>
 
-              {/* Navigation Controls */}
-              <div className="flex items-center gap-1.5">
+              {/* Prev / Next Controls */}
+              <div className="flex items-center gap-1">
                 <button
                   disabled={currentIndex <= 0}
                   onClick={() => setSelectedDrillSlug(drills[currentIndex - 1].slug)}
-                  className="btn px-2 py-1 text-xs disabled:opacity-40"
+                  className="btn px-2 py-0.5 text-xs disabled:opacity-40"
+                  title="Previous drill"
                 >
-                  ◀ Prev
+                  ◀
                 </button>
-                <span className="text-xs text-slate-500 font-mono">
-                  {currentIndex + 1} / {drills.length}
+                <span className="text-[11px] text-slate-500 font-mono">
+                  {currentIndex + 1}/{drills.length}
                 </span>
                 <button
                   disabled={currentIndex >= drills.length - 1}
                   onClick={() => setSelectedDrillSlug(drills[currentIndex + 1].slug)}
-                  className="btn px-2 py-1 text-xs disabled:opacity-40"
+                  className="btn px-2 py-0.5 text-xs disabled:opacity-40"
+                  title="Next drill"
                 >
-                  Next ▶
+                  ▶
                 </button>
               </div>
             </div>
 
-            <h2 className="text-lg font-bold text-slate-100">{drillDetail.title}</h2>
-
-            <div className="prose prose-invert text-xs leading-relaxed text-slate-300 whitespace-pre-wrap">
-              {drillDetail.description}
-            </div>
-
-            {/* Example Block */}
-            {drillDetail.examples.length > 0 && (
-              <div className="rounded-lg border border-ink-line/60 bg-[#090d13] p-3 text-xs space-y-1.5">
-                <p className="font-semibold text-slate-400 uppercase text-[10px] tracking-wider">
-                  Example:
-                </p>
-                <p className="font-mono text-slate-300">
-                  <strong>Input:</strong> {drillDetail.examples[0].input}
-                </p>
-                <p className="font-mono text-emerald-300">
-                  <strong>Output:</strong> {drillDetail.examples[0].output}
-                </p>
-                {drillDetail.examples[0].explanation && (
-                  <p className="text-slate-500 text-[11px]">
-                    {drillDetail.examples[0].explanation}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Rule / Key Intuition */}
-            {drillDetail.editorial && (
-              <details className="rounded-lg border border-sky-500/30 bg-sky-950/20 p-3 text-xs">
-                <summary className="font-bold text-sky-300 cursor-pointer select-none">
-                  💡 Key Rule & Pattern Intuition
-                </summary>
-                <div className="mt-2 text-slate-300 whitespace-pre-wrap leading-relaxed">
-                  {drillDetail.editorial}
+            {/* Step Failure Alert Banner */}
+            {isFailed && activeTab !== 'socratic' && (
+              <div className="flex items-center justify-between gap-3 bg-amber-950/40 border-b border-amber-500/30 px-4 py-2 text-xs text-amber-200">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">💡</span>
+                  <span>Test cases failed ({runResult?.status}). Need a hint without spoilers?</span>
                 </div>
-              </details>
-            )}
-
-            {/* Export to Deck */}
-            {decks.length > 0 && (
-              <div className="border-t border-ink-line/60 pt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-                <span className="text-slate-400">Add to Spaced Repetition deck:</span>
-                <select
-                  onChange={(e) => {
-                    if (e.target.value) handleExportCard(e.target.value)
-                  }}
-                  defaultValue=""
-                  className="rounded border border-ink-line bg-[#090d13] px-2.5 py-1 text-xs text-slate-200 focus:outline-none"
+                <button
+                  onClick={() => setActiveTab('socratic')}
+                  className="rounded-lg bg-amber-500/20 border border-amber-500/40 px-2.5 py-1 text-xs font-bold text-amber-100 hover:bg-amber-500/30 transition"
                 >
-                  <option value="" disabled>
-                    Select deck…
-                  </option>
-                  {decks.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
+                  Ask Socratic Guide ➔
+                </button>
               </div>
             )}
-            {exportMsg && <p className="text-xs text-emerald-400 font-semibold">{exportMsg}</p>}
+
+            {/* Tab Body Content Area */}
+            <div className="p-5 text-xs text-slate-300 leading-relaxed overflow-y-auto max-h-[580px] space-y-4">
+              {/* TAB 1: 📖 Guttag Textbook Lesson */}
+              {activeTab === 'textbook' && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="chip border-sky-500/40 text-sky-300">
+                      Guttag Curriculum
+                    </span>
+                    <span className="chip border-slate-700 text-slate-400">
+                      {drillDetail.category}
+                    </span>
+                  </div>
+
+                  <h2 className="text-base font-bold text-slate-100">{drillDetail.title}</h2>
+
+                  {drillDetail.editorial ? (
+                    <div className="prose prose-invert text-xs leading-relaxed whitespace-pre-wrap text-slate-200 bg-[#090d13] p-4 rounded-xl border border-ink-line/60">
+                      {drillDetail.editorial}
+                    </div>
+                  ) : (
+                    <p className="text-slate-400 italic">No textbook excerpt available.</p>
+                  )}
+
+                  {/* Canonical Solution Snippet */}
+                  {drillDetail.solutions?.python && (
+                    <div className="space-y-1.5">
+                      <p className="font-semibold text-slate-400 uppercase text-[10px] tracking-wider">
+                        Canonical Textbook Pattern:
+                      </p>
+                      <pre className="rounded-lg border border-emerald-500/30 bg-emerald-950/15 p-3 text-emerald-300 font-mono overflow-x-auto whitespace-pre">
+                        {drillDetail.solutions.python}
+                      </pre>
+                    </div>
+                  )}
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      onClick={() => setActiveTab('question')}
+                      className="btn btn-primary px-4 py-2 text-xs font-bold shadow-lg"
+                    >
+                      Proceed to Question ➔
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: ✍️ Question & Finger Exercise */}
+              {activeTab === 'question' && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="chip border-emerald-500/40 text-emerald-300">
+                        {drillDetail.difficulty}
+                      </span>
+                      <span className="chip border-slate-700 text-slate-400">
+                        Finger Exercise
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => setActiveTab('socratic')}
+                      className="text-xs text-sky-400 hover:text-sky-300 underline font-medium"
+                    >
+                      Need help? Ask Socratic Guide ➔
+                    </button>
+                  </div>
+
+                  <h2 className="text-base font-bold text-slate-100">{drillDetail.title}</h2>
+
+                  <div className="prose prose-invert text-xs leading-relaxed text-slate-300 whitespace-pre-wrap">
+                    {drillDetail.description}
+                  </div>
+
+                  {/* Examples */}
+                  {drillDetail.examples.length > 0 && (
+                    <div className="rounded-lg border border-ink-line/60 bg-[#090d13] p-3 text-xs space-y-1.5">
+                      <p className="font-semibold text-slate-400 uppercase text-[10px] tracking-wider">
+                        Example:
+                      </p>
+                      <p className="font-mono text-slate-300">
+                        <strong>Input:</strong> {drillDetail.examples[0].input}
+                      </p>
+                      <p className="font-mono text-emerald-300">
+                        <strong>Output:</strong> {drillDetail.examples[0].output}
+                      </p>
+                      {drillDetail.examples[0].explanation && (
+                        <p className="text-slate-400 text-[11px]">
+                          {drillDetail.examples[0].explanation}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Constraints */}
+                  {drillDetail.constraints.length > 0 && (
+                    <div className="rounded-lg border border-ink-line/40 bg-[#090d13] p-3 text-xs space-y-1">
+                      <p className="font-semibold text-slate-400 uppercase text-[10px] tracking-wider">
+                        Constraints:
+                      </p>
+                      <ul className="list-disc list-inside space-y-0.5 font-mono text-[11px] text-slate-400">
+                        {drillDetail.constraints.map((c, i) => (
+                          <li key={i}>{c}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Hints */}
+                  {drillDetail.hints.length > 0 && (
+                    <div className="space-y-2 pt-2">
+                      <p className="font-bold text-slate-400 text-xs uppercase tracking-wider">
+                        Hints
+                      </p>
+                      {drillDetail.hints.map((hint, i) => (
+                        <details
+                          key={i}
+                          className="rounded-lg border border-ink-line/60 bg-[#090d13] p-2.5 text-xs"
+                        >
+                          <summary className="font-medium text-slate-300 cursor-pointer select-none">
+                            Hint {i + 1}
+                          </summary>
+                          <p className="mt-1.5 text-slate-400 text-[11px]">{hint}</p>
+                        </details>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Export to Deck */}
+                  {decks.length > 0 && (
+                    <div className="border-t border-ink-line/60 pt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <span className="text-slate-400">Add to Spaced Repetition deck:</span>
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) handleExportCard(e.target.value)
+                        }}
+                        defaultValue=""
+                        className="rounded border border-ink-line bg-[#090d13] px-2.5 py-1 text-xs text-slate-200 focus:outline-none"
+                      >
+                        <option value="" disabled>
+                          Select deck…
+                        </option>
+                        {decks.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {exportMsg && <p className="text-xs text-emerald-400 font-semibold">{exportMsg}</p>}
+                </div>
+              )}
+
+              {/* TAB 3: 🤖 Socratic Guide */}
+              {activeTab === 'socratic' && (
+                <CodeSocraticTutor
+                  problemTitle={drillDetail.title}
+                  problemSlug={drillDetail.slug}
+                  code={code}
+                  language="python"
+                />
+              )}
+            </div>
           </div>
 
           {/* Right Column: Code Editor & Test Console */}
