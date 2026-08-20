@@ -328,19 +328,22 @@ export default function FundamentalsStudio() {
               {/* TAB 1: 📖 Guttag Textbook Lesson */}
               {activeTab === 'textbook' && (
                 <div className="space-y-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="chip border-sky-500/40 text-sky-300">
-                      Guttag Curriculum
-                    </span>
-                    <span className="chip border-slate-700 text-slate-400">
-                      {drillDetail.category}
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-line/60 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="chip border-sky-500/40 bg-sky-950/30 text-sky-300 font-semibold">
+                        🏛️ MIT 6.0001 (John V. Guttag)
+                      </span>
+                      <span className="chip border-slate-700 text-slate-400">
+                        {drillDetail.category}
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-mono text-slate-400">
+                      📖 In-depth chapter reading (~4–6 min)
                     </span>
                   </div>
 
-                  <h2 className="text-base font-bold text-slate-100">{drillDetail.title}</h2>
-
                   {drillDetail.editorial ? (
-                    <div className="prose prose-invert text-xs leading-relaxed whitespace-pre-wrap text-slate-200 bg-[#090d13] p-4 rounded-xl border border-ink-line/60">
+                    <div className="prose prose-invert max-w-none text-xs leading-relaxed whitespace-pre-wrap text-slate-200 bg-[#090d13] p-5 rounded-xl border border-ink-line/80 shadow-inner">
                       {drillDetail.editorial}
                     </div>
                   ) : (
@@ -349,17 +352,20 @@ export default function FundamentalsStudio() {
 
                   {/* Canonical Solution Snippet */}
                   {drillDetail.solutions?.python && (
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 pt-2">
                       <p className="font-semibold text-slate-400 uppercase text-[10px] tracking-wider">
                         Canonical Textbook Pattern:
                       </p>
-                      <pre className="rounded-lg border border-emerald-500/30 bg-emerald-950/15 p-3 text-emerald-300 font-mono overflow-x-auto whitespace-pre">
+                      <pre className="rounded-lg border border-emerald-500/30 bg-emerald-950/15 p-3.5 text-emerald-300 font-mono overflow-x-auto whitespace-pre text-xs">
                         {drillDetail.solutions.python}
                       </pre>
                     </div>
                   )}
 
-                  <div className="pt-2 flex justify-end">
+                  <div className="pt-3 flex justify-between items-center border-t border-ink-line/60">
+                    <span className="text-[11px] text-slate-400">
+                      Mastered the concept? Test your understanding with the exercise.
+                    </span>
                     <button
                       onClick={() => setActiveTab('question')}
                       className="btn btn-primary px-4 py-2 text-xs font-bold shadow-lg"
