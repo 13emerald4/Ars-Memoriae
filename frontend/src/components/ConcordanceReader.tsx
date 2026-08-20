@@ -1,0 +1,416 @@
+import React, { useState } from 'react'
+import {
+  ConcordanceEntry,
+  GUTTAG_CONCORDANCE_LEXICON,
+} from '../services/concordance_engine'
+
+export interface ConcordanceReaderProps {
+  content: string
+}
+
+export function ConcordanceReader({ content }: ConcordanceReaderProps) {
+  const [hoveredEntry, setHoveredEntry] = useState<{
+    entry: ConcordanceEntry
+    x: number
+    y: number
+  } | null>(null)
+  const [pinnedEntry, setPinnedEntry] = useState<ConcordanceEntry | null>(null)
+  const [showLexiconModal, setShowLexiconModal] = useState(false)
+  const [lexiconSearch, setLexiconSearch] = useState('')
+
+  // Build combined regex from all lexicon patterns
+  const tokenRegex =
+    /\b(scalars?|scalar objects?|aliasing|aliases|aliased|alias|bisection search|bisection|newton-raphson|newton\'s method|representation invariants?|rep invariants?|inductive step|mathematical induction|base case|abstract data types?|ADTs?|nonlocal|stack frames?|activation records?|lexical scope|memoization|memoized|memo table|divide[- ]and[- ]conquer|big[- ]o|asymptotic notation|asymptotic complexity|fifo|deque|double[- ]ended queue|queue|modulo|remainder|floor division|divmod|bitmasks?|bitwise|set bits?|hamming weight|popcount|space[- ]time tradeoffs?|prefix sums?|precomputation|decision trees?|0\/1 knapsack|knapsack problems?)\b/gi
+
+  const handleMouseEnter = (
+    e: React.MouseEvent<HTMLSpanElement>,
+    entry: ConcordanceEntry
+  ) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setHoveredEntry({
+      entry,
+      x: rect.left,
+      y: rect.bottom + 6,
+    })
+  }
+
+  const handleMouseLeave = () => {
+    setHoveredEntry(null)
+  }
+
+  const renderRichText = (text: string) => {
+    const lines = text.split('\n')
+
+    return lines.map((line, lineIdx) => {
+      // Headers
+      if (line.startsWith('# ')) {
+        return (
+          <h1
+            key={lineIdx}
+            className="text-base font-bold text-slate-100 border-b border-ink-line pb-2 mt-2 mb-3"
+          >
+            {line.replace('# ', '')}
+          </h1>
+        )
+      }
+      if (line.startsWith('## ')) {
+        return (
+          <h2
+            key={lineIdx}
+            className="text-sm font-bold text-sky-300 mt-4 mb-2"
+          >
+            {line.replace('## ', '')}
+          </h2>
+        )
+      }
+      if (line.startsWith('### ')) {
+        return (
+          <h3
+            key={lineIdx}
+            className="text-xs font-bold text-slate-200 mt-3 mb-1.5 flex items-center gap-1.5"
+          >
+            {line.replace('### ', '')}
+          </h3>
+        )
+      }
+      if (line.startsWith('#### ')) {
+        return (
+          <h4
+            key={lineIdx}
+            className="text-xs font-semibold text-slate-300 mt-2 mb-1"
+          >
+            {line.replace('#### ', '')}
+          </h4>
+        )
+      }
+
+      // Blockquotes
+      if (line.startsWith('> ')) {
+        return (
+          <blockquote
+            key={lineIdx}
+            className="border-l-2 border-sky-400/70 bg-sky-950/20 pl-3 py-1 my-2 text-slate-200 italic text-xs leading-relaxed rounded-r-md"
+          >
+            {tokenizeLine(line.replace('> ', ''))}
+          </blockquote>
+        )
+      }
+
+      // Horizontal Rule
+      if (line.trim() === '---') {
+        return <hr key={lineIdx} className="border-ink-line/80 my-3" />
+      }
+
+      // Standard Line
+      return (
+        <p key={lineIdx} className="my-1.5 leading-relaxed text-slate-300 text-xs">
+          {tokenizeLine(line)}
+        </p>
+      )
+    })
+  }
+
+  const tokenizeLine = (line: string) => {
+    if (!line) return line
+
+    const parts: React.ReactNode[] = []
+    let lastIndex = 0
+    let match: RegExpExecArray | null
+
+    tokenRegex.lastIndex = 0
+    while ((match = tokenRegex.exec(line)) !== null) {
+      const matchText = match[0]
+      const startIndex = match.index
+
+      // Push preceding text
+      if (startIndex > lastIndex) {
+        parts.push(line.substring(lastIndex, startIndex))
+      }
+
+      // Find matching entry in lexicon
+      const entry = GUTTAG_CONCORDANCE_LEXICON.find((item) => {
+        item.patterns.lastIndex = 0
+        return item.patterns.test(matchText)
+      })
+
+      if (entry) {
+        parts.push(
+          <span
+            key={`${startIndex}-${matchText}`}
+            onMouseEnter={(e) => handleMouseEnter(e, entry)}
+            onMouseLeave={handleMouseLeave}
+            onClick={() => setPinnedEntry(entry)}
+            className="inline-flex items-center gap-0.5 rounded px-1 py-0.2 text-sky-200 font-semibold border-b-2 border-dotted border-sky-400/80 bg-sky-500/10 hover:bg-sky-500/25 hover:text-white cursor-pointer transition select-none"
+            title={`Strong's Concordance: ${entry.id} - ${entry.term}`}
+          >
+            <span>{matchText}</span>
+            <span className="text-[9px] font-mono text-sky-400 opacity-80">
+              [{entry.id}]
+            </span>
+          </span>
+        )
+      } else {
+        parts.push(matchText)
+      }
+
+      lastIndex = tokenRegex.lastIndex
+    }
+
+    if (lastIndex < line.length) {
+      parts.push(line.substring(lastIndex))
+    }
+
+    return parts
+  }
+
+  const filteredLexicon = GUTTAG_CONCORDANCE_LEXICON.filter(
+    (e) =>
+      e.term.toLowerCase().includes(lexiconSearch.toLowerCase()) ||
+      e.definition.toLowerCase().includes(lexiconSearch.toLowerCase()) ||
+      e.id.toLowerCase().includes(lexiconSearch.toLowerCase())
+  )
+
+  return (
+    <div className="relative space-y-4">
+      {/* Concordance Header Action Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-500/30 bg-sky-950/20 px-3.5 py-2 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">📖</span>
+          <span className="font-semibold text-sky-200">
+            Strong's Computational Concordance Active
+          </span>
+          <span className="text-[10px] text-slate-400">
+            (Hover over highlighted terms to view MIT definitions & cross-chapter references)
+          </span>
+        </div>
+
+        <button
+          onClick={() => setShowLexiconModal(true)}
+          className="flex items-center gap-1.5 rounded-md bg-sky-500/20 border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/30 transition shadow"
+        >
+          <span>🔍 Browse Concordance Index</span>
+        </button>
+      </div>
+
+      {/* Main Formatted Reading */}
+      <div className="prose prose-invert max-w-none text-xs leading-relaxed text-slate-200 bg-[#090d13] p-5 rounded-xl border border-ink-line/80 shadow-inner">
+        {renderRichText(content)}
+      </div>
+
+      {/* FLOATING HOVER CARD */}
+      {hoveredEntry && !pinnedEntry && (
+        <div
+          style={{
+            position: 'fixed',
+            left: Math.min(hoveredEntry.x, window.innerWidth - 380),
+            top: hoveredEntry.y,
+            zIndex: 9999,
+          }}
+          className="w-96 rounded-xl border border-sky-500/50 bg-[#0d131f] p-4 text-xs shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 pointer-events-none"
+        >
+          <div className="flex items-center justify-between border-b border-sky-500/20 pb-2 mb-2">
+            <div className="flex items-center gap-2">
+              <span className="chip border-sky-400 bg-sky-950/60 text-sky-300 font-mono text-[10px]">
+                {hoveredEntry.entry.id}
+              </span>
+              <h4 className="font-bold text-slate-100 text-sm">
+                {hoveredEntry.entry.term}
+              </h4>
+            </div>
+            <span className="chip border-slate-700 text-slate-400 text-[10px]">
+              {hoveredEntry.entry.category}
+            </span>
+          </div>
+
+          <p className="text-slate-300 leading-relaxed mb-3">
+            {hoveredEntry.entry.definition}
+          </p>
+
+          <div className="space-y-1.5 border-t border-ink-line/60 pt-2 text-[11px]">
+            <p className="text-sky-300 font-semibold">
+              📚 Primary Reference: {hoveredEntry.entry.primaryLocation}
+            </p>
+            <p className="text-slate-400">
+              📑 Appears in <strong>{hoveredEntry.entry.occurrences.length} other chapters</strong> (Click term to open full concordance drawer).
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* PINNED DETAILED CONCORDANCE DRAWER / MODAL */}
+      {pinnedEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl border border-sky-500/40 bg-[#0d131f] shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-sky-500/30 bg-[#121927] px-6 py-4">
+              <div className="flex items-center gap-3">
+                <span className="chip border-sky-400 bg-sky-950 text-sky-300 font-mono text-xs px-2.5 py-1">
+                  {pinnedEntry.id}
+                </span>
+                <div>
+                  <h3 className="text-base font-bold text-slate-100">
+                    {pinnedEntry.term}
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-mono">
+                    Category: {pinnedEntry.category} • Primary: {pinnedEntry.primaryLocation}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPinnedEntry(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/10"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="p-6 overflow-y-auto space-y-5 text-xs text-slate-300">
+              {/* Formal MIT Definition */}
+              <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 space-y-1.5">
+                <p className="font-bold text-sky-300 uppercase tracking-wider text-[10px]">
+                  📖 Formal MIT 6.0001 Definition:
+                </p>
+                <p className="text-slate-200 text-sm leading-relaxed">
+                  {pinnedEntry.definition}
+                </p>
+              </div>
+
+              {/* LeetCode Transfer */}
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 space-y-1">
+                <p className="font-bold text-emerald-300 uppercase tracking-wider text-[10px]">
+                  🎯 LeetCode Application & Transfer:
+                </p>
+                <p className="text-slate-200 leading-relaxed">
+                  {pinnedEntry.leetCodeRelevance}
+                </p>
+              </div>
+
+              {/* All Cross-Chapter References */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-slate-100 text-xs uppercase tracking-wider flex items-center justify-between">
+                  <span>📑 Complete Cross-Chapter Concordance ({pinnedEntry.occurrences.length} references)</span>
+                </h4>
+
+                <div className="space-y-2.5">
+                  {pinnedEntry.occurrences.map((occ, idx) => (
+                    <div
+                      key={idx}
+                      className="rounded-xl border border-ink-line/80 bg-[#080d14] p-3.5 space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between text-[11px] font-mono">
+                        <span className="font-bold text-sky-300">
+                          {occ.chapter} — {occ.section}
+                        </span>
+                        {occ.pageRange && (
+                          <span className="text-slate-500">{occ.pageRange}</span>
+                        )}
+                      </div>
+                      <p className="text-slate-300 italic pl-2 border-l-2 border-sky-500/50">
+                        "{occ.contextSnippet}"
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-ink-line/60 bg-[#121927] px-6 py-3 flex justify-end">
+              <button
+                onClick={() => setPinnedEntry(null)}
+                className="btn btn-primary px-4 py-1.5 text-xs font-bold"
+              >
+                Close Concordance
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FULL CONCORDANCE SEARCH / BROWSE MODAL */}
+      {showLexiconModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl border border-sky-500/40 bg-[#0d131f] shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-sky-500/30 bg-[#121927] px-6 py-4">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl">📚</span>
+                <div>
+                  <h3 className="text-base font-bold text-slate-100">
+                    Guttag MIT 6.0001 Strong's Concordance Lexicon
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Search definitions and cross-chapter occurrences across all chapters of the curriculum
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowLexiconModal(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/10"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Search Bar */}
+            <div className="p-4 border-b border-ink-line/60 bg-[#090d14]">
+              <input
+                type="text"
+                value={lexiconSearch}
+                onChange={(e) => setLexiconSearch(e.target.value)}
+                placeholder="Search any term (e.g., Aliasing, Bisection, Representation Invariant, Memoization)..."
+                className="w-full rounded-xl border border-sky-500/30 bg-[#0d131f] px-4 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-400"
+                autoFocus
+              />
+            </div>
+
+            {/* Lexicon List */}
+            <div className="p-6 overflow-y-auto space-y-4 text-xs">
+              {filteredLexicon.map((entry) => (
+                <div
+                  key={entry.id}
+                  onClick={() => {
+                    setShowLexiconModal(false)
+                    setPinnedEntry(entry)
+                  }}
+                  className="rounded-xl border border-ink-line/80 bg-[#080d14] p-4 space-y-2 hover:border-sky-500/50 hover:bg-sky-950/20 cursor-pointer transition"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="chip border-sky-400 bg-sky-950 text-sky-300 font-mono text-[10px]">
+                        {entry.id}
+                      </span>
+                      <h4 className="font-bold text-slate-100 text-sm">
+                        {entry.term}
+                      </h4>
+                    </div>
+                    <span className="chip border-slate-700 text-slate-400 text-[10px]">
+                      {entry.category}
+                    </span>
+                  </div>
+
+                  <p className="text-slate-300 leading-relaxed">
+                    {entry.definition}
+                  </p>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-ink-line/40">
+                    <span className="text-sky-300 font-mono">
+                      📍 {entry.primaryLocation}
+                    </span>
+                    <span>{entry.occurrences.length} cross-chapter references ➔</span>
+                  </div>
+                </div>
+              ))}
+
+              {filteredLexicon.length === 0 && (
+                <p className="text-center py-8 text-slate-500">
+                  No concordance terms found matching "{lexiconSearch}".
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

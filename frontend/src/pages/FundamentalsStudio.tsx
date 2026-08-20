@@ -10,6 +10,7 @@ import type {
 import { CodeEditor } from '../components/CodeEditor'
 import { CodeSocraticTutor } from '../components/CodeSocraticTutor'
 import { CodeTestConsole } from '../components/CodeTestConsole'
+import { ConcordanceReader } from '../components/ConcordanceReader'
 import { ErrorNote, Spinner } from '../components/ui'
 
 const TRACKS = [
@@ -343,9 +344,7 @@ export default function FundamentalsStudio() {
                   </div>
 
                   {drillDetail.editorial ? (
-                    <div className="prose prose-invert max-w-none text-xs leading-relaxed whitespace-pre-wrap text-slate-200 bg-[#090d13] p-5 rounded-xl border border-ink-line/80 shadow-inner">
-                      {drillDetail.editorial}
-                    </div>
+                    <ConcordanceReader content={drillDetail.editorial} />
                   ) : (
                     <p className="text-slate-400 italic">No textbook excerpt available.</p>
                   )}
