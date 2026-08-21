@@ -1,8 +1,13 @@
 import React, { useMemo, useState } from 'react'
 import {
+  CONCORDANCE_CATEGORIES,
+  CONCORDANCE_MASTER_REGEX,
   ConcordanceCategory,
   ConcordanceEntry,
   GUTTAG_CONCORDANCE_LEXICON,
+  getConcordanceEntryById,
+  resolveConcordanceEntry,
+  searchConcordance,
 } from '../services/concordance_engine'
 
 export interface ConcordanceReaderProps {
@@ -18,19 +23,11 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
   const [pinnedEntry, setPinnedEntry] = useState<ConcordanceEntry | null>(null)
   const [showLexiconModal, setShowLexiconModal] = useState(false)
   const [lexiconSearch, setLexiconSearch] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string>('All')
+  const [selectedCategory, setSelectedCategory] = useState<ConcordanceCategory | 'All'>('All')
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  // Compile unified multi-pattern regex sorted by longest pattern first
-  const masterRegex = useMemo(() => {
-    const rawPatterns = GUTTAG_CONCORDANCE_LEXICON.map((entry) => {
-      const source = entry.patterns.source
-      return source.replace(/^\\b/, '').replace(/\\b$/, '')
-    })
-    // Sort descending by length to prioritize multi-word matches
-    rawPatterns.sort((a, b) => b.length - a.length)
-    return new RegExp(`\\b(${rawPatterns.join('|')})\\b`, 'gi')
-  }, [])
+  // Single compiled regex over every indexed surface form, longest alternative first.
+  const masterRegex = CONCORDANCE_MASTER_REGEX
 
   const handleMouseEnter = (
     e: React.MouseEvent<HTMLSpanElement>,
@@ -74,11 +71,8 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
         parts.push(text.substring(lastIndex, startIndex))
       }
 
-      // Find matching entry in lexicon
-      const entry = GUTTAG_CONCORDANCE_LEXICON.find((item) => {
-        item.patterns.lastIndex = 0
-        return item.patterns.test(matchText)
-      })
+      // Resolve the span to the single most specific entry (anchored, cached).
+      const entry = resolveConcordanceEntry(matchText)
 
       if (entry) {
         parts.push(
@@ -167,127 +161,160 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
 
   const renderRichText = (text: string) => {
     const lines = text.split('\n')
+    const blocks: React.ReactNode[] = []
 
-    return lines.map((line, lineIdx) => {
-      // Headers
-      if (line.startsWith('# ')) {
-        return (
-          <h1
-            key={lineIdx}
-            className="text-base font-bold text-slate-100 border-b border-ink-line pb-2 mt-2 mb-3"
-          >
-            {parseInlineMarkdown(line.replace('# ', ''))}
-          </h1>
-        )
-      }
-      if (line.startsWith('## ')) {
-        return (
-          <h2
-            key={lineIdx}
-            className="text-sm font-bold text-sky-300 mt-4 mb-2"
-          >
-            {parseInlineMarkdown(line.replace('## ', ''))}
-          </h2>
-        )
-      }
-      if (line.startsWith('### ')) {
-        return (
-          <h3
-            key={lineIdx}
-            className="text-xs font-bold text-slate-200 mt-3 mb-1.5 flex items-center gap-1.5"
-          >
-            {parseInlineMarkdown(line.replace('### ', ''))}
-          </h3>
-        )
-      }
-      if (line.startsWith('#### ')) {
-        return (
-          <h4
-            key={lineIdx}
-            className="text-xs font-semibold text-slate-300 mt-2 mb-1"
-          >
-            {parseInlineMarkdown(line.replace('#### ', ''))}
-          </h4>
-        )
-      }
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      const lineIdx = i
 
-      // Blockquotes
-      if (line.startsWith('> ')) {
-        return (
-          <blockquote
-            key={lineIdx}
-            className="border-l-2 border-sky-400/70 bg-sky-950/20 pl-3 py-1 my-2 text-slate-200 italic text-xs leading-relaxed rounded-r-md"
+      // Fenced code blocks render verbatim — never concordance-tagged.
+      if (line.trim().startsWith('```')) {
+        const lang = line.trim().slice(3).trim()
+        const codeLines: string[] = []
+        i++
+        while (i < lines.length && !lines[i].trim().startsWith('```')) {
+          codeLines.push(lines[i])
+          i++
+        }
+        blocks.push(
+          <div
+            key={`fence-${lineIdx}`}
+            className="my-3 overflow-hidden rounded-lg border border-ink-line/80 bg-[#05080d]"
           >
-            {parseInlineMarkdown(line.replace('> ', ''))}
-          </blockquote>
-        )
-      }
-
-      // Horizontal Rule
-      if (line.trim() === '---') {
-        return <hr key={lineIdx} className="border-ink-line/80 my-3" />
-      }
-
-      // List Items (- ...)
-      if (line.trim().startsWith('- ')) {
-        return (
-          <div key={lineIdx} className="flex items-start gap-2 my-1 pl-2 text-slate-300 text-xs">
-            <span className="text-sky-400 mt-0.5">•</span>
-            <div className="leading-relaxed">
-              {parseInlineMarkdown(line.trim().replace(/^- /, ''))}
-            </div>
+            {lang && (
+              <div className="border-b border-ink-line/60 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-slate-500">
+                {lang}
+              </div>
+            )}
+            <pre className="overflow-x-auto px-3 py-2.5">
+              <code className="font-mono text-[11px] leading-relaxed text-sky-200">
+                {codeLines.join('\n')}
+              </code>
+            </pre>
           </div>
         )
+        continue
       }
 
-      // Numbered List Items (1. ...)
-      const numMatch = line.trim().match(/^(\d+)\.\s+(.*)$/)
-      if (numMatch) {
-        return (
-          <div key={lineIdx} className="flex items-start gap-2 my-1 pl-2 text-slate-300 text-xs">
-            <span className="font-mono text-sky-400 font-bold text-[11px] min-w-[14px]">
-              {numMatch[1]}.
-            </span>
-            <div className="leading-relaxed">
-              {parseInlineMarkdown(numMatch[2])}
-            </div>
-          </div>
-        )
-      }
+      blocks.push(renderLine(line, lineIdx))
+    }
 
-      // Standard Line
-      return (
-        <p key={lineIdx} className="my-1.5 leading-relaxed text-slate-300 text-xs">
-          {parseInlineMarkdown(line)}
-        </p>
-      )
-    })
+    return blocks
   }
 
-  const categories: Array<ConcordanceCategory | 'All'> = [
-    'All',
-    'Core Language & Primitives',
-    'Memory, State & Runtime',
-    'Data Structures & ADTs',
-    'Algorithmic Paradigms',
-    'Complexity & Mathematics',
-    'Bitwise & Binary Arithmetic',
-    'Searching & Sorting',
-    'Functions & Abstractions',
-  ]
+  const renderLine = (line: string, lineIdx: number): React.ReactNode => {
+    // Headers
+    if (line.startsWith('# ')) {
+      return (
+        <h1
+          key={lineIdx}
+          className="text-base font-bold text-slate-100 border-b border-ink-line pb-2 mt-2 mb-3"
+        >
+          {parseInlineMarkdown(line.replace('# ', ''))}
+        </h1>
+      )
+    }
+    if (line.startsWith('## ')) {
+      return (
+        <h2
+          key={lineIdx}
+          className="text-sm font-bold text-sky-300 mt-4 mb-2"
+        >
+          {parseInlineMarkdown(line.replace('## ', ''))}
+        </h2>
+      )
+    }
+    if (line.startsWith('### ')) {
+      return (
+        <h3
+          key={lineIdx}
+          className="text-xs font-bold text-slate-200 mt-3 mb-1.5 flex items-center gap-1.5"
+        >
+          {parseInlineMarkdown(line.replace('### ', ''))}
+        </h3>
+      )
+    }
+    if (line.startsWith('#### ')) {
+      return (
+        <h4
+          key={lineIdx}
+          className="text-xs font-semibold text-slate-300 mt-2 mb-1"
+        >
+          {parseInlineMarkdown(line.replace('#### ', ''))}
+        </h4>
+      )
+    }
 
-  const filteredLexicon = GUTTAG_CONCORDANCE_LEXICON.filter((e) => {
-    const matchesSearch =
-      e.term.toLowerCase().includes(lexiconSearch.toLowerCase()) ||
-      e.definition.toLowerCase().includes(lexiconSearch.toLowerCase()) ||
-      e.id.toLowerCase().includes(lexiconSearch.toLowerCase()) ||
-      e.leetCodeRelevance.toLowerCase().includes(lexiconSearch.toLowerCase())
+    // Blockquotes
+    if (line.startsWith('> ')) {
+      return (
+        <blockquote
+          key={lineIdx}
+          className="border-l-2 border-sky-400/70 bg-sky-950/20 pl-3 py-1 my-2 text-slate-200 italic text-xs leading-relaxed rounded-r-md"
+        >
+          {parseInlineMarkdown(line.replace('> ', ''))}
+        </blockquote>
+      )
+    }
 
-    const matchesCategory =
-      selectedCategory === 'All' || e.category === selectedCategory
+    // Horizontal Rule
+    if (line.trim() === '---') {
+      return <hr key={lineIdx} className="border-ink-line/80 my-3" />
+    }
 
-    return matchesSearch && matchesCategory
-  })
+    // List Items (- ...)
+    if (line.trim().startsWith('- ')) {
+      return (
+        <div key={lineIdx} className="flex items-start gap-2 my-1 pl-2 text-slate-300 text-xs">
+          <span className="text-sky-400 mt-0.5">•</span>
+          <div className="leading-relaxed">
+            {parseInlineMarkdown(line.trim().replace(/^- /, ''))}
+          </div>
+        </div>
+      )
+    }
+
+    // Numbered List Items (1. ...)
+    const numMatch = line.trim().match(/^(\d+)\.\s+(.*)$/)
+    if (numMatch) {
+      return (
+        <div key={lineIdx} className="flex items-start gap-2 my-1 pl-2 text-slate-300 text-xs">
+          <span className="font-mono text-sky-400 font-bold text-[11px] min-w-[14px]">
+            {numMatch[1]}.
+          </span>
+          <div className="leading-relaxed">
+            {parseInlineMarkdown(numMatch[2])}
+          </div>
+        </div>
+      )
+    }
+
+    // Standard Line
+    return (
+      <p key={lineIdx} className="my-1.5 leading-relaxed text-slate-300 text-xs">
+        {parseInlineMarkdown(line)}
+      </p>
+    )
+  }
+
+  const categories: Array<ConcordanceCategory | 'All'> = useMemo(
+    () => ['All', ...CONCORDANCE_CATEGORIES],
+    []
+  )
+
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const entry of GUTTAG_CONCORDANCE_LEXICON) {
+      counts.set(entry.category, (counts.get(entry.category) ?? 0) + 1)
+    }
+    counts.set('All', GUTTAG_CONCORDANCE_LEXICON.length)
+    return counts
+  }, [])
+
+  const filteredLexicon = useMemo(
+    () => searchConcordance(lexiconSearch, selectedCategory),
+    [lexiconSearch, selectedCategory]
+  )
 
   return (
     <div className="relative space-y-4">
@@ -299,7 +326,7 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
             Exhaustive Strong's CS Concordance Active
           </span>
           <span className="text-[10px] text-slate-400">
-            ({GUTTAG_CONCORDANCE_LEXICON.length} indexed terms — hover any concept for formal definition & cross-references)
+            ({GUTTAG_CONCORDANCE_LEXICON.length} indexed terms across {CONCORDANCE_CATEGORIES.length} domains — hover any concept for formal definition & cross-references)
           </span>
         </div>
 
@@ -344,6 +371,12 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
           <p className="text-slate-300 leading-relaxed mb-3">
             {hoveredEntry.entry.definition}
           </p>
+
+          {hoveredEntry.entry.notation && (
+            <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-950/20 px-2.5 py-1.5 font-mono text-[11px] text-amber-200">
+              {hoveredEntry.entry.notation}
+            </p>
+          )}
 
           <div className="space-y-1.5 border-t border-ink-line/60 pt-2 text-[11px]">
             <p className="text-sky-300 font-semibold">
@@ -405,6 +438,18 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
                 </p>
               </div>
 
+              {/* Formal Notation / Invariant */}
+              {pinnedEntry.notation && (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 space-y-1">
+                  <p className="font-bold text-amber-300 uppercase tracking-wider text-[10px]">
+                    ✎ Formal Notation & Invariant:
+                  </p>
+                  <p className="font-mono text-[12px] leading-relaxed text-amber-100">
+                    {pinnedEntry.notation}
+                  </p>
+                </div>
+              )}
+
               {/* LeetCode Transfer */}
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 space-y-1">
                 <p className="font-bold text-emerald-300 uppercase tracking-wider text-[10px]">
@@ -442,6 +487,31 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
                   ))}
                 </div>
               </div>
+
+              {/* Related Concordance Entries */}
+              {pinnedEntry.relatedIds && pinnedEntry.relatedIds.length > 0 && (
+                <div className="space-y-2 border-t border-ink-line/60 pt-4">
+                  <h4 className="font-bold text-slate-100 text-xs uppercase tracking-wider">
+                    🔗 See Also
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {pinnedEntry.relatedIds.map((rid) => {
+                      const related = getConcordanceEntryById(rid)
+                      if (!related) return null
+                      return (
+                        <button
+                          key={rid}
+                          onClick={() => setPinnedEntry(related)}
+                          className="rounded-lg border border-sky-500/30 bg-sky-950/30 px-2.5 py-1 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/20 transition"
+                        >
+                          <span className="font-mono text-[10px] text-sky-400">{related.id}</span>{' '}
+                          {related.term}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Footer */}
@@ -469,7 +539,8 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
                     Guttag MIT 6.0001 Strong's Concordance Lexicon
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Search {GUTTAG_CONCORDANCE_LEXICON.length} computer science definitions and cross-chapter occurrences
+                    Search {GUTTAG_CONCORDANCE_LEXICON.length} computer science definitions across{' '}
+                    {CONCORDANCE_CATEGORIES.length} domains, Guttag Ch. 1–26
                   </p>
                 </div>
               </div>
@@ -487,7 +558,7 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
                 type="text"
                 value={lexiconSearch}
                 onChange={(e) => setLexiconSearch(e.target.value)}
-                placeholder="Search any computer science concept (e.g., Identity, Type, Value, Object, Aliasing, Bisection, Binary Search, Big-O, Memoization)..."
+                placeholder="Search any CS concept (e.g., Identity, Aliasing, Loop Invariant, Amortized, Topological Sort, Bitmask, Big-O, Memoization, Confusion Matrix)..."
                 className="w-full rounded-xl border border-sky-500/30 bg-[#0d131f] px-4 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-400"
                 autoFocus
               />
@@ -505,6 +576,7 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
                     }`}
                   >
                     {cat}
+                    <span className="ml-1 opacity-60">{categoryCounts.get(cat) ?? 0}</span>
                   </button>
                 ))}
               </div>
