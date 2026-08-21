@@ -64,7 +64,12 @@ export default function FundamentalsStudio() {
       const list = await api.listCodeProblems({ kind: 'fundamental', track: activeTrack })
       setDrills(list)
       if (list.length > 0) {
-        setSelectedDrillSlug(list[0].slug)
+        // Keep the drill the user is on. handleSubmit re-runs this to refresh the
+        // per-drill status dots, and resetting to list[0] there would bounce them
+        // back to the first drill and discard the result they just earned.
+        setSelectedDrillSlug((prev) =>
+          prev && list.some((d) => d.slug === prev) ? prev : list[0].slug
+        )
       } else {
         setDrillDetail(null)
       }
