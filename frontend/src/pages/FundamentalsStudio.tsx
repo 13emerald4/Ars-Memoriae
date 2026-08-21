@@ -48,15 +48,20 @@ export default function FundamentalsStudio() {
   // Fullscreen reading mode
   const [isFullscreenReading, setIsFullscreenReading] = useState<boolean>(false)
 
+  // All-questions overview: every drill across every chapter, not just the active track
+  const [allDrills, setAllDrills] = useState<CodeProblemSummary[]>([])
+  const [showAllQuestions, setShowAllQuestions] = useState<boolean>(false)
+  const [allQuestionsSearch, setAllQuestionsSearch] = useState<string>('')
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isFullscreenReading) {
-        setIsFullscreenReading(false)
-      }
+      if (e.key !== 'Escape') return
+      if (isFullscreenReading) setIsFullscreenReading(false)
+      else if (showAllQuestions) setShowAllQuestions(false)
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isFullscreenReading])
+  }, [isFullscreenReading, showAllQuestions])
 
   const loadDrills = useCallback(async () => {
     try {
@@ -85,6 +90,28 @@ export default function FundamentalsStudio() {
   useEffect(() => {
     void loadDrills()
   }, [loadDrills])
+
+  // Every fundamental drill across every chapter, for the "All Questions" overview.
+  // Independent of activeTrack so switching chapters doesn't refetch it.
+  const loadAllDrills = useCallback(async () => {
+    try {
+      const list = await api.listCodeProblems({ kind: 'fundamental' })
+      setAllDrills(list)
+    } catch (err) {
+      setError(err)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadAllDrills()
+  }, [loadAllDrills])
+
+  const openDrillFromOverview = (d: CodeProblemSummary) => {
+    setActiveTrack(d.track ?? TRACKS[0].id)
+    setSelectedDrillSlug(d.slug)
+    setActiveTab('question')
+    setShowAllQuestions(false)
+  }
 
   // Fetch drill detail when slug changes
   useEffect(() => {
@@ -149,6 +176,7 @@ export default function FundamentalsStudio() {
       })
       setRunResult(res)
       void loadDrills()
+      void loadAllDrills()
     } catch (err) {
       setError(err)
     } finally {
@@ -171,6 +199,20 @@ export default function FundamentalsStudio() {
 
   const currentIndex = drills.findIndex((d) => d.slug === selectedDrillSlug)
   const isFailed = runResult && runResult.status !== 'Accepted'
+
+  const overviewQuery = allQuestionsSearch.trim().toLowerCase()
+  const filteredAllDrills = overviewQuery
+    ? allDrills.filter(
+        (d) =>
+          d.title.toLowerCase().includes(overviewQuery) ||
+          d.category.toLowerCase().includes(overviewQuery) ||
+          d.tags.some((tag) => tag.toLowerCase().includes(overviewQuery))
+      )
+    : allDrills
+  const overviewGroups = TRACKS.map((t) => ({
+    track: t,
+    items: filteredAllDrills.filter((d) => d.track === t.id),
+  })).filter((g) => g.items.length > 0)
 
   return (
     <div className="space-y-6">
@@ -215,20 +257,35 @@ export default function FundamentalsStudio() {
       </div>
 
       {/* Track Selector Navigation */}
-      <div className="flex flex-wrap items-center gap-2">
-        {TRACKS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTrack(t.id)}
-            className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
-              activeTrack === t.id
-                ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20'
-                : 'bg-ink-soft text-slate-400 hover:text-slate-200 hover:bg-ink-soft/80'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {TRACKS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTrack(t.id)}
+              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
+                activeTrack === t.id
+                  ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20'
+                  : 'bg-ink-soft text-slate-400 hover:text-slate-200 hover:bg-ink-soft/80'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={() => setShowAllQuestions(true)}
+          className="flex flex-shrink-0 items-center gap-2 rounded-xl border border-sky-500/40 bg-sky-950/30 px-3 py-1.5 text-xs font-bold text-sky-200 hover:bg-sky-500/20 hover:text-white transition shadow"
+          title="See every question across every chapter"
+        >
+          <span>📋 All Questions</span>
+          {allDrills.length > 0 && (
+            <span className="chip border-sky-400/60 bg-sky-500/10 text-[10px] text-sky-300">
+              {allDrills.filter((d) => d.last_status === 'Accepted').length}/{allDrills.length}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Drills List Strip */}
@@ -558,6 +615,92 @@ export default function FundamentalsStudio() {
               onSubmit={handleSubmit}
               submitting={submitting}
             />
+          </div>
+        </div>
+      )}
+
+      {/* ALL QUESTIONS OVERVIEW MODAL */}
+      {showAllQuestions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-3xl max-h-[88vh] flex flex-col rounded-2xl border border-sky-500/40 bg-[#0d131f] shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-sky-500/30 bg-[#121927] px-6 py-4">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl">📋</span>
+                <div>
+                  <h3 className="text-base font-bold text-slate-100">All Questions, Every Chapter</h3>
+                  <p className="text-[11px] text-slate-400">
+                    {allDrills.filter((d) => d.last_status === 'Accepted').length} of {allDrills.length}{' '}
+                    solved across {TRACKS.length} chapters
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAllQuestions(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/10"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 border-b border-ink-line/60 bg-[#090d14]">
+              <input
+                type="text"
+                value={allQuestionsSearch}
+                onChange={(e) => setAllQuestionsSearch(e.target.value)}
+                placeholder="Search by title, category or tag…"
+                className="w-full rounded-xl border border-sky-500/30 bg-[#0d131f] px-4 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-400"
+                autoFocus
+              />
+            </div>
+
+            <div className="p-5 overflow-y-auto space-y-5 text-xs">
+              {overviewGroups.length === 0 && (
+                <p className="text-center py-8 text-slate-500">
+                  No questions match “{allQuestionsSearch}”.
+                </p>
+              )}
+
+              {overviewGroups.map(({ track, items }) => (
+                <div key={track.id} className="space-y-2">
+                  <h4 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    <span>{track.label}</span>
+                    <span className="text-slate-600 font-normal normal-case">
+                      ({items.filter((d) => d.last_status === 'Accepted').length}/{items.length})
+                    </span>
+                  </h4>
+                  <div className="space-y-1.5">
+                    {items.map((d, idx) => (
+                      <button
+                        key={d.slug}
+                        onClick={() => openDrillFromOverview(d)}
+                        className={`w-full flex items-center gap-3 rounded-lg border px-3 py-2 text-left transition ${
+                          d.slug === selectedDrillSlug && d.track === activeTrack
+                            ? 'border-sky-500 bg-sky-500/10'
+                            : 'border-ink-line/60 bg-[#080d14] hover:border-sky-500/40 hover:bg-sky-950/20'
+                        }`}
+                      >
+                        <span
+                          className={`h-2 w-2 flex-shrink-0 rounded-full ${
+                            d.last_status === 'Accepted'
+                              ? 'bg-emerald-400'
+                              : d.has_submission
+                              ? 'bg-amber-400'
+                              : 'bg-slate-600'
+                          }`}
+                        />
+                        <span className="text-slate-500 font-mono text-[11px] w-5 flex-shrink-0">
+                          {idx + 1}.
+                        </span>
+                        <span className="flex-1 text-slate-200 font-medium">{d.title}</span>
+                        <span className="chip border-slate-700 text-slate-400 text-[10px] flex-shrink-0">
+                          {d.difficulty}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
