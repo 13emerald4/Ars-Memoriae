@@ -123,7 +123,7 @@ async def upload_document(
         select(Source).where(
             Source.user_id == user.id,
             Source.title == target_title,
-            Source.for_reading == False,
+            Source.for_reading.is_(False),
         )
     )
     if existing_draft is not None:

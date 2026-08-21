@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import Card, Deck, Extract, KnowledgeNode, Note, Source, User
+from app.models import Card, Deck, KnowledgeNode, User
 from app.routers.decks import card_out
 from app.routers.deps import current_user, parse_uuid
 from app.schemas.core import CardOut

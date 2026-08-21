@@ -297,6 +297,13 @@ class JsonImportNote(BaseModel):
     cloze_text: str | None = Field(default=None, max_length=20_000)
     tags: list[str] = Field(default_factory=list, max_length=50)
     priority: int | None = Field(default=None, ge=0, le=100)
+    # Optional Learn & Practice citation (§ Learn & Practice). There is no
+    # uploaded document behind a JSON import, so unlike the document-generated
+    # path there is nothing to verify `quote` against — it is taken as given,
+    # the same way a hand-typed citation would be.
+    quote: str | None = Field(default=None, max_length=4000)
+    locator: str | None = Field(default=None, max_length=200)
+    source_title: str | None = Field(default=None, max_length=300)
 
     @model_validator(mode="before")
     @classmethod
@@ -336,6 +343,7 @@ class JsonImportResult(BaseModel):
     deck_created: bool
     notes_created: int
     cards_created: int
+    citations_created: int = 0
     warnings: list[str] = Field(default_factory=list)
 
 

@@ -407,6 +407,7 @@ export interface JsonImportResult {
   deck_created: boolean
   notes_created: number
   cards_created: number
+  citations_created: number
   warnings: string[]
 }
 

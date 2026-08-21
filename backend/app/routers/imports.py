@@ -14,7 +14,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db import get_db
-from app.models import Card, Deck, Import, MediaAsset, Note, NoteType, ReviewLog, User
+from app.models import (
+    Card,
+    CardReference,
+    Deck,
+    Import,
+    MediaAsset,
+    Note,
+    NoteType,
+    ReviewLog,
+    User,
+)
 from app.routers.deps import current_user
 from app.schemas.core import ImportResult, JsonImportNote, JsonImportRequest, JsonImportResult
 from app.services import apkg_importer as apkg
@@ -86,6 +96,12 @@ async def import_json(
     failing the whole batch, mirroring how the .apkg importer handles rows
     that don't map cleanly: a hand-edited JSON file is exactly the case where
     one bad entry in five hundred shouldn't cost you the other 499.
+
+    A note carrying ``quote`` gets a :class:`CardReference` too, which is what
+    Learn & Practice needs to teach from. There's no uploaded document behind
+    this path to verify the quote against, so it's trusted as given rather
+    than checked — the same way ``accept-deck`` trusts an already-verified
+    quote.
     """
     if isinstance(body, list):
         deck_name = (deck or "").strip()
@@ -117,6 +133,7 @@ async def import_json(
     warnings: list[str] = []
     notes_created = 0
     cards_created = 0
+    citations_created = 0
 
     for i, item in enumerate(notes):
         is_cloze = item.kind == "cloze"
@@ -141,6 +158,23 @@ async def import_json(
         notes_created += 1
         cards_created += len(cards)
 
+        quote = (item.quote or "").strip()
+        if quote:
+            for card in cards:
+                db.add(
+                    CardReference(
+                        card_id=card.id,
+                        quote=quote,
+                        # Nothing here was extracted from a document we can
+                        # check against, so there's no hallucination risk to
+                        # flag — the caller supplied this text directly.
+                        quote_verified=True,
+                        locator=item.locator,
+                        source_title=item.source_title,
+                    )
+                )
+                citations_created += 1
+
     record = Import(
         user_id=user.id,
         filename=f"json:{deck_name}",
@@ -156,6 +190,7 @@ async def import_json(
         deck_created=deck_created,
         notes_created=notes_created,
         cards_created=cards_created,
+        citations_created=citations_created,
         warnings=warnings,
     )
 

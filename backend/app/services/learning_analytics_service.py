@@ -17,7 +17,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Card, Deck, KnowledgeNode, Note, ReviewLog, StudySession, User
+from app.models import Card, Deck, ReviewLog, StudySession, User
 from app.schemas.analytics import (
     CalibrationBucket,
     ChronotypeHour,
@@ -34,7 +34,7 @@ from app.schemas.analytics import (
     YieldPoint,
 )
 from app.services.rendering import render
-from app.services.tree_service import children_of, load_nodes, subtree
+from app.services.tree_service import load_nodes, subtree
 
 CONFIDENCE_MAP = {
     1: 0.25,  # Wild Guess
@@ -200,7 +200,7 @@ def _compute_fatigue(logs: list[dict], sessions: list[StudySession]) -> SessionF
                 break
 
     curve: list[FatiguePoint] = []
-    for low, high, label, mid in bucket_edges:
+    for _low, _high, label, mid in bucket_edges:
         items = bucket_data.get(label, [])
         if not items:
             continue
@@ -239,11 +239,10 @@ def _compute_fatigue(logs: list[dict], sessions: list[StudySession]) -> SessionF
     optimal_min = 25
     break_acc = baseline_acc
     for p in curve:
-        if p.elapsed_minutes >= 15.0 and p.review_count >= 5:
-            if p.accuracy < baseline_acc * 0.88:
-                optimal_min = int(p.elapsed_minutes - 2.5)
-                break_acc = p.accuracy
-                break
+        if p.elapsed_minutes >= 15.0 and p.review_count >= 5 and p.accuracy < baseline_acc * 0.88:
+            optimal_min = int(p.elapsed_minutes - 2.5)
+            break_acc = p.accuracy
+            break
 
     optimal_min = max(15, min(optimal_min, 45))
     rec = (
@@ -455,7 +454,9 @@ async def _compute_item_discrimination(
 
 
 def _compute_desirable_difficulty(logs: list[dict]) -> DesirableDifficultyOut:
-    review_logs = [l for l in logs if l["state_before"] == "review" and l["elapsed_days"] is not None]
+    review_logs = [
+        rl for rl in logs if rl["state_before"] == "review" and rl["elapsed_days"] is not None
+    ]
     if len(review_logs) < 5:
         return DesirableDifficultyOut(
             curve=[],
@@ -474,15 +475,15 @@ def _compute_desirable_difficulty(logs: list[dict]) -> DesirableDifficultyOut:
 
     yield_data: dict[str, list[tuple[float, float]]] = defaultdict(list)
 
-    for l in review_logs:
-        s = max(0.5, l["stability"] or 1.0)
-        elapsed = max(0.1, l["elapsed_days"] or 1.0)
+    for log in review_logs:
+        s = max(0.5, log["stability"] or 1.0)
+        elapsed = max(0.1, log["elapsed_days"] or 1.0)
         # Power-law retrievability R(t, S) = (1 + 0.234 * t / S)^(-0.5)
         r = (1.0 + 0.234 * (elapsed / s)) ** (-0.5)
         r = max(0.01, min(0.99, r))
 
         # Stability gain delta S
-        delta_s = s * (2.0 if l["passed"] else 0.5)
+        delta_s = s * (2.0 if log["passed"] else 0.5)
 
         for label, low, high in buckets:
             if low <= r < high:
@@ -510,7 +511,7 @@ def _compute_desirable_difficulty(logs: list[dict]) -> DesirableDifficultyOut:
         )
 
     summary = (
-        "Desirable difficulty analysis confirms that reviewing at 85–90% retrievability yields the optimal "
+        "Desirable difficulty analysis confirms that reviewing at 85-90% retrievability yields the optimal "
         "balance between memory consolidation gain and failure risk."
     )
 
@@ -536,11 +537,11 @@ def _compute_metacognition(logs: list[dict]) -> MetacognitiveOut:
 
     paired: list[tuple[float, int, int]] = []  # (predicted_prob, outcome, confidence_level)
 
-    for l in logs:
-        conf_level = l["user_confidence"]
+    for log in logs:
+        conf_level = log["user_confidence"]
         if conf_level is None:
             # Infer from response latency
-            lat = l["latency_ms"] or 5000
+            lat = log["latency_ms"] or 5000
             if lat < 2000:
                 conf_level = 4
             elif lat < 5000:
@@ -551,7 +552,7 @@ def _compute_metacognition(logs: list[dict]) -> MetacognitiveOut:
                 conf_level = 1
 
         prob = CONFIDENCE_MAP.get(conf_level, 0.75)
-        outcome = 1 if l["passed"] else 0
+        outcome = 1 if log["passed"] else 0
         paired.append((prob, outcome, conf_level))
 
     brier = sum((p - o) ** 2 for p, o, _ in paired) / len(paired)
@@ -559,7 +560,7 @@ def _compute_metacognition(logs: list[dict]) -> MetacognitiveOut:
 
     # Bucket by confidence level 1..4
     by_level: dict[int, list[int]] = defaultdict(list)
-    for p, o, level in paired:
+    for _p, o, level in paired:
         by_level[level].append(o)
 
     calibration_curve: list[CalibrationBucket] = []
@@ -579,11 +580,11 @@ def _compute_metacognition(logs: list[dict]) -> MetacognitiveOut:
 
     # Hypercorrection: subsequent recall after a high-confidence error vs low-confidence error
     high_conf_lapses: list[uuid.UUID] = []
-    for l in logs:
-        if not l["passed"]:
-            conf = l["user_confidence"] or 3
+    for log in logs:
+        if not log["passed"]:
+            conf = log["user_confidence"] or 3
             if conf >= 3:
-                high_conf_lapses.append(l["card_id"])
+                high_conf_lapses.append(log["card_id"])
 
     # Check next review of those cards
     high_conf_set = set(high_conf_lapses)
@@ -591,12 +592,12 @@ def _compute_metacognition(logs: list[dict]) -> MetacognitiveOut:
     subsequent_total = 0
     seen_lapse: set[uuid.UUID] = set()
 
-    for l in logs:
-        cid = l["card_id"]
+    for log in logs:
+        cid = log["card_id"]
         if cid in high_conf_set:
             if cid in seen_lapse:
                 subsequent_total += 1
-                if l["passed"]:
+                if log["passed"]:
                     subsequent_passed += 1
             else:
                 seen_lapse.add(cid)
@@ -636,12 +637,11 @@ async def _compute_ewma_mastery(
 
     # Map card review logs by deck_id
     deck_logs: dict[uuid.UUID, list[bool]] = defaultdict(list)
-    for l in logs:
-        if l["deck_id"]:
-            deck_logs[l["deck_id"]].append(l["passed"])
+    for log in logs:
+        if log["deck_id"]:
+            deck_logs[log["deck_id"]].append(log["passed"])
 
     scores: list[EWMAScore] = []
-    kids = children_of(nodes)
 
     for node in nodes:
         if node.kind not in ("topic", "deck"):
@@ -694,9 +694,9 @@ async def _compute_sprt_gating(
 
     # Map reviews by deck_id
     deck_logs: dict[uuid.UUID, list[bool]] = defaultdict(list)
-    for l in logs:
-        if l["deck_id"]:
-            deck_logs[l["deck_id"]].append(l["passed"])
+    for log in logs:
+        if log["deck_id"]:
+            deck_logs[log["deck_id"]].append(log["passed"])
 
     p0 = 0.60
     p1 = 0.88

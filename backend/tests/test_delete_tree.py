@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
-
 ARTICLE = "Paragraph 1. Spaced repetition is effective for long term retention."
 
 

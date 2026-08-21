@@ -211,6 +211,66 @@ async def test_explicit_kind_front_back_takes_priority_over_aliases(auth_client)
     assert cards[0]["template_slot"] == "default"
 
 
+async def test_a_quote_creates_a_citation_that_powers_learn_and_practice(auth_client):
+    """A JSON import can hand-supply what a document upload would otherwise
+    generate: a citation, so Learn & Practice has something to teach from."""
+    resp = await auth_client.post(
+        "/api/import/json",
+        json={
+            "deck": "Cited",
+            "notes": [
+                {
+                    "front": "What replaces profit maximization after a bubble bursts?",
+                    "back": "Debt minimization.",
+                    "quote": (
+                        "During such a recession the private sector shifts from profit "
+                        "maximization to debt minimization."
+                    ),
+                    "locator": "The Behavioral Shift",
+                    "source_title": "Balance Sheet Recessions",
+                }
+            ],
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["citations_created"] == 1
+
+    cards = (await auth_client.get(f"/api/cards?deck_id={body['deck_id']}")).json()
+    card_id = cards[0]["id"]
+
+    lesson = (await auth_client.get(f"/api/review/{card_id}/lesson")).json()
+    assert lesson["available"] is True
+    assert len(lesson["citations"]) == 1
+    citation = lesson["citations"][0]
+    assert citation["quote_verified"] is True
+    assert citation["locator"] == "The Behavioral Shift"
+    assert citation["source_title"] == "Balance Sheet Recessions"
+    assert "debt minimization" in citation["quote"]
+
+
+async def test_no_quote_means_no_citation_and_no_learn_and_practice(auth_client):
+    resp = await auth_client.post(
+        "/api/import/json",
+        json={"deck": "Uncited", "notes": [{"front": "q", "back": "a"}]},
+    )
+    body = resp.json()
+    assert body["citations_created"] == 0
+
+    cards = (await auth_client.get(f"/api/cards?deck_id={body['deck_id']}")).json()
+    lesson = (await auth_client.get(f"/api/review/{cards[0]['id']}/lesson")).json()
+    assert lesson["available"] is False
+    assert lesson["reason"] == "no_citations"
+
+
+async def test_a_blank_quote_is_treated_as_no_citation(auth_client):
+    resp = await auth_client.post(
+        "/api/import/json",
+        json={"deck": "Blank Quote", "notes": [{"front": "q", "back": "a", "quote": "   "}]},
+    )
+    assert resp.json()["citations_created"] == 0
+
+
 async def test_json_import_is_tenant_isolated(client):
     import uuid
 

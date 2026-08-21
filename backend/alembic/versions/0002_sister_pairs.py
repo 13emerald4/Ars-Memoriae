@@ -6,6 +6,7 @@ Create Date: 2026-08-08
 """
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision = "0002"

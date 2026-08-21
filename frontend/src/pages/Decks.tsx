@@ -1256,7 +1256,50 @@ const JSON_IMPORT_EXAMPLE = `[
 ]
 
 or wrap it: { "deck": "Spanish", "notes": [ ... ] }
-or paste straight from an LLM export: { "card_type": "qa", "question": "...", "answer": "..." }`
+or paste straight from an LLM export: { "card_type": "qa", "question": "...", "answer": "..." }
+
+add "quote" (+ optional "locator"/"source_title") to a note to enable Learn & Practice on it`
+
+// Paste-ready prompt for an external LLM chat — kept in sync with
+// docs/llm-flashcard-json-prompt.md. Requires "quote" on every card so the
+// import creates a citation, which is what Learn & Practice teaches from.
+const LLM_PROMPT = `You are generating flashcards for a spaced-repetition app. The user types a full answer from memory (not multiple choice), so cards must have one clear, checkable answer — not vague or multi-part.
+
+Output ONLY a JSON array, no prose before or after. Each element is one card:
+
+Basic (question/answer):
+{
+  "front": "<question, one fact>",
+  "back": "<the answer>",
+  "quote": "<1-4 sentence excerpt from the source that states this fact>",
+  "locator": "<section/heading/page this came from, if known>",
+  "source_title": "<title of the source material>",
+  "tags": ["<topic>"]
+}
+
+Cloze (fill-in-the-blank, for terms/definitions embedded in a sentence):
+{
+  "kind": "cloze",
+  "cloze_text": "<sentence with the key term wrapped like {{c1::term}}>",
+  "back": "<extra context shown after grading, optional>",
+  "quote": "<1-4 sentence excerpt from the source this sentence is drawn from>",
+  "locator": "<section/heading/page>",
+  "source_title": "<title of the source material>",
+  "tags": ["<topic>"]
+}
+
+Rules:
+- One card = one atomic fact. Split compound facts into separate cards.
+- "front"/"cloze_text" must be answerable without seeing "back" first.
+- "quote" is REQUIRED on every card. It's what the app teaches from before quizzing (Learn & Practice) — write it as a short, self-contained explanation of the fact, not just the bare answer restated. If you're working from a source document, quote it directly; if you're writing from general knowledge, write 1-4 sentences that would teach a newcomer the concept.
+- "locator" and "source_title" are optional but cheap — include them whenever you know where the fact came from.
+- Keep "front"/"back"/"cloze_text" under ~500 characters; "quote" under ~800 characters.
+- Use {{c1::x}}, {{c2::y}} for multiple deletions in one cloze sentence only when the deletions are genuinely linked; otherwise make separate cards.
+- Do not invent facts. If the source doesn't support a fact, drop the card.
+
+Generate cards from the material below:
+
+<PASTE YOUR SOURCE TEXT / NOTES / TOPIC HERE>`
 
 /** Bulk-create notes/cards from a hand-written or scripted JSON file — the
  *  non-Anki upload path. One request targets one deck (created if missing).
@@ -1270,6 +1313,13 @@ function JsonImportPanel({ onImported }: { onImported: () => void }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<unknown>(null)
   const [open, setOpen] = useState(false)
+  const [promptCopied, setPromptCopied] = useState(false)
+
+  async function copyPrompt() {
+    await navigator.clipboard.writeText(LLM_PROMPT)
+    setPromptCopied(true)
+    setTimeout(() => setPromptCopied(false), 2000)
+  }
 
   async function submit() {
     setBusy(true)
@@ -1315,6 +1365,15 @@ function JsonImportPanel({ onImported }: { onImported: () => void }) {
       }
     >
       <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-ink-line bg-ink p-3">
+          <p className="text-xs text-slate-400">
+            No cards yet? Copy a ready-made prompt for ChatGPT/Claude/Gemini that writes the JSON
+            for you — including citations for Learn &amp; Practice.
+          </p>
+          <button className="btn shrink-0 px-2 py-1 text-xs" onClick={copyPrompt}>
+            {promptCopied ? 'Copied!' : 'Copy LLM prompt'}
+          </button>
+        </div>
         <input
           className="input"
           placeholder="Deck name (required for a bare array; overrides one already in the JSON)"
@@ -1353,6 +1412,11 @@ function JsonImportPanel({ onImported }: { onImported: () => void }) {
               </span>
               <span className="chip">{result.notes_created} notes</span>
               <span className="chip">{result.cards_created} cards</span>
+              {result.citations_created > 0 && (
+                <span className="chip text-sky-300">
+                  {result.citations_created} with Learn &amp; Practice
+                </span>
+              )}
             </div>
             {result.warnings.length > 0 && (
               <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
