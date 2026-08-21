@@ -3,9 +3,22 @@
 Grounded in John V. Guttag's 'Introduction to Computation and Programming
 Using Python' (Third Edition, MIT Press / MIT 6.0001 & 6.0002).
 
-Each lesson provides an in-depth 2-5 page equivalent reading covering theoretical
-foundations, cited verbatim textbook passages, canonical code figures, mathematical
-proofs, common pitfalls, and LeetCode transfer models.
+Each lesson provides an in-depth reading covering theoretical foundations, the
+textbook's argument, canonical code, common pitfalls, and LeetCode transfer models.
+
+Citation conventions
+--------------------
+* Chapter, section, and figure references were checked against the 3rd-edition PDF.
+  Figures use the book's own hyphenated numbering (Figure 12-5, not Figure 12.4).
+* Blockquotes and code listings are **paraphrases and reconstructions**, not verbatim
+  transcriptions: the figure listings in the source PDF are images, so their exact text
+  could not be extracted. Prose claims attributed to Guttag were verified against the
+  extracted body text.
+* Page numbers are deliberately omitted - the source PDF carries no printed page
+  numbers, so any page citation would be unverifiable.
+* Lessons covering material that is genuinely **not in the book** (bitwise operations,
+  Brian Kernighan's algorithm, prefix sums, collections.deque) are labeled
+  "Beyond the Book" in their tags and carry an explicit warning in the description.
 """
 
 from __future__ import annotations
@@ -19,9 +32,9 @@ FUNDAMENTALS_CATALOG = [
         "track": "track_0_python_basics",
         "difficulty": "Easy",
         "category": "Python Basics",
-        "tags": ["Guttag § 2.1", "Types", "Type Casting", "Scalar Primitives"],
+        "tags": ["Guttag § 2.2", "Types", "Type Casting", "Scalar Primitives"],
         "description": """### 🏛️ Finger Exercise: Type Conversions & Scalar Evaluation
-**Guttag Citation**: *Chapter 2: Introduction to Python (§ 2.1 The Basic Elements of Python)*
+**Guttag Citation**: *Chapter 2: Introduction to Python (§ 2.2 The Basic Elements of Python)*
 
 Write a function `convert_types(val_str: str, num: int)` that returns a tuple of:
 1. `val_str` converted to an integer.
@@ -48,7 +61,7 @@ Write a function `convert_types(val_str: str, num: int)` that returns a tuple of
     return (int(val_str), str(num), float(val_str), bool(num))
 """
         },
-        "editorial": """# 📖 Chapter 2: Introduction to Python (§ 2.1 The Basic Elements of Python)
+        "editorial": """# 📖 Chapter 2: Introduction to Python (§ 2.2 The Basic Elements of Python)
 *John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
 
 ---
@@ -66,7 +79,7 @@ Types in Python are fundamentally divided into two categories:
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 2, Section 2.1, pp. 12–18)*
+*(Reconstructed from Guttag, Chapter 2, § 2.2 — paraphrased summary of the argument, not a verbatim quotation)*
 
 > "Python is a **strongly typed** language with **dynamic type binding**.
 > 
@@ -75,13 +88,13 @@ Types in Python are fundamentally divided into two categories:
 > 
 > #### The Four Primary Scalar Primitives:
 > 1. **`int` (Arbitrary-Precision Integers)**: Unlike C, C++, or Java where integers are bounded by fixed hardware word sizes (e.g., 32-bit `[-2^31, 2^31-1]` or 64-bit `[-2^63, 2^63-1]`), Python 3 integers have **unbounded precision**. They can grow to arbitrary magnitudes limited only by the available memory on the machine ($2^{10000}$ computes instantly without overflow).
-> 2. **`float` (Real Numbers)**: Floats are represented using standard IEEE 754 double-precision (64 bits: 1 sign bit, 11 exponent bits, 53 mantissa bits). Because binary fractions cannot represent all decimal fractions exactly (e.g., $0.1_{10} = 0.0001100110011..._2$), testing floating-point numbers with exact equality `==` is hazardous and should almost always use approximate tolerance $|a - b| < \epsilon$.
+> 2. **`float` (Real Numbers)**: Floats are represented using standard IEEE 754 double-precision (64 bits: 1 sign bit, 11 exponent bits, 53 mantissa bits). Because binary fractions cannot represent all decimal fractions exactly (e.g., $0.1_{10} = 0.0001100110011..._2$), testing floating-point numbers with exact equality `==` is hazardous and should almost always use approximate tolerance $|a - b| < \\epsilon$.
 > 3. **`bool` (Boolean Truth Values)**: The type `bool` has exactly two literals: `True` and `False`. In Python, `bool` is a subclass of `int` where `True == 1` and `False == 0`.
 > 4. **`NoneType`**: Contains a solitary literal `None`, used to denote the absence of a return value or an uninitialized state.
 > 
 > #### Type Conversions (Casting) & Truthiness Rules:
 > Type conversions are invoked by calling the type name as a constructor function:
-> - `int('100')` parses decimal digits into an integer object. Optional radix: `int('1010', 2)` parses binary $\implies 10$.
+> - `int('100')` parses decimal digits into an integer object. Optional radix: `int('1010', 2)` parses binary $\\implies 10$.
 > - `float('3.14')` parses standard float representation.
 > - `str(x)` produces the canonical human-readable string representation of object $x$.
 > - `bool(x)` evaluates the **truthiness** of object $x$.
@@ -147,9 +160,9 @@ print(a is b)  # False (different heap allocations, though a == b is True)
         "track": "track_0_python_basics",
         "difficulty": "Easy",
         "category": "Python Basics",
-        "tags": ["Guttag § 2.1", "Arithmetic", "Modulo", "Floor Division"],
+        "tags": ["Guttag § 2.2.1", "Arithmetic", "Modulo", "Floor Division"],
         "description": """### 🏛️ Finger Exercise: Integer Division Invariant
-**Guttag Citation**: *Chapter 2: Introduction to Python (§ 2.1.1 Operators and Expressions)*
+**Guttag Citation**: *Chapter 2: Introduction to Python (§ 2.2.1 Objects, Expressions, and Numerical Types)*
 
 Write a function `div_mod_stats(a: int, b: int)` that returns a tuple of:
 1. `float_div`: `a / b` (standard floating point division)
@@ -173,7 +186,7 @@ Write a function `div_mod_stats(a: int, b: int)` that returns a tuple of:
     return (a / b, a // b, a % b, divmod(a, b))
 """
         },
-        "editorial": """# 📖 Chapter 2: Introduction to Python (§ 2.1.1 Operators, Expressions & Arithmetic Invariants)
+        "editorial": """# 📖 Chapter 2: Introduction to Python (§ 2.2.1 Objects, Expressions, and Numerical Types)
 *John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
 
 ---
@@ -190,7 +203,7 @@ However, computer programming languages differ in how they round non-integer quo
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 2, Section 2.1.1, pp. 14–17)*
+*(Reconstructed from Guttag, Chapter 2, § 2.2.1 — paraphrased summary of the argument, not a verbatim quotation)*
 
 > "The operators on numeric types include:
 > - `/` (**True Division**): Always returns a float representing the exact mathematical quotient (e.g., `6 / 2` evaluates to `3.0`, not `3`).
@@ -207,7 +220,10 @@ However, computer programming languages differ in how they round non-integer quo
 > - $-7 // 2 = -4$, and $-7 \\% 2 = 1 \\implies 2 \\times (-4) + 1 = -7$
 > - $7 // -2 = -4$, and $7 \\% -2 = -1 \\implies -2 \\times (-4) + (-1) = 7$
 > 
-> Python provides the built-in function `divmod(a, b)` which returns `(a // b, a % b)` as a 2-tuple, computed using a single hardware instruction."
+> Python provides the built-in function `divmod(a, b)`, which returns the pair `(a // b, a % b)` in one call."
+
+> ⚠️ `divmod` is not discussed by Guttag; the floor-division and modulo semantics above are. Most CPUs do compute
+> quotient and remainder in a single divide instruction, but that is a hardware note, not a claim from the text.
 
 ---
 
@@ -260,21 +276,23 @@ assert verify_division_invariant(-7, -2)  # q=3, r=-1
         "description": """### 🏛️ Finger Exercise: Bisection Search Approximation
 **Guttag Citation**: *Chapter 3: Some Simple Numerical Programs (§ 3.2 Approximate Solutions and Bisection Search)*
 
-Implement Guttag's classic bisection search algorithm from Figure 3.4 to find the square root of $x \\ge 1$.
+Implement Guttag's classic bisection search algorithm from Figure 3-5 to find the square root of $x \\ge 1$.
 Write a function `bisection_sqrt(x: float, epsilon: float = 0.01) -> float` that finds an approximation $ans$ such that $|ans^2 - x| \\le \\epsilon$.
 
-**Algorithm (Figure 3.4)**:
+**Algorithm (Figure 3-5)**:
 1. `low = 0.0`, `high = max(1.0, x)`
 2. `ans = (low + high) / 2.0`
 3. While $|ans^2 - x| > \\epsilon$:
    - If $ans^2 < x$: `low = ans`
    - Else: `high = ans`
    - `ans = (low + high) / 2.0`
-4. Return `round(ans, 4)`.
+4. Return `round(ans, 2)`.
+
+> Note: `epsilon` bounds the error on $ans^2$, not on $ans$. With $\\epsilon = 0.01$ only about two decimal places of the root are actually justified, so the result is rounded to 2 — reporting more digits would advertise precision the method did not deliver.
 """,
         "examples": [
             {"input": "x = 25.0, epsilon = 0.01", "output": "5.0"},
-            {"input": "x = 2.0, epsilon = 0.01", "output": "1.4142"},
+            {"input": "x = 2.0, epsilon = 0.01", "output": "1.41"},
         ],
         "constraints": ["x >= 0.1", "epsilon > 0"],
         "starter_codes": {
@@ -294,7 +312,7 @@ Write a function `bisection_sqrt(x: float, epsilon: float = 0.01) -> float` that
         else:
             high = ans
         ans = (low + high) / 2.0
-    return round(ans, 4)
+    return round(ans, 2)
 """
         },
         "editorial": """# 📖 Chapter 3: Some Simple Numerical Programs (§ 3.2 Approximate Solutions & Bisection Search)
@@ -317,7 +335,7 @@ By testing the midpoint $mid = (low + high) / 2$, we can eliminate half the sear
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 3, Section 3.2, pp. 31–36)*
+*(Reconstructed from Guttag, Chapter 3, § 3.2 — paraphrased summary of the argument, not a verbatim quotation)*
 
 > "Suppose we know that the square root of $x$ lies somewhere in the interval $[low, high]$. We can evaluate our guess at the midpoint:
 > $$ans = \\frac{low + high}{2}$$
@@ -339,9 +357,9 @@ By testing the midpoint $mid = (low + high) / 2$, we can eliminate half the sear
 
 ---
 
-### § 3. Canonical Code Walkthrough (Guttag Figure 3.4)
+### § 3. Canonical Code Walkthrough (after Guttag Figure 3-5)
 ```python
-# Figure 3.4 from Guttag (Third Edition): Finding square root using bisection search
+# After Guttag Figure 3-5, "Using bisection search to approximate square root"
 x = 25
 epsilon = 0.01
 numGuesses = 0
@@ -382,7 +400,7 @@ This continuous bisection search is the direct foundation of one of LeetCode's m
             {"input": {"x": 4.0, "epsilon": 0.001}, "expected": 2.0},
             {"input": {"x": 9.0, "epsilon": 0.01}, "expected": 3.0},
         ],
-        "hints": ["Use low = 0.0, high = max(1.0, x), and halve the interval with ans = (low + high) / 2.0."],
+        "hints": ["Use low = 0.0, high = max(1.0, x), halve with ans = (low + high) / 2.0, and return round(ans, 2)."],
     },
     {
         "slug": "py-basics-newton-raphson",
@@ -395,7 +413,7 @@ This continuous bisection search is the direct foundation of one of LeetCode's m
         "description": """### 🏛️ Finger Exercise: Newton-Raphson Root Finding
 **Guttag Citation**: *Chapter 3: Some Simple Numerical Programs (§ 3.4 Newton-Raphson)*
 
-Implement Guttag's Newton-Raphson root finder from Figure 3.6 for $f(y) = y^2 - k = 0$.
+Implement Guttag's Newton-Raphson root finder from Figure 3-7 for $f(y) = y^2 - k = 0$.
 The update rule is:
 $$y_{new} = y - \\frac{y^2 - k}{2y}$$
 
@@ -435,7 +453,7 @@ Geometrically, Newton-Raphson draws the tangent line to the curve $y = f(x)$ at 
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 3, Section 3.4, pp. 38–41)*
+*(Reconstructed from Guttag, Chapter 3, § 3.4 — paraphrased summary of the argument, not a verbatim quotation)*
 
 > "The most commonly used approximation algorithm for finding polynomial roots is usually attributed to Isaac Newton and Joseph Raphson.
 > 
@@ -454,9 +472,9 @@ Geometrically, Newton-Raphson draws the tangent line to the curve $y = f(x)$ at 
 
 ---
 
-### § 3. Canonical Code Walkthrough (Guttag Figure 3.6)
+### § 3. Canonical Code Walkthrough (after Guttag Figure 3-7)
 ```python
-# Figure 3.6 from Guttag (Third Edition): Newton-Raphson square root
+# After Guttag Figure 3-7, "Implementation of Newton-Raphson method"
 # Find x such that x**2 - 24 is within epsilon of 0
 epsilon = 0.01
 k = 24.0
@@ -556,7 +574,7 @@ Python resolves identifiers using the **LEGB Rule**:
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 4, Section 4.1, pp. 45–52)*
+*(Reconstructed from Guttag, Chapter 4, § 4.1 — paraphrased summary of the argument, not a verbatim quotation)*
 
 > "A function definition introduces a new name into the current environment and creates a function object. When a function is called, the interpreter creates a new symbol table (environment frame).
 > 
@@ -615,9 +633,9 @@ def outer_search_engine(data: list[int]) -> int:
         "track": "track_1_pythonic_fluency",
         "difficulty": "Easy",
         "category": "Structured Types",
-        "tags": ["Guttag § 5.2", "Mutability", "Aliasing", "Side-Effects"],
+        "tags": ["Guttag § 5.3", "Mutability", "Aliasing", "Side-Effects"],
         "description": """### 🏛️ Finger Exercise: Mutating While Iterating & Aliasing
-**Guttag Citation**: *Chapter 5: Structured Types, Mutability, and Higher-Order Functions (§ 5.2 Lists and Mutability)*
+**Guttag Citation**: *Chapter 5: Structured Types and Mutability (§ 5.3 Lists and Mutability)*
 
 Guttag warns against a notorious Python trap: **mutating a list while iterating over it**.
 Write a function `safe_filter_evens(nums: list[int]) -> tuple[list[int], list[int]]` that:
@@ -639,7 +657,7 @@ Write a function `safe_filter_evens(nums: list[int]) -> tuple[list[int], list[in
     return (evens, nums)
 """
         },
-        "editorial": """# 📖 Chapter 5: Structured Types, Mutability, and Higher-Order Functions (§ 5.2 Lists and Mutability)
+        "editorial": """# 📖 Chapter 5: Structured Types and Mutability (§ 5.3 Lists and Mutability)
 *John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
 
 ---
@@ -660,16 +678,16 @@ This is called **Aliasing Side-Effects**.
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 5, Section 5.2.1, pp. 68–74)*
+*(Reconstructed from Guttag, Chapter 5, § 5.3.1 Cloning — paraphrased summary of the argument, not a verbatim quotation)*
 
 > "Lists are mutable sequences of values. Unlike tuples and strings, individual elements of a list can be modified in-place.
 > 
 > **The Mutating-While-Iterating Bug**:
 > One of the most subtle and common bugs in Python programs occurs when mutating a list while iterating over it with a `for` loop.
 > 
-> Consider Figure 5.4 from the textbook:
+> Guttag makes this point in his discussion of list mutability:
 > ```python
-> # Figure 5.4: Mutating a list while iterating over it
+> # Mutating a list while iterating over it
 > def remove_dups(L1, L2):
 >     \"\"\"Assumes that L1 and L2 are lists.
 >        Removes any element from L1 that also occurs in L2\"\"\"
@@ -765,7 +783,7 @@ Functions that accept other functions as arguments or return functions are calle
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 4, Section 4.4, pp. 58–62)*
+*(Reconstructed from Guttag, Chapter 4, § 4.4 — paraphrased summary of the argument, not a verbatim quotation)*
 
 > "Treating functions as first-class objects allows programmers to build highly general algorithmic abstractions.
 > 
@@ -815,9 +833,9 @@ points.sort(key=lambda p: -p[1])  # Result: [(1, 9), (3, 7), (5, 2)]
         "track": "track_1_pythonic_fluency",
         "difficulty": "Easy",
         "category": "Python Fluency",
-        "tags": ["Guttag § 5.3", "2D Matrix", "List Comprehension", "Aliasing Trap"],
+        "tags": ["Guttag § 5.3.1", "2D Matrix", "List Comprehension", "Aliasing Trap"],
         "description": """### 🏛️ Finger Exercise: 2D Matrix Memory Initialization
-**Guttag Citation**: *Chapter 5: Structured Types (§ 5.3 Cloning and Comprehensions)*
+**Guttag Citation**: *Chapter 5: Structured Types and Mutability (§ 5.3.1 Cloning, § 5.3.2 List Comprehension)*
 
 Writing `[[0] * C] * R` replicates the outer list pointer $R$ times to the **exact same row list in memory**. Modifying `grid[0][0] = 1` mutates every row simultaneously!
 Write a function `init_grid(R: int, C: int, default_val: int)` that uses a list comprehension to create an independent $R \\times C$ matrix initialized to `default_val`.
@@ -835,7 +853,7 @@ Write a function `init_grid(R: int, C: int, default_val: int)` that uses a list 
     return [[default_val for _ in range(C)] for _ in range(R)]
 """
         },
-        "editorial": """# 📖 Chapter 5: Structured Types, Mutability & Comprehensions (§ 5.3 Cloning & Grid Traps)
+        "editorial": """# 📖 Chapter 5: Structured Types and Mutability (§ 5.3.1 Cloning, § 5.3.2 List Comprehension)
 *John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
 
 ---
@@ -853,7 +871,7 @@ creates an outer list containing 3 pointers, **all pointing to the exact same in
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 5, Section 5.3, pp. 74–77)*
+*(Reconstructed from Guttag, Chapter 5, § 5.3.1 — paraphrased summary of the argument, not a verbatim quotation)*
 
 > "Multidimensional structured arrays in Python are represented as lists of lists.
 > 
@@ -883,6 +901,264 @@ creates an outer list containing 3 pointers, **all pointing to the exact same in
         "hints": ["Use [[default_val] * C for _ in range(R)]."],
     },
 
+    {
+        "slug": "py-fluency-mutable-default-arg",
+        "title": "Mutable Default Argument Trap (Guttag Ch. 4)",
+        "kind": "fundamental",
+        "track": "track_1_pythonic_fluency",
+        "difficulty": "Easy",
+        "category": "Functional Abstractions",
+        "tags": ["Guttag § 4.1.2", "Default Values", "Aliasing", "Memoization Trap"],
+        "description": """### 🏛️ Finger Exercise: Default Values Are Evaluated Once
+**Guttag Citation**: *Chapter 4: Functions, Scoping, and Abstraction (§ 4.1.2 Keyword Arguments and Default Values)*
+
+A default value is evaluated **once, when the `def` statement executes** — not on each call.
+A mutable default (`def f(acc=[])`) is therefore shared by every call and silently accumulates state between them.
+
+Write `accumulate(item: int, bucket: list[int] | None = None) -> list[int]` that appends `item` to `bucket`
+and returns it, using the `None` sentinel idiom so that **each call with no bucket starts empty**.
+""",
+        "examples": [
+            {"input": "item = 1, bucket = None", "output": "[1]"},
+            {"input": "item = 5, bucket = [9]", "output": "[9, 5]"},
+        ],
+        "constraints": ["bucket is either None or a list of ints"],
+        "starter_codes": {
+            "python": """def accumulate(item: int, bucket: list[int] | None = None) -> list[int]:
+    # Use the None sentinel so each fresh call starts with its own list
+    pass
+"""
+        },
+        "solutions": {
+            "python": """def accumulate(item: int, bucket: list[int] | None = None) -> list[int]:
+    if bucket is None:
+        bucket = []
+    bucket.append(item)
+    return bucket
+"""
+        },
+        "editorial": """# 📖 Chapter 4: Functions, Scoping, and Abstraction (§ 4.1.2 Keyword Arguments and Default Values)
+*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### § 1. Theoretical Foundations: When Is a Default Evaluated?
+A `def` statement is itself an executable statement. When Python executes it, it builds a function object and
+evaluates every default-value expression **exactly once**, storing the resulting objects on the function object
+(visible as `f.__defaults__`).
+
+Every later call that omits the argument binds the parameter to that **same stored object**.
+
+For an immutable default (`0`, `None`, `"x"`, `(1, 2)`) this is invisible: nothing can mutate it.
+For a mutable default (`[]`, `{}`, `set()`) it is a shared, function-lifetime object — effectively hidden global state.
+
+---
+
+### § 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 4, § 4.1.2 — paraphrased summary of the argument, not a verbatim quotation)*
+
+Guttag introduces default values so a caller can omit arguments that usually take an obvious value, and keyword
+arguments so call sites read clearly regardless of parameter order. The subtlety the text stresses is that the
+default belongs to the **function**, not to the call.
+
+The failure mode:
+
+```python
+def add_to(item, target=[]):      # target is created ONCE
+    target.append(item)
+    return target
+
+add_to(1)   # [1]
+add_to(2)   # [1, 2]   <-- not [2]
+add_to(3)   # [1, 2, 3]
+```
+
+The list is not recreated per call, so results leak across independent invocations.
+
+**The sentinel idiom** is the standard repair — `None` is immutable, so it cannot accumulate anything:
+
+```python
+def add_to(item, target=None):
+    if target is None:
+        target = []               # fresh list per call
+    target.append(item)
+    return target
+```
+
+---
+
+### § 3. Canonical Code Walkthrough
+```python
+def buggy(item, acc=[]):
+    acc.append(item)
+    return acc
+
+def correct(item, acc=None):
+    if acc is None:
+        acc = []
+    acc.append(item)
+    return acc
+
+assert buggy(1) == [1]
+assert buggy(2) == [1, 2]        # leaked state from the previous call
+assert buggy.__defaults__ == ([1, 2],)   # the default itself has been mutated
+
+assert correct(1) == [1]
+assert correct(2) == [2]         # independent
+```
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **The memo-dict version is the same bug.** `def fib(n, memo={})` shares one cache across every top-level call.
+   For pure functions that cache is a *feature*, which is why Guttag's `fastFib` uses it deliberately — but it is
+   the identical mechanism, and it is a defect the moment the cached values depend on anything other than `n`.
+2. **Class attributes repeat the trap.** A mutable value assigned in a class body is shared by every instance,
+   for exactly the same reason.
+3. **`is None`, not `or`.** Writing `acc = acc or []` also discards a legitimately empty list the caller passed in.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
+- **Repeated judge test cases**: a recursion whose result list defaults to `[]` carries answers from case 1 into
+  case 2, producing a "works locally, fails on submit" bug that is very hard to see.
+- **Backtracking signatures**: prefer `def dfs(i, path, out)` with explicit arguments, or the `None` sentinel —
+  never a mutable default.
+- **`@lru_cache` instead of `memo={}`**: gets the caching without the shared-default surface, and is cleared per run.
+""",
+        "test_cases": [
+            {"input": {"item": 1, "bucket": None}, "expected": [1]},
+            {"input": {"item": 5, "bucket": [9]}, "expected": [9, 5]},
+            {"input": {"item": 7, "bucket": []}, "expected": [7]},
+        ],
+        "hints": [
+            "Default the parameter to None, not to [].",
+            "Inside the function: if bucket is None: bucket = []",
+        ],
+    },
+    {
+        "slug": "py-fluency-string-immutability",
+        "title": "String Immutability & Concatenation Cost",
+        "kind": "fundamental",
+        "track": "track_1_pythonic_fluency",
+        "difficulty": "Easy",
+        "category": "Structured Types",
+        "tags": ["Guttag § 2.4", "Guttag § 5.3", "Strings", "Immutability", "Quadratic Trap"],
+        "description": """### 🏛️ Finger Exercise: Building Strings Without Quadratic Cost
+**Guttag Citation**: *Chapter 2: Introduction to Python (§ 2.4 Strings and Input) & Chapter 5 (§ 5.3 Lists and Mutability)*
+
+Strings are **immutable**. `s += c` cannot extend `s` in place — it allocates a new string and copies the whole
+accumulated prefix, so building an $N$-character string one character at a time costs $O(N^2)$.
+
+Write `build_reversed(words: list[str]) -> str` that joins `words` in reverse order separated by single spaces,
+using `" ".join(...)` so the whole build is $O(N)$.
+""",
+        "examples": [
+            {"input": "words = ['a', 'b', 'c']", "output": "'c b a'"},
+            {"input": "words = ['hello']", "output": "'hello'"},
+        ],
+        "constraints": ["0 <= len(words) <= 10^4"],
+        "starter_codes": {
+            "python": """def build_reversed(words: list[str]) -> str:
+    # Join the reversed list in one pass - do not use += in a loop
+    pass
+"""
+        },
+        "solutions": {
+            "python": """def build_reversed(words: list[str]) -> str:
+    return " ".join(reversed(words))
+"""
+        },
+        "editorial": """# 📖 Chapter 2 (§ 2.4) & Chapter 5 (§ 5.3): Strings, Immutability, and the Cost of Concatenation
+*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### § 1. Theoretical Foundations: Immutability Has a Running-Time Consequence
+A Python `str` is an immutable sequence of Unicode code points. Every operation that "changes" a string in fact
+returns a **new** string object; the original is untouched.
+
+`s = s + c` therefore performs, on each execution:
+1. allocate a new buffer of length `len(s) + len(c)`,
+2. copy all `len(s)` existing characters into it,
+3. copy `c`,
+4. rebind the name `s` to the new object.
+
+Step 2 is the problem. Doing this once per character of an $N$-character result copies
+$$1 + 2 + 3 + \\dots + N = \\frac{N(N+1)}{2} = \\Theta(N^2)$$
+characters in total — even though the answer has only $N$ characters in it.
+
+`str.join` sums the lengths first, allocates the final buffer once, then copies each piece exactly once: $\\Theta(N)$.
+
+---
+
+### § 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 2 § 2.4 and Chapter 5 § 5.3 — paraphrased summary of the argument, not a verbatim quotation)*
+
+Guttag introduces `str` alongside the other scalar-ish types and stresses that, like tuples, strings are immutable:
+indexing and slicing read from a string, but no operation writes into one. Chapter 5 then draws the general
+distinction the whole book leans on — mutable objects (`list`, `dict`, `set`) can be updated in place, immutable
+objects (`int`, `float`, `str`, `tuple`) can only be replaced.
+
+The practical consequence for strings is that "append" is not a real operation. What looks like appending is
+rebuilding, and rebuilding inside a loop is where a linear-looking program becomes quadratic.
+
+The idiomatic repair is to accumulate the pieces in a **mutable** list — where `append` genuinely is
+amortized $O(1)$ — and collapse the list to a string once, at the end.
+
+---
+
+### § 3. Canonical Code Walkthrough
+```python
+# SLOW: Theta(N^2) - each += copies the entire accumulated prefix
+out = ""
+for ch in chars:
+    out += ch
+
+# FAST: Theta(N) - append to a list, join once
+parts = []
+for ch in chars:
+    parts.append(ch)     # amortized O(1)
+out = "".join(parts)     # one allocation, one pass
+
+# Mutating a single character requires a round trip through a list
+s = "cat"
+lst = list(s)
+lst[0] = "b"
+s = "".join(lst)         # 'bat'
+```
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **`s[0] = 'b'` raises `TypeError`.** Convert to a list, mutate, join back.
+2. **Slicing copies.** `s[1:-1]` builds a new string of length $N-2$. A recursion that peels characters with
+   `s[1:-1]` is $O(N^2)$ even though it looks like $O(N)$ — pass `left`/`right` indices instead.
+3. **CPython sometimes hides the bug.** An in-place optimization can make `+=` look linear when the string has
+   exactly one reference. Do not rely on it; it silently disappears the moment a second name refers to the string.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
+- **Building any string answer**: collect into a list, `"".join` once. This is the single most common hidden TLE
+  in otherwise-correct string solutions.
+- **LeetCode 5 (Longest Palindromic Substring)** and **LeetCode 647 (Palindromic Substrings)**: expand around a
+  center with indices; never slice inside the loop.
+- **LeetCode 271 (Encode and Decode Strings)** and **LeetCode 297 (Serialize/Deserialize Binary Tree)**: build the
+  encoding as a list of tokens, join at the end.
+""",
+        "test_cases": [
+            {"input": {"words": ["a", "b", "c"]}, "expected": "c b a"},
+            {"input": {"words": ["hello"]}, "expected": "hello"},
+            {"input": {"words": []}, "expected": ""},
+            {"input": {"words": ["x", "y"]}, "expected": "y x"},
+        ],
+        "hints": [
+            "reversed(words) gives the reverse order without copying via slicing.",
+            "Return ' '.join(reversed(words)).",
+        ],
+    },
+
     # ── Track 2: Abstract Data Types & Object-Oriented Structures (Guttag Ch. 10 & 12) ──
     {
         "slug": "py-ds-custom-intset-adt",
@@ -895,7 +1171,7 @@ creates an outer list containing 3 pointers, **all pointing to the exact same in
         "description": """### 🏛️ Finger Exercise: Implementing Guttag's IntSet ADT
 **Guttag Citation**: *Chapter 10: Classes and Object-Oriented Programming (§ 10.1 Abstract Data Types and Classes)*
 
-In Figure 10.1, Guttag defines the canonical `IntSet` Abstract Data Type.
+In Figure 10-1, Guttag defines the canonical `Int_set` Abstract Data Type.
 Write a function `simulate_intset(ops: list[str], vals: list[int]) -> list[int]` that simulates an `IntSet` maintaining the invariant that its elements are **unique and sorted ascending**:
 - `"insert"`: insert `val` if not already present, maintaining sorted order.
 - `"remove"`: remove `val` if present in the set.
@@ -941,46 +1217,63 @@ The central pillar of software engineering in Guttag's paradigm is the **Data Ab
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 10, Section 10.1, pp. 157–162)*
+*(Reconstructed from Guttag, Chapter 10, § 10.1 — paraphrased summary of the argument, not a verbatim quotation)*
 
-> "Classes provide a mechanism for creating new abstract data types.
-> 
-> Consider the `IntSet` class in Figure 10.1:
-> ```python
-> # Figure 10.1: Class IntSet
-> class IntSet:
->     \"\"\"An IntSet is a set of integers\"\"\"
->     # Information hiding: self.vals is internal representation
->     def __init__(self):
->         \"\"\"Create an empty set of integers\"\"\"
->         self.vals = []
-> 
->     def insert(self, e):
->         \"\"\"Assumes e is an integer and inserts e into self\"\"\"
->         if e not in self.vals:
->             self.vals.append(e)
-> 
->     def member(self, e):
->         \"\"\"Assumes e is an integer. Returns True if e in self, False otherwise\"\"\"
->         return e in self.vals
-> 
->     def remove(self, e):
->         \"\"\"Assumes e is an integer and removes e from self.
->            Raises ValueError if e is not in self\"\"\"
->         try:
->             self.vals.remove(e)
->         except ValueError:
->             raise ValueError(f'{e} not found')
-> 
->     def getMembers(self):
->         \"\"\"Returns a list containing the elements of self.
->            Nothing can be assumed about the order of the elements\"\"\"
->         return self.vals[:]  # Critical: returns a clone to preserve encapsulation!
-> ```
-> 
-> **Preserving Representation Invariants**:
-> Notice `getMembers()` returns `self.vals[:]` rather than `self.vals`.
-> If it returned `self.vals` directly, an external caller could write `s.getMembers().append('banana')`, breaking the representation invariant that `IntSet` contains only integers without duplicates!"
+Classes provide a mechanism for creating new abstract data types. Guttag's worked example is `Int_set`
+(**Figure 10-1, "Class Int_set"**), a set-of-integers abstraction built on a plain list — an implementation he
+himself calls unnecessary given Python's built-in `set`, but pedagogically useful.
+
+The class docstring, he stresses, describes **the abstraction the class provides**, not how it is implemented;
+the comments below the docstring carry the implementation notes, and those are aimed at people modifying or
+subclassing the code, not at people using it.
+
+```python
+# After Guttag Figure 10-1, "Class Int_set" (structure, not a transcription)
+class Int_set(object):
+    \"\"\"An Int_set is a set of integers\"\"\"
+    # Representation invariant: self._vals contains no duplicates.
+
+    def __init__(self):
+        \"\"\"Create an empty set of integers\"\"\"
+        self._vals = []          # leading _ marks the attribute private to the class
+
+    def insert(self, e):
+        \"\"\"Assumes e is an integer and inserts e into self\"\"\"
+        if e not in self._vals:  # appends only if absent -- ESTABLISHES the invariant
+            self._vals.append(e)
+
+    def member(self, e):
+        \"\"\"Assumes e is an integer. Returns True if e is in self\"\"\"
+        return e in self._vals
+
+    def remove(self, e):
+        \"\"\"Assumes e is an integer and removes e from self.
+           Raises ValueError if e is not in self\"\"\"
+        try:
+            self._vals.remove(e)  # ONE call suffices -- EXPLOITS the invariant
+        except ValueError:
+            raise ValueError(str(e) + ' not found')
+
+    def __str__(self):
+        \"\"\"Returns a string representation of self\"\"\"
+        if not self._vals:
+            return '{}'
+        return '{' + ','.join(str(e) for e in sorted(self._vals)) + '}'
+```
+
+**The invariant is the whole lesson.** Guttag states it exactly: *the representation invariant for `Int_set` is
+that `vals` contains no duplicates.* From that single sentence, two responsibilities follow:
+
+- **`__init__` establishes it.** The invariant holds trivially for the empty list.
+- **Every other method maintains it.** `insert` appends `e` only if it is not already present — which is *why*
+  the check is there, not an optimization.
+
+And the invariant then pays for itself. `remove` may call `list.remove` exactly **once**, because the invariant
+guarantees there is at most one occurrence of `e` to delete. An implementation that could not assume the
+invariant would have to loop.
+
+This is what data abstraction buys: **representation-independence**. A client writes `s.insert(3)` and
+`s.member(3)`; it never learns whether `_vals` is a list, a sorted list, or something else entirely.
 
 ---
 
@@ -1001,9 +1294,10 @@ The central pillar of software engineering in Guttag's paradigm is the **Data Ab
         "track": "track_2_data_structures",
         "difficulty": "Easy",
         "category": "Data Structures",
-        "tags": ["Guttag § 10.3", "Deque", "Queue", "FIFO"],
+        "tags": ["Guttag § 11.3", "Deque", "Queue", "FIFO", "Beyond the Book"],
         "description": """### 🏛️ Finger Exercise: FIFO Queue Mechanics
-**Guttag Citation**: *Chapter 10: Classes and OOP (§ 10.3 Object-Oriented Programming & Queues)*
+**Guttag Citation**: *Chapter 11: Algorithmic Complexity (§ 11.3 Some Important Complexity Classes)*
+> ⚠️ **Beyond the book**: Guttag does not cover `collections.deque`. The O(N) vs O(1) argument below is his; the deque itself is a Python-fluency extension added for LeetCode work.
 
 `list.pop(0)` takes $O(N)$ time because all remaining elements shift left in memory.
 `collections.deque.popleft()` takes $O(1)$ constant time.
@@ -1040,7 +1334,7 @@ def simulate_queue(ops: list[str], vals: list[int]) -> list[int]:
     return list(q)
 """
         },
-        "editorial": """# 📖 Chapter 10: Classes and Object-Oriented Programming (§ 10.3 Queues & FIFO Mechanics)
+        "editorial": """# 📖 Chapter 11: Algorithmic Complexity (§ 11.3 Complexity Classes) — extended to FIFO Queues
 *John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
 
 ---
@@ -1052,14 +1346,14 @@ In computer architecture, data structures have distinct physical memory layouts:
 
 ---
 
-### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 10, Section 10.3, pp. 165–169)*
+### § 2. Applying Guttag's Complexity Argument to Queues
+*(Cost argument reconstructed from Guttag, Chapter 11, § 11.3. `collections.deque` itself is not covered in the text — this section extends his reasoning.)*
 
-> "A **queue** is a First-In-First-Out (FIFO) data structure. Elements are inserted at the back and removed from the front.
-> 
-> If you implement Breadth-First Search (BFS) using a standard Python `list` and call `list.pop(0)` on every node exploration, an algorithm designed to run in $O(V + E)$ time will degrade into $O(V^2 + E)$ quadratic time, immediately causing **Time Limit Exceeded (TLE)** on large inputs.
-> 
-> Python's standard library provides `collections.deque` specifically designed for $O(1)$ FIFO queue operations."
+A **queue** is a First-In-First-Out (FIFO) data structure: elements are inserted at the back and removed from the front.
+
+Guttag's § 11.3 point is that a per-operation cost you assume is $O(1)$ can silently dominate the total. That is exactly what happens here. If you implement Breadth-First Search using a Python `list` and call `list.pop(0)` on every node expansion, each pop shifts the remaining $N-1$ elements. An algorithm designed to run in $O(V + E)$ degrades to $O(V^2 + E)$, producing **Time Limit Exceeded (TLE)** on large inputs.
+
+`collections.deque` stores elements as a doubly linked list of fixed-size blocks, so `popleft()` unlinks the head block entry without touching the rest — genuine $O(1)$, and the property BFS actually needs.
 
 ---
 
@@ -1071,6 +1365,327 @@ In computer architecture, data structures have distinct physical memory layouts:
             {"input": {"ops": ["push", "pop"], "vals": [5, 0]}, "expected": []},
         ],
         "hints": ["Use deque.append() and deque.popleft()."],
+    },
+
+    {
+        "slug": "py-ds-hash-table-dict",
+        "title": "Hash Tables & Dictionaries (Guttag Ch. 12)",
+        "kind": "fundamental",
+        "track": "track_2_data_structures",
+        "difficulty": "Easy",
+        "category": "Data Structures",
+        "tags": ["Guttag § 12.3", "Hash Tables", "Dictionaries", "O(1) Lookup"],
+        "description": """### 🏛️ Finger Exercise: Trading Space for Constant-Time Lookup
+**Guttag Citation**: *Chapter 12: Some Simple Algorithms and Data Structures (§ 12.3 Hash Tables)*
+
+A hash table converts a key into a bucket index with a hash function, giving **expected $O(1)$** insertion,
+lookup, and deletion — the single most valuable data structure for interview problems.
+
+Write `first_repeated(nums: list[int]) -> int` that returns the first value in `nums` that has already been
+seen earlier in the list, or `-1` if every value is distinct. Use a `set` so the scan is one pass, $O(N)$.
+""",
+        "examples": [
+            {"input": "nums = [2, 5, 3, 5, 2]", "output": "5"},
+            {"input": "nums = [1, 2, 3]", "output": "-1"},
+        ],
+        "constraints": ["0 <= len(nums) <= 10^5"],
+        "starter_codes": {
+            "python": """def first_repeated(nums: list[int]) -> int:
+    # One pass with a set of already-seen values
+    pass
+"""
+        },
+        "solutions": {
+            "python": """def first_repeated(nums: list[int]) -> int:
+    seen = set()
+    for n in nums:
+        if n in seen:
+            return n
+        seen.add(n)
+    return -1
+"""
+        },
+        "editorial": """# 📖 Chapter 12: Some Simple Algorithms and Data Structures (§ 12.3 Hash Tables)
+*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### § 1. Theoretical Foundations: Converting a Key Into an Address
+Binary search (§ 12.1) buys $O(\\log N)$ lookup, but only after paying $O(N \\log N)$ to sort, and only for
+keys that admit an ordering. A hash table asks a different question: instead of *comparing* the key against
+other keys, can we **compute the key's storage location directly**?
+
+A **hash function** maps a key to an integer bucket index:
+$$\\text{bucket} = \\text{hash}(k) \\bmod m$$
+
+Lookup then costs one hash evaluation plus one bucket probe — independent of how many keys are stored.
+
+Two keys can hash to the same bucket. This is a **collision**, and it is unavoidable: there are more possible
+keys than buckets (pigeonhole principle). The table resolves collisions by **chaining** — each bucket holds a
+small list of the entries that landed there.
+
+---
+
+### § 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 12, § 12.3 — paraphrased summary of the argument, not a verbatim quotation)*
+
+Guttag builds the argument in three steps, and implements it as class `Int_dict` in **Figure 12-7,
+"Implementing dictionaries using hashing"** — a list of hash buckets, each bucket a list of `(key, value)`
+tuples, so collisions are handled by storing every colliding entry in the same bucket list.
+
+**Step 1 — the ideal.** If the hash function spread keys perfectly evenly across $m$ buckets holding $n$ entries,
+every bucket would hold $n/m$ entries. Keeping $m$ proportional to $n$ makes that a constant, so lookup is $O(1)$.
+
+**Step 2 — the honest caveat.** Guttag states it directly: with no collisions lookup would be constant time,
+because each bucket holds 0 or 1 entries; but if everything hashed to the same bucket it would be *linear* in
+the number of entries, since the code performs a linear search of that bucket. Making the table large enough
+reduces collisions enough "to allow us to treat the complexity as constant time. That is, we can trade space
+for time." The $O(1)$ claim is an expected cost bought with memory, not a guarantee.
+
+**Step 3 — the requirement this imposes on keys.** A key must produce the *same* hash for its whole lifetime, or
+it would go missing from the bucket it was filed under. That is why **only immutable objects are hashable** in
+Python: `int`, `str`, `tuple`, `frozenset` may be keys; `list`, `dict`, `set` may not. The rule that ties the two
+halves together is:
+$$a == b \\implies \\text{hash}(a) == \\text{hash}(b)$$
+
+This is the tradeoff Guttag names explicitly in § 12.3 — "we can trade space for time": spend $O(n)$ memory on the table,
+buy $O(1)$ lookups.
+
+---
+
+### § 3. Canonical Code Walkthrough
+```python
+# The three operations that cover most interview uses
+seen = set()                 # membership only
+seen.add(5)
+5 in seen                    # O(1) expected -- vs O(n) for `5 in some_list`
+
+index_of = {}                # key -> value
+index_of["a"] = 0
+
+from collections import Counter, defaultdict
+freq = Counter("mississippi")        # {'i': 4, 's': 4, 'p': 2, 'm': 1}
+groups = defaultdict(list)           # no "if key not in d" branch needed
+groups["vowel"].append("a")
+
+# Hashability is enforced at runtime
+d = {}
+d[(1, 2)] = "ok"             # tuple: immutable, hashable
+# d[[1, 2]] = "boom"         # TypeError: unhashable type: 'list'
+```
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **`x in list` is $O(N)$; `x in set` is $O(1)$.** Swapping the container is often the entire optimization —
+   this is what turns a quadratic scan into a linear one.
+2. **A list cannot be a dict key.** Convert to a `tuple` (or a sorted string) first. This is exactly why
+   *Group Anagrams* keys on `tuple(sorted(word))` rather than the character list.
+3. **Sets are unordered.** Never rely on iteration order for output; sort explicitly when the judge expects a
+   fixed sequence.
+4. **Worst case is still $O(n)$.** If asked to justify "O(1) dictionary access", say *expected* — adversarial
+   key sets can force collisions.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
+- **LeetCode 1 (Two Sum)**: store `value -> index` while scanning; look up the complement in $O(1)$. Turns the
+  obvious $O(N^2)$ double loop into one pass.
+- **LeetCode 49 (Group Anagrams)**: key a `defaultdict(list)` on the sorted-character tuple.
+- **LeetCode 128 (Longest Consecutive Sequence)**: put everything in a set, then only start counting from values
+  whose predecessor is absent — $O(N)$ without sorting.
+- **LeetCode 560 (Subarray Sum Equals K)**: prefix sums plus a frequency dict, single pass.
+- **LeetCode 217 (Contains Duplicate)** and **LeetCode 242 (Valid Anagram)**: the direct drills for this lesson.
+""",
+        "test_cases": [
+            {"input": {"nums": [2, 5, 3, 5, 2]}, "expected": 5},
+            {"input": {"nums": [1, 2, 3]}, "expected": -1},
+            {"input": {"nums": []}, "expected": -1},
+            {"input": {"nums": [7, 7]}, "expected": 7},
+        ],
+        "hints": [
+            "Keep a set of values already seen.",
+            "Return n the first time `n in seen` is True; return -1 after the loop.",
+        ],
+    },
+    {
+        "slug": "py-ds-magic-methods-ordering",
+        "title": "Magic Methods & Custom Ordering (Guttag Ch. 10)",
+        "kind": "fundamental",
+        "track": "track_2_data_structures",
+        "difficulty": "Medium",
+        "category": "Abstract Data Types",
+        "tags": ["Guttag § 10.1.1", "Magic Methods", "Hashable Types", "Operator Overloading"],
+        "description": """### 🏛️ Finger Exercise: Teaching Built-In Operators About Your Type
+**Guttag Citation**: *Chapter 10: Classes and Object-Oriented Programming (§ 10.1.1 Magic Methods and Hashable Types)*
+
+Special ("dunder") methods let a user-defined class respond to built-in syntax: `__len__` for `len(x)`,
+`__eq__` for `==`, `__lt__` for `<` — and therefore for `sorted()`, `min()`, `max()`, and `heapq`.
+
+Write `rank_tasks(tasks: list[tuple[str, int]]) -> list[str]` where each task is `(name, priority)`.
+Define a class `Task` with `__lt__` ordering by **descending priority**, ties broken by **ascending name**,
+then return the task names in sorted order.
+""",
+        "examples": [
+            {
+                "input": "tasks = [('write', 2), ('alpha', 5), ('beta', 5)]",
+                "output": "['alpha', 'beta', 'write']",
+                "explanation": "priority 5 outranks 2; 'alpha' < 'beta' breaks the tie.",
+            }
+        ],
+        "constraints": ["0 <= len(tasks) <= 1000"],
+        "starter_codes": {
+            "python": """def rank_tasks(tasks: list[tuple[str, int]]) -> list[str]:
+    class Task:
+        def __init__(self, name: str, priority: int):
+            self.name = name
+            self.priority = priority
+
+        def __lt__(self, other) -> bool:
+            # Higher priority first; ties broken by name ascending
+            pass
+
+    pass
+"""
+        },
+        "solutions": {
+            "python": """def rank_tasks(tasks: list[tuple[str, int]]) -> list[str]:
+    class Task:
+        def __init__(self, name: str, priority: int):
+            self.name = name
+            self.priority = priority
+
+        def __lt__(self, other) -> bool:
+            if self.priority != other.priority:
+                return self.priority > other.priority
+            return self.name < other.name
+
+    objs = [Task(name, pri) for name, pri in tasks]
+    return [t.name for t in sorted(objs)]
+"""
+        },
+        "editorial": """# 📖 Chapter 10: Classes and Object-Oriented Programming (§ 10.1.1 Magic Methods and Hashable Types)
+*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### § 1. Theoretical Foundations: Operators Are Method Calls
+Python's built-in syntax is a thin surface over method dispatch. When you write `a < b`, the interpreter calls
+`a.__lt__(b)`. When you write `len(x)`, it calls `x.__len__()`. Nothing about `<` or `len` is reserved for
+built-in types — a class that defines the corresponding method participates in that syntax on equal footing.
+
+This is what makes an ADT (§ 10.1) feel like a native type instead of a bag of named methods. It is also
+polymorphism in its most practical form: `sorted()` does not care what it is sorting, only that the elements
+answer `__lt__`.
+
+The methods that carry the most weight:
+
+| Method | Powers |
+| :-- | :-- |
+| `__init__` | construction, establishing the representation invariant |
+| `__repr__` / `__str__` | debugging output, `print` |
+| `__eq__` | `==`, `in`, dict/set key matching |
+| `__hash__` | usability as a dict key or set member |
+| `__lt__` | `<`, `sorted()`, `min()`, `max()`, `heapq` |
+| `__len__` | `len()`, and emptiness truthiness (`if obj:`) |
+| `__getitem__` | `obj[i]`, and iteration as a fallback |
+
+---
+
+### § 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 10, § 10.1.1 and Figure 10-2 "Using magic methods" — paraphrase, not a verbatim quotation)*
+
+Guttag's framing is that a class defines a new **type**, and a type is characterized by the operations it
+supports. Special methods are how a new type acquires the operations users already know.
+
+His running examples make two points that matter here.
+
+**Point 1 — `__str__` is about the abstraction, not the representation.** Defining it means `print(obj)` shows
+something meaningful to a client who has never seen the internal fields. Without it, the client gets an
+address-like default that leaks nothing useful.
+
+**Point 2 — comparison methods define an ordering, and the ordering must be consistent.** Once `__lt__` exists,
+every ordering-based operation in the language routes through it. That is leverage, and also a hazard: an
+inconsistent `__lt__` (one where `a < b` and `b < a` can both hold) produces sorts that are silently wrong
+rather than errors.
+
+The pairing rule the text is explicit about: **if you define `__eq__`, you must also define `__hash__`.**
+Guttag notes that had his `Toy` class defined `__eq__` without `__hash__`, using instances as dictionary keys
+would raise `unhashable type: 'Toy'`. He adds the requirement a custom `__hash__` must satisfy: the hash value
+of an object must stay **constant throughout that object's lifetime**. Classes that never define `__eq__` keep
+identity-based equality and stay hashable by default.
+
+---
+
+### § 3. Canonical Code Walkthrough
+```python
+import heapq
+
+class Task:
+    def __init__(self, name, priority):
+        self.name = name
+        self.priority = priority
+
+    def __lt__(self, other):
+        # Higher priority sorts first; ties broken alphabetically
+        if self.priority != other.priority:
+            return self.priority > other.priority
+        return self.name < other.name
+
+    def __eq__(self, other):
+        return (self.priority, self.name) == (other.priority, other.name)
+
+    def __hash__(self):                     # required once __eq__ is defined
+        return hash((self.priority, self.name))
+
+    def __repr__(self):
+        return f"Task({self.name!r}, {self.priority})"
+
+ts = [Task("write", 2), Task("beta", 5), Task("alpha", 5)]
+
+sorted(ts)          # [Task('alpha', 5), Task('beta', 5), Task('write', 2)]
+min(ts)             # Task('alpha', 5)   -- uses __lt__
+
+heapq.heapify(ts)   # works with no wrapper tuple, because __lt__ exists
+heapq.heappop(ts)   # Task('alpha', 5)
+```
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **`heapq` is a min-heap with no `key=` parameter.** Either define `__lt__` so "smallest" means what you want,
+   or push `(-priority, name)` tuples. There is no third option.
+2. **Defining `__eq__` silently removes hashability.** Add `__hash__` explicitly, and derive both from the *same*
+   tuple of fields so they cannot disagree.
+3. **A tuple key is usually simpler.** `sorted(tasks, key=lambda t: (-t[1], t[0]))` needs no class at all. Reach
+   for `__lt__` when the same ordering is used in several places, or when the objects go into a heap.
+4. **`__lt__` alone is enough for sorting.** Python's sort only ever calls `<`; you do not need the full set of
+   comparison methods unless clients use them directly.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
+- **LeetCode 23 (Merge k Sorted Lists)**: `ListNode` has no ordering, so the standard fix is pushing
+  `(node.val, tiebreak, node)` — or giving the wrapper a `__lt__`.
+- **LeetCode 295 (Find Median from Data Stream)**: two heaps, the max-heap simulated by negation.
+- **LeetCode 347 (Top K Frequent Elements)** and **LeetCode 973 (K Closest Points)**: ordering by a derived value
+  is the whole problem.
+- **Design rounds**: a class with `__repr__` and a coherent `__eq__`/`__hash__` pair is what "production quality"
+  means when an interviewer says it.
+""",
+        "test_cases": [
+            {
+                "input": {"tasks": [["write", 2], ["alpha", 5], ["beta", 5]]},
+                "expected": ["alpha", "beta", "write"],
+            },
+            {"input": {"tasks": []}, "expected": []},
+            {"input": {"tasks": [["solo", 1]]}, "expected": ["solo"]},
+        ],
+        "hints": [
+            "In __lt__, compare self.priority > other.priority when priorities differ.",
+            "When priorities tie, return self.name < other.name.",
+            "Build Task objects, call sorted(objs), then pull out .name.",
+        ],
     },
 
     # ── Track 3: Inductive Recursion & Algorithmic Scaffolds (Guttag Ch. 6, 12, 14 & 15) ──
@@ -1085,7 +1700,7 @@ In computer architecture, data structures have distinct physical memory layouts:
         "description": """### 🏛️ Finger Exercise: Inductive Palindromic Recursion
 **Guttag Citation**: *Chapter 6: Recursion and Global Variables (§ 6.2 Palindromes)*
 
-Implement Guttag's recursive palindrome checker from Figure 6.2.
+Implement Guttag's recursive palindrome checker from Figure 6-4.
 1. **Base Case**: A string of length $\\le 1$ is a palindrome (`True`).
 2. **Inductive Step**: A string $s$ is a palindrome if $s[0] == s[-1]$ and the inner substring `is_palindrome_inductive(s[1:-1])` is a palindrome.
 
@@ -1125,7 +1740,7 @@ Every well-founded recursive algorithm relies on the **Principle of Mathematical
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 6, Section 6.2, pp. 88–93)*
+*(Reconstructed from Guttag, Chapter 6, § 6.2 — paraphrased summary of the argument, not a verbatim quotation)*
 
 > "A palindrome is a string that reads the same forwards and backwards (e.g., 'radar', 'able was i ere i saw elba').
 > 
@@ -1137,7 +1752,7 @@ Every well-founded recursive algorithm relies on the **Principle of Mathematical
 >   2. The inner substring $s[1:-1]$ (which has length $n-2$) is a palindrome."
 
 ```python
-# Figure 6.2 from Guttag (Third Edition): Testing if a string is a palindrome
+# After Guttag Figure 6-4, "Palindrome testing"
 def isPalindrome(s):
     \"\"\"Assumes s is a str. Returns True if s is a palindrome; False otherwise.\"\"\"
     def toChars(s):
@@ -1179,7 +1794,7 @@ def isPalindrome(s):
         "category": "Dynamic Programming",
         "tags": ["Guttag § 15.1", "Dynamic Programming", "Memoization", "Decision Trees"],
         "description": """### 🏛️ Finger Exercise: Memoized Fibonacci Tree
-**Guttag Citation**: *Chapter 15: Dynamic Programming (§ 15.1 Fibonacci Numbers Revisited)*
+**Guttag Citation**: *Chapter 15: Dynamic Programming (§ 15.1 Fibonacci Sequences, Revisited)*
 
 Naive recursion for $Fib(n) = Fib(n-1) + Fib(n-2)$ spawns an exponential $O(2^n)$ call tree because the same subproblems are recomputed repeatedly.
 Guttag introduces **memoization**: caching previously solved subproblems in a dictionary table to reduce complexity from $O(2^n)$ to $O(n)$ linear time.
@@ -1206,7 +1821,7 @@ Write a function `fib_memo(n: int, memo: dict[int, int] | None = None) -> int`:
     return memo[n]
 """
         },
-        "editorial": """# 📖 Chapter 15: Dynamic Programming (§ 15.1 Overlapping Subproblems & Memoization)
+        "editorial": """# 📖 Chapter 15: Dynamic Programming (§ 15.1 Fibonacci Sequences, Revisited)
 *John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
 
 ---
@@ -1223,7 +1838,7 @@ With **Memoization (Top-Down DP)**, we record the result of each subproblem in a
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 15, Section 15.1, pp. 248–252)*
+*(Reconstructed from Guttag, Chapter 15, § 15.1 — paraphrased summary of the argument, not a verbatim quotation)*
 
 > "Consider the classic recursive Fibonacci definition:
 > ```python
@@ -1240,7 +1855,7 @@ With **Memoization (Top-Down DP)**, we record the result of each subproblem in a
 > By maintaining a dictionary table `memo`, we check if `n in memo`. If present, we return `memo[n]` immediately. If absent, we compute it once, store it, and return it. The total number of subproblems is now exactly $n+1$, converting an impossible exponential execution into a fraction of a millisecond."
 
 ```python
-# Figure 15.1 from Guttag (Third Edition):
+# After Guttag Figure 15-2, "Implementing Fibonacci using a memo"
 def fastFib(n, memo={}):
     \"\"\"Assumes n is an int >= 0, memo used only by recursive calls.
        Returns Fibonacci of n\"\"\"
@@ -1278,7 +1893,7 @@ def fastFib(n, memo={}):
         "description": """### 🏛️ Finger Exercise: Binary Search on Ordered Sequences
 **Guttag Citation**: *Chapter 12: Some Simple Algorithms and Data Structures (§ 12.1 Search Algorithms)*
 
-Implement Guttag's binary search algorithm from Figure 12.1 on sorted array `nums`.
+Implement Guttag's binary search algorithm from Figure 12-3 on sorted array `nums`.
 Return the index of `target` if found, or `-1` if not found.
 """,
         "examples": [
@@ -1319,7 +1934,7 @@ However, when a collection is **sorted in monotonic ascending order**, we can ut
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 12, Section 12.1, pp. 195–200)*
+*(Reconstructed from Guttag, Chapter 12, § 12.1 — paraphrased summary of the argument, not a verbatim quotation)*
 
 > "Binary search is one of the most fundamental search algorithms in computer science.
 > 
@@ -1411,7 +2026,7 @@ Because each item must be taken in its entirety or left behind (no fractional it
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 14 Section 14.1 & Chapter 15 Section 15.2, pp. 232–238, 252–257)*
+*(Reconstructed from Guttag, Chapter 14 § 14.1 & Chapter 15 § 15.2 — paraphrased summary of the argument, not a verbatim quotation)*
 
 > "We can conceptualize the search space as a **Binary Decision Tree** of depth $n$:
 > - At depth 0, we decide whether to include item 0.
@@ -1429,9 +2044,9 @@ Because each item must be taken in its entirety or left behind (no fractional it
 
 ---
 
-### § 3. Canonical Code Walkthrough (Guttag Figure 15.2)
+### § 3. Canonical Code Walkthrough (after Guttag Figure 15-5)
 ```python
-# Figure 15.2 from Guttag (Third Edition): Fast 0/1 knapsack using memoization
+# After Guttag Figure 15-5, "Using a decision tree to solve a knapsack problem"
 def fastMaxVal(toConsider, avail, memo={}):
     if (len(toConsider), avail) in memo:
         result = memo[(len(toConsider), avail)]
@@ -1480,7 +2095,7 @@ def fastMaxVal(toConsider, avail, memo={}):
         "description": """### 🏛️ Finger Exercise: Implementing Merge Sort
 **Guttag Citation**: *Chapter 12: Some Simple Algorithms and Data Structures (§ 12.2 Sorting Algorithms)*
 
-Implement Guttag's Merge Sort from Figure 12.4:
+Implement Guttag's Merge Sort from Figure 12-5:
 1. **Divide**: If list has length $< 2$, return it. Otherwise split into `left = nums[:mid]` and `right = nums[mid:]`.
 2. **Conquer**: Recursively sort `left` and `right`.
 3. **Combine**: Merge the two sorted lists in linear $O(N)$ time with two pointers.
@@ -1536,7 +2151,7 @@ By the Master Theorem (Case 2), $T(n) = \\Theta(n \\log n)$ in the worst, averag
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 12, Section 12.2, pp. 201–206)*
+*(Reconstructed from Guttag, Chapter 12, § 12.2 — paraphrased summary of the argument, not a verbatim quotation)*
 
 > "Why is merging two sorted lists so efficient?
 > 
@@ -1553,7 +2168,7 @@ By the Master Theorem (Case 2), $T(n) = \\Theta(n \\log n)$ in the worst, averag
 > Multiplying the work per level ($n$) by the number of levels ($\\log_2 n$) gives the total asymptotic complexity: $\\mathcal{O}(n \\log n)$."
 
 ```python
-# Figure 12.4 from Guttag (Third Edition): Merge sort
+# After Guttag Figure 12-5, "Merge sort"
 def merge(left, right, compare):
     result = []
     i, j = 0, 0
@@ -1648,7 +2263,7 @@ When comparing two tuples `(a1, a2, a3)` and `(b1, b2, b3)`:
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 12, Section 12.2, pp. 206–208)*
+*(Reconstructed from Guttag, Chapter 12, § 12.2 — paraphrased summary of the argument, not a verbatim quotation)*
 
 > "When sorting complex data objects (records, dictionaries, tuples), we rarely want to sort purely by identity.
 > 
@@ -1680,9 +2295,10 @@ When comparing two tuples `(a1, a2, a3)` and `(b1, b2, b3)`:
         "track": "track_5_bit_manipulation",
         "difficulty": "Easy",
         "category": "Bit Manipulation",
-        "tags": ["Guttag § 3.3", "Bitwise", "Masks", "Binary Encodings"],
+        "tags": ["Beyond the Book", "Bitwise", "Masks", "Binary Encodings"],
         "description": """### 🏛️ Finger Exercise: Bitmask Formulas
-**Guttag Citation**: *Chapter 3: Some Simple Numerical Programs (§ 3.3 A Few Words About Using Floats and Binary Representation)*
+**Source**: *Beyond the textbook — extends Guttag Chapter 3 (§ 3.3 A Few Words about Using Floats)*
+> ⚠️ **Beyond the book**: Guttag § 3.3 covers binary representation only to explain float rounding error. Bitwise operators and bitmasks are **not** in the text; this drill adds them because LeetCode requires them.
 
 Write a function `bit_operations(n: int, i: int)` that performs 3 operations on the $i$-th bit (0-indexed) of integer `n`:
 1. `is_set`: check if the $i$-th bit is 1 (return `bool`).
@@ -1706,7 +2322,7 @@ Return `(is_set, set_bit, clear_bit)`.
     return (is_set, set_val, clear_val)
 """
         },
-        "editorial": """# 📖 Chapter 3: Numerical Programs (§ 3.3 Binary Representation & Bitwise Logic)
+        "editorial": """# 📖 Bitwise Logic — extending Guttag Chapter 3 (§ 3.3 A Few Words about Using Floats)
 *John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
 
 ---
@@ -1721,9 +2337,9 @@ Bitwise operations manipulate individual bit positions directly in the CPU's Ari
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 3, Section 3.3, pp. 36–38)*
+*(Not from Guttag. § 3.3 discusses binary representation only as the cause of float rounding error; bitwise operators are outside the book. The rules below are standard Python semantics.)*
 
-> "Python provides operators that operate on integers at the bit level:
+> Python provides operators that operate on integers at the bit level:
 > - `1 << i`: Left-shifts binary `1` by $i$ positions, generating a **bitmask** with a 1 at position $i$ and 0s elsewhere ($2^i$).
 > - `(n >> i) & 1`: Right-shifts $n$ by $i$ places and tests bit 0 using bitwise AND. Returns 1 if set, 0 if clear.
 > - `n | (1 << i)`: Bitwise OR combines bits. Any 1 in either operand becomes 1, setting the $i$-th bit.
@@ -1732,7 +2348,7 @@ Bitwise operations manipulate individual bit positions directly in the CPU's Ari
 ---
 
 ### § 3. Bridging to LeetCode Mastery
-- **Bitmask DP & State Compression**: In LeetCode 78 (*Subsets*), LeetCode 136 (*Single Number*), and LeetCode 847 (*Shortest Path Visiting All Nodes*), sets of size $\le 30$ are encoded as integer bitmasks where checking membership is `(mask >> i) & 1` and adding an element is `mask | (1 << i)`.
+- **Bitmask DP & State Compression**: In LeetCode 78 (*Subsets*), LeetCode 136 (*Single Number*), and LeetCode 847 (*Shortest Path Visiting All Nodes*), sets of size $\\le 30$ are encoded as integer bitmasks where checking membership is `(mask >> i) & 1` and adding an element is `mask | (1 << i)`.
 """,
         "test_cases": [
             {"input": {"n": 5, "i": 1}, "expected": [False, 7, 5]},
@@ -1747,9 +2363,10 @@ Bitwise operations manipulate individual bit positions directly in the CPU's Ari
         "track": "track_5_bit_manipulation",
         "difficulty": "Easy",
         "category": "Bit Manipulation",
-        "tags": ["Guttag § 3.3", "Bitwise", "Kernighan", "Popcount"],
+        "tags": ["Beyond the Book", "Bitwise", "Kernighan", "Popcount"],
         "description": """### 🏛️ Finger Exercise: Brian Kernighan's Bit Invariant
-**Guttag Citation**: *Chapter 3: Numerical Programs (§ 3.3 Binary Representation)*
+**Source**: *Beyond the textbook — classical bit-manipulation result, not covered by Guttag*
+> ⚠️ **Beyond the book**: Brian Kernighan’s algorithm does not appear anywhere in Guttag. It is included because it is standard interview material.
 
 Subtracting 1 from $n$ flips all bits after the rightmost 1-bit, including the 1-bit itself.
 Therefore, `n & (n - 1)` clears the lowest set bit in $O(1)$ time.
@@ -1773,13 +2390,13 @@ Write a function `count_set_bits(n: int) -> int` that uses `n & (n - 1)` to coun
     return count
 """
         },
-        "editorial": """# 📖 Chapter 3: Numerical Programs (§ 3.3 Brian Kernighan's Algorithm)
+        "editorial": """# 📖 Brian Kernighan’s Algorithm — beyond Guttag
 *John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
 
 ---
 
 ### § 1. Theoretical Foundations: Two's Complement Subtraction Invariant
-The standard method to count set bits tests each bit individually $\implies 32$ iterations for a 32-bit integer.
+The standard method to count set bits tests each bit individually $\\implies 32$ iterations for a 32-bit integer.
 **Brian Kernighan’s Algorithm** exploits an algebraic identity of binary subtraction:
 When you subtract 1 from an integer $n$, the rightmost (lowest) 1-bit becomes 0, and all bits to the right of it (which were 0s) become 1s:
 $$n = x100...00_2$$
@@ -1790,9 +2407,9 @@ $$n \\& (n - 1) = x000...00_2$$
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 3, Section 3.3, pp. 37–38)*
+*(Not from Guttag — this result is not in the text. Stated here as standard bit-manipulation practice.)*
 
-> "Brian Kernighan's algorithm clears the lowest set bit of $n$ in a single instruction.
+> Brian Kernighan’s algorithm clears the lowest set bit of $n$ in a single instruction.
 > Repeating the loop `while n > 0: n &= (n - 1)` terminates in exactly $K$ iterations, where $K$ is the number of 1-bits (Hamming Weight).
 > If $n$ has only two set bits out of 64, the loop runs only twice rather than 64 times."
 
@@ -1868,7 +2485,7 @@ Big-O provides an asymptotic **upper bound** on the worst-case growth rate of th
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 11, Section 11.2, pp. 182–188)*
+*(Reconstructed from Guttag, Chapter 11, § 11.2 — paraphrased summary of the argument, not a verbatim quotation)*
 
 > "The primary purpose of Big-O notation is to characterize the scalability of an algorithm.
 > 
@@ -1908,9 +2525,10 @@ Big-O provides an asymptotic **upper bound** on the worst-case growth rate of th
         "track": "track_6_complexity_math",
         "difficulty": "Easy",
         "category": "Math & Complexity",
-        "tags": ["Guttag § 11.3", "Prefix Sums", "Array", "Range Queries"],
+        "tags": ["Beyond the Book", "Prefix Sums", "Array", "Range Queries"],
         "description": """### 🏛️ Finger Exercise: Prefix Sum Array & Range Query Invariant
-**Guttag Citation**: *Chapter 11: Algorithmic Complexity (§ 11.3 Amortization and Space-Time Tradeoffs)*
+**Source**: *Beyond the textbook — applies the space-for-time tradeoff Guttag draws in Chapter 12 (§ 12.3 Hash Tables)*
+> ⚠️ **Beyond the book**: prefix sums are not in Guttag. The trade-space-for-time principle they rest on is his (§ 12.3, on sizing a hash table); the technique itself is added for LeetCode.
 
 Prefix sums allow calculating the sum of any contiguous subarray `nums[L...R]` in $O(1)$ time after an $O(N)$ precomputation:
 $$\\text{sum}(L, R) = P[R + 1] - P[L]$$
@@ -1933,7 +2551,7 @@ Write a function `build_prefix_sum(nums: list[int]) -> list[int]` that returns a
     return prefix
 """
         },
-        "editorial": """# 📖 Chapter 11: Algorithmic Complexity (§ 11.3 Space-Time Tradeoffs & Prefix Sums)
+        "editorial": """# 📖 Prefix Sums — applying Guttag’s space-for-time tradeoff (§ 12.3)
 *John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
 
 ---
@@ -1944,9 +2562,9 @@ A central theme in computational efficiency is trading space for time: spending 
 ---
 
 ### § 2. In-Depth Textbook Reading & Passages
-*(Excerpted from Guttag, Chapter 11, Section 11.3, pp. 188–191)*
+*(Not from Guttag. The framing follows his space-for-time argument in § 12.3; the prefix-sum technique is not in the text.)*
 
-> "Suppose you are given an array $A$ of $N$ numbers and must answer $Q$ range sum queries: 'What is the sum of elements from index $L$ to $R$ inclusive?'
+> Suppose you are given an array $A$ of $N$ numbers and must answer $Q$ range sum queries: 'What is the sum of elements from index $L$ to $R$ inclusive?'
 > 
 > A naive loop summing $A[L...R]$ takes $\\mathcal{O}(R - L + 1) = \\mathcal{O}(N)$ time per query $\\implies \\mathcal{O}(Q \\times N)$ total time. For $Q = 10^5$ and $N = 10^5$, this requires $10^{10}$ operations (TLE).
 > 
@@ -1971,5 +2589,304 @@ A central theme in computational efficiency is trading space for time: spending 
             {"input": {"nums": [5]}, "expected": [0, 5]},
         ],
         "hints": ["Initialize prefix = [0] * (len(nums) + 1), then prefix[i+1] = prefix[i] + num."],
+    },
+
+    # ── Track 7: Testing, Debugging & Exceptions (Guttag Ch. 8 & 9) ───────────
+    {
+        "slug": "py-verify-black-glass-box-testing",
+        "title": "Black-Box & Glass-Box Testing (Guttag Ch. 8)",
+        "kind": "fundamental",
+        "track": "track_7_testing_exceptions",
+        "difficulty": "Easy",
+        "category": "Testing & Debugging",
+        "tags": ["Guttag § 8.1.1", "Guttag § 8.1.2", "Testing", "Boundary Conditions"],
+        "description": """### 🏛️ Finger Exercise: Deriving Test Cases From a Specification
+**Guttag Citation**: *Chapter 8: Testing and Debugging (§ 8.1 Testing)*
+
+Guttag's partition of test design:
+- **Black-box tests** come from the *specification* — they survive a rewrite of the implementation.
+- **Glass-box tests** come from the *code* — they aim to exercise every path through it.
+
+Boundary conditions are where defects concentrate. Write `boundary_cases(n: int) -> list[int]` that returns the
+canonical boundary probes for a size-`n` input, in this order and with no duplicates:
+`0`, `1`, `n - 1`, `n`, `n + 1` — keeping only the non-negative values.
+""",
+        "examples": [
+            {"input": "n = 5", "output": "[0, 1, 4, 5, 6]"},
+            {"input": "n = 1", "output": "[0, 1, 2]", "explanation": "n-1 == 0 and n == 1 already appear; duplicates dropped."},
+        ],
+        "constraints": ["0 <= n <= 10^6"],
+        "starter_codes": {
+            "python": """def boundary_cases(n: int) -> list[int]:
+    # Return [0, 1, n-1, n, n+1] with negatives removed and duplicates dropped,
+    # preserving first-seen order.
+    pass
+"""
+        },
+        "solutions": {
+            "python": """def boundary_cases(n: int) -> list[int]:
+    candidates = [0, 1, n - 1, n, n + 1]
+    out = []
+    for c in candidates:
+        if c >= 0 and c not in out:
+            out.append(c)
+    return out
+"""
+        },
+        "editorial": """# 📖 Chapter 8: Testing and Debugging (§ 8.1 Testing)
+*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### § 1. Theoretical Foundations: What Testing Can and Cannot Establish
+Testing runs a program on sample inputs and compares actual behavior against the specification. Its logical
+limit is worth stating exactly, because it governs how you should use it:
+
+> Testing can demonstrate the **presence** of defects. It cannot demonstrate their **absence**.
+
+For any interesting program the input space is far too large to enumerate — a function taking one 32-bit integer
+already has $2^{32}$ possible inputs. So testing is a **sampling** problem: you cannot try everything, therefore
+you must choose the sample that maximizes the chance of exposing a defect.
+
+Guttag's answer is to partition the input space into groups whose members should all behave the same way, and
+test one representative from each group, plus the values at the boundaries between groups.
+
+---
+
+### § 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 8, § 8.1.1–8.1.2 and Figure 8-1 "Testing boundary conditions" — paraphrase, not a verbatim quotation)*
+
+**Black-box testing** derives tests from the specification alone, without reading the implementation. Two
+properties make this valuable: the tests can be written before the code exists, and they remain valid when the
+implementation is replaced. A black-box suite for `sqrt(x, epsilon)` would probe the boundary of the documented
+domain, typical values, and the extremes the spec admits.
+
+**Glass-box testing** derives tests from the code, aiming for **path completeness** — every potential path
+through the program is exercised at least once. The text is careful about the limit here: loops make genuine
+path completeness unattainable, because a loop that can run any number of times has unboundedly many paths. The
+practical rule Guttag gives is to exercise each loop **zero times, once, and more than once**, which catches the
+overwhelming majority of loop defects.
+
+The two techniques are complements, not alternatives, and the reason is sharp: **a glass-box suite cannot find a
+path that was never written.** If the code forgot to handle the empty input, no amount of covering the code that
+*is* there will reveal the omission. Only a test derived from the specification will.
+
+Where defects cluster: boundary conditions. Empty input, a single element, the first and last index, the maximum
+permitted size, all-equal values, negatives, zero.
+
+---
+
+### § 3. Canonical Code Walkthrough
+```python
+def find_max(L):
+    \"\"\"Assumes L is a non-empty list of numbers.
+       Returns the largest element of L.\"\"\"
+    best = L[0]
+    for e in L[1:]:
+        if e > best:
+            best = e
+    return best
+
+# BLACK-BOX: derived from the docstring, not the body
+assert find_max([3]) == 3                 # single element
+assert find_max([1, 2, 3]) == 3           # max at the end
+assert find_max([3, 2, 1]) == 3           # max at the start
+assert find_max([-5, -2, -9]) == -2       # all negative
+assert find_max([4, 4, 4]) == 4           # all equal
+
+# GLASS-BOX: derived from the body -- exercise the loop 0, 1, and many times
+assert find_max([7]) == 7                 # loop body runs 0 times
+assert find_max([7, 8]) == 8              # loop body runs 1 time, branch taken
+assert find_max([8, 7]) == 8              # loop body runs 1 time, branch NOT taken
+
+# The bug black-box testing finds and glass-box testing cannot:
+# find_max([]) raises IndexError. There is no code path for the empty list,
+# so no amount of covering the existing code reveals the missing case.
+```
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **Coverage is not correctness.** 100% line coverage says every line ran, not that any line was right.
+2. **A glass-box suite is blind to omissions.** Missing functionality has no code to cover. Always derive some
+   tests from the spec.
+3. **Test the boundary, not near it.** If the spec says `n <= 100`, test `100` and `101`, not `50` and `150`.
+4. **Re-run everything after a fix.** Repairs introduce new defects; that is what regression testing is for.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
+- **The constraints block is your black-box spec.** `1 <= n <= 10^5` names the boundaries to probe before
+  submitting: `n = 1` and `n = 10^5`.
+- **The four cases judges always include**: empty input, one element, all elements equal, maximum size.
+- **Trace by hand before submitting.** A two-minute walk of `n = 0` and `n = 1` catches most off-by-one defects,
+  and it is far cheaper than a Wrong Answer on a hidden case you cannot see.
+""",
+        "test_cases": [
+            {"input": {"n": 5}, "expected": [0, 1, 4, 5, 6]},
+            {"input": {"n": 1}, "expected": [0, 1, 2]},
+            {"input": {"n": 0}, "expected": [0, 1]},
+            {"input": {"n": 2}, "expected": [0, 1, 2, 3]},
+        ],
+        "hints": [
+            "Start from the candidate list [0, 1, n-1, n, n+1].",
+            "Skip any candidate that is negative or already present, preserving first-seen order.",
+        ],
+    },
+    {
+        "slug": "py-verify-exceptions-assertions",
+        "title": "Exceptions & Assertions (Guttag Ch. 9)",
+        "kind": "fundamental",
+        "track": "track_7_testing_exceptions",
+        "difficulty": "Easy",
+        "category": "Testing & Debugging",
+        "tags": ["Guttag § 9.1", "Guttag § 9.3", "Exceptions", "Assertions", "Defensive Programming"],
+        "description": """### 🏛️ Finger Exercise: Failing Loudly at the Point of Violation
+**Guttag Citation**: *Chapter 9: Exceptions and Assertions (§ 9.1 Handling Exceptions, § 9.3 Assertions)*
+
+An unhandled exception halts the program with a traceback. A handled one lets the caller recover.
+An **assertion** checks that an assumption actually holds, so a violated precondition is caught where it
+happens rather than producing a corrupted answer somewhere downstream.
+
+Write `safe_divide(pairs: list[tuple[int, int]]) -> list[float | None]` that returns `a / b` for each
+`(a, b)` pair, substituting `None` wherever `b == 0` — catching `ZeroDivisionError` rather than pre-checking.
+""",
+        "examples": [
+            {"input": "pairs = [(6, 2), (1, 0), (9, 3)]", "output": "[3.0, None, 3.0]"},
+        ],
+        "constraints": ["0 <= len(pairs) <= 1000"],
+        "starter_codes": {
+            "python": """def safe_divide(pairs: list[tuple[int, int]]) -> list:
+    # Use try/except ZeroDivisionError, appending None on failure
+    pass
+"""
+        },
+        "solutions": {
+            "python": """def safe_divide(pairs: list[tuple[int, int]]) -> list:
+    out = []
+    for a, b in pairs:
+        try:
+            out.append(a / b)
+        except ZeroDivisionError:
+            out.append(None)
+    return out
+"""
+        },
+        "editorial": """# 📖 Chapter 9: Exceptions and Assertions (§ 9.1 Handling Exceptions, § 9.3 Assertions)
+*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### § 1. Theoretical Foundations: Two Failure Channels
+A function that cannot fulfil its specification has to communicate that somehow. There are two mechanisms, and
+choosing between them is a design decision:
+
+1. **Return a special value** (`-1`, `None`, `()`). Cheap, but the caller can silently ignore it, and the special
+   value may collide with a legitimate answer. `find(x)` returning `-1` breaks the moment `-1` is a valid index.
+2. **Raise an exception.** Cannot be ignored — control transfers immediately, and an unhandled exception halts
+   the program with a traceback pointing at the failure.
+
+Guttag's preference is unambiguous: **raise**. An error that stops the program is strictly better than an error
+that quietly poisons a result.
+
+---
+
+### § 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 9, § 9.1–9.3 and Figure 9-1 "Using exceptions for control flow" — paraphrase, not a verbatim quotation)*
+
+**Handling exceptions (§ 9.1).** A `try` block guards code that might fail; an `except` clause names the
+exceptions it is prepared to handle and supplies the recovery. Naming the type matters — a bare `except:` catches
+everything, including the programmer errors you wanted to see, which converts a loud defect into a silent one.
+
+Guttag devotes a whole section (§ 9.2, "Exceptions as a Control Flow Mechanism", with Figure 9-1) to the point
+that exceptions are not reserved for catastrophes. They are a reasonable control-flow mechanism for conditions
+that are exceptional but expected — attempting the operation and handling the failure is often cleaner than
+testing every precondition first, and it avoids the gap between the check and the use.
+
+**Assertions (§ 9.3).** An assertion is a different tool with a different audience. Exceptions handle conditions
+the program should survive; assertions state conditions that must be true if the code is correct at all.
+
+The argument for them is about *where* a defect surfaces. Without a check, a violated assumption propagates —
+the program keeps computing on bad state and fails much later, somewhere that has nothing to do with the cause.
+That distance is what makes debugging expensive. An assertion collapses it to zero by failing at the point of
+violation.
+
+Guttag's idiom is to assert the **preconditions** of a function on entry, and its **representation invariant**
+after any operation that could disturb it — the same invariant discipline the `IntSet` ADT in Chapter 10 relies on.
+
+---
+
+### § 3. Canonical Code Walkthrough
+```python
+# 1. Handling an expected failure
+def get_ratio(a, b):
+    try:
+        return a / b
+    except ZeroDivisionError:
+        return None            # documented, checkable outcome
+
+# 2. Exceptions as ordinary control flow -- no check-then-act gap
+def lookup(d, k):
+    try:
+        return d[k]
+    except KeyError:
+        return 0
+    # equivalently, and more idiomatically: return d.get(k, 0)
+
+# 3. Raising, because the caller violated the contract
+def average(scores):
+    \"\"\"Assumes scores is a non-empty list of numbers.\"\"\"
+    if not scores:
+        raise ValueError("average requires a non-empty list")
+    return sum(scores) / len(scores)
+
+# 4. Asserting an invariant -- fails at the cause, not downstream
+def binary_search(L, x):
+    lo, hi = 0, len(L) - 1
+    while lo <= hi:
+        assert 0 <= lo and hi < len(L), "search window escaped the list"
+        mid = (lo + hi) // 2
+        if L[mid] == x:
+            return mid
+        if L[mid] < x:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return -1
+```
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **Never write a bare `except:`.** It swallows real defects — including `KeyboardInterrupt`. Name the type.
+2. **Assertions are not input validation.** They are disabled under `python -O`, so never rely on one to check
+   untrusted data. Assert what *your* code guarantees; `raise` for what a *caller* got wrong.
+3. **`try` costs nothing when nothing is raised.** The overhead is in raising, not in guarding, so EAFP is not
+   a performance compromise.
+4. **Catch narrowly, at the level that can recover.** A handler that cannot actually fix anything should let the
+   exception through.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
+- **Runtime Error verdicts are uncaught exceptions.** `IndexError` means a bounds check is missing;
+  `KeyError` means a `.get(k, default)` or `defaultdict` is missing; `RecursionError` means the base case is
+  unreachable or the input is deeper than the default ~1000-frame stack.
+- **EAFP shortens real solutions.** `Counter`, `defaultdict`, and `d.get(k, 0)` all remove the
+  "if key not in d" branch that clutters frequency-counting code.
+- **A temporary `assert` localizes a binary-search bug in one run** — far faster than re-reading the loop.
+- **Design rounds care about the contract.** Say what your method does on invalid input, and pick raise-vs-sentinel
+  deliberately rather than by accident.
+""",
+        "test_cases": [
+            {"input": {"pairs": [[6, 2], [1, 0], [9, 3]]}, "expected": [3.0, None, 3.0]},
+            {"input": {"pairs": []}, "expected": []},
+            {"input": {"pairs": [[0, 5]]}, "expected": [0.0]},
+            {"input": {"pairs": [[4, 0], [8, 0]]}, "expected": [None, None]},
+        ],
+        "hints": [
+            "Loop over the pairs, wrapping a / b in try/except ZeroDivisionError.",
+            "Append None inside the except clause so the output length matches the input.",
+        ],
     },
 ]

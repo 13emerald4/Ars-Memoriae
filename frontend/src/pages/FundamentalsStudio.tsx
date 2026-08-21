@@ -16,11 +16,12 @@ import { ErrorNote, Spinner } from '../components/ui'
 const TRACKS = [
   { id: 'track_0_python_basics', label: '🟢 Track 0: Python Basics & Numerics (Guttag Ch. 2–3)', icon: '🐍' },
   { id: 'track_1_pythonic_fluency', label: '🔵 Track 1: Structured Types & Aliasing (Guttag Ch. 4–5)', icon: '⚡' },
-  { id: 'track_2_data_structures', label: '🟣 Track 2: Abstract Data Types & Queues (Guttag Ch. 10)', icon: '🧱' },
+  { id: 'track_2_data_structures', label: '🟣 Track 2: ADTs, Hash Tables & Queues (Guttag Ch. 10, 12)', icon: '🧱' },
   { id: 'track_3_algorithmic_scaffolds', label: '🟡 Track 3: Recursion & Scaffolds (Guttag Ch. 6, 12, 15)', icon: '📐' },
   { id: 'track_4_custom_sorting', label: '🟠 Track 4: Divide-and-Conquer Sorting (Guttag Ch. 12)', icon: '🔀' },
   { id: 'track_5_bit_manipulation', label: '🔴 Track 5: Binary Encodings & Bits (Guttag Ch. 3.4)', icon: '🔢' },
   { id: 'track_6_complexity_math', label: '🟤 Track 6: Asymptotic Complexity & Math (Guttag Ch. 11)', icon: '⏱' },
+  { id: 'track_7_testing_exceptions', label: '⚪ Track 7: Testing, Debugging & Exceptions (Guttag Ch. 8–9)', icon: '🧪' },
 ]
 
 export default function FundamentalsStudio() {

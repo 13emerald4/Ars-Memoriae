@@ -9,9 +9,14 @@
  * optimization, asymptotic complexity, binary arithmetic, testing and debugging,
  * exceptions, stochastic programs and statistics, and machine learning.
  *
- * Chapter/section anchors follow the 3rd-edition table of contents. Page ranges are
- * approximate and context snippets are condensed paraphrases of the passage, not
- * verified verbatim transcriptions.
+ * Chapter and section anchors were checked against the 3rd-edition PDF and corrected
+ * where they were wrong (e.g. "The Basic Elements of Python" is § 2.2 not § 2.1;
+ * "Lists and Mutability" is § 5.3 not § 5.2; § 10.3 is "Encapsulation and Information
+ * Hiding", and there is no "Amortization and Space-Time Tradeoffs" section in Ch. 11).
+ *
+ * Page citations have been removed: the source PDF carries no printed page numbers, so
+ * no page reference could be verified. Context snippets remain condensed paraphrases of
+ * the passage, not verbatim transcriptions.
  */
 
 export interface ConcordanceOccurrence {
@@ -66,26 +71,23 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(data objects?|objects?)\b/gi,
     definition:
       'In Python’s computational model, everything is an object. An object is an encapsulated entity with an Identity (memory address), a Type (defining valid operations), and a Value (internal data representation).',
-    primaryLocation: 'Chapter 2 (§ 2.1 The Basic Elements of Python, p. 12)',
+    primaryLocation: 'Chapter 2 (§ 2.2 The Basic Elements of Python)',
     notation: 'object ≡ ⟨identity, type, value⟩',
     relatedIds: ['G-102', 'G-103', 'G-104'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1 The Basic Elements',
-        pageRange: 'pp. 12–15',
+        section: '§ 2.2 The Basic Elements of Python',
         contextSnippet: 'In Python, everything is an object. Every object has an identity, a type, and a value.',
       },
       {
         chapter: 'Chapter 5',
-        section: '§ 5.2 Lists and Mutability',
-        pageRange: 'pp. 68–72',
+        section: '§ 5.3 Lists and Mutability',
         contextSnippet: 'Objects live on the heap. Multiple variables can be bound to the same object.',
       },
       {
         chapter: 'Chapter 10',
         section: '§ 10.1 Abstract Data Types and Classes',
-        pageRange: 'pp. 157–160',
         contextSnippet: 'A class is a blueprint for creating custom data objects with encapsulated state and methods.',
       },
     ],
@@ -98,20 +100,18 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(identit(y|ies)|memory address(es)?|object identity)\b/gi,
     definition:
       'A unique integer assigned to every object in heap memory on creation, inspectable via id(x). In CPython it corresponds to the object’s physical memory pointer.',
-    primaryLocation: 'Chapter 2 (§ 2.1 The Basic Elements of Python, p. 12)',
+    primaryLocation: 'Chapter 2 (§ 2.2 The Basic Elements of Python)',
     notation: 'id(x) — compared with `is`, never with `==`',
     relatedIds: ['G-101', 'G-122', 'G-150'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1 The Basic Elements',
-        pageRange: 'pp. 12–14',
+        section: '§ 2.2 The Basic Elements of Python',
         contextSnippet: 'An identity is an integer representing the object’s location in memory, tested with the is operator.',
       },
       {
         chapter: 'Chapter 5',
-        section: '§ 5.2.1 Aliasing',
-        pageRange: 'pp. 69–71',
+        section: '§ 5.3.1 Cloning',
         contextSnippet: 'When L2 = L1, both names share one identity: id(L1) == id(L2).',
       },
     ],
@@ -124,20 +124,18 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(data types?|types?)\b/gi,
     definition:
       'A classification defining what values an object can hold, its internal memory representation, and which operations (methods and operators) may legally be performed on it.',
-    primaryLocation: 'Chapter 2 (§ 2.1 The Basic Elements of Python, p. 12)',
+    primaryLocation: 'Chapter 2 (§ 2.2 The Basic Elements of Python)',
     notation: 'type(x)',
     relatedIds: ['G-101', 'G-114', 'G-115'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1 The Basic Elements',
-        pageRange: 'pp. 12–15',
+        section: '§ 2.2 The Basic Elements of Python',
         contextSnippet: 'Every object has a type that dictates the operations that can be performed on it.',
       },
       {
         chapter: 'Chapter 4',
         section: '§ 4.2 Specifications',
-        pageRange: 'pp. 52–55',
         contextSnippet: 'Specifications state the expected types of formal parameters and of the return value.',
       },
     ],
@@ -150,20 +148,18 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(values?|state)\b/gi,
     definition:
       'The actual data contents stored in an object’s allocated memory buffer, compared with the value-equality operator ==.',
-    primaryLocation: 'Chapter 2 (§ 2.1 The Basic Elements of Python, p. 12)',
+    primaryLocation: 'Chapter 2 (§ 2.2 The Basic Elements of Python)',
     notation: 'a == b  (value)   vs.   a is b  (identity)',
     relatedIds: ['G-101', 'G-102', 'G-121'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1 The Basic Elements',
-        pageRange: 'pp. 12–14',
+        section: '§ 2.2 The Basic Elements of Python',
         contextSnippet: 'The value is the data stored in the memory representation of the object.',
       },
       {
         chapter: 'Chapter 5',
-        section: '§ 5.2 Mutability',
-        pageRange: 'pp. 68–72',
+        section: '§ 5.3 Lists and Mutability',
         contextSnippet: 'Two objects can hold identical values (a == b) while keeping distinct identities (a is not b).',
       },
     ],
@@ -176,13 +172,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(scalars?|scalar objects?|scalar types?|scalar primitives?)\b/gi,
     definition:
       'An indivisible primitive computational entity with no accessible internal structure: int, float, bool, NoneType.',
-    primaryLocation: 'Chapter 2 (§ 2.1 The Basic Elements of Python, p. 12)',
+    primaryLocation: 'Chapter 2 (§ 2.2 The Basic Elements of Python)',
     relatedIds: ['G-106', 'G-107', 'G-108'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1 The Basic Elements',
-        pageRange: 'pp. 12–15',
+        section: '§ 2.2 The Basic Elements of Python',
         contextSnippet: 'Scalar objects are primitive values that cannot be indexed or subdivided.',
       },
     ],
@@ -195,19 +190,17 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(non[- ]scalars?|non[- ]scalar objects?|non[- ]scalar types?|composite objects?|structured types?)\b/gi,
     definition:
       'A composite object with internal structure holding references to other objects: str, list, tuple, dict, set, and user-defined classes.',
-    primaryLocation: 'Chapter 5 (§ 5.1 Tuples, p. 65)',
+    primaryLocation: 'Chapter 5 (§ 5.1 Tuples)',
     relatedIds: ['G-105', 'G-212', 'G-214'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1 The Basic Elements',
-        pageRange: 'pp. 12–13',
+        section: '§ 2.2 The Basic Elements of Python',
         contextSnippet: 'Non-scalar objects have internal structure accessible via indexing, slicing, and iteration.',
       },
       {
         chapter: 'Chapter 5',
-        section: '§ 5.1 Structured Types',
-        pageRange: 'pp. 65–70',
+        section: '§ 5.1 Tuples',
         contextSnippet: 'Structured non-scalar types store pointers to their element objects.',
       },
     ],
@@ -220,13 +213,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(ints?|integers?)\b/gi,
     definition:
       'An arbitrary-precision scalar numeric type representing whole numbers with no upper or lower magnitude bound in Python 3.',
-    primaryLocation: 'Chapter 2 (§ 2.1 The Basic Elements of Python, p. 12)',
+    primaryLocation: 'Chapter 2 (§ 2.2 The Basic Elements of Python)',
     relatedIds: ['G-124', 'G-358'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1 The Basic Elements',
-        pageRange: 'pp. 12–14',
+        section: '§ 2.2 The Basic Elements of Python',
         contextSnippet: 'Python integers have arbitrary precision and do not overflow.',
       },
     ],
@@ -239,14 +231,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(floats?|floating[- ]point)\b/gi,
     definition:
       'A scalar numeric type representing real numbers in IEEE 754 double precision (64 bits: 1 sign, 11 exponent, 53 mantissa). Subject to binary rounding error.',
-    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats, p. 36)',
+    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats)',
     notation: 'never test a == b; test |a − b| < ε',
     relatedIds: ['G-125', 'G-340'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.3 A Few Words About Using Floats',
-        pageRange: 'pp. 36–38',
         contextSnippet: '0.1 has no exact binary representation; testing float equality with == is almost always a bug.',
       },
     ],
@@ -259,14 +250,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(bools?|booleans?|truthiness|truth[- ]values?)\b/gi,
     definition:
       'The truth values True and False. In Python 0, 0.0, None, and every empty collection ("", [], {}, set()) evaluate False; all other objects evaluate True.',
-    primaryLocation: 'Chapter 2 (§ 2.1 The Basic Elements of Python, p. 13)',
+    primaryLocation: 'Chapter 2 (§ 2.2 The Basic Elements of Python)',
     notation: 'bool is a subclass of int: True == 1, False == 0',
     relatedIds: ['G-123', 'G-130'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1 The Basic Elements',
-        pageRange: 'pp. 13–15',
+        section: '§ 2.2 The Basic Elements of Python',
         contextSnippet: 'bool is a subclass of int in Python, where True == 1 and False == 0.',
       },
     ],
@@ -279,13 +269,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(nonetype|none)\b/gi,
     definition:
       'A singleton scalar object denoting the absence of a value, an uninitialized state, or the implicit return of a function with no return statement.',
-    primaryLocation: 'Chapter 2 (§ 2.1 The Basic Elements of Python, p. 13)',
+    primaryLocation: 'Chapter 2 (§ 2.2 The Basic Elements of Python)',
     relatedIds: ['G-122', 'G-181'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1 The Basic Elements',
-        pageRange: 'pp. 12–14',
+        section: '§ 2.2 The Basic Elements of Python',
         contextSnippet: 'NoneType has a single value, None, representing the absence of a value.',
       },
     ],
@@ -298,14 +287,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(type casts?|type casting|type conversions?|casting|coercion)\b/gi,
     definition:
       'Explicitly converting an object between types by calling the type name as a constructor: int(s), str(n), float(x), list(t), set(xs).',
-    primaryLocation: 'Chapter 2 (§ 2.1 The Basic Elements of Python, p. 13)',
+    primaryLocation: 'Chapter 2 (§ 2.2 The Basic Elements of Python)',
     notation: 'int("1010", 2) → 10 (radix conversion)',
     relatedIds: ['G-103', 'G-128'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1 The Basic Elements',
-        pageRange: 'pp. 13–15',
+        section: '§ 2.2 The Basic Elements of Python',
         contextSnippet: 'Type conversions explicitly convert an object of one type into another.',
       },
     ],
@@ -318,14 +306,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(floor divisions?|true division|integer division|modulo|modulus|remainders?|divmod|quotients?)\b/gi,
     definition:
       'Python’s integer division invariant a == (a // b) * b + (a % b), where // rounds toward negative infinity so a % b always carries the sign of divisor b.',
-    primaryLocation: 'Chapter 2 (§ 2.1.1 Operators and Expressions, p. 14)',
+    primaryLocation: 'Chapter 2 (§ 2.2.1 Objects, Expressions, and Numerical Types)',
     notation: 'a == (a // b) * b + (a % b)',
     relatedIds: ['G-341', 'G-344'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1.1 Operators and Expressions',
-        pageRange: 'pp. 14–16',
+        section: '§ 2.2.1 Objects, Expressions, and Numerical Types',
         contextSnippet: 'Floor division rounds toward negative infinity, so a % b takes the sign of the divisor b.',
       },
     ],
@@ -338,13 +325,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(immutab(le|ility)|mutab(le|ility))\b/gi,
     definition:
       'Immutable objects (int, float, str, tuple, frozenset) cannot be altered after creation. Mutable objects (list, dict, set) support in-place modification.',
-    primaryLocation: 'Chapter 5 (§ 5.1 Tuples & § 5.2 Lists and Mutability, pp. 65–70)',
+    primaryLocation: 'Chapter 5 (§ 5.1 Tuples & § 5.3 Lists and Mutability)',
     relatedIds: ['G-150', 'G-166', 'G-209'],
     occurrences: [
       {
         chapter: 'Chapter 5',
-        section: '§ 5.2 Lists and Mutability',
-        pageRange: 'pp. 68–74',
+        section: '§ 5.3 Lists and Mutability',
         contextSnippet: 'Lists are mutable: their contents can be altered in place with append and pop.',
       },
     ],
@@ -357,13 +343,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(strongly typed|strong typing|weak typing|weakly typed)\b/gi,
     definition:
       'A language property where type mismatches are detected and flagged rather than silently coerced. "42" + 1 raises TypeError in Python; JavaScript would coerce.',
-    primaryLocation: 'Chapter 2 (§ 2.1 The Basic Elements of Python, p. 12)',
+    primaryLocation: 'Chapter 2 (§ 2.2 The Basic Elements of Python)',
     relatedIds: ['G-115', 'G-386'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1 The Basic Elements',
-        pageRange: 'pp. 12–14',
+        section: '§ 2.2 The Basic Elements of Python',
         contextSnippet: 'Python is strongly typed: type errors are reported rather than silently patched over.',
       },
     ],
@@ -376,13 +361,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(dynamic type binding|dynamically typed|dynamic typing|static typing|statically typed)\b/gi,
     definition:
       'Type is an intrinsic attribute of the object, not of the variable name. Names are labels that may be rebound to objects of any type at runtime.',
-    primaryLocation: 'Chapter 2 (§ 2.1 The Basic Elements of Python, p. 12)',
+    primaryLocation: 'Chapter 2 (§ 2.2 The Basic Elements of Python)',
     relatedIds: ['G-114', 'G-116'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1 The Basic Elements',
-        pageRange: 'pp. 12–15',
+        section: '§ 2.2 The Basic Elements of Python',
         contextSnippet: 'Variable names are bound to objects; the type belongs to the object rather than to the name.',
       },
     ],
@@ -395,14 +379,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(variable bindings?|bindings?|rebinding|assignment statements?|name bindings?)\b/gi,
     definition:
       'Assignment binds a name to an object in the current scope’s namespace. Rebinding a name never mutates the previously bound object.',
-    primaryLocation: 'Chapter 2 (§ 2.1.2 Variables and Assignment, p. 16)',
+    primaryLocation: 'Chapter 2 (§ 2.2.2 Variables and Assignment)',
     notation: 'x = obj  binds the name x to obj in the local namespace',
     relatedIds: ['G-115', 'G-159', 'G-150'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1.2 Variables and Assignment',
-        pageRange: 'pp. 16–18',
+        section: '§ 2.2.2 Variables and Assignment',
         contextSnippet: 'An assignment binds a name to a value; the name is a label rather than a storage box.',
       },
     ],
@@ -415,13 +398,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(literals?|string literals?|numeric literals?)\b/gi,
     definition:
       'A source-code token denoting a fixed object value directly, e.g. 42, 3.14, True, "abc", [], {}.',
-    primaryLocation: 'Chapter 2 (§ 2.1 The Basic Elements of Python, p. 13)',
+    primaryLocation: 'Chapter 2 (§ 2.2 The Basic Elements of Python)',
     relatedIds: ['G-118', 'G-359'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1 The Basic Elements',
-        pageRange: 'pp. 12–15',
+        section: '§ 2.2 The Basic Elements of Python',
         contextSnippet: 'Literals denote objects of a type directly in program text.',
       },
     ],
@@ -434,13 +416,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(expressions?|subexpressions?)\b/gi,
     definition:
       'A combination of objects and operators that Python evaluates to produce a value. Every expression has a type determined by its operands and operator.',
-    primaryLocation: 'Chapter 2 (§ 2.1.1 Operators and Expressions, p. 14)',
+    primaryLocation: 'Chapter 2 (§ 2.2.1 Objects, Expressions, and Numerical Types)',
     relatedIds: ['G-119', 'G-126'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1.1 Operators and Expressions',
-        pageRange: 'pp. 13–16',
+        section: '§ 2.2.1 Objects, Expressions, and Numerical Types',
         contextSnippet: 'The most common way to build an expression is to combine objects with operators.',
       },
     ],
@@ -453,14 +434,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(operator precedence|precedence rules?|associativity)\b/gi,
     definition:
       'The fixed evaluation order among operators: ** binds tightest, then unary −, then * / // %, then + −, then comparisons, then not, and, or.',
-    primaryLocation: 'Chapter 2 (§ 2.1.1 Operators and Expressions, p. 15)',
+    primaryLocation: 'Chapter 2 (§ 2.2.1 Objects, Expressions, and Numerical Types)',
     notation: '**  >  unary −  >  * / // %  >  + −  >  comparisons  >  not  >  and  >  or',
     relatedIds: ['G-118', 'G-346'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1.1 Operators and Expressions',
-        pageRange: 'pp. 14–16',
+        section: '§ 2.2.1 Objects, Expressions, and Numerical Types',
         contextSnippet: 'Operators bind with defined precedence; parentheses override the default grouping.',
       },
     ],
@@ -473,13 +453,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(augmented assignments?|compound assignments?|in[- ]place operators?)\b/gi,
     definition:
       'Shorthand operators (+=, -=, *=, //=, %=, |=, &=, ^=) that read, combine, and rebind in one statement. On mutable objects += mutates in place; on immutables it rebinds.',
-    primaryLocation: 'Chapter 2 (§ 2.1.2 Variables and Assignment, p. 17)',
+    primaryLocation: 'Chapter 2 (§ 2.2.2 Variables and Assignment)',
     relatedIds: ['G-116', 'G-166'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1.2 Variables and Assignment',
-        pageRange: 'pp. 16–18',
+        section: '§ 2.2.2 Variables and Assignment',
         contextSnippet: 'x += 1 is shorthand for x = x + 1.',
       },
     ],
@@ -492,13 +471,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(equality operators?|comparison operators?|relational operators?|value equality|chained comparisons?)\b/gi,
     definition:
       'Operators ==, !=, <, <=, >, >= comparing object values. Python allows chaining: a < b < c is equivalent to a < b and b < c with single evaluation of b.',
-    primaryLocation: 'Chapter 2 (§ 2.1.1 Operators and Expressions, p. 15)',
+    primaryLocation: 'Chapter 2 (§ 2.2.1 Objects, Expressions, and Numerical Types)',
     relatedIds: ['G-104', 'G-122', 'G-244'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1.1 Operators and Expressions',
-        pageRange: 'pp. 14–16',
+        section: '§ 2.2.1 Objects, Expressions, and Numerical Types',
         contextSnippet: 'Comparison operators evaluate to a Boolean and may be chained.',
       },
     ],
@@ -511,14 +489,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(identity operators?|is operator|is not operator)\b/gi,
     definition:
       'The `is` operator tests whether two names are bound to the same heap object (id equality), never whether their values match.',
-    primaryLocation: 'Chapter 5 (§ 5.2.1 Cloning, p. 70)',
+    primaryLocation: 'Chapter 5 (§ 5.3.1 Cloning)',
     notation: 'a is b  ⟺  id(a) == id(b)',
     relatedIds: ['G-102', 'G-110', 'G-162'],
     occurrences: [
       {
         chapter: 'Chapter 5',
-        section: '§ 5.2.1 Lists and Mutability',
-        pageRange: 'pp. 69–72',
+        section: '§ 5.3.1 Cloning',
         contextSnippet: 'The is operator compares identities, not values, which is why aliases satisfy it and clones do not.',
       },
     ],
@@ -531,13 +508,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(short[- ]circuit(ing| evaluation)?|logical operators?|boolean operators?)\b/gi,
     definition:
       'and/or/not combine truth values. Evaluation short-circuits: `and` stops at the first falsy operand, `or` at the first truthy operand, and returns that operand itself.',
-    primaryLocation: 'Chapter 2 (§ 2.1.1 Operators and Expressions, p. 15)',
+    primaryLocation: 'Chapter 2 (§ 2.2.1 Objects, Expressions, and Numerical Types)',
     relatedIds: ['G-109', 'G-130'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1.1 Operators and Expressions',
-        pageRange: 'pp. 14–16',
+        section: '§ 2.2.1 Objects, Expressions, and Numerical Types',
         contextSnippet: 'The and and or operators evaluate their right operand only when the result is still undetermined.',
       },
     ],
@@ -550,14 +526,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(arbitrary[- ]precision|unbounded precision|integer overflow|overflow)\b/gi,
     definition:
       'Python 3 ints grow to any magnitude memory permits, so no overflow occurs. Fixed-width languages wrap at 2^31 or 2^63, which interview answers may still be expected to respect.',
-    primaryLocation: 'Chapter 2 (§ 2.1 The Basic Elements of Python, p. 12)',
+    primaryLocation: 'Chapter 2 (§ 2.2 The Basic Elements of Python)',
     notation: 'C/Java int32 range: [−2^31, 2^31 − 1]',
     relatedIds: ['G-107', 'G-352', 'G-358'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1 The Basic Elements',
-        pageRange: 'pp. 12–14',
+        section: '§ 2.2 The Basic Elements of Python',
         contextSnippet: 'Unlike C or Java, Python integers are unbounded and never overflow.',
       },
     ],
@@ -570,14 +545,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(rounding errors?|machine epsilon|ieee 754|precision loss|representation error)\b/gi,
     definition:
       'The gap between a decimal value and its nearest binary double. 0.1 + 0.2 evaluates to 0.30000000000000004; comparisons must use a tolerance ε.',
-    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats, p. 36)',
+    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats)',
     notation: 'ε ≈ 2.22e-16 for IEEE 754 doubles',
     relatedIds: ['G-108', 'G-340'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.3 A Few Words About Using Floats',
-        pageRange: 'pp. 36–39',
         contextSnippet: 'Because binary fractions cannot represent every decimal fraction, small rounding errors accumulate.',
       },
     ],
@@ -590,13 +564,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(statements?|commands?)\b/gi,
     definition:
       'A command (statement) instructs the interpreter to perform an action. A program is a sequence of definitions and commands executed in order.',
-    primaryLocation: 'Chapter 1 (§ 1 Getting Started, p. 4)',
+    primaryLocation: 'Chapter 1 (§ 1 Getting Started)',
     relatedIds: ['G-118', 'G-127'],
     occurrences: [
       {
         chapter: 'Chapter 1',
         section: '§ 1 Getting Started',
-        pageRange: 'pp. 1–6',
         contextSnippet: 'A program is a sequence of definitions and commands that manipulate data objects.',
       },
     ],
@@ -609,13 +582,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(straight[- ]line programs?)\b/gi,
     definition:
       'A program executing statements strictly in written order with no branching or repetition. Its power is limited to problems of fixed, known size.',
-    primaryLocation: 'Chapter 2 (§ 2.2 Branching Programs, p. 19)',
+    primaryLocation: 'Chapter 2 (§ 2.2 Branching Programs)',
     relatedIds: ['G-130', 'G-131'],
     occurrences: [
       {
         chapter: 'Chapter 2',
         section: '§ 2.2 Branching Programs',
-        pageRange: 'pp. 18–20',
         contextSnippet: 'Straight-line programs execute one statement after another and stop; branching adds decision power.',
       },
     ],
@@ -628,13 +600,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(numeric coercion|implicit conversions?|numeric tower|type promotion)\b/gi,
     definition:
       'Mixed-type arithmetic promotes the narrower operand: int + float → float, bool + int → int. No implicit conversion ever crosses the str boundary.',
-    primaryLocation: 'Chapter 2 (§ 2.1.1 Operators and Expressions, p. 15)',
+    primaryLocation: 'Chapter 2 (§ 2.2.1 Objects, Expressions, and Numerical Types)',
     relatedIds: ['G-111', 'G-114'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1.1 Operators and Expressions',
-        pageRange: 'pp. 14–16',
+        section: '§ 2.2.1 Objects, Expressions, and Numerical Types',
         contextSnippet: 'Arithmetic on mixed numeric types converts the int operand to a float before evaluating.',
       },
     ],
@@ -647,13 +618,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(keywords?|reserved words?)\b/gi,
     definition:
       'Identifiers reserved by the language grammar (if, while, def, class, return, lambda, global, nonlocal, try, yield) that cannot be used as variable names.',
-    primaryLocation: 'Chapter 2 (§ 2.1.2 Variables and Assignment, p. 17)',
+    primaryLocation: 'Chapter 2 (§ 2.2.2 Variables and Assignment)',
     relatedIds: ['G-154', 'G-155'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1.2 Variables and Assignment',
-        pageRange: 'pp. 16–18',
+        section: '§ 2.2.2 Variables and Assignment',
         contextSnippet: 'Reserved words have fixed meaning in the language and may not be used as identifiers.',
       },
     ],
@@ -668,13 +638,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(branching programs?|conditionals?|conditional statements?|if[- ]else|branching)\b/gi,
     definition:
       'Control flow that tests a Boolean expression and selects among alternative statement blocks, giving programs the ability to react to data.',
-    primaryLocation: 'Chapter 2 (§ 2.2 Branching Programs, p. 19)',
+    primaryLocation: 'Chapter 2 (§ 2.2 Branching Programs)',
     relatedIds: ['G-109', 'G-127', 'G-123'],
     occurrences: [
       {
         chapter: 'Chapter 2',
         section: '§ 2.2 Branching Programs',
-        pageRange: 'pp. 18–22',
         contextSnippet: 'A branching program chooses which statements to execute based on a test.',
       },
     ],
@@ -687,13 +656,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(iterations?|iterating|iterative|loops?|looping)\b/gi,
     definition:
       'Repeating a block of statements while a condition holds, allowing programs whose running time scales with input size rather than source length.',
-    primaryLocation: 'Chapter 2 (§ 2.4 Iteration, p. 24)',
+    primaryLocation: 'Chapter 2 (§ 2.5 While Loops)',
     relatedIds: ['G-132', 'G-133', 'G-134'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.4 Iteration',
-        pageRange: 'pp. 23–27',
+        section: '§ 2.5 While Loops',
         contextSnippet: 'Iteration lets a program of fixed length perform an amount of work that depends on the input.',
       },
     ],
@@ -706,14 +674,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(while loops?|decrementing functions?|termination arguments?)\b/gi,
     definition:
       'A loop repeating while a test is true. Termination is proved with a decrementing function: a non-negative integer measure of the state that strictly decreases each iteration.',
-    primaryLocation: 'Chapter 3 (§ 3.1 Exhaustive Enumeration, p. 29)',
+    primaryLocation: 'Chapter 3 (§ 3.1 Exhaustive Enumeration)',
     notation: 'f(state) ∈ ℕ, strictly decreasing ⟹ loop halts',
     relatedIds: ['G-134', 'G-131'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.1 Exhaustive Enumeration',
-        pageRange: 'pp. 28–31',
         contextSnippet: 'To argue that a while loop terminates, find a decrementing function that maps state to a non-negative integer.',
       },
     ],
@@ -726,14 +693,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(for loops?|range function|range\(\))\b/gi,
     definition:
       'A loop iterating over a finite sequence. range(start, stop, step) generates values lazily without materializing a list.',
-    primaryLocation: 'Chapter 2 (§ 2.4 Iteration & § 5.2 Lists, pp. 25, 71)',
+    primaryLocation: 'Chapter 2 (§ 2.6 For Loops and Range) & Chapter 5 (§ 5.2 Ranges and Iterables)',
     notation: 'range(n) yields 0 … n−1',
     relatedIds: ['G-137', 'G-138'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.4 Iteration',
-        pageRange: 'pp. 24–27',
+        section: '§ 2.5 While Loops',
         contextSnippet: 'A for loop binds the loop variable to successive values produced by the iterable.',
       },
     ],
@@ -746,14 +712,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(loop invariants?|progress invariants?|search invariants?)\b/gi,
     definition:
       'A predicate true before the loop, preserved by every iteration, and strong enough at exit to imply correctness of the result.',
-    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms, p. 195)',
+    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms)',
     notation: 'init ⟹ I;  I ∧ guard ⟹ I after body;  I ∧ ¬guard ⟹ postcondition',
     relatedIds: ['G-132', 'G-299', 'G-251'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.1 Search Algorithms',
-        pageRange: 'pp. 195–200',
         contextSnippet: 'Binary search relies on the invariant that if the target is present it lies within lo..hi.',
       },
     ],
@@ -766,13 +731,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(break statements?|continue statements?|early exit|early return)\b/gi,
     definition:
       'break exits the innermost enclosing loop immediately; continue skips to the next iteration. Both alter the loop invariant’s exit condition and must be reasoned about explicitly.',
-    primaryLocation: 'Chapter 2 (§ 2.4 Iteration, p. 26)',
+    primaryLocation: 'Chapter 2 (§ 2.5 While Loops)',
     relatedIds: ['G-134', 'G-283'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.4 Iteration',
-        pageRange: 'pp. 25–27',
+        section: '§ 2.5 While Loops',
         contextSnippet: 'break terminates the loop it appears in without evaluating the loop test again.',
       },
     ],
@@ -785,14 +749,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(nested loops?|double loops?|inner loops?|outer loops?)\b/gi,
     definition:
       'A loop inside a loop. Iteration counts multiply, so an n-element outer loop over an n-element inner loop performs Θ(n²) work.',
-    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes, p. 186)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     notation: 'Σ_{i<n} Σ_{j<n} 1 = n²',
     relatedIds: ['G-327', 'G-266'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.3 Some Important Complexity Classes',
-        pageRange: 'pp. 185–190',
         contextSnippet: 'Nested loops over the same collection produce quadratic growth in the number of steps.',
       },
     ],
@@ -805,13 +768,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(iterators?|iterables?|iteration protocol)\b/gi,
     definition:
       'An iterable supplies __iter__ returning an iterator; the iterator supplies __next__ producing successive elements and raising StopIteration when exhausted.',
-    primaryLocation: 'Chapter 5 (§ 5.4 Higher-Order Operations on Lists, p. 77)',
+    primaryLocation: 'Chapter 5 (§ 5.4 Higher-Order Operations on Lists)',
     relatedIds: ['G-138', 'G-133', 'G-380'],
     occurrences: [
       {
         chapter: 'Chapter 5',
         section: '§ 5.4 Higher-Order Operations',
-        pageRange: 'pp. 76–80',
         contextSnippet: 'for loops work over any object supporting the iteration protocol, not only lists.',
       },
     ],
@@ -824,13 +786,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(generators?|generator expressions?|lazy evaluation|yield statements?)\b/gi,
     definition:
       'A function containing yield returns a generator producing values one at a time and holding only O(1) state, rather than materializing the whole sequence.',
-    primaryLocation: 'Chapter 5 (§ 5.4 Higher-Order Operations on Lists, p. 79)',
+    primaryLocation: 'Chapter 5 (§ 5.4 Higher-Order Operations on Lists)',
     relatedIds: ['G-137', 'G-334'],
     occurrences: [
       {
         chapter: 'Chapter 5',
         section: '§ 5.4 Higher-Order Operations',
-        pageRange: 'pp. 77–81',
         contextSnippet: 'Generators produce values on demand, avoiding the memory cost of building the full list.',
       },
     ],
@@ -843,13 +804,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(enumerate|zip function|parallel iteration)\b/gi,
     definition:
       'enumerate(xs) yields (index, element) pairs; zip(a, b) yields element tuples in lockstep and stops at the shorter operand.',
-    primaryLocation: 'Chapter 5 (§ 5.4 Higher-Order Operations on Lists, p. 78)',
+    primaryLocation: 'Chapter 5 (§ 5.4 Higher-Order Operations on Lists)',
     relatedIds: ['G-133', 'G-177'],
     occurrences: [
       {
         chapter: 'Chapter 5',
         section: '§ 5.4 Higher-Order Operations',
-        pageRange: 'pp. 77–80',
         contextSnippet: 'enumerate pairs each element with its position, removing manual index bookkeeping.',
       },
     ],
@@ -862,13 +822,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(exhaustive enumeration|guess[- ]and[- ]check|brute[- ]force enumeration)\b/gi,
     definition:
       'Systematically generating every candidate in the search space and testing each. Guaranteed correct, and often fast enough because computers enumerate quickly.',
-    primaryLocation: 'Chapter 3 (§ 3.1 Exhaustive Enumeration, p. 28)',
+    primaryLocation: 'Chapter 3 (§ 3.1 Exhaustive Enumeration)',
     relatedIds: ['G-270', 'G-292'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.1 Exhaustive Enumeration',
-        pageRange: 'pp. 28–31',
         contextSnippet: 'Guess and check enumerates candidate answers in order until one satisfies the test.',
       },
     ],
@@ -881,14 +840,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(successive approximations?|approximate solutions?|iterative refinement)\b/gi,
     definition:
       'Iteratively improving a guess until the residual falls below a chosen tolerance ε, used when an exact closed form does not exist or is not needed.',
-    primaryLocation: 'Chapter 3 (§ 3.2 Approximate Solutions and Bisection Search, p. 31)',
+    primaryLocation: 'Chapter 3 (§ 3.2 Approximate Solutions and Bisection Search)',
     notation: 'halt when |f(guess)| < ε',
     relatedIds: ['G-252', 'G-338', 'G-340'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.2 Approximate Solutions',
-        pageRange: 'pp. 31–36',
         contextSnippet: 'When an exact answer is unattainable, accept any answer within epsilon of the true value.',
       },
     ],
@@ -901,13 +859,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(sentinels?|sentinel values?|dummy nodes?)\b/gi,
     definition:
       'A reserved value or node outside the normal data range that marks a boundary, removing special-case branches from the loop body.',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 203)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     relatedIds: ['G-220', 'G-117'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 201–206',
         contextSnippet: 'Guard values simplify merge logic by removing the end-of-list special case.',
       },
     ],
@@ -920,13 +877,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(algorithms?)\b/gi,
     definition:
       'A finite list of unambiguous instructions that, given a set of inputs, proceeds through a well-defined sequence of states and eventually halts with an output.',
-    primaryLocation: 'Chapter 1 (§ 1 Getting Started, p. 2)',
+    primaryLocation: 'Chapter 1 (§ 1 Getting Started)',
     relatedIds: ['G-126', 'G-320'],
     occurrences: [
       {
         chapter: 'Chapter 1',
         section: '§ 1 Getting Started',
-        pageRange: 'pp. 1–4',
         contextSnippet: 'An algorithm is a finite list of instructions describing a computation that halts with an answer.',
       },
     ],
@@ -939,13 +895,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(stored[- ]program computers?|fixed[- ]program computers?|turing complete(ness)?|universal turing machine)\b/gi,
     definition:
       'A machine whose instruction sequence is data in the same memory it computes over. Any Turing-complete language can express any computable function.',
-    primaryLocation: 'Chapter 1 (§ 1 Getting Started, p. 3)',
+    primaryLocation: 'Chapter 1 (§ 1 Getting Started)',
     relatedIds: ['G-143', 'G-146'],
     occurrences: [
       {
         chapter: 'Chapter 1',
         section: '§ 1 Getting Started',
-        pageRange: 'pp. 2–5',
         contextSnippet: 'A stored-program computer keeps its instruction sequence in the same memory as its data.',
       },
     ],
@@ -958,13 +913,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(static semantics|syntax errors?|semantics|syntax)\b/gi,
     definition:
       'Syntax says which token sequences are legal; static semantics says which legal sequences have meaning; semantics says what a meaningful program does. Only the third can be silently wrong.',
-    primaryLocation: 'Chapter 1 (§ 1 Getting Started, p. 5)',
+    primaryLocation: 'Chapter 1 (§ 1 Getting Started)',
     relatedIds: ['G-373', 'G-364'],
     occurrences: [
       {
         chapter: 'Chapter 1',
         section: '§ 1 Getting Started',
-        pageRange: 'pp. 4–7',
         contextSnippet: 'The most dangerous errors are semantic: the program runs and produces a wrong answer.',
       },
     ],
@@ -977,13 +931,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(interpreters?|compilers?|bytecode|interpreted languages?)\b/gi,
     definition:
       'An interpreter executes source (via bytecode) statement by statement; a compiler translates the whole program to machine code ahead of execution. CPython compiles to bytecode, then interprets it.',
-    primaryLocation: 'Chapter 1 (§ 1 Getting Started, p. 5)',
+    primaryLocation: 'Chapter 1 (§ 1 Getting Started)',
     relatedIds: ['G-144', 'G-335'],
     occurrences: [
       {
         chapter: 'Chapter 1',
         section: '§ 1 Getting Started',
-        pageRange: 'pp. 4–7',
         contextSnippet: 'Python is executed by an interpreter that checks static semantics and then runs the program.',
       },
     ],
@@ -997,20 +950,18 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(aliasing|aliases|aliased|alias)\b/gi,
     definition:
       'Two or more names bound to the exact same heap object. An in-place mutation through one name is immediately visible through every other.',
-    primaryLocation: 'Chapter 5 (§ 5.2.1 Lists and Mutability, p. 70)',
+    primaryLocation: 'Chapter 5 (§ 5.3.1 Cloning)',
     notation: 'L2 = L1  ⟹  id(L1) == id(L2)',
     relatedIds: ['G-151', 'G-102', 'G-166'],
     occurrences: [
       {
         chapter: 'Chapter 5',
-        section: '§ 5.2.1 Lists and Mutability',
-        pageRange: 'pp. 68–74',
+        section: '§ 5.3.1 Cloning',
         contextSnippet: 'Because lists are mutable, assignment creates an alias rather than a clone.',
       },
       {
         chapter: 'Chapter 10',
         section: '§ 10.1 Abstract Data Types',
-        pageRange: 'pp. 158–162',
         contextSnippet: 'getMembers must return a copy self.vals[:] so callers cannot alias the internal representation.',
       },
     ],
@@ -1023,13 +974,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(shallow cop(y|ies)|deep cop(y|ies)|cloning|clones?|cloned)\b/gi,
     definition:
       'A shallow copy (L[:], list(L), copy.copy) duplicates the outer container but shares the inner objects. A deep copy (copy.deepcopy) recursively duplicates everything reachable.',
-    primaryLocation: 'Chapter 5 (§ 5.3 Cloning, p. 74)',
+    primaryLocation: 'Chapter 5 (§ 5.3.1 Cloning)',
     relatedIds: ['G-150', 'G-230'],
     occurrences: [
       {
         chapter: 'Chapter 5',
-        section: '§ 5.3 Cloning',
-        pageRange: 'pp. 74–77',
+        section: '§ 5.3.1 Cloning',
         contextSnippet: 'Cloning a list with L[:] copies only the outer list; nested lists remain shared.',
       },
     ],
@@ -1042,20 +992,18 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(call stacks?|stack frames?|activation records?|stack overflow)\b/gi,
     definition:
       'The runtime LIFO structure that pushes an activation record for each call, holding formal parameters, local bindings, and the return address.',
-    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping, p. 46)',
+    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping)',
     notation: 'recursive depth d ⟹ O(d) auxiliary space',
     relatedIds: ['G-153', 'G-165', 'G-167'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.1 Functions and Scoping',
-        pageRange: 'pp. 45–52',
         contextSnippet: 'Each invocation allocates a stack frame holding the local bindings for that call.',
       },
       {
         chapter: 'Chapter 6',
         section: '§ 6.1 Fibonacci Numbers',
-        pageRange: 'pp. 86–90',
         contextSnippet: 'Recursive calls stack frames until a base case returns and the stack unwinds.',
       },
     ],
@@ -1068,14 +1016,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(lexical scop(e|ing)|static scop(e|ing)|legb rule|legb|variable scopes?|scoping)\b/gi,
     definition:
       'Python resolves an identifier in the order Local → Enclosing → Global → Built-in, determined by where the function is written, not where it is called.',
-    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping, p. 47)',
+    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping)',
     notation: 'L → E → G → B',
     relatedIds: ['G-154', 'G-155', 'G-159'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.1 Functions and Scoping',
-        pageRange: 'pp. 46–52',
         contextSnippet: 'Python uses static (lexical) scoping: a name’s binding is determined where the function is defined.',
       },
     ],
@@ -1088,13 +1035,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(nonlocal|enclosing scopes?|enclosing frames?)\b/gi,
     definition:
       'Declares that assignment to a name inside a nested function rebinds the nearest enclosing (non-global) binding rather than creating a new local.',
-    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping, p. 49)',
+    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping)',
     relatedIds: ['G-153', 'G-155', 'G-168'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.1 Functions and Scoping',
-        pageRange: 'pp. 48–51',
         contextSnippet: 'nonlocal x lets a helper mutate x in the enclosing function’s frame.',
       },
     ],
@@ -1107,13 +1053,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(global variables?|global keyword|global scope|module scope)\b/gi,
     definition:
       'Declares that assignment binds at module scope. Guttag treats global state as a last resort because it destroys the locality that makes functions reusable.',
-    primaryLocation: 'Chapter 6 (§ 6.3 Global Variables, p. 94)',
+    primaryLocation: 'Chapter 6 (§ 6.3 Global Variables)',
     relatedIds: ['G-154', 'G-164', 'G-180'],
     occurrences: [
       {
         chapter: 'Chapter 6',
         section: '§ 6.3 Global Variables',
-        pageRange: 'pp. 93–96',
         contextSnippet: 'Global variables can make programs difficult to read and reason about; use them sparingly.',
       },
     ],
@@ -1126,13 +1071,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(pass[- ]by[- ]object[- ]reference|pass[- ]by[- ]assignment|pass[- ]by[- ]reference|pass[- ]by[- ]value|argument passing|parameter passing)\b/gi,
     definition:
       'Python binds formal parameters to the caller’s objects. Rebinding a parameter is invisible to the caller; mutating a mutable parameter is not.',
-    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping, p. 48)',
+    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping)',
     relatedIds: ['G-150', 'G-166', 'G-161'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.1 Functions and Scoping',
-        pageRange: 'pp. 47–50',
         contextSnippet: 'Formal parameters are bound to the actual argument objects; mutating a passed list alters the caller’s list.',
       },
     ],
@@ -1145,13 +1089,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(heap memory|stack memory|heap allocation|memory models?)\b/gi,
     definition:
       'Objects are allocated on the heap and outlive the frame that created them; frames and their name bindings live on the call stack and are discarded on return.',
-    primaryLocation: 'Chapter 5 (§ 5.2 Lists and Mutability, p. 69)',
+    primaryLocation: 'Chapter 5 (§ 5.3 Lists and Mutability)',
     relatedIds: ['G-152', 'G-158', 'G-224'],
     occurrences: [
       {
         chapter: 'Chapter 5',
-        section: '§ 5.2 Lists and Mutability',
-        pageRange: 'pp. 68–73',
+        section: '§ 5.3 Lists and Mutability',
         contextSnippet: 'Objects reside on the heap; variables in a frame hold pointers to them.',
       },
     ],
@@ -1164,13 +1107,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(garbage collections?|garbage collector|reference count(ing|s)?|memory reclamation)\b/gi,
     definition:
       'CPython frees an object when its reference count reaches zero, with a cycle detector reclaiming unreachable reference cycles.',
-    primaryLocation: 'Chapter 5 (§ 5.2 Lists and Mutability, p. 70)',
+    primaryLocation: 'Chapter 5 (§ 5.3 Lists and Mutability)',
     relatedIds: ['G-157', 'G-169'],
     occurrences: [
       {
         chapter: 'Chapter 5',
-        section: '§ 5.2 Lists and Mutability',
-        pageRange: 'pp. 69–73',
+        section: '§ 5.3 Lists and Mutability',
         contextSnippet: 'Memory for objects no longer reachable from any binding is reclaimed automatically.',
       },
     ],
@@ -1183,13 +1125,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(namespaces?|symbol tables?|name spaces?)\b/gi,
     definition:
       'The mapping from names to objects that a scope maintains. Each frame, module, and class body owns its own namespace.',
-    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping, p. 46)',
+    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping)',
     relatedIds: ['G-153', 'G-395', 'G-396'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.1 Functions and Scoping',
-        pageRange: 'pp. 45–51',
         contextSnippet: 'Invoking a function creates a new namespace in which its formal parameters are bound.',
       },
     ],
@@ -1202,13 +1143,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(binding environments?|environments?|evaluation contexts?)\b/gi,
     definition:
       'The chain of namespaces consulted while evaluating an expression, from the innermost frame outward to built-ins.',
-    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping, p. 47)',
+    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping)',
     relatedIds: ['G-153', 'G-168'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.1 Functions and Scoping',
-        pageRange: 'pp. 46–51',
         contextSnippet: 'Expressions are evaluated relative to an environment mapping names to objects.',
       },
     ],
@@ -1221,14 +1161,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(mutable default arguments?|default argument traps?)\b/gi,
     definition:
       'A default value is evaluated once at definition time. A mutable default (def f(acc=[])) is shared across every call and accumulates state between invocations.',
-    primaryLocation: 'Chapter 4 (§ 4.1.1 Keyword Arguments and Default Values, p. 51)',
+    primaryLocation: 'Chapter 4 (§ 4.1.2 Keyword Arguments and Default Values)',
     notation: 'def f(acc=None): acc = [] if acc is None else acc',
     relatedIds: ['G-174', 'G-113'],
     occurrences: [
       {
         chapter: 'Chapter 4',
-        section: '§ 4.1.1 Keyword Arguments and Default Values',
-        pageRange: 'pp. 50–53',
+        section: '§ 4.1.2 Keyword Arguments and Default Values',
         contextSnippet: 'Default values are evaluated when the def is executed, not on each call.',
       },
     ],
@@ -1241,14 +1180,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(interning|interned|small[- ]integer cache|string interning)\b/gi,
     definition:
       'CPython preallocates ints in [−5, 256] and interns short identifier-like strings, so equal small values may share one identity as an implementation detail.',
-    primaryLocation: 'Chapter 2 (§ 2.1 The Basic Elements of Python, p. 13)',
+    primaryLocation: 'Chapter 2 (§ 2.2 The Basic Elements of Python)',
     notation: '256 is 256 → True;  1000 is 1000 → False',
     relatedIds: ['G-122', 'G-102'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1 The Basic Elements',
-        pageRange: 'pp. 12–15',
+        section: '§ 2.2 The Basic Elements of Python',
         contextSnippet: 'Small integers are cached, so identity comparisons on them can be misleading.',
       },
     ],
@@ -1261,14 +1199,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(slicing|slices?|slice notation)\b/gi,
     definition:
       'L[start:end:step] builds a new list containing the selected references. Python slices copy — they are not views — so slicing inside a loop costs O(k) each time.',
-    primaryLocation: 'Chapter 5 (§ 5.2 Lists and Mutability, p. 71)',
+    primaryLocation: 'Chapter 5 (§ 5.3 Lists and Mutability)',
     notation: 'L[a:b] copies b − a references; L[::-1] reverses',
     relatedIds: ['G-151', 'G-240', 'G-242'],
     occurrences: [
       {
         chapter: 'Chapter 5',
-        section: '§ 5.2 Lists and Mutability',
-        pageRange: 'pp. 70–75',
+        section: '§ 5.3 Lists and Mutability',
         contextSnippet: 'Slicing produces a new list; the original is unchanged.',
       },
     ],
@@ -1281,13 +1218,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(side[- ]effects?)\b/gi,
     definition:
       'Any observable change a function makes beyond returning a value: mutating an argument, writing global state, printing, or performing I/O.',
-    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping, p. 48)',
+    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping)',
     relatedIds: ['G-180', 'G-156', 'G-166'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.1 Functions and Scoping',
-        pageRange: 'pp. 47–52',
         contextSnippet: 'Functions that mutate their arguments have side effects that callers must be told about.',
       },
     ],
@@ -1300,13 +1236,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(recursion depth|recursion limits?|maximum recursion depth)\b/gi,
     definition:
       'CPython caps the interpreter stack (default ~1000 frames) and raises RecursionError beyond it, independent of available memory.',
-    primaryLocation: 'Chapter 6 (§ 6.1 Fibonacci Numbers, p. 88)',
+    primaryLocation: 'Chapter 6 (§ 6.1 Fibonacci Numbers)',
     relatedIds: ['G-152', 'G-186', 'G-388'],
     occurrences: [
       {
         chapter: 'Chapter 6',
         section: '§ 6.1 Fibonacci Numbers',
-        pageRange: 'pp. 86–91',
         contextSnippet: 'Deep recursion exhausts the interpreter’s stack before it exhausts machine memory.',
       },
     ],
@@ -1319,14 +1254,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(in[- ]place mutations?|in[- ]place|mutating in place|destructive updates?)\b/gi,
     definition:
       'Modifying an object’s contents without creating a new object, preserving its identity: L.append(x), L.sort(), d[k] = v, L[i] = v.',
-    primaryLocation: 'Chapter 5 (§ 5.2 Lists and Mutability, p. 72)',
+    primaryLocation: 'Chapter 5 (§ 5.3 Lists and Mutability)',
     notation: 'L.sort() mutates; sorted(L) returns a new list',
     relatedIds: ['G-113', 'G-150', 'G-261'],
     occurrences: [
       {
         chapter: 'Chapter 5',
-        section: '§ 5.2 Lists and Mutability',
-        pageRange: 'pp. 71–76',
+        section: '§ 5.3 Lists and Mutability',
         contextSnippet: 'Mutating methods change the object itself and return None rather than a new list.',
       },
     ],
@@ -1339,13 +1273,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(auxiliary space|extra space|additional space)\b/gi,
     definition:
       'Memory an algorithm allocates beyond the input itself, including recursion frames. The metric interviewers mean by "space complexity".',
-    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes, p. 189)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     relatedIds: ['G-334', 'G-152', 'G-294'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.3 Some Important Complexity Classes',
-        pageRange: 'pp. 185–191',
         contextSnippet: 'Space complexity counts the additional storage an algorithm requires as input grows.',
       },
     ],
@@ -1358,13 +1291,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(closures?|captured variables?|free variables?)\b/gi,
     definition:
       'A nested function together with the enclosing bindings it references. The closure holds the binding, not a snapshot of the value.',
-    primaryLocation: 'Chapter 4 (§ 4.4 Functions as Objects, p. 59)',
+    primaryLocation: 'Chapter 4 (§ 4.4 Functions as Objects)',
     relatedIds: ['G-154', 'G-175', 'G-160'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.4 Functions as Objects',
-        pageRange: 'pp. 58–62',
         contextSnippet: 'A function defined inside another can refer to the enclosing function’s variables.',
       },
     ],
@@ -1377,13 +1309,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(reference cycles?|circular references?)\b/gi,
     definition:
       'A group of objects whose references form a loop, so no count reaches zero. Requires the cycle collector, and defeats naive traversal without a visited set.',
-    primaryLocation: 'Chapter 5 (§ 5.2 Lists and Mutability, p. 73)',
+    primaryLocation: 'Chapter 5 (§ 5.3 Lists and Mutability)',
     relatedIds: ['G-158', 'G-315', 'G-304'],
     occurrences: [
       {
         chapter: 'Chapter 5',
-        section: '§ 5.2 Lists and Mutability',
-        pageRange: 'pp. 71–76',
+        section: '§ 5.3 Lists and Mutability',
         contextSnippet: 'A structure may contain a reference to itself, directly or through a chain of objects.',
       },
     ],
@@ -1398,13 +1329,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(procedural abstractions?|functions?|subroutines?|procedures?)\b/gi,
     definition:
       'A named, reusable computation with defined inputs and outputs. Procedural abstraction lets callers use it knowing only what it does, never how.',
-    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping, p. 45)',
+    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping)',
     relatedIds: ['G-171', 'G-179', 'G-178'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.1 Functions and Scoping',
-        pageRange: 'pp. 45–52',
         contextSnippet: 'A function definition binds a name to a callable object; calling it evaluates its body in a fresh frame.',
       },
     ],
@@ -1417,14 +1347,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(specifications?|specs?|docstrings?|contracts?)\b/gi,
     definition:
       'A contract between implementer and client stating assumptions (what the client must guarantee) and guarantees (what the function delivers if assumptions hold).',
-    primaryLocation: 'Chapter 4 (§ 4.2 Specifications, p. 52)',
+    primaryLocation: 'Chapter 4 (§ 4.2 Specifications)',
     notation: 'assumptions ⟹ guarantees',
     relatedIds: ['G-172', 'G-179', 'G-361'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.2 Specifications',
-        pageRange: 'pp. 52–56',
         contextSnippet: 'A specification defines a contract: it states the assumptions and the guarantees of the function.',
       },
     ],
@@ -1437,13 +1366,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(preconditions?|postconditions?|invariant conditions?)\b/gi,
     definition:
       'A precondition must hold on entry; a postcondition is guaranteed on exit whenever the precondition held. Together they make a function checkable in isolation.',
-    primaryLocation: 'Chapter 4 (§ 4.2 Specifications, p. 53)',
+    primaryLocation: 'Chapter 4 (§ 4.2 Specifications)',
     relatedIds: ['G-171', 'G-366', 'G-211'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.2 Specifications',
-        pageRange: 'pp. 52–56',
         contextSnippet: 'If the assumptions are not met, the function is under no obligation to behave sensibly.',
       },
     ],
@@ -1456,13 +1384,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(formal parameters?|actual parameters?|arguments?|parameters?)\b/gi,
     definition:
       'Formal parameters are the names in the def; actual parameters (arguments) are the objects supplied at the call site and bound to those names.',
-    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping, p. 46)',
+    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping)',
     relatedIds: ['G-156', 'G-174', 'G-182'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.1 Functions and Scoping',
-        pageRange: 'pp. 45–50',
         contextSnippet: 'At call time each formal parameter is bound to the corresponding actual parameter.',
       },
     ],
@@ -1475,13 +1402,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(keyword arguments?|default values?|default arguments?|kwargs)\b/gi,
     definition:
       'Defaults let a parameter be omitted; keyword arguments bind by name rather than position, making call sites self-documenting and order-independent.',
-    primaryLocation: 'Chapter 4 (§ 4.1.1 Keyword Arguments and Default Values, p. 50)',
+    primaryLocation: 'Chapter 4 (§ 4.1.2 Keyword Arguments and Default Values)',
     relatedIds: ['G-161', 'G-173', 'G-182'],
     occurrences: [
       {
         chapter: 'Chapter 4',
-        section: '§ 4.1.1 Keyword Arguments and Default Values',
-        pageRange: 'pp. 50–53',
+        section: '§ 4.1.2 Keyword Arguments and Default Values',
         contextSnippet: 'Keyword arguments allow parameters to be supplied by name in any order.',
       },
     ],
@@ -1494,14 +1420,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(first[- ]class (functions?|objects?|citizens?)|lambdas?|lambda expressions?|anonymous functions?)\b/gi,
     definition:
       'Functions are objects: they can be bound to names, stored in containers, passed as arguments, and returned. lambda defines one inline as an expression.',
-    primaryLocation: 'Chapter 4 (§ 4.4 Functions as Objects, p. 58)',
+    primaryLocation: 'Chapter 4 (§ 4.4 Functions as Objects)',
     notation: 'lambda params: expression',
     relatedIds: ['G-176', 'G-168', 'G-183'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.4 Functions as Objects',
-        pageRange: 'pp. 58–62',
         contextSnippet: 'Functions are first-class objects that can be passed to and returned from other functions.',
       },
     ],
@@ -1514,13 +1439,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(higher[- ]order functions?|map function|filter function|reduce function|functional programming)\b/gi,
     definition:
       'Functions that take or return other functions. map applies a transform, filter selects by predicate, functools.reduce folds a sequence to one value.',
-    primaryLocation: 'Chapter 4 (§ 4.4 Functions as Objects, p. 60)',
+    primaryLocation: 'Chapter 4 (§ 4.4 Functions as Objects)',
     relatedIds: ['G-175', 'G-177', 'G-180'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.4 Functions as Objects',
-        pageRange: 'pp. 58–63',
         contextSnippet: 'Higher-order functions take other functions as arguments, abstracting the pattern rather than the value.',
       },
     ],
@@ -1533,14 +1457,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(list comprehensions?|dict comprehensions?|set comprehensions?|comprehensions?)\b/gi,
     definition:
       'A concise construct building a collection by transforming and filtering an iterable: [expr for x in iterable if condition].',
-    primaryLocation: 'Chapter 5 (§ 5.4 Higher-Order Operations on Lists, p. 77)',
+    primaryLocation: 'Chapter 5 (§ 5.4 Higher-Order Operations on Lists)',
     notation: '[[0] * C for _ in range(R)]  — never [[0] * C] * R',
     relatedIds: ['G-176', 'G-230', 'G-150'],
     occurrences: [
       {
         chapter: 'Chapter 5',
         section: '§ 5.4 Higher-Order Operations on Lists',
-        pageRange: 'pp. 77–80',
         contextSnippet: 'List comprehensions apply an operation to each value in a sequence satisfying a predicate.',
       },
     ],
@@ -1553,13 +1476,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(decompositions?|decompose|modular decomposition)\b/gi,
     definition:
       'Breaking a program into self-contained, independently reusable pieces so each can be understood, tested, and replaced on its own.',
-    primaryLocation: 'Chapter 4 (§ 4.3 Recursion / Abstraction & Decomposition, p. 57)',
+    primaryLocation: 'Chapter 4 (§ 4.3 Recursion / Abstraction & Decomposition)',
     relatedIds: ['G-179', 'G-170', 'G-272'],
     occurrences: [
       {
         chapter: 'Chapter 4',
-        section: '§ 4.3 Abstraction and Decomposition',
-        pageRange: 'pp. 56–59',
+        section: '§ 4.3 Using Functions to Modularize Code',
         contextSnippet: 'Decomposition creates structure; abstraction hides detail. Both are needed to manage complexity.',
       },
     ],
@@ -1572,13 +1494,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(abstractions?|black box(es)?|information hiding|abstraction barriers?)\b/gi,
     definition:
       'Suppressing detail so a component can be used through its interface alone. The client depends on the specification, never on the implementation.',
-    primaryLocation: 'Chapter 4 (§ 4.3 Abstraction and Decomposition, p. 56)',
+    primaryLocation: 'Chapter 4 (§ 4.3 Using Functions to Modularize Code)',
     relatedIds: ['G-171', 'G-197', 'G-198'],
     occurrences: [
       {
         chapter: 'Chapter 4',
-        section: '§ 4.3 Abstraction and Decomposition',
-        pageRange: 'pp. 56–59',
+        section: '§ 4.3 Using Functions to Modularize Code',
         contextSnippet: 'Abstraction lets us treat a function as a black box characterized only by its specification.',
       },
     ],
@@ -1591,13 +1512,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(pure functions?|referential transparency|deterministic functions?)\b/gi,
     definition:
       'A function whose result depends only on its arguments and which causes no side effects. Such calls can be cached, reordered, or replaced by their value.',
-    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping, p. 48)',
+    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping)',
     relatedIds: ['G-164', 'G-276', 'G-155'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.1 Functions and Scoping',
-        pageRange: 'pp. 47–52',
         contextSnippet: 'A function without side effects can be understood entirely from its arguments and return value.',
       },
     ],
@@ -1610,14 +1530,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(return values?|tuple packing|tuple unpacking|multiple returns?|destructuring)\b/gi,
     definition:
       'return hands one object back to the caller. Packing several results into a tuple, then unpacking at the call site, returns multiple values without a wrapper class.',
-    primaryLocation: 'Chapter 5 (§ 5.1 Tuples, p. 66)',
+    primaryLocation: 'Chapter 5 (§ 5.1 Tuples)',
     notation: 'lo, hi = helper(node)',
     relatedIds: ['G-214', 'G-110'],
     occurrences: [
       {
         chapter: 'Chapter 5',
         section: '§ 5.1 Tuples',
-        pageRange: 'pp. 65–68',
         contextSnippet: 'Multiple assignment unpacks a tuple into separate names in one statement.',
       },
     ],
@@ -1630,13 +1549,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(variadic (arguments?|functions?)|args and kwargs|unpacking operators?|splat operators?)\b/gi,
     definition:
       '*args collects extra positional arguments into a tuple; **kwargs collects extra keyword arguments into a dict. At a call site the same operators unpack a collection into arguments.',
-    primaryLocation: 'Chapter 4 (§ 4.1.1 Keyword Arguments and Default Values, p. 51)',
+    primaryLocation: 'Chapter 4 (§ 4.1.2 Keyword Arguments and Default Values)',
     relatedIds: ['G-173', 'G-174'],
     occurrences: [
       {
         chapter: 'Chapter 4',
-        section: '§ 4.1.1 Keyword Arguments and Default Values',
-        pageRange: 'pp. 50–54',
+        section: '§ 4.1.2 Keyword Arguments and Default Values',
         contextSnippet: 'A function can accept a variable number of arguments collected into a tuple.',
       },
     ],
@@ -1649,14 +1567,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(key functions?|sort keys?|comparators?|cmp_to_key)\b/gi,
     definition:
       'A function mapping each element to the value actually compared during sorting. Returning a tuple sorts by successive fields; negating a numeric field reverses just that field.',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 205)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     notation: 'key=lambda p: (p.start, -p.weight)',
     relatedIds: ['G-264', 'G-175', 'G-244'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 204–208',
         contextSnippet: 'Supplying a key function sorts by a derived value rather than the elements themselves.',
       },
     ],
@@ -1669,14 +1586,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(decorators?|lru_cache|functools\.cache)\b/gi,
     definition:
       'A higher-order function that wraps another, adding behavior without editing it. @functools.lru_cache memoizes a pure function automatically.',
-    primaryLocation: 'Chapter 4 (§ 4.4 Functions as Objects, p. 61)',
+    primaryLocation: 'Chapter 4 (§ 4.4 Functions as Objects)',
     notation: '@lru_cache(maxsize=None)',
     relatedIds: ['G-176', 'G-276', 'G-180'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.4 Functions as Objects',
-        pageRange: 'pp. 58–63',
         contextSnippet: 'Because functions are objects, one function can wrap another and extend its behavior.',
       },
     ],
@@ -1689,13 +1605,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(recursion versus iteration|recursive versus iterative|iterative conversions?)\b/gi,
     definition:
       'Any recursion can be rewritten with an explicit stack. Recursion buys clarity at the cost of O(depth) frames; iteration buys control over memory.',
-    primaryLocation: 'Chapter 6 (§ 6.1 Fibonacci Numbers, p. 87)',
+    primaryLocation: 'Chapter 6 (§ 6.1 Fibonacci Numbers)',
     relatedIds: ['G-152', 'G-165', 'G-273'],
     occurrences: [
       {
         chapter: 'Chapter 6',
         section: '§ 6.1 Fibonacci Numbers',
-        pageRange: 'pp. 86–92',
         contextSnippet: 'Recursive definitions are often clearer, but every recursion has an iterative equivalent.',
       },
     ],
@@ -1708,13 +1623,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(tail recursions?|tail calls?|tail[- ]recursive)\b/gi,
     definition:
       'A recursion whose recursive call is the last operation performed. Languages with tail-call optimization reuse the frame; CPython does not, so depth still grows.',
-    primaryLocation: 'Chapter 6 (§ 6.1 Fibonacci Numbers, p. 89)',
+    primaryLocation: 'Chapter 6 (§ 6.1 Fibonacci Numbers)',
     relatedIds: ['G-185', 'G-165'],
     occurrences: [
       {
         chapter: 'Chapter 6',
         section: '§ 6.1 Fibonacci Numbers',
-        pageRange: 'pp. 86–92',
         contextSnippet: 'Even when the recursive call is the final action, Python still allocates a new frame for it.',
       },
     ],
@@ -1727,13 +1641,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(helper functions?|inner functions?|nested functions?|auxiliary functions?)\b/gi,
     definition:
       'A function defined inside another to carry recursion state, closing over the outer locals so they need not be threaded through every call.',
-    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping, p. 49)',
+    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping)',
     relatedIds: ['G-168', 'G-154', 'G-153'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.1 Functions and Scoping',
-        pageRange: 'pp. 48–52',
         contextSnippet: 'A function defined within another is visible only inside it and can read its enclosing bindings.',
       },
     ],
@@ -1746,13 +1659,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(partial applications?|currying|functools\.partial)\b/gi,
     definition:
       'Fixing some arguments of a function to produce a new function of fewer arguments, adapting a general routine to a specific call site.',
-    primaryLocation: 'Chapter 4 (§ 4.4 Functions as Objects, p. 62)',
+    primaryLocation: 'Chapter 4 (§ 4.4 Functions as Objects)',
     relatedIds: ['G-175', 'G-168'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.4 Functions as Objects',
-        pageRange: 'pp. 58–63',
         contextSnippet: 'A function can return a new function that has some of its arguments already supplied.',
       },
     ],
@@ -1765,13 +1677,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(callbacks?|hook functions?)\b/gi,
     definition:
       'A function passed into another to be invoked at a defined point, inverting control so the caller supplies the behavior.',
-    primaryLocation: 'Chapter 4 (§ 4.4 Functions as Objects, p. 61)',
+    primaryLocation: 'Chapter 4 (§ 4.4 Functions as Objects)',
     relatedIds: ['G-176', 'G-175'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.4 Functions as Objects',
-        pageRange: 'pp. 58–63',
         contextSnippet: 'Passing a function as an argument lets the callee invoke behavior chosen by the caller.',
       },
     ],
@@ -1786,13 +1697,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(class(es)?|instances|class instances?|instantiation|class definitions?)\b/gi,
     definition:
       'A class defines a type: the attributes its instances carry and the methods they support. Instantiation allocates one object of that type.',
-    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes, p. 157)',
+    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes)',
     relatedIds: ['G-193', 'G-210', 'G-191'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.1 Abstract Data Types and Classes',
-        pageRange: 'pp. 157–163',
         contextSnippet: 'A class definition creates a new type; instantiating it creates an object of that type.',
       },
     ],
@@ -1805,13 +1715,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(attributes?|instance variables?|fields?|data attributes?)\b/gi,
     definition:
       'Named state stored on an object and reached with dot notation. Instance attributes are per-object; class attributes are shared by every instance.',
-    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes, p. 159)',
+    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes)',
     relatedIds: ['G-204', 'G-194', 'G-206'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.1 Abstract Data Types and Classes',
-        pageRange: 'pp. 157–163',
         contextSnippet: 'Attributes are accessed with dot notation and may be data or methods.',
       },
     ],
@@ -1824,13 +1733,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(methods?|bound methods?|member functions?)\b/gi,
     definition:
       'A function defined in a class body. Accessing it through an instance yields a bound method that supplies that instance as the first argument automatically.',
-    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes, p. 159)',
+    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes)',
     relatedIds: ['G-194', 'G-205', 'G-195'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.1 Abstract Data Types and Classes',
-        pageRange: 'pp. 158–164',
         contextSnippet: 'When a method is invoked on an instance, that instance is passed as the first argument.',
       },
     ],
@@ -1843,13 +1751,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(__init__|constructors?|initializers?)\b/gi,
     definition:
       'The initializer invoked immediately after allocation to establish the object’s starting state — the point where the representation invariant is first made true.',
-    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes, p. 158)',
+    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes)',
     relatedIds: ['G-190', 'G-211', 'G-194'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.1 Abstract Data Types and Classes',
-        pageRange: 'pp. 157–163',
         contextSnippet: '__init__ is called when a class is instantiated, binding the initial attribute values.',
       },
     ],
@@ -1862,13 +1769,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(self parameter|self keyword)\b/gi,
     definition:
       'The conventional name of a method’s first formal parameter, bound to the receiving instance. Explicit in Python where other languages leave it implicit.',
-    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes, p. 159)',
+    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes)',
     relatedIds: ['G-192', 'G-191'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.1 Abstract Data Types and Classes',
-        pageRange: 'pp. 158–163',
         contextSnippet: 'By convention the first parameter of a method is named self and refers to the instance.',
       },
     ],
@@ -1881,13 +1787,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(magic methods?|dunder methods?|special methods?|operator overloading)\b/gi,
     definition:
       'Double-underscore hooks (__len__, __getitem__, __eq__, __lt__, __hash__, __iter__, __contains__) that make a class work with built-in syntax and operators.',
-    primaryLocation: 'Chapter 10 (§ 10.2 Inheritance / Special Methods, p. 164)',
+    primaryLocation: 'Chapter 10 (§ 10.2 Inheritance / Special Methods)',
     relatedIds: ['G-196', 'G-209', 'G-201'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.2 Inheritance',
-        pageRange: 'pp. 163–169',
         contextSnippet: 'Special methods let user-defined types respond to built-in operators and functions.',
       },
     ],
@@ -1900,13 +1805,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(__str__|__repr__|string representations?)\b/gi,
     definition:
       '__str__ yields the human-readable form used by print; __repr__ yields the unambiguous developer form used in the REPL and containers.',
-    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes, p. 160)',
+    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes)',
     relatedIds: ['G-195', 'G-375'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.1 Abstract Data Types and Classes',
-        pageRange: 'pp. 159–164',
         contextSnippet: '__str__ defines what print produces for objects of the class.',
       },
     ],
@@ -1919,13 +1823,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(encapsulations?|encapsulated|information hiding|private attributes?)\b/gi,
     definition:
       'Bundling data with the operations over it and restricting outside access to internals, so the representation can change without breaking clients.',
-    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes, p. 161)',
+    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes)',
     relatedIds: ['G-198', 'G-179', 'G-211'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.1 Abstract Data Types and Classes',
-        pageRange: 'pp. 158–164',
         contextSnippet: 'Clients should use only the exported methods, never reach into the internal representation.',
       },
     ],
@@ -1938,13 +1841,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(data abstraction barriers?|abstraction barriers?|implementation hiding)\b/gi,
     definition:
       'The boundary separating client code from an ADT’s representation. Code above the barrier may only use exported operations.',
-    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes, p. 161)',
+    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes)',
     relatedIds: ['G-197', 'G-210', 'G-208'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.1 Abstract Data Types and Classes',
-        pageRange: 'pp. 158–164',
         contextSnippet: 'The abstraction barrier lets the implementation change without disturbing any client.',
       },
     ],
@@ -1957,13 +1859,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(inheritance|subclass(es|ing)?|superclass(es)?|base class(es)?|parent class(es)?)\b/gi,
     definition:
       'A subclass inherits the attributes and methods of its superclass, extending or specializing them and building an is-a type hierarchy.',
-    primaryLocation: 'Chapter 10 (§ 10.2 Inheritance, p. 163)',
+    primaryLocation: 'Chapter 10 (§ 10.2 Inheritance)',
     relatedIds: ['G-200', 'G-203', 'G-207'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.2 Inheritance',
-        pageRange: 'pp. 163–170',
         contextSnippet: 'A subclass inherits the attributes of its superclass and may add or override behavior.',
       },
     ],
@@ -1976,13 +1877,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(overrid(e|es|ing|den)|method resolution order|mro)\b/gi,
     definition:
       'Redefining an inherited method in a subclass. Lookup walks the method resolution order, taking the first definition found.',
-    primaryLocation: 'Chapter 10 (§ 10.2 Inheritance, p. 165)',
+    primaryLocation: 'Chapter 10 (§ 10.2 Inheritance)',
     relatedIds: ['G-199', 'G-201', 'G-203'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.2 Inheritance',
-        pageRange: 'pp. 163–170',
         contextSnippet: 'When a subclass defines a method with the same name, its version is used instead.',
       },
     ],
@@ -1995,13 +1895,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(polymorphism|polymorphic|duck typing)\b/gi,
     definition:
       'Different types responding to the same operation. Python dispatches on whether the object supports the operation, not on its declared type.',
-    primaryLocation: 'Chapter 10 (§ 10.2 Inheritance, p. 166)',
+    primaryLocation: 'Chapter 10 (§ 10.2 Inheritance)',
     relatedIds: ['G-195', 'G-199', 'G-202'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.2 Inheritance',
-        pageRange: 'pp. 163–170',
         contextSnippet: 'Code that depends only on the operations an object supports works across many types.',
       },
     ],
@@ -2014,13 +1913,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(isinstance|type checking|runtime type checks?)\b/gi,
     definition:
       'isinstance(obj, T) tests membership in a type including its subclasses; type(obj) is T tests the exact type and rejects subclasses.',
-    primaryLocation: 'Chapter 10 (§ 10.2 Inheritance, p. 167)',
+    primaryLocation: 'Chapter 10 (§ 10.2 Inheritance)',
     relatedIds: ['G-201', 'G-103', 'G-386'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.2 Inheritance',
-        pageRange: 'pp. 163–170',
         contextSnippet: 'isinstance respects the class hierarchy, unlike an exact comparison of types.',
       },
     ],
@@ -2033,13 +1931,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(substitution principle|liskov substitution|behavioral subtyping)\b/gi,
     definition:
       'Anywhere a superclass instance is valid, a subclass instance must also be valid. A subclass may weaken preconditions and strengthen guarantees, never the reverse.',
-    primaryLocation: 'Chapter 10 (§ 10.2 Inheritance, p. 168)',
+    primaryLocation: 'Chapter 10 (§ 10.2 Inheritance)',
     relatedIds: ['G-199', 'G-172', 'G-171'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.2 Inheritance',
-        pageRange: 'pp. 165–171',
         contextSnippet: 'A subclass should be usable wherever the superclass is expected, without surprising the client.',
       },
     ],
@@ -2052,13 +1949,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(class variables?|class attributes?|shared attributes?)\b/gi,
     definition:
       'A class variable lives on the class and is shared by all instances; an instance variable is created per object by assignment through self.',
-    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes, p. 162)',
+    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes)',
     relatedIds: ['G-191', 'G-161'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.1 Abstract Data Types and Classes',
-        pageRange: 'pp. 158–164',
         contextSnippet: 'Attributes defined in the class body are shared; those assigned via self belong to the instance.',
       },
     ],
@@ -2071,13 +1967,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(static methods?|class methods?|staticmethod|classmethod)\b/gi,
     definition:
       '@staticmethod takes no implicit receiver; @classmethod receives the class as cls and is the idiom for alternative constructors.',
-    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes, p. 162)',
+    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes)',
     relatedIds: ['G-192', 'G-193'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.1 Abstract Data Types and Classes',
-        pageRange: 'pp. 158–165',
         contextSnippet: 'Some methods belong to the class rather than to any particular instance.',
       },
     ],
@@ -2090,13 +1985,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(properties|property decorator|getters?|setters?|accessors?)\b/gi,
     definition:
       'Accessor methods presented as attributes, letting an implementation enforce the representation invariant on every read and write.',
-    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes, p. 161)',
+    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes)',
     relatedIds: ['G-197', 'G-211'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.1 Abstract Data Types and Classes',
-        pageRange: 'pp. 158–164',
         contextSnippet: 'Getters and setters keep clients away from the internal representation.',
       },
     ],
@@ -2109,13 +2003,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(compositions?|has[- ]a relationships?|delegation)\b/gi,
     definition:
       'Building a type by holding another as an attribute (has-a) instead of deriving from it (is-a). Composition keeps the interface narrow and avoids hierarchy coupling.',
-    primaryLocation: 'Chapter 10 (§ 10.2 Inheritance, p. 169)',
+    primaryLocation: 'Chapter 10 (§ 10.2 Inheritance)',
     relatedIds: ['G-199', 'G-210', 'G-208'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.2 Inheritance',
-        pageRange: 'pp. 163–171',
         contextSnippet: 'An object can be built from other objects rather than by extending a superclass.',
       },
     ],
@@ -2128,13 +2021,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(interfaces?|public apis?|exported operations?)\b/gi,
     definition:
       'The set of operations a type exports, together with their specifications. Everything not in the interface is implementation and may change freely.',
-    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes, p. 160)',
+    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes)',
     relatedIds: ['G-198', 'G-171', 'G-210'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.1 Abstract Data Types and Classes',
-        pageRange: 'pp. 157–164',
         contextSnippet: 'The methods a class exports define how clients may interact with its instances.',
       },
     ],
@@ -2147,14 +2039,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(hashable|__hash__|hash protocol|unhashable)\b/gi,
     definition:
       'An object is hashable if it has a stable __hash__ over its lifetime and a consistent __eq__. Equal objects must hash equally; mutable containers are unhashable.',
-    primaryLocation: 'Chapter 12 (§ 12.3 Hash Tables, p. 210)',
+    primaryLocation: 'Chapter 12 (§ 12.3 Hash Tables)',
     notation: 'a == b  ⟹  hash(a) == hash(b)',
     relatedIds: ['G-113', 'G-217', 'G-218'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.3 Hash Tables',
-        pageRange: 'pp. 208–214',
         contextSnippet: 'Keys must be hashable, which is why mutable objects cannot be used as dictionary keys.',
       },
     ],
@@ -2168,13 +2059,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(abstract data types?|ADTs?)\b/gi,
     definition:
       'A type defined solely by its operations and their behavior, with the internal representation hidden behind an abstraction barrier.',
-    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes, p. 157)',
+    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes)',
     relatedIds: ['G-211', 'G-198', 'G-208'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.1 Abstract Data Types and Classes',
-        pageRange: 'pp. 157–163',
         contextSnippet: 'An ADT is a set of objects together with the operations defined over them.',
       },
     ],
@@ -2187,13 +2077,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(representation invariants?|rep invariants?)\b/gi,
     definition:
       'A structural property of an ADT’s internal state that holds after construction and after every public operation returns.',
-    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes, p. 158)',
+    primaryLocation: 'Chapter 10 (§ 10.1 Abstract Data Types and Classes)',
     relatedIds: ['G-210', 'G-172', 'G-299'],
     occurrences: [
       {
         chapter: 'Chapter 10',
         section: '§ 10.1 Abstract Data Types and Classes',
-        pageRange: 'pp. 157–163',
         contextSnippet: 'In IntSet the invariant is that self.vals holds no duplicates, which every method must preserve.',
       },
     ],
@@ -2206,14 +2095,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(dynamic arrays?|python lists?|contiguous arrays?|array lists?)\b/gi,
     definition:
       'A contiguous block of object pointers that grows by geometric reallocation, giving O(1) index access and O(1) amortized append.',
-    primaryLocation: 'Chapter 5 (§ 5.2 Lists and Mutability, p. 68)',
+    primaryLocation: 'Chapter 5 (§ 5.3 Lists and Mutability)',
     notation: 'index O(1) · append O(1)* · insert/pop(0) O(n)',
     relatedIds: ['G-213', 'G-236', 'G-223'],
     occurrences: [
       {
         chapter: 'Chapter 5',
-        section: '§ 5.2 Lists and Mutability',
-        pageRange: 'pp. 68–74',
+        section: '§ 5.3 Lists and Mutability',
         contextSnippet: 'Python lists are contiguous arrays of pointers to the objects they contain.',
       },
     ],
@@ -2226,14 +2114,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(amortized (analysis|cost|time|complexity)|amortization|amortized|geometric resizing|doubling strategy)\b/gi,
     definition:
       'Averaging cost over a sequence of operations. Doubling capacity on overflow makes n appends cost Θ(n) total, so each is O(1) amortized despite occasional O(n) copies.',
-    primaryLocation: 'Chapter 11 (§ 11.3 Amortization and Space-Time Tradeoffs, p. 188)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     notation: 'Σ copies ≤ n + n/2 + n/4 + … < 2n',
     relatedIds: ['G-212', 'G-333', 'G-337'],
     occurrences: [
       {
         chapter: 'Chapter 11',
-        section: '§ 11.3 Amortization and Space-Time Tradeoffs',
-        pageRange: 'pp. 188–192',
+        section: '§ 11.3 Some Important Complexity Classes',
         contextSnippet: 'Occasional expensive operations are acceptable when their cost is spread across many cheap ones.',
       },
     ],
@@ -2246,13 +2133,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(tuples?)\b/gi,
     definition:
       'An immutable ordered sequence. Because it is immutable it is hashable (given hashable elements), so it can key a dict or join a set.',
-    primaryLocation: 'Chapter 5 (§ 5.1 Tuples, p. 65)',
+    primaryLocation: 'Chapter 5 (§ 5.1 Tuples)',
     relatedIds: ['G-113', 'G-181', 'G-209'],
     occurrences: [
       {
         chapter: 'Chapter 5',
         section: '§ 5.1 Tuples',
-        pageRange: 'pp. 65–68',
         contextSnippet: 'Like strings, tuples are immutable ordered sequences of elements.',
       },
     ],
@@ -2265,13 +2151,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(strings?|str type|character sequences?)\b/gi,
     definition:
       'An immutable sequence of Unicode code points supporting indexing, slicing, iteration, and membership testing.',
-    primaryLocation: 'Chapter 2 (§ 2.1.3 Strings, p. 18) and Chapter 5 (§ 5.1)',
+    primaryLocation: 'Chapter 2 (§ 2.1.3 Strings) and Chapter 5 (§ 5.1)',
     relatedIds: ['G-240', 'G-245', 'G-233'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1.3 Strings and Input',
-        pageRange: 'pp. 18–22',
+        section: '§ 2.4 Strings and Input',
         contextSnippet: 'Strings support indexing and slicing but cannot be modified in place.',
       },
     ],
@@ -2284,14 +2169,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(sets?|frozensets?|set membership)\b/gi,
     definition:
       'An unordered collection of distinct hashable elements built on a hash table, giving average O(1) membership, insertion, and deletion.',
-    primaryLocation: 'Chapter 5 (§ 5.5 Sets, p. 81)',
+    primaryLocation: 'Chapter 5 (§ 5.6 Sets)',
     notation: 'x in s → O(1) average;  x in list → O(n)',
     relatedIds: ['G-217', 'G-209', 'G-315'],
     occurrences: [
       {
         chapter: 'Chapter 5',
-        section: '§ 5.5 Sets',
-        pageRange: 'pp. 80–84',
+        section: '§ 5.6 Sets',
         contextSnippet: 'Sets are unordered collections without duplicates, supporting fast membership tests.',
       },
     ],
@@ -2304,14 +2188,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(hash tables?|hash maps?|dictionar(y|ies)|dicts?|key[- ]value stores?)\b/gi,
     definition:
       'A structure mapping hashable keys to values through a hash function, achieving average O(1) insertion, lookup, and deletion.',
-    primaryLocation: 'Chapter 12 (§ 12.3 Hash Tables, p. 208)',
+    primaryLocation: 'Chapter 12 (§ 12.3 Hash Tables)',
     notation: 'bucket = hash(k) mod m',
     relatedIds: ['G-218', 'G-219', 'G-209'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.3 Hash Tables',
-        pageRange: 'pp. 208–214',
         contextSnippet: 'A hash table converts a key into an index, giving expected constant-time lookup.',
       },
     ],
@@ -2324,13 +2207,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(hash functions?|hash collisions?|collisions?|chaining|open addressing|hashing)\b/gi,
     definition:
       'A hash function maps a key to a bucket index. Two keys landing in one bucket collide; chaining stores them in a per-bucket list, open addressing probes for a free slot.',
-    primaryLocation: 'Chapter 12 (§ 12.3 Hash Tables, p. 209)',
+    primaryLocation: 'Chapter 12 (§ 12.3 Hash Tables)',
     relatedIds: ['G-217', 'G-219', 'G-209'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.3 Hash Tables',
-        pageRange: 'pp. 208–215',
         contextSnippet: 'Collisions are unavoidable; the table handles them by storing multiple entries per bucket.',
       },
     ],
@@ -2343,14 +2225,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(load factors?|rehashing|table resizing)\b/gi,
     definition:
       'Load factor α = entries / buckets. As α rises, collision chains lengthen and lookups degrade toward O(n); the table rehashes into a larger array to restore O(1).',
-    primaryLocation: 'Chapter 12 (§ 12.3 Hash Tables, p. 211)',
+    primaryLocation: 'Chapter 12 (§ 12.3 Hash Tables)',
     notation: 'α = n / m;  worst-case lookup O(n) when all keys collide',
     relatedIds: ['G-218', 'G-213', 'G-322'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.3 Hash Tables',
-        pageRange: 'pp. 208–215',
         contextSnippet: 'Keeping the number of buckets proportional to the number of entries keeps lookups near constant.',
       },
     ],
@@ -2363,14 +2244,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(linked lists?|singly linked|nodes? and pointers?)\b/gi,
     definition:
       'A chain of nodes each holding a value and a reference to the next. O(1) insertion and deletion given the node, but O(n) indexed access.',
-    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms, p. 197)',
+    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms)',
     notation: 'access O(n) · insert/delete at a known node O(1)',
     relatedIds: ['G-221', 'G-142', 'G-266'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.1 Search Algorithms',
-        pageRange: 'pp. 195–200',
         contextSnippet: 'Linked structures trade constant-time indexing for cheap insertion and removal.',
       },
     ],
@@ -2383,13 +2263,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(doubly linked lists?|doubly[- ]linked|prev pointers?)\b/gi,
     definition:
       'Each node stores both next and prev, permitting O(1) removal of a known node and traversal in either direction.',
-    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms, p. 198)',
+    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms)',
     relatedIds: ['G-220', 'G-223', 'G-295'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.1 Search Algorithms',
-        pageRange: 'pp. 195–201',
         contextSnippet: 'Backward links allow a node to be unlinked without scanning from the head.',
       },
     ],
@@ -2402,13 +2281,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(stacks?|lifo|last[- ]in[- ]first[- ]out)\b/gi,
     definition:
       'A last-in-first-out collection with push and pop at one end. A Python list is a stack: append and pop() are both O(1) amortized.',
-    primaryLocation: 'Chapter 10 (§ 10.3 Object-Oriented Programming, p. 165)',
+    primaryLocation: 'Chapter 10 (§ 10.3 Encapsulation and Information Hiding)',
     relatedIds: ['G-232', 'G-152', 'G-308'],
     occurrences: [
       {
         chapter: 'Chapter 10',
-        section: '§ 10.3 Object-Oriented Programming',
-        pageRange: 'pp. 164–170',
+        section: '§ 10.3 Encapsulation and Information Hiding',
         contextSnippet: 'A stack removes elements in the reverse of the order they were added.',
       },
     ],
@@ -2421,14 +2299,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(fifo|deques?|double[- ]ended queues?|queues?|first[- ]in[- ]first[- ]out)\b/gi,
     definition:
       'A first-in-first-out collection. collections.deque is a block-linked buffer giving O(1) append and pop at both ends; list.pop(0) is O(n).',
-    primaryLocation: 'Chapter 10 (§ 10.3 Object-Oriented Programming, p. 165)',
+    primaryLocation: 'Chapter 10 (§ 10.3 Encapsulation and Information Hiding)',
     notation: 'deque.popleft() O(1)  vs.  list.pop(0) O(n)',
     relatedIds: ['G-212', 'G-232', 'G-307'],
     occurrences: [
       {
         chapter: 'Chapter 10',
-        section: '§ 10.3 Object-Oriented Programming',
-        pageRange: 'pp. 165–170',
+        section: '§ 10.3 Encapsulation and Information Hiding',
         contextSnippet: 'Removing from the front of a list shifts every remaining element; a deque avoids that cost.',
       },
     ],
@@ -2441,14 +2318,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(heaps?|priority queues?|min[- ]heaps?|max[- ]heaps?|heapq|heapify)\b/gi,
     definition:
       'A complete binary tree kept in an array satisfying the heap property (every parent ≤ its children for a min-heap): O(1) peek, O(log n) push and pop, O(n) heapify.',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 204)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     notation: 'children of i are 2i+1 and 2i+2',
     relatedIds: ['G-265', 'G-269', 'G-310'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 204–208',
         contextSnippet: 'A priority queue returns the highest-priority element in logarithmic time.',
       },
     ],
@@ -2461,13 +2337,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(binary trees?|trees?|tree nodes?|leaf nodes?|root nodes?)\b/gi,
     definition:
       'A hierarchical structure where each node has at most two children. Height H bounds both traversal recursion depth and search cost.',
-    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms, p. 197)',
+    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms)',
     relatedIds: ['G-226', 'G-227', 'G-228'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.1 Search Algorithms',
-        pageRange: 'pp. 195–201',
         contextSnippet: 'Tree structures organize data so that each comparison eliminates a whole subtree.',
       },
     ],
@@ -2480,14 +2355,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(binary search trees?|bsts?)\b/gi,
     definition:
       'A binary tree where every node’s left subtree holds smaller keys and right subtree holds larger keys, so an in-order traversal emits sorted order.',
-    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms, p. 198)',
+    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms)',
     notation: 'search/insert/delete O(H); O(log n) balanced, O(n) degenerate',
     relatedIds: ['G-225', 'G-227', 'G-228'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.1 Search Algorithms',
-        pageRange: 'pp. 197–202',
         contextSnippet: 'In a balanced binary search tree, search, insertion, and deletion each take logarithmic time.',
       },
     ],
@@ -2500,13 +2374,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(pre[- ]?order|in[- ]?order|post[- ]?order|level[- ]?order|tree traversals?)\b/gi,
     definition:
       'Pre-order visits node → left → right; in-order left → node → right (sorted for a BST); post-order left → right → node (children finished first); level-order sweeps by depth via BFS.',
-    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms, p. 199)',
+    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms)',
     relatedIds: ['G-225', 'G-307', 'G-308'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.1 Search Algorithms',
-        pageRange: 'pp. 197–203',
         contextSnippet: 'The order in which a node is visited relative to its children defines the traversal.',
       },
     ],
@@ -2519,14 +2392,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(balanced trees?|tree heights?|self[- ]balancing|degenerate trees?|skewed trees?)\b/gi,
     definition:
       'A tree is balanced when sibling subtree heights differ by at most a constant, keeping H = Θ(log n). A degenerate tree collapses to a list with H = n.',
-    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms, p. 200)',
+    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms)',
     notation: 'balanced H = ⌈log₂(n+1)⌉ · degenerate H = n',
     relatedIds: ['G-226', 'G-324', 'G-165'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.1 Search Algorithms',
-        pageRange: 'pp. 197–203',
         contextSnippet: 'The logarithmic guarantee holds only while the tree stays balanced.',
       },
     ],
@@ -2539,14 +2411,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(tries?|prefix trees?|retrieval trees?)\b/gi,
     definition:
       'A tree keyed by character position, where each path from the root spells a prefix. Lookup and insertion cost O(L) in the key length, independent of how many keys are stored.',
-    primaryLocation: 'Chapter 12 (§ 12.3 Hash Tables, p. 213)',
+    primaryLocation: 'Chapter 12 (§ 12.3 Hash Tables)',
     notation: 'insert/search O(L) · space O(Σ · total characters)',
     relatedIds: ['G-248', 'G-225', 'G-217'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.3 Hash Tables',
-        pageRange: 'pp. 208–215',
         contextSnippet: 'Indexing by successive characters lets shared prefixes be stored once.',
       },
     ],
@@ -2559,14 +2430,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(matri(x|ces)|2d grids?|2d arrays?|grids?|nested lists?)\b/gi,
     definition:
       'A list of row lists addressed as grid[r][c]. Must be built with a comprehension — [[0]*C]*R aliases one row R times.',
-    primaryLocation: 'Chapter 5 (§ 5.2 Lists and Mutability, p. 73)',
+    primaryLocation: 'Chapter 5 (§ 5.3 Lists and Mutability)',
     notation: 'grid = [[0] * C for _ in range(R)]',
     relatedIds: ['G-177', 'G-150', 'G-319'],
     occurrences: [
       {
         chapter: 'Chapter 5',
-        section: '§ 5.2 Lists and Mutability',
-        pageRange: 'pp. 70–76',
+        section: '§ 5.3 Lists and Mutability',
         contextSnippet: 'Multiplying a list replicates the reference, not the object, so all rows become the same list.',
       },
     ],
@@ -2579,14 +2449,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(union[- ]find|disjoint sets?|disjoint[- ]set unions?|dsu|path compression)\b/gi,
     definition:
       'A forest tracking membership in disjoint groups, supporting find(x) and union(a, b). With path compression and union by rank both run in near-constant amortized time.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 244)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     notation: 'O(α(n)) amortized, α the inverse Ackermann function',
     relatedIds: ['G-305', 'G-312', 'G-213'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–246',
         contextSnippet: 'Connectivity questions can be answered by maintaining which elements share a component.',
       },
     ],
@@ -2599,13 +2468,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(monotonic stacks?|monotonic queues?|monotonic deques?)\b/gi,
     definition:
       'A stack or deque kept in sorted order by discarding dominated elements on push. Each element enters and leaves once, so a full scan stays O(n).',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 206)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     relatedIds: ['G-222', 'G-223', 'G-213'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 204–208',
         contextSnippet: 'Maintaining order as elements arrive avoids rescanning the collection.',
       },
     ],
@@ -2618,13 +2486,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(sequence protocols?|indexing|subscripting|negative indexing)\b/gi,
     definition:
       'Sequences support len(), s[i], iteration, and membership. Negative indices count from the end, so s[-1] is the final element.',
-    primaryLocation: 'Chapter 5 (§ 5.1 Tuples & § 5.2 Lists, pp. 65–71)',
+    primaryLocation: 'Chapter 5 (§ 5.1 Tuples & § 5.2 Lists)',
     relatedIds: ['G-163', 'G-215', 'G-371'],
     occurrences: [
       {
         chapter: 'Chapter 5',
-        section: '§ 5.2 Lists and Mutability',
-        pageRange: 'pp. 68–74',
+        section: '§ 5.3 Lists and Mutability',
         contextSnippet: 'Elements are selected by index, counting from 0 at the front or −1 from the back.',
       },
     ],
@@ -2637,13 +2504,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(counters?|defaultdicts?|frequency maps?|frequency counts?|multisets?)\b/gi,
     definition:
       'collections.Counter tallies occurrences; defaultdict(factory) supplies a default on first access, removing the "key not present yet" branch.',
-    primaryLocation: 'Chapter 12 (§ 12.3 Hash Tables, p. 212)',
+    primaryLocation: 'Chapter 12 (§ 12.3 Hash Tables)',
     relatedIds: ['G-217', 'G-243', 'G-385'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.3 Hash Tables',
-        pageRange: 'pp. 208–214',
         contextSnippet: 'Counting occurrences with a dictionary is a canonical linear-time use of hashing.',
       },
     ],
@@ -2656,13 +2522,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(ordered collections?|unordered collections?|insertion order|ordereddict)\b/gi,
     definition:
       'Lists and tuples preserve positional order; sets do not. Python dicts preserve insertion order as a language guarantee since 3.7.',
-    primaryLocation: 'Chapter 5 (§ 5.5 Sets & § 5.6 Dictionaries, pp. 81–85)',
+    primaryLocation: 'Chapter 5 (§ 5.6 Sets & § 5.7 Dictionaries)',
     relatedIds: ['G-216', 'G-217', 'G-260'],
     occurrences: [
       {
         chapter: 'Chapter 5',
-        section: '§ 5.6 Dictionaries',
-        pageRange: 'pp. 82–86',
+        section: '§ 5.7 Dictionaries',
         contextSnippet: 'A set imposes no order on its elements; iteration order should not be relied on for sets.',
       },
     ],
@@ -2675,13 +2540,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(contiguous memory|cache locality|memory layouts?)\b/gi,
     definition:
       'A contiguous array stores elements adjacently for fast index arithmetic and cache locality. A Python list stores pointers, so elements themselves are scattered on the heap.',
-    primaryLocation: 'Chapter 11 (§ 11.3 Amortization and Space-Time Tradeoffs, p. 190)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     relatedIds: ['G-212', 'G-220', 'G-157'],
     occurrences: [
       {
         chapter: 'Chapter 11',
-        section: '§ 11.3 Amortization and Space-Time Tradeoffs',
-        pageRange: 'pp. 188–192',
+        section: '§ 11.3 Some Important Complexity Classes',
         contextSnippet: 'Where data sits in memory affects constant factors even when the asymptotic order is unchanged.',
       },
     ],
@@ -2694,14 +2558,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(circular buffers?|ring buffers?|circular arrays?|circular queues?)\b/gi,
     definition:
       'A fixed-size array whose head and tail indices wrap with modulo arithmetic, giving O(1) enqueue and dequeue in constant space.',
-    primaryLocation: 'Chapter 10 (§ 10.3 Object-Oriented Programming, p. 167)',
+    primaryLocation: 'Chapter 10 (§ 10.3 Encapsulation and Information Hiding)',
     notation: 'tail = (tail + 1) % capacity',
     relatedIds: ['G-223', 'G-112', 'G-344'],
     occurrences: [
       {
         chapter: 'Chapter 10',
-        section: '§ 10.3 Object-Oriented Programming',
-        pageRange: 'pp. 165–170',
+        section: '§ 10.3 Encapsulation and Information Hiding',
         contextSnippet: 'Wrapping indices with modulo reuses a fixed array as an unbounded stream of slots.',
       },
     ],
@@ -2716,14 +2579,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(string immutability|string concatenations?|concatenations?|quadratic concatenation)\b/gi,
     definition:
       'Every string operation returns a new object. Building a string with += inside a loop copies the accumulated prefix each time, costing Θ(n²).',
-    primaryLocation: 'Chapter 2 (§ 2.1.3 Strings and Input, p. 19)',
+    primaryLocation: 'Chapter 2 (§ 2.4 Strings and Input)',
     notation: 'use "".join(parts) — Θ(n) instead of Θ(n²)',
     relatedIds: ['G-113', 'G-215', 'G-327'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1.3 Strings and Input',
-        pageRange: 'pp. 18–22',
+        section: '§ 2.4 Strings and Input',
         contextSnippet: 'Strings are immutable: concatenation builds a new string rather than extending the old one.',
       },
     ],
@@ -2736,14 +2598,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(palindromes?|palindromic)\b/gi,
     definition:
       'A sequence reading identically forward and backward. Its recursive definition — outer characters match and the interior is a palindrome — is Guttag’s canonical induction example.',
-    primaryLocation: 'Chapter 6 (§ 6.2 Palindromes, p. 90)',
+    primaryLocation: 'Chapter 6 (§ 6.2 Palindromes)',
     notation: 'isPal(s) ≡ s[0] == s[-1] ∧ isPal(s[1:-1])',
     relatedIds: ['G-273', 'G-266', 'G-274'],
     occurrences: [
       {
         chapter: 'Chapter 6',
         section: '§ 6.2 Palindromes',
-        pageRange: 'pp. 88–93',
         contextSnippet: 'The inductive step tests the outer pair and reduces the problem to the inner substring.',
       },
     ],
@@ -2756,14 +2617,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(substrings?|subsequences?|subarrays?|contiguous segments?)\b/gi,
     definition:
       'A substring (or subarray) is contiguous; a subsequence keeps relative order but may skip elements. A string of length n has Θ(n²) substrings and 2ⁿ subsequences.',
-    primaryLocation: 'Chapter 15 (§ 15.2 Dynamic Programming and the 0/1 Knapsack, p. 254)',
+    primaryLocation: 'Chapter 15 (§ 15.2 Dynamic Programming and the 0/1 Knapsack Problem)',
     notation: 'substrings Θ(n²) · subsequences 2ⁿ',
     relatedIds: ['G-267', 'G-275', 'G-292'],
     occurrences: [
       {
         chapter: 'Chapter 15',
         section: '§ 15.2 Dynamic Programming',
-        pageRange: 'pp. 248–258',
         contextSnippet: 'Whether elements must be adjacent decides the size of the search space.',
       },
     ],
@@ -2776,13 +2636,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(anagrams?|character frequenc(y|ies)|letter counts?)\b/gi,
     definition:
       'Two strings are anagrams when their character multisets match. Comparing frequency counts decides it in O(n) versus O(n log n) for sorting.',
-    primaryLocation: 'Chapter 12 (§ 12.3 Hash Tables, p. 212)',
+    primaryLocation: 'Chapter 12 (§ 12.3 Hash Tables)',
     relatedIds: ['G-234', 'G-217', 'G-245'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.3 Hash Tables',
-        pageRange: 'pp. 208–214',
         contextSnippet: 'Counting characters into a dictionary answers multiset-equality questions in linear time.',
       },
     ],
@@ -2795,13 +2654,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(lexicographic(al(ly)?)? orders?|lexicographic|dictionary orders?)\b/gi,
     definition:
       'Dictionary ordering: compare position by position, and if one sequence is a prefix of the other, the shorter sorts first.',
-    primaryLocation: 'Chapter 5 (§ 5.1 Tuples, p. 67)',
+    primaryLocation: 'Chapter 5 (§ 5.1 Tuples)',
     relatedIds: ['G-121', 'G-183', 'G-264'],
     occurrences: [
       {
         chapter: 'Chapter 5',
         section: '§ 5.1 Tuples',
-        pageRange: 'pp. 65–69',
         contextSnippet: 'Sequences compare element by element, so tuple comparison naturally sorts by successive fields.',
       },
     ],
@@ -2814,14 +2672,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(ascii|unicode|code points?|ord\(\)|chr\(\)|character encodings?)\b/gi,
     definition:
       'Characters map to integer code points. ord(c) yields the code point, chr(n) the character; ord(c) − ord("a") indexes a 26-slot alphabet array.',
-    primaryLocation: 'Chapter 2 (§ 2.1.3 Strings and Input, p. 20)',
+    primaryLocation: 'Chapter 2 (§ 2.4 Strings and Input)',
     notation: 'ord("a") = 97 · ord("A") = 65 · ord("0") = 48',
     relatedIds: ['G-215', 'G-243', 'G-263'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1.3 Strings and Input',
-        pageRange: 'pp. 18–22',
+        section: '§ 2.4 Strings and Input',
         contextSnippet: 'Each character corresponds to a numeric code point defined by the character set.',
       },
     ],
@@ -2834,13 +2691,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(f[- ]strings?|string formatting|format method|string interpolation)\b/gi,
     definition:
       'Interpolating expression values into a template. f"{x:.4f}" formats inline; older code uses .format() or % substitution.',
-    primaryLocation: 'Chapter 2 (§ 2.1.3 Strings and Input, p. 21)',
+    primaryLocation: 'Chapter 2 (§ 2.4 Strings and Input)',
     relatedIds: ['G-196', 'G-375'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1.3 Strings and Input',
-        pageRange: 'pp. 18–23',
+        section: '§ 2.4 Strings and Input',
         contextSnippet: 'Formatted output lets values be embedded directly in a string template.',
       },
     ],
@@ -2853,13 +2709,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(tokeniz(e|ation|ing)|split method|join method|delimiters?)\b/gi,
     definition:
       's.split(sep) breaks a string into a list on a delimiter; sep.join(parts) rebuilds one string in linear time.',
-    primaryLocation: 'Chapter 7 (§ 7.2 Files, p. 108)',
+    primaryLocation: 'Chapter 7 (§ 7.3 Files)',
     relatedIds: ['G-240', 'G-398'],
     occurrences: [
       {
         chapter: 'Chapter 7',
-        section: '§ 7.2 Files',
-        pageRange: 'pp. 106–112',
+        section: '§ 7.3 Files',
         contextSnippet: 'Reading structured text usually means splitting each line on a known separator.',
       },
     ],
@@ -2872,13 +2727,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(prefix(es)?|suffix(es)?|common prefix(es)?)\b/gi,
     definition:
       'A prefix is an initial contiguous segment, a suffix a trailing one. Prefix structures (tries, prefix sums, prefix products) let a whole span be answered from one precomputed value.',
-    primaryLocation: 'Chapter 11 (§ 11.3 Amortization and Space-Time Tradeoffs, p. 189)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     relatedIds: ['G-229', 'G-293', 'G-294'],
     occurrences: [
       {
         chapter: 'Chapter 11',
-        section: '§ 11.3 Amortization and Space-Time Tradeoffs',
-        pageRange: 'pp. 188–192',
+        section: '§ 11.3 Some Important Complexity Classes',
         contextSnippet: 'Precomputing over every prefix makes later range queries constant time.',
       },
     ],
@@ -2891,14 +2745,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(rolling hash(es)?|rabin[- ]karp|polynomial hashing)\b/gi,
     definition:
       'A hash updated in O(1) as a window slides, by removing the outgoing character’s contribution and adding the incoming one. Requires a collision re-check.',
-    primaryLocation: 'Chapter 12 (§ 12.3 Hash Tables, p. 214)',
+    primaryLocation: 'Chapter 12 (§ 12.3 Hash Tables)',
     notation: 'H(i+1) = (H(i) − s[i]·bᴸ⁻¹)·b + s[i+L]  (mod p)',
     relatedIds: ['G-218', 'G-267', 'G-344'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.3 Hash Tables',
-        pageRange: 'pp. 208–215',
         contextSnippet: 'A hash that can be updated incrementally avoids rehashing the whole window each step.',
       },
     ],
@@ -2912,13 +2765,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(linear search(es)?|sequential search(es)?)\b/gi,
     definition:
       'Scanning elements in order until the target is found. O(n) worst case and the only option on unsorted data without preprocessing.',
-    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms, p. 195)',
+    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms)',
     relatedIds: ['G-251', 'G-325'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.1 Search Algorithms',
-        pageRange: 'pp. 195–199',
         contextSnippet: 'Without an ordering assumption, every element may have to be examined.',
       },
     ],
@@ -2931,14 +2783,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(binary search(es)?|binary search scaffolds?|halving search(es)?)\b/gi,
     definition:
       'Repeatedly halving a sorted search range by comparing against its midpoint, in O(log n) comparisons.',
-    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms, p. 195)',
+    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms)',
     notation: 'mid = lo + (hi − lo) // 2  (avoids overflow in fixed-width languages)',
     relatedIds: ['G-134', 'G-252', 'G-268'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.1 Search Algorithms',
-        pageRange: 'pp. 195–201',
         contextSnippet: 'Binary search exploits the sorted-order invariant to discard half the candidates per comparison.',
       },
     ],
@@ -2951,14 +2802,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(bisection search(es)?|bisection|interval halving)\b/gi,
     definition:
       'Interval halving over a continuous monotonic function, converging on a root in O(log((hi − lo)/ε)) iterations.',
-    primaryLocation: 'Chapter 3 (§ 3.2 Approximate Solutions and Bisection Search, p. 32)',
+    primaryLocation: 'Chapter 3 (§ 3.2 Approximate Solutions and Bisection Search)',
     notation: 'iterations ≈ log₂((hi − lo)/ε)',
     relatedIds: ['G-251', 'G-141', 'G-339'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.2 Approximate Solutions and Bisection Search',
-        pageRange: 'pp. 31–36',
         contextSnippet: 'Each step halves the interval, so the search space shrinks exponentially.',
       },
     ],
@@ -2971,14 +2821,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(newton[- ]raphson|newton’s method|newton's method)\b/gi,
     definition:
       'Root-finding by successive tangent-line linearization: yₙ₊₁ = yₙ − f(yₙ)/f′(yₙ). Converges quadratically near a simple root.',
-    primaryLocation: 'Chapter 3 (§ 3.4 Newton-Raphson, p. 38)',
+    primaryLocation: 'Chapter 3 (§ 3.4 Newton-Raphson)',
     notation: 'for f(y) = y² − k:  y ← y − (y² − k)/(2y)',
     relatedIds: ['G-252', 'G-338', 'G-141'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.4 Newton-Raphson',
-        pageRange: 'pp. 38–42',
         contextSnippet: 'Newton-Raphson doubles the number of correct digits with each iteration near the root.',
       },
     ],
@@ -2991,14 +2840,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(selection sorts?)\b/gi,
     definition:
       'Repeatedly select the smallest remaining element and place it at the boundary of the sorted prefix. Always Θ(n²) comparisons, O(1) extra space.',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 202)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     notation: 'invariant: prefix sorted and ≤ every suffix element',
     relatedIds: ['G-134', 'G-256', 'G-327'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 201–206',
         contextSnippet: 'Selection sort maintains the invariant that the prefix is sorted and no larger than the rest.',
       },
     ],
@@ -3011,13 +2859,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(bubble sorts?)\b/gi,
     definition:
       'Repeatedly swap adjacent out-of-order pairs so large elements bubble to the end. Θ(n²) comparisons, best case Θ(n) when already sorted with an early-exit flag.',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 202)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     relatedIds: ['G-254', 'G-256', 'G-322'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 201–206',
         contextSnippet: 'Each pass moves the largest remaining element into its final position.',
       },
     ],
@@ -3030,13 +2877,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(insertion sorts?)\b/gi,
     definition:
       'Insert each element into its place within the sorted prefix. Θ(n²) worst case but Θ(n) on nearly sorted input, which is why Timsort uses it on small runs.',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 203)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     relatedIds: ['G-259', 'G-260', 'G-322'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 201–207',
         contextSnippet: 'Insertion sort performs very well when the input is already close to sorted.',
       },
     ],
@@ -3049,14 +2895,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(merge sorts?|mergesort|merging step)\b/gi,
     definition:
       'A stable divide-and-conquer sort: split in half, sort each recursively, then merge in linear time. Θ(n log n) in all cases with O(n) auxiliary space.',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 201)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     notation: 'T(n) = 2T(n/2) + Θ(n) ⟹ Θ(n log n)',
     relatedIds: ['G-272', 'G-286', 'G-287'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 201–207',
         contextSnippet: 'Merge sort divides the list, sorts both halves recursively, and merges them in linear time.',
       },
     ],
@@ -3069,14 +2914,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(quicksorts?|partitioning|pivots?|lomuto|hoare partition)\b/gi,
     definition:
       'Choose a pivot, partition into smaller and larger halves, and recurse. Θ(n log n) expected with a random pivot, Θ(n²) on adversarial input.',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 205)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     notation: 'expected Θ(n log n) · worst Θ(n²) · O(log n) stack',
     relatedIds: ['G-269', 'G-272', 'G-322'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 201–208',
         contextSnippet: 'Partitioning around a pivot places it in its final position and splits the remaining work.',
       },
     ],
@@ -3089,14 +2933,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(timsort|python’s sort|python's sort|sorted\(\)|list\.sort)\b/gi,
     definition:
       'CPython’s adaptive stable hybrid of merge sort and insertion sort, exploiting existing sorted runs. Θ(n log n) worst case, Θ(n) on already-sorted input.',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 207)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     notation: 'list.sort() mutates in place; sorted(x) returns a new list',
     relatedIds: ['G-256', 'G-257', 'G-260'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 204–208',
         contextSnippet: 'Python’s built-in sort is stable and performs well on partially ordered data.',
       },
     ],
@@ -3109,13 +2952,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(stable sorts?|sort stability|unstable sorts?)\b/gi,
     definition:
       'A sort is stable when equal keys retain their original relative order — the property that makes successive sorts by different keys compose.',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 206)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     relatedIds: ['G-259', 'G-257', 'G-264'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 204–208',
         contextSnippet: 'A stable sort preserves the input order of records that compare equal.',
       },
     ],
@@ -3128,13 +2970,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(in[- ]place sorts?|out[- ]of[- ]place|external sorting)\b/gi,
     definition:
       'An in-place sort uses O(1) or O(log n) auxiliary space and rearranges the input; an out-of-place sort allocates a second buffer.',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 205)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     relatedIds: ['G-166', 'G-167', 'G-257'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 201–207',
         contextSnippet: 'Merge sort needs a temporary array; quicksort rearranges elements within the input.',
       },
     ],
@@ -3147,14 +2988,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(comparison sorts?|sorting lower bounds?|decision tree lower bounds?)\b/gi,
     definition:
       'Any sort restricted to pairwise comparisons needs Ω(n log n) comparisons, since a binary decision tree must have n! leaves and depth ≥ log₂(n!).',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 207)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     notation: 'log₂(n!) = Θ(n log n)',
     relatedIds: ['G-263', 'G-321', 'G-326'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 204–208',
         contextSnippet: 'No comparison-based sort can beat n log n in the worst case.',
       },
     ],
@@ -3167,14 +3007,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(counting sorts?|bucket sorts?|radix sorts?|non[- ]comparison sorts?)\b/gi,
     definition:
       'Non-comparison sorts that index by key value rather than compare. Counting sort runs in O(n + k) for keys in a bounded range k.',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 208)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     notation: 'counting sort O(n + k) · radix sort O(d(n + k))',
     relatedIds: ['G-262', 'G-234', 'G-245'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 204–209',
         contextSnippet: 'When keys fall in a small known range, they can be placed directly rather than compared.',
       },
     ],
@@ -3187,14 +3026,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(multi[- ]key sort(ing|s)?|secondary keys?|tie[- ]break(ing|ers?)?)\b/gi,
     definition:
       'Ordering by successive fields. A tuple key sorts left to right; negating a numeric field reverses only that field.',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 206)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     notation: 'key=lambda x: (x.priority, -x.score, x.name)',
     relatedIds: ['G-183', 'G-244', 'G-260'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 204–208',
         contextSnippet: 'Comparing tuples compares their fields in order, which gives multi-level ordering directly.',
       },
     ],
@@ -3207,13 +3045,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(heapsorts?|heap sorts?)\b/gi,
     definition:
       'Build a heap in O(n), then extract the root n times. Θ(n log n) worst case with O(1) auxiliary space, but not stable.',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 205)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     relatedIds: ['G-224', 'G-261', 'G-260'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 204–208',
         contextSnippet: 'Repeatedly removing the heap root yields the elements in sorted order.',
       },
     ],
@@ -3226,14 +3063,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(two pointers?|two[- ]pointer|fast and slow pointers?|opposing pointers?)\b/gi,
     definition:
       'Two indices moving under a monotone rule — inward from both ends, or at different speeds — replacing a nested scan with one linear pass.',
-    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms, p. 196)',
+    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms)',
     notation: 'each pointer advances at most n times ⟹ O(n)',
     relatedIds: ['G-267', 'G-134', 'G-220'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.1 Search Algorithms',
-        pageRange: 'pp. 195–200',
         contextSnippet: 'Exploiting ordering lets a single pass replace a pair of nested loops.',
       },
     ],
@@ -3246,13 +3082,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(sliding windows?|window techniques?|variable[- ]size windows?)\b/gi,
     definition:
       'A contiguous range whose right edge expands and whose left edge contracts while a constraint is violated. Each index enters and leaves once, so the scan is O(n).',
-    primaryLocation: 'Chapter 11 (§ 11.3 Amortization and Space-Time Tradeoffs, p. 190)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     relatedIds: ['G-266', 'G-213', 'G-242'],
     occurrences: [
       {
         chapter: 'Chapter 11',
-        section: '§ 11.3 Amortization and Space-Time Tradeoffs',
-        pageRange: 'pp. 188–192',
+        section: '§ 11.3 Some Important Complexity Classes',
         contextSnippet: 'Reusing the previous window’s computation avoids recomputing over the whole range.',
       },
     ],
@@ -3265,14 +3100,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(binary search on (the )?answers?|parametric search(es)?|monotone predicates?)\b/gi,
     definition:
       'Searching the answer space rather than an array. Requires a monotone feasibility predicate: if k works, every k′ > k works, so the boundary is binary-searchable.',
-    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms, p. 197)',
+    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms)',
     notation: 'find min k with feasible(k) True — O(log range × cost(feasible))',
     relatedIds: ['G-251', 'G-252', 'G-134'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.1 Search Algorithms',
-        pageRange: 'pp. 195–201',
         contextSnippet: 'Any monotone predicate over an ordered range admits a logarithmic boundary search.',
       },
     ],
@@ -3285,14 +3119,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(quickselects?|kth (smallest|largest)|order statistics?|median of medians)\b/gi,
     definition:
       'Partition as in quicksort but recurse only into the side containing rank k. Expected O(n), worst O(n²) unless the pivot is chosen deterministically.',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 206)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     notation: 'expected T(n) = T(n/2) + O(n) = O(n)',
     relatedIds: ['G-258', 'G-224', 'G-322'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 204–208',
         contextSnippet: 'Finding the kth element does not require sorting the entire collection.',
       },
     ],
@@ -3306,13 +3139,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(brute[- ]force|naive solutions?|naive approach(es)?)\b/gi,
     definition:
       'Enumerating the entire candidate space with no pruning. Always correct, usually too slow, and the right thing to state first before optimizing.',
-    primaryLocation: 'Chapter 3 (§ 3.1 Exhaustive Enumeration, p. 28)',
+    primaryLocation: 'Chapter 3 (§ 3.1 Exhaustive Enumeration)',
     relatedIds: ['G-140', 'G-283', 'G-292'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.1 Exhaustive Enumeration',
-        pageRange: 'pp. 28–32',
         contextSnippet: 'Enumerating all possibilities is often fast enough, and always a correct starting point.',
       },
     ],
@@ -3325,13 +3157,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(greedy(?: (?:algorithms?|choices?|strateg(?:y|ies)))?|locally optimal)\b/gi,
     definition:
       'Taking the locally best option at each step and never reconsidering. Correct only when the problem has the greedy-choice property; otherwise it fails on some input.',
-    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems, p. 233)',
+    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems)',
     relatedIds: ['G-281', 'G-279', 'G-275'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.1 Knapsack Problems',
-        pageRange: 'pp. 232–238',
         contextSnippet: 'A greedy algorithm makes a sequence of local choices, which need not lead to a global optimum.',
       },
     ],
@@ -3344,14 +3175,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(divide[- ]and[- ]conquer|divide and conquer)\b/gi,
     definition:
       'Split into independent subproblems of the same kind, solve recursively, and combine. Independence is what separates it from dynamic programming.',
-    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms, p. 201)',
+    primaryLocation: 'Chapter 12 (§ 12.2 Sorting Algorithms)',
     notation: 'divide → conquer → combine',
     relatedIds: ['G-257', 'G-286', 'G-287'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.2 Sorting Algorithms',
-        pageRange: 'pp. 201–206',
         contextSnippet: 'Split the problem, solve each part recursively, then combine the partial answers.',
       },
     ],
@@ -3364,20 +3194,18 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(recursions?|recursive calls?|recursive (definitions?|functions?|steps?)|base cases?|inductive steps?)\b/gi,
     definition:
       'Solving a problem by reducing it to smaller instances of itself, with base cases answering the smallest instances directly and guaranteeing termination.',
-    primaryLocation: 'Chapter 6 (§ 6.1 Fibonacci & § 6.2 Palindromes, pp. 86–92)',
+    primaryLocation: 'Chapter 6 (§ 6.1 Fibonacci & § 6.2 Palindromes)',
     notation: 'base case + reduction toward it ⟹ halts',
     relatedIds: ['G-274', 'G-152', 'G-241'],
     occurrences: [
       {
         chapter: 'Chapter 6',
         section: '§ 6.2 Palindromes',
-        pageRange: 'pp. 88–93',
         contextSnippet: 'The inductive step reduces the problem to a smaller instance until a base case applies.',
       },
       {
         chapter: 'Chapter 6',
         section: '§ 6.1 Fibonacci Numbers',
-        pageRange: 'pp. 86–90',
         contextSnippet: 'A recursive definition must include base cases that are answered without further recursion.',
       },
     ],
@@ -3390,14 +3218,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(mathematical inductions?|inductive hypothes(is|es)|induction|proof by induction)\b/gi,
     definition:
       'Prove a property for the base case, then prove that assuming it for n implies it for n+1. The proof technique that recursion mirrors exactly.',
-    primaryLocation: 'Chapter 6 (§ 6.1 Fibonacci Numbers, p. 87)',
+    primaryLocation: 'Chapter 6 (§ 6.1 Fibonacci Numbers)',
     notation: 'P(0) ∧ (∀n. P(n) ⟹ P(n+1))  ⟹  ∀n. P(n)',
     relatedIds: ['G-273', 'G-134', 'G-285'],
     occurrences: [
       {
         chapter: 'Chapter 6',
         section: '§ 6.1 Fibonacci Numbers',
-        pageRange: 'pp. 86–91',
         contextSnippet: 'Recursive programs are proved correct by the same induction that defines them.',
       },
     ],
@@ -3410,14 +3237,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(dynamic programming|dp tables?|\bdp\b)\b/gi,
     definition:
       'Solving problems with overlapping subproblems and optimal substructure by storing each subproblem’s answer once, collapsing an exponential tree to a polynomial table.',
-    primaryLocation: 'Chapter 15 (§ 15.1 Fibonacci Revisited & § 15.2 Knapsack, pp. 248–258)',
+    primaryLocation: 'Chapter 15 (§ 15.1 Fibonacci Revisited & § 15.2 Knapsack)',
     notation: 'time ≈ (number of states) × (work per state)',
     relatedIds: ['G-276', 'G-277', 'G-278', 'G-279'],
     occurrences: [
       {
         chapter: 'Chapter 15',
-        section: '§ 15.1 Fibonacci Numbers Revisited',
-        pageRange: 'pp. 248–253',
+        section: '§ 15.1 Fibonacci Sequences, Revisited',
         contextSnippet: 'Dynamic programming applies when subproblems recur and optimal solutions compose from optimal parts.',
       },
     ],
@@ -3430,14 +3256,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(memoizations?|memoized?|memo tables?|top[- ]down dp|caching results?)\b/gi,
     definition:
       'Recursion plus a lookup table: check the memo before recomputing, store the result on the way out. Computes only the states actually reached.',
-    primaryLocation: 'Chapter 15 (§ 15.1 Fibonacci Numbers Revisited, p. 249)',
+    primaryLocation: 'Chapter 15 (§ 15.1 Fibonacci Sequences, Revisited)',
     notation: 'fastFib with memo: O(2ⁿ) → O(n)',
     relatedIds: ['G-275', 'G-277', 'G-184'],
     occurrences: [
       {
         chapter: 'Chapter 15',
-        section: '§ 15.1 Fibonacci Numbers Revisited',
-        pageRange: 'pp. 248–253',
+        section: '§ 15.1 Fibonacci Sequences, Revisited',
         contextSnippet: 'Recording already-computed values turns exponential Fibonacci into a linear computation.',
       },
     ],
@@ -3450,13 +3275,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(tabulations?|bottom[- ]up dp|bottom[- ]up|iterative dp)\b/gi,
     definition:
       'Filling a DP table in dependency order with loops instead of recursion. Avoids stack depth and often allows the table to be rolled down to O(1) rows.',
-    primaryLocation: 'Chapter 15 (§ 15.2 Dynamic Programming and the 0/1 Knapsack, p. 255)',
+    primaryLocation: 'Chapter 15 (§ 15.2 Dynamic Programming and the 0/1 Knapsack Problem)',
     relatedIds: ['G-276', 'G-275', 'G-165'],
     occurrences: [
       {
         chapter: 'Chapter 15',
-        section: '§ 15.2 Dynamic Programming and the 0/1 Knapsack',
-        pageRange: 'pp. 253–259',
+        section: '§ 15.2 Dynamic Programming and the 0/1 Knapsack Problem',
         contextSnippet: 'The same table can be filled iteratively from the smallest subproblems upward.',
       },
     ],
@@ -3469,13 +3293,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(overlapping subproblems?|repeated subproblems?|subproblems?)\b/gi,
     definition:
       'The same subproblem is solved many times across the recursion tree. Naive fib(n) recomputes fib(n−2) exponentially often — the trigger for memoization.',
-    primaryLocation: 'Chapter 15 (§ 15.1 Fibonacci Numbers Revisited, p. 249)',
+    primaryLocation: 'Chapter 15 (§ 15.1 Fibonacci Sequences, Revisited)',
     relatedIds: ['G-275', 'G-276', 'G-287'],
     occurrences: [
       {
         chapter: 'Chapter 15',
-        section: '§ 15.1 Fibonacci Numbers Revisited',
-        pageRange: 'pp. 248–253',
+        section: '§ 15.1 Fibonacci Sequences, Revisited',
         contextSnippet: 'The naive recursion solves the identical subproblem over and over again.',
       },
     ],
@@ -3488,13 +3311,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(optimal substructures?|principle of optimality)\b/gi,
     definition:
       'An optimal solution is composed of optimal solutions to its subproblems. Without it, caching subproblem answers is invalid.',
-    primaryLocation: 'Chapter 15 (§ 15.2 Dynamic Programming and the 0/1 Knapsack, p. 254)',
+    primaryLocation: 'Chapter 15 (§ 15.2 Dynamic Programming and the 0/1 Knapsack Problem)',
     relatedIds: ['G-275', 'G-278', 'G-271'],
     occurrences: [
       {
         chapter: 'Chapter 15',
-        section: '§ 15.2 Dynamic Programming and the 0/1 Knapsack',
-        pageRange: 'pp. 253–259',
+        section: '§ 15.2 Dynamic Programming and the 0/1 Knapsack Problem',
         contextSnippet: 'A globally optimal solution must contain optimal solutions to its subproblems.',
       },
     ],
@@ -3507,14 +3329,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(0\/1 knapsacks?|knapsack problems?|knapsack|decision trees?|binary decision trees?)\b/gi,
     definition:
       'For each item, branch on take versus leave. The brute-force tree has 2ⁿ leaves; memoizing on (index, remaining capacity) reduces it to O(n·W).',
-    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems) & Chapter 15 (§ 15.2), pp. 232–258',
+    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems) & Chapter 15 (§ 15.2 Dynamic Programming and the 0/1 Knapsack Problem)',
     notation: 'dp[i][w] = max(dp[i−1][w], v_i + dp[i−1][w − w_i])',
     relatedIds: ['G-275', 'G-330', 'G-282'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.1 Knapsack Problems',
-        pageRange: 'pp. 232–238',
         contextSnippet: 'The decision tree explores 2ⁿ leaves, but many nodes represent the very same subproblem.',
       },
     ],
@@ -3527,14 +3348,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(fractional knapsacks?|continuous knapsacks?)\b/gi,
     definition:
       'When items may be split, sorting by value density and filling greedily is provably optimal — the contrast that shows why 0/1 Knapsack needs DP.',
-    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems, p. 234)',
+    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems)',
     notation: 'sort by vᵢ / wᵢ descending',
     relatedIds: ['G-271', 'G-280'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.1 Knapsack Problems',
-        pageRange: 'pp. 232–238',
         contextSnippet: 'Allowing fractions of items makes the greedy choice optimal.',
       },
     ],
@@ -3547,14 +3367,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(backtrack(ing|s|ed)?)\b/gi,
     definition:
       'DFS over a decision tree that undoes each choice on the way out, restoring state so sibling branches start clean.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 239)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     notation: 'choose → explore → un-choose',
     relatedIds: ['G-308', 'G-283', 'G-150'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–245',
         contextSnippet: 'Explore a branch to its end, then retreat and try the next alternative.',
       },
     ],
@@ -3567,13 +3386,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(pruning|pruned?|branch and bound|early termination)\b/gi,
     definition:
       'Abandoning a branch once it cannot yield a better answer than one already found. Does not change worst-case order but often decides whether a solution finishes.',
-    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems, p. 236)',
+    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems)',
     relatedIds: ['G-282', 'G-135', 'G-270'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.1 Knapsack Problems',
-        pageRange: 'pp. 232–240',
         contextSnippet: 'Branches that cannot improve on the incumbent solution need not be explored.',
       },
     ],
@@ -3586,13 +3404,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(state spaces?|state compression|state transitions?|search spaces?)\b/gi,
     definition:
       'The set of distinct configurations an algorithm can reach. DP cost is (states) × (work per state); compressing state — often into a bitmask — shrinks the first factor.',
-    primaryLocation: 'Chapter 15 (§ 15.2 Dynamic Programming and the 0/1 Knapsack, p. 256)',
+    primaryLocation: 'Chapter 15 (§ 15.2 Dynamic Programming and the 0/1 Knapsack Problem)',
     relatedIds: ['G-275', 'G-357', 'G-347'],
     occurrences: [
       {
         chapter: 'Chapter 15',
-        section: '§ 15.2 Dynamic Programming and the 0/1 Knapsack',
-        pageRange: 'pp. 253–259',
+        section: '§ 15.2 Dynamic Programming and the 0/1 Knapsack Problem',
         contextSnippet: 'What must be remembered to continue the computation defines the subproblem state.',
       },
     ],
@@ -3605,13 +3422,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(recurrence relations?|recurrences?)\b/gi,
     definition:
       'An equation defining a value in terms of smaller instances, e.g. T(n) = 2T(n/2) + Θ(n). Solving it yields the algorithm’s closed-form complexity.',
-    primaryLocation: 'Chapter 11 (§ 11.2 Asymptotic Notation, p. 184)',
+    primaryLocation: 'Chapter 11 (§ 11.2 Asymptotic Notation)',
     relatedIds: ['G-286', 'G-287', 'G-274'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.2 Asymptotic Notation',
-        pageRange: 'pp. 182–188',
         contextSnippet: 'The running time of a recursive algorithm is expressed as a recurrence in the input size.',
       },
     ],
@@ -3624,14 +3440,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(master theorems?|master method)\b/gi,
     definition:
       'Solves T(n) = aT(n/b) + f(n) by comparing f(n) against n^(log_b a): the larger side dominates; a tie adds a log factor.',
-    primaryLocation: 'Chapter 11 (§ 11.2 Asymptotic Notation, p. 185)',
+    primaryLocation: 'Chapter 11 (§ 11.2 Asymptotic Notation)',
     notation: 'T(n) = 2T(n/2) + Θ(n) ⟹ Θ(n log n)',
     relatedIds: ['G-285', 'G-272', 'G-257'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.2 Asymptotic Notation',
-        pageRange: 'pp. 182–188',
         contextSnippet: 'Divide-and-conquer recurrences fall into a few standard closed forms.',
       },
     ],
@@ -3644,14 +3459,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(recursion trees?|call trees?|expansion trees?)\b/gi,
     definition:
       'A diagram of every recursive call, with work summed per level. Merge sort has log n levels of Θ(n) work; naive Fibonacci has a branching factor near φ.',
-    primaryLocation: 'Chapter 11 (§ 11.2 Asymptotic Notation, p. 186)',
+    primaryLocation: 'Chapter 11 (§ 11.2 Asymptotic Notation)',
     notation: 'total = Σ over levels (nodes × work per node)',
     relatedIds: ['G-285', 'G-278', 'G-328'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.2 Asymptotic Notation',
-        pageRange: 'pp. 182–188',
         contextSnippet: 'Summing the work across the levels of the call tree gives the total running time.',
       },
     ],
@@ -3664,14 +3478,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(fibonacci( numbers?| sequences?)?)\b/gi,
     definition:
       'F(n) = F(n−1) + F(n−2) with F(0)=0, F(1)=1. Guttag’s running example: exponential naive recursion, linear once memoized.',
-    primaryLocation: 'Chapter 6 (§ 6.1) and Chapter 15 (§ 15.1), pp. 86, 248',
+    primaryLocation: 'Chapter 6 (§ 6.1 Fibonacci Numbers) and Chapter 15 (§ 15.1 Fibonacci Sequences, Revisited)',
     notation: 'naive Θ(φⁿ) · memoized Θ(n) · rolling variables Θ(1) space',
     relatedIds: ['G-276', 'G-278', 'G-287'],
     occurrences: [
       {
         chapter: 'Chapter 15',
-        section: '§ 15.1 Fibonacci Numbers Revisited',
-        pageRange: 'pp. 248–253',
+        section: '§ 15.1 Fibonacci Sequences, Revisited',
         contextSnippet: 'Memoizing Fibonacci reduces an exponential computation to a linear one.',
       },
     ],
@@ -3684,14 +3497,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(towers? of hanoi|hanoi)\b/gi,
     definition:
       'The canonical recursive puzzle: move n−1 disks aside, move the largest, move n−1 back. Requires exactly 2ⁿ − 1 moves.',
-    primaryLocation: 'Chapter 6 (§ 6.1 Fibonacci Numbers / Towers of Hanoi, p. 86)',
+    primaryLocation: 'Chapter 6 (§ 6.1 Fibonacci Numbers / Towers of Hanoi)',
     notation: 'T(n) = 2T(n−1) + 1 = 2ⁿ − 1',
     relatedIds: ['G-273', 'G-328', 'G-285'],
     occurrences: [
       {
         chapter: 'Chapter 6',
-        section: '§ 6.1 Recursion',
-        pageRange: 'pp. 85–90',
+        section: '§ 6.1 Fibonacci Numbers',
         contextSnippet: 'The recursive solution is short, yet the number of moves grows exponentially.',
       },
     ],
@@ -3704,14 +3516,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(power sets?|subsets?|powerset)\b/gi,
     definition:
       'The set of all subsets of an n-element set, of size 2ⁿ. Each subset corresponds to one n-bit mask.',
-    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems, p. 235)',
+    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems)',
     notation: '|P(S)| = 2^|S|',
     relatedIds: ['G-357', 'G-282', 'G-292'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.1 Knapsack Problems',
-        pageRange: 'pp. 232–238',
         contextSnippet: 'Enumerating every combination of items means enumerating the power set.',
       },
     ],
@@ -3724,14 +3535,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(permutations?|combinations?|combinatorics|binomial coefficients?)\b/gi,
     definition:
       'Permutations count ordered arrangements (n!); combinations count unordered selections (C(n,k) = n!/(k!(n−k)!)).',
-    primaryLocation: 'Chapter 17 (§ 17.2 Probability, p. 276)',
+    primaryLocation: 'Chapter 17 (§ 17.2 Calculating Simple Probabilities)',
     notation: 'P(n,k) = n!/(n−k)!  ·  C(n,k) = n!/(k!(n−k)!)',
     relatedIds: ['G-290', 'G-292', 'G-329'],
     occurrences: [
       {
         chapter: 'Chapter 17',
-        section: '§ 17.2 Probability',
-        pageRange: 'pp. 274–280',
+        section: '§ 17.2 Calculating Simple Probabilities',
         contextSnippet: 'Counting arrangements and selections underlies probability calculations.',
       },
     ],
@@ -3744,14 +3554,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(combinatorial explosions?|exponential blow[- ]?ups?|state explosions?)\b/gi,
     definition:
       'The search space multiplying with each added element, so a few more inputs make brute force impossible regardless of hardware.',
-    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems, p. 236)',
+    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems)',
     notation: '2^40 ≈ 10¹² — no constant factor rescues this',
     relatedIds: ['G-328', 'G-331', 'G-275'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.1 Knapsack Problems',
-        pageRange: 'pp. 232–240',
         contextSnippet: 'Adding one more item doubles the number of candidate solutions.',
       },
     ],
@@ -3764,14 +3573,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(prefix sums?|cumulative sums?|precomputations?|precomputed|running totals?)\b/gi,
     definition:
       'Build P where P[i] is the sum of the first i elements, so any range sum is one subtraction. O(n) preprocessing buys O(1) queries.',
-    primaryLocation: 'Chapter 11 (§ 11.3 Amortization and Space-Time Tradeoffs, p. 189)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     notation: 'sum(L, R) = P[R+1] − P[L]',
     relatedIds: ['G-294', 'G-248', 'G-267'],
     occurrences: [
       {
         chapter: 'Chapter 11',
-        section: '§ 11.3 Amortization and Space-Time Tradeoffs',
-        pageRange: 'pp. 188–192',
+        section: '§ 11.3 Some Important Complexity Classes',
         contextSnippet: 'Precomputing cumulative totals answers any range query with a single subtraction.',
       },
     ],
@@ -3784,13 +3592,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(space[- ]time tradeoffs?|time[- ]space tradeoffs?|trading space for time)\b/gi,
     definition:
       'Spending memory to buy speed: hash tables, memo tables, prefix arrays, and precomputed lookups all trade storage for fewer recomputations.',
-    primaryLocation: 'Chapter 11 (§ 11.3 Amortization and Space-Time Tradeoffs, p. 188)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     relatedIds: ['G-293', 'G-276', 'G-334'],
     occurrences: [
       {
         chapter: 'Chapter 11',
-        section: '§ 11.3 Amortization and Space-Time Tradeoffs',
-        pageRange: 'pp. 188–192',
+        section: '§ 11.3 Some Important Complexity Classes',
         contextSnippet: 'Using additional memory to store computed results can dramatically reduce running time.',
       },
     ],
@@ -3803,13 +3610,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(caches?|caching|cache evictions?|lru caches?|least recently used)\b/gi,
     definition:
       'Keeping recent results in fast storage under a capacity bound, discarding entries by a policy — least recently used being the standard choice.',
-    primaryLocation: 'Chapter 15 (§ 15.1 Fibonacci Numbers Revisited, p. 251)',
+    primaryLocation: 'Chapter 15 (§ 15.1 Fibonacci Sequences, Revisited)',
     relatedIds: ['G-276', 'G-221', 'G-217'],
     occurrences: [
       {
         chapter: 'Chapter 15',
-        section: '§ 15.1 Fibonacci Numbers Revisited',
-        pageRange: 'pp. 248–253',
+        section: '§ 15.1 Fibonacci Sequences, Revisited',
         contextSnippet: 'Keeping previously computed answers available is the essence of memoization.',
       },
     ],
@@ -3822,13 +3628,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(simulations?|simulate|simulation models?)\b/gi,
     definition:
       'Building a computational model and running it forward to observe behavior, used when a closed-form answer is unavailable or unnecessary.',
-    primaryLocation: 'Chapter 16 (§ 16.1 Random Walks, p. 262)',
+    primaryLocation: 'Chapter 16 (§ 16.1 Random Walks)',
     relatedIds: ['G-409', 'G-405', 'G-411'],
     occurrences: [
       {
         chapter: 'Chapter 16',
         section: '§ 16.1 Random Walks',
-        pageRange: 'pp. 261–268',
         contextSnippet: 'Simulation models let us study systems too complex to solve analytically.',
       },
     ],
@@ -3841,13 +3646,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(approximation algorithms?|approximate answers?|near[- ]optimal solutions?)\b/gi,
     definition:
       'An algorithm returning a provably near-optimal answer in polynomial time, accepted when the exact problem is intractable.',
-    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems, p. 237)',
+    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems)',
     relatedIds: ['G-331', 'G-298', 'G-141'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.1 Knapsack Problems',
-        pageRange: 'pp. 232–240',
         contextSnippet: 'When the optimal answer is unattainable in reasonable time, a good approximation may suffice.',
       },
     ],
@@ -3860,13 +3664,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(heuristics?)\b/gi,
     definition:
       'A rule of thumb that usually helps but carries no guarantee — pivot selection, move ordering, greedy tie-breaking.',
-    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems, p. 234)',
+    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems)',
     relatedIds: ['G-271', 'G-297', 'G-283'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.1 Knapsack Problems',
-        pageRange: 'pp. 232–239',
         contextSnippet: 'A greedy rule is a heuristic: it often works well but is not guaranteed to be optimal.',
       },
     ],
@@ -3879,13 +3682,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(invariants?|invariant conditions?)\b/gi,
     definition:
       'A condition that always holds at a defined point in execution. Loop invariants, representation invariants, and arithmetic identities are all instances.',
-    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms, p. 195)',
+    primaryLocation: 'Chapter 12 (§ 12.1 Search Algorithms)',
     relatedIds: ['G-134', 'G-211', 'G-366'],
     occurrences: [
       {
         chapter: 'Chapter 12',
         section: '§ 12.1 Search Algorithms',
-        pageRange: 'pp. 195–201',
         contextSnippet: 'Correctness arguments rest on identifying what stays true as the computation proceeds.',
       },
     ],
@@ -3900,14 +3702,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(graphs?|vert(ex|ices)|edges?|nodes? and edges?)\b/gi,
     definition:
       'A set of vertices plus edges connecting them, modeling any pairwise relation. Guttag frames graphs as the most broadly applicable structure in the book.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 238)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     notation: 'G = (V, E)',
     relatedIds: ['G-301', 'G-303', 'G-316'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–246',
         contextSnippet: 'A graph is a set of nodes connected by edges, capturing relationships among entities.',
       },
     ],
@@ -3920,13 +3721,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(directed graphs?|undirected graphs?|digraphs?|directed edges?)\b/gi,
     definition:
       'In a digraph edges have direction (u → v only); in an undirected graph adjacency is symmetric and each edge is stored from both endpoints.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 239)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     relatedIds: ['G-300', 'G-306', 'G-303'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–245',
         contextSnippet: 'A digraph’s edges are one-way; source and destination are not interchangeable.',
       },
     ],
@@ -3939,13 +3739,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(weighted graphs?|edge weights?|weighted edges?|costs? per edge)\b/gi,
     definition:
       'Edges carry numeric weights (distance, cost, time). Shortest path by hop count and shortest path by weight are different problems needing different algorithms.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 242)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     relatedIds: ['G-310', 'G-309', 'G-312'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–246',
         contextSnippet: 'Associating a weight with each edge lets a graph model distance or cost.',
       },
     ],
@@ -3958,14 +3757,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(adjacency lists?|adjacency matri(x|ces)|adjacency representations?)\b/gi,
     definition:
       'An adjacency list stores each vertex’s neighbors — O(V + E) space, ideal for sparse graphs. A matrix stores every pair — O(V²) space, O(1) edge lookup.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 240)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     notation: 'list O(V + E) space · matrix O(V²) space',
     relatedIds: ['G-300', 'G-230', 'G-294'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–246',
         contextSnippet: 'The representation chosen for a graph determines the cost of traversal and edge queries.',
       },
     ],
@@ -3978,13 +3776,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(paths?|cycles?|cyclic|acyclic|walks?)\b/gi,
     definition:
       'A path is a sequence of vertices joined by edges; a cycle is a path returning to its start. Acyclic graphs permit orderings that cyclic graphs forbid.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 241)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     relatedIds: ['G-306', 'G-315', 'G-309'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–246',
         contextSnippet: 'A path connects a source to a destination through a sequence of edges.',
       },
     ],
@@ -3997,13 +3794,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(connected components?|connectivity|strongly connected)\b/gi,
     definition:
       'A maximal set of vertices mutually reachable by paths. Counting components means running a traversal from each unvisited vertex.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 243)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     relatedIds: ['G-231', 'G-308', 'G-315'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–246',
         contextSnippet: 'Vertices reachable from one another form a connected component of the graph.',
       },
     ],
@@ -4016,14 +3812,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(dags?|directed acyclic graphs?|topological sorts?|topological ordering|kahn’s algorithm|kahn's algorithm)\b/gi,
     definition:
       'A directed graph with no cycles admits a linear ordering where every edge points forward. Kahn’s algorithm repeatedly removes in-degree-zero vertices.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 244)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     notation: 'a topological order exists ⟺ the digraph is acyclic',
     relatedIds: ['G-304', 'G-301', 'G-307'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–246',
         contextSnippet: 'Dependencies can be scheduled only when the dependency graph is acyclic.',
       },
     ],
@@ -4036,14 +3831,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(breadth[- ]first search(es)?|bfs|level[- ]order traversals?)\b/gi,
     definition:
       'Traversal expanding outward by distance using a FIFO queue, so the first time a vertex is reached is along a minimum-edge path.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 238)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     notation: 'O(V + E) time · O(V) queue',
     relatedIds: ['G-223', 'G-308', 'G-309'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–246',
         contextSnippet: 'BFS finds the path with the fewest edges between source and destination.',
       },
     ],
@@ -4056,14 +3850,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(depth[- ]first search(es)?|dfs)\b/gi,
     definition:
       'Traversal exploring each branch to exhaustion before retreating, implemented recursively or with an explicit stack. Finds a path, not necessarily a shortest one.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 239)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     notation: 'O(V + E) time · O(V) stack depth',
     relatedIds: ['G-282', 'G-307', 'G-152'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–246',
         contextSnippet: 'DFS follows a branch to its end before backing up to try alternatives.',
       },
     ],
@@ -4076,13 +3869,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(shortest paths?|shortest weighted paths?|minimum distances?)\b/gi,
     definition:
       'Finding a minimum-cost route between vertices. Unweighted graphs use BFS; non-negative weights use Dijkstra; negative weights require Bellman-Ford.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 242)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     relatedIds: ['G-307', 'G-310', 'G-302'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–246',
         contextSnippet: 'Shortest-path problems ask for the least-cost route through a graph.',
       },
     ],
@@ -4095,14 +3887,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(dijkstra’s algorithm|dijkstra's algorithm|dijkstra)\b/gi,
     definition:
       'Greedy shortest path from a source over non-negative weights: repeatedly finalize the nearest unsettled vertex and relax its edges.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 243)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     notation: 'O((V + E) log V) with a binary heap',
     relatedIds: ['G-224', 'G-309', 'G-271'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–246',
         contextSnippet: 'Settling vertices in order of increasing distance yields shortest paths when weights are non-negative.',
       },
     ],
@@ -4115,14 +3906,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(bellman[- ]ford|negative weights?|negative cycles?|edge relaxations?)\b/gi,
     definition:
       'Relaxes every edge V−1 times, handling negative weights and detecting a negative cycle if any edge still relaxes on an extra pass.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 244)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     notation: 'O(V · E)',
     relatedIds: ['G-310', 'G-309', 'G-302'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–247',
         contextSnippet: 'Negative edge weights invalidate the greedy assumption that a settled vertex stays settled.',
       },
     ],
@@ -4135,14 +3925,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(minimum spanning trees?|spanning trees?|msts?|kruskal|prim’s algorithm|prim's algorithm)\b/gi,
     definition:
       'A cycle-free subset of edges connecting all vertices at minimum total weight. Kruskal sorts edges and unions; Prim grows from one vertex with a heap.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 245)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     notation: 'exactly V − 1 edges',
     relatedIds: ['G-231', 'G-271', 'G-224'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–247',
         contextSnippet: 'Connecting every node at least total cost is a classic graph optimization problem.',
       },
     ],
@@ -4155,14 +3944,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(degrees? of a (vertex|node)|in[- ]degrees?|out[- ]degrees?|vertex degrees?)\b/gi,
     definition:
       'The number of edges incident to a vertex; in a digraph, in-degree counts incoming and out-degree outgoing edges. Kahn’s algorithm is driven by in-degree.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 240)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     notation: 'Σ deg(v) = 2|E| in an undirected graph',
     relatedIds: ['G-306', 'G-300'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–246',
         contextSnippet: 'The number of edges at a node determines how the traversal branches there.',
       },
     ],
@@ -4175,13 +3963,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(bipartite graphs?|bipartite|two[- ]colorable|graph coloring)\b/gi,
     definition:
       'A graph whose vertices split into two sets with no edge inside a set — equivalently, two-colorable, equivalently containing no odd cycle.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 245)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     relatedIds: ['G-307', 'G-304'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–247',
         contextSnippet: 'Some graphs partition naturally into two groups with edges only between the groups.',
       },
     ],
@@ -4194,14 +3981,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(visited sets?|seen sets?|cycle detections?|marking visited)\b/gi,
     definition:
       'Recording which vertices have been reached so traversal terminates on cyclic graphs. Directed cycle detection also needs the current recursion stack, not just the visited set.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 241)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     notation: 'white / grey / black — unvisited / in-stack / finished',
     relatedIds: ['G-304', 'G-308', 'G-216'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–246',
         contextSnippet: 'Without recording visited nodes, a traversal of a cyclic graph never terminates.',
       },
     ],
@@ -4214,13 +4000,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(graph optimizations?|optimization problems?|objective functions?)\b/gi,
     definition:
       'A problem stated as an objective function to maximize or minimize subject to constraints. Guttag frames knapsack and shortest path as two faces of the same shape.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 238)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     relatedIds: ['G-280', 'G-309', 'G-448'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–246',
         contextSnippet: 'Optimization problems are defined by an objective function and a set of constraints.',
       },
     ],
@@ -4233,14 +4018,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(implicit graphs?|grid graphs?|4[- ]directional|8[- ]directional|neighbou?r cells?)\b/gi,
     definition:
       'A matrix is a graph whose vertices are cells and whose edges are the legal moves, so no adjacency structure needs building.',
-    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems, p. 242)',
+    primaryLocation: 'Chapter 14 (§ 14.2 Graph Optimization Problems)',
     notation: 'DIRS = ((1,0), (-1,0), (0,1), (0,-1))',
     relatedIds: ['G-230', 'G-307', 'G-308'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.2 Graph Optimization Problems',
-        pageRange: 'pp. 238–246',
         contextSnippet: 'Any structure with a defined neighbor relation can be traversed as a graph.',
       },
     ],
@@ -4254,14 +4038,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(big[- ]o( notation)?|asymptotic (notation|complexity|analysis)|time complexit(y|ies)|order of growth)\b/gi,
     definition:
       'An upper bound on how running time or memory grows with input size: f(n) ∈ O(g(n)) when f(n) ≤ c·g(n) for all n beyond some n₀.',
-    primaryLocation: 'Chapter 11 (§ 11.2 Asymptotic Notation, p. 182)',
+    primaryLocation: 'Chapter 11 (§ 11.2 Asymptotic Notation)',
     notation: 'O(1) < O(log n) < O(n) < O(n log n) < O(n²) < O(2ⁿ) < O(n!)',
     relatedIds: ['G-321', 'G-322', 'G-332'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.2 Asymptotic Notation',
-        pageRange: 'pp. 182–188',
         contextSnippet: 'Asymptotic notation describes growth as input size increases without bound, ignoring constants.',
       },
     ],
@@ -4274,14 +4057,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(big[- ]theta|big[- ]omega|tight bounds?|lower bounds?|upper bounds?)\b/gi,
     definition:
       'Ω is a lower bound, O an upper bound, Θ both at once. Saying an algorithm is O(n²) is true but uninformative when Θ(n log n) is provable.',
-    primaryLocation: 'Chapter 11 (§ 11.2 Asymptotic Notation, p. 183)',
+    primaryLocation: 'Chapter 11 (§ 11.2 Asymptotic Notation)',
     notation: 'Θ(g) = O(g) ∩ Ω(g)',
     relatedIds: ['G-320', 'G-262'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.2 Asymptotic Notation',
-        pageRange: 'pp. 182–188',
         contextSnippet: 'Big-O gives an upper bound; a tight bound requires matching upper and lower bounds.',
       },
     ],
@@ -4294,13 +4076,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(worst case|best case|average case|expected (time|case|complexity))\b/gi,
     definition:
       'Complexity depends on which input is assumed. Guttag emphasizes worst case because it is the only bound that holds for every input.',
-    primaryLocation: 'Chapter 11 (§ 11.1 Thinking About Computational Complexity, p. 180)',
+    primaryLocation: 'Chapter 11 (§ 11.1 Thinking about Computational Complexity)',
     relatedIds: ['G-320', 'G-258', 'G-219'],
     occurrences: [
       {
         chapter: 'Chapter 11',
-        section: '§ 11.1 Thinking About Computational Complexity',
-        pageRange: 'pp. 179–184',
+        section: '§ 11.1 Thinking about Computational Complexity',
         contextSnippet: 'Worst-case complexity provides a guarantee that holds regardless of the input.',
       },
     ],
@@ -4313,13 +4094,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(constant time|o\(1\)|constant[- ]time operations?)\b/gi,
     definition:
       'Running time independent of input size: arithmetic, indexing, dict and set operations (expected), append, and stack push/pop.',
-    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes, p. 186)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     relatedIds: ['G-320', 'G-217', 'G-212'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.3 Some Important Complexity Classes',
-        pageRange: 'pp. 185–190',
         contextSnippet: 'Constant-time operations do not depend on the size of the input.',
       },
     ],
@@ -4332,14 +4112,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(logarithmic time|o\(log n\)|log(arithmic)? growth)\b/gi,
     definition:
       'Time growing with the logarithm of input size, arising whenever each step discards a constant fraction of the remaining work.',
-    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes, p. 186)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     notation: 'log₂(10⁶) ≈ 20 steps',
     relatedIds: ['G-251', 'G-336', 'G-228'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.3 Some Important Complexity Classes',
-        pageRange: 'pp. 185–190',
         contextSnippet: 'Halving the problem at each step gives logarithmic growth in the number of steps.',
       },
     ],
@@ -4352,13 +4131,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(linear time|o\(n\)|single passe?s?|one pass)\b/gi,
     definition:
       'Time proportional to input size — one bounded amount of work per element. Usually the optimum when every element must be inspected.',
-    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes, p. 186)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     relatedIds: ['G-320', 'G-266', 'G-267'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.3 Some Important Complexity Classes',
-        pageRange: 'pp. 185–190',
         contextSnippet: 'Linear-time algorithms do a constant amount of work for each element.',
       },
     ],
@@ -4371,13 +4149,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(log[- ]linear|o\(n log n\)|linearithmic)\b/gi,
     definition:
       'The cost of comparison sorting and of any divide-and-conquer doing linear work across log n levels. The practical ceiling for n up to about 10⁶.',
-    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes, p. 187)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     relatedIds: ['G-257', 'G-262', 'G-286'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.3 Some Important Complexity Classes',
-        pageRange: 'pp. 185–190',
         contextSnippet: 'Log-linear algorithms scale well and dominate practical sorting.',
       },
     ],
@@ -4390,14 +4167,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(quadratic time|polynomial time|o\(n\^?2\)|cubic time)\b/gi,
     definition:
       'Time growing as a fixed power of n. Quadratic is tolerable near n ≈ 10⁴ and fails hard beyond it.',
-    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes, p. 187)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     notation: '(10⁴)² = 10⁸ — borderline;  (10⁵)² = 10¹⁰ — TLE',
     relatedIds: ['G-136', 'G-335', 'G-331'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.3 Some Important Complexity Classes',
-        pageRange: 'pp. 185–190',
         contextSnippet: 'Quadratic algorithms become impractical quickly as the input grows.',
       },
     ],
@@ -4410,14 +4186,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(exponential time|o\(2\^?n\)|exponential growth|exponential complexity)\b/gi,
     definition:
       'Time doubling with each added input element. Feasible only for roughly n ≤ 25 and the standard signal to memoize or prune.',
-    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes, p. 188)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     notation: '2²⁵ ≈ 3.4 × 10⁷ · 2⁴⁰ ≈ 10¹²',
     relatedIds: ['G-292', 'G-275', 'G-331'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.3 Some Important Complexity Classes',
-        pageRange: 'pp. 185–191',
         contextSnippet: 'Exponential algorithms are impractical for all but the smallest inputs.',
       },
     ],
@@ -4430,13 +4205,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(factorial time|o\(n!\)|factorial growth)\b/gi,
     definition:
       'The cost of enumerating all orderings. 10! ≈ 3.6 × 10⁶ is fine; 13! exceeds 10⁹ and is not.',
-    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes, p. 188)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     relatedIds: ['G-291', 'G-328', 'G-282'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.3 Some Important Complexity Classes',
-        pageRange: 'pp. 185–191',
         contextSnippet: 'Enumerating permutations grows faster than any exponential.',
       },
     ],
@@ -4449,14 +4223,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(pseudo[- ]polynomial|pseudopolynomial)\b/gi,
     definition:
       'Polynomial in a numeric input *value* rather than its encoding length. Knapsack’s O(n·W) is pseudo-polynomial because W grows exponentially in its bit length.',
-    primaryLocation: 'Chapter 15 (§ 15.2 Dynamic Programming and the 0/1 Knapsack, p. 257)',
+    primaryLocation: 'Chapter 15 (§ 15.2 Dynamic Programming and the 0/1 Knapsack Problem)',
     notation: 'O(n · W), W the capacity value',
     relatedIds: ['G-280', 'G-331', 'G-275'],
     occurrences: [
       {
         chapter: 'Chapter 15',
-        section: '§ 15.2 Dynamic Programming and the 0/1 Knapsack',
-        pageRange: 'pp. 253–259',
+        section: '§ 15.2 Dynamic Programming and the 0/1 Knapsack Problem',
         contextSnippet: 'The knapsack DP is polynomial in the capacity, which is itself exponential in the input size.',
       },
     ],
@@ -4469,13 +4242,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(intractab(le|ility)|np[- ]complete(ness)?|np[- ]hard|tractable)\b/gi,
     definition:
       'A problem is intractable when no known algorithm solves it in polynomial time. NP-complete problems are the hardest in NP: a polynomial solution to one solves them all.',
-    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems, p. 237)',
+    primaryLocation: 'Chapter 14 (§ 14.1 Knapsack Problems)',
     relatedIds: ['G-297', 'G-292', 'G-328'],
     occurrences: [
       {
         chapter: 'Chapter 14',
         section: '§ 14.1 Knapsack Problems',
-        pageRange: 'pp. 232–240',
         contextSnippet: 'For some problems no known algorithm avoids exponential growth in the worst case.',
       },
     ],
@@ -4488,13 +4260,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(growth rates?|dominant terms?|lower[- ]order terms?|constant factors?)\b/gi,
     definition:
       'Asymptotic analysis keeps only the fastest-growing term and drops constants: 3n² + 500n + 10⁶ is Θ(n²).',
-    primaryLocation: 'Chapter 11 (§ 11.2 Asymptotic Notation, p. 184)',
+    primaryLocation: 'Chapter 11 (§ 11.2 Asymptotic Notation)',
     relatedIds: ['G-320', 'G-236'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.2 Asymptotic Notation',
-        pageRange: 'pp. 182–188',
         contextSnippet: 'Only the term that dominates as n grows matters to the asymptotic complexity.',
       },
     ],
@@ -4507,13 +4278,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(amortized complexity|amortized bounds?|averaged over operations?)\b/gi,
     definition:
       'The average cost per operation over a worst-case sequence — a guarantee about the sequence, not a probabilistic claim about one call.',
-    primaryLocation: 'Chapter 11 (§ 11.3 Amortization and Space-Time Tradeoffs, p. 188)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     relatedIds: ['G-213', 'G-232', 'G-322'],
     occurrences: [
       {
         chapter: 'Chapter 11',
-        section: '§ 11.3 Amortization and Space-Time Tradeoffs',
-        pageRange: 'pp. 188–192',
+        section: '§ 11.3 Some Important Complexity Classes',
         contextSnippet: 'The cost of an occasional expensive step can be charged across the cheap ones around it.',
       },
     ],
@@ -4526,13 +4296,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(space complexit(y|ies)|memory complexit(y|ies)|memory usage)\b/gi,
     definition:
       'How memory consumption grows with input size, counting auxiliary structures and recursion frames but conventionally not the input itself.',
-    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes, p. 189)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     relatedIds: ['G-167', 'G-152', 'G-294'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.3 Some Important Complexity Classes',
-        pageRange: 'pp. 185–191',
         contextSnippet: 'Space complexity measures the additional storage an algorithm requires.',
       },
     ],
@@ -4545,14 +4314,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(time limit exceeded|tle|operations? budgets?|10\^8 rule)\b/gi,
     definition:
       'A judge machine executes roughly 10⁸ simple operations per second, so a solution’s step count must be estimated from the constraints before coding.',
-    primaryLocation: 'Chapter 11 (§ 11.1 Thinking About Computational Complexity, p. 180)',
+    primaryLocation: 'Chapter 11 (§ 11.1 Thinking about Computational Complexity)',
     notation: 'n ≤ 10⁵ ⟹ O(n log n);  n ≤ 10³ ⟹ O(n²);  n ≤ 20 ⟹ O(2ⁿ)',
     relatedIds: ['G-327', 'G-328', 'G-146'],
     occurrences: [
       {
         chapter: 'Chapter 11',
-        section: '§ 11.1 Thinking About Computational Complexity',
-        pageRange: 'pp. 179–184',
+        section: '§ 11.1 Thinking about Computational Complexity',
         contextSnippet: 'Knowing how fast a program must run tells you which complexity classes are admissible.',
       },
     ],
@@ -4565,14 +4333,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(logarithms?|log identities|log base|logarithmic identities)\b/gi,
     definition:
       'log(ab) = log a + log b, log(aᵏ) = k log a, and log_b n = log₂ n / log₂ b — so the base changes only a constant factor and is dropped in O-notation.',
-    primaryLocation: 'Chapter 11 (§ 11.2 Asymptotic Notation, p. 185)',
+    primaryLocation: 'Chapter 11 (§ 11.2 Asymptotic Notation)',
     notation: 'log₂(10⁶) ≈ 20 · log₂(10⁹) ≈ 30',
     relatedIds: ['G-324', 'G-337', 'G-320'],
     occurrences: [
       {
         chapter: 'Chapter 11',
         section: '§ 11.2 Asymptotic Notation',
-        pageRange: 'pp. 182–188',
         contextSnippet: 'The base of the logarithm affects only a constant factor and is omitted from asymptotic notation.',
       },
     ],
@@ -4585,14 +4352,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(geometric series|doubling|halving|geometric growth)\b/gi,
     definition:
       'n + n/2 + n/4 + … < 2n. A geometric series sums to a constant multiple of its largest term, which is why doubling strategies are linear overall.',
-    primaryLocation: 'Chapter 11 (§ 11.3 Amortization and Space-Time Tradeoffs, p. 189)',
+    primaryLocation: 'Chapter 11 (§ 11.3 Some Important Complexity Classes)',
     notation: 'Σ_{i≥0} n/2ⁱ = 2n',
     relatedIds: ['G-213', 'G-324', 'G-287'],
     occurrences: [
       {
         chapter: 'Chapter 11',
-        section: '§ 11.3 Amortization and Space-Time Tradeoffs',
-        pageRange: 'pp. 188–192',
+        section: '§ 11.3 Some Important Complexity Classes',
         contextSnippet: 'A geometrically decreasing series sums to a constant multiple of its first term.',
       },
     ],
@@ -4605,14 +4371,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(quadratic convergence|convergence rates?|converges? quadratically)\b/gi,
     definition:
       'The error squares each iteration, doubling correct digits per step — the property that makes Newton-Raphson far faster than bisection.',
-    primaryLocation: 'Chapter 3 (§ 3.4 Newton-Raphson, p. 39)',
+    primaryLocation: 'Chapter 3 (§ 3.4 Newton-Raphson)',
     notation: 'εₙ₊₁ ≈ C·εₙ²',
     relatedIds: ['G-253', 'G-252', 'G-141'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.4 Newton-Raphson',
-        pageRange: 'pp. 38–42',
         contextSnippet: 'Newton-Raphson typically needs only a handful of iterations to reach machine precision.',
       },
     ],
@@ -4625,14 +4390,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(intermediate value theorem|ivt|sign changes?)\b/gi,
     definition:
       'A continuous function taking values of opposite sign at the endpoints of an interval has a root inside it — the guarantee that licenses bisection.',
-    primaryLocation: 'Chapter 3 (§ 3.2 Approximate Solutions and Bisection Search, p. 33)',
+    primaryLocation: 'Chapter 3 (§ 3.2 Approximate Solutions and Bisection Search)',
     notation: 'f(a)·f(b) < 0 ⟹ ∃ c ∈ (a,b) with f(c) = 0',
     relatedIds: ['G-252', 'G-268'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.2 Approximate Solutions and Bisection Search',
-        pageRange: 'pp. 31–36',
         contextSnippet: 'Bisection works because a continuous function must cross zero between opposite-signed endpoints.',
       },
     ],
@@ -4645,14 +4409,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(epsilons?|tolerances?|error bounds?)\b/gi,
     definition:
       'The accepted margin of error. Choosing ε too small can prevent termination under floating-point rounding; too large returns a wrong answer.',
-    primaryLocation: 'Chapter 3 (§ 3.2 Approximate Solutions and Bisection Search, p. 31)',
+    primaryLocation: 'Chapter 3 (§ 3.2 Approximate Solutions and Bisection Search)',
     notation: 'accept when |guess² − k| < ε',
     relatedIds: ['G-125', 'G-108', 'G-141'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.2 Approximate Solutions and Bisection Search',
-        pageRange: 'pp. 31–36',
         contextSnippet: 'An answer is accepted when it lies within epsilon of the true value.',
       },
     ],
@@ -4665,14 +4428,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(floor functions?|ceiling functions?|rounding down|rounding up)\b/gi,
     definition:
       '⌊x⌋ is the greatest integer ≤ x, ⌈x⌉ the least integer ≥ x. Ceiling division without floats is -(-a // b).',
-    primaryLocation: 'Chapter 2 (§ 2.1.1 Operators and Expressions, p. 15)',
+    primaryLocation: 'Chapter 2 (§ 2.2.1 Objects, Expressions, and Numerical Types)',
     notation: '⌈a/b⌉ == -(-a // b)',
     relatedIds: ['G-112', 'G-128'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1.1 Operators and Expressions',
-        pageRange: 'pp. 14–17',
+        section: '§ 2.2.1 Objects, Expressions, and Numerical Types',
         contextSnippet: 'Integer division rounds toward negative infinity rather than toward zero.',
       },
     ],
@@ -4685,14 +4447,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(gcds?|greatest common divisors?|euclidean algorithms?|lcm|least common multiples?)\b/gi,
     definition:
       'gcd(a, b) = gcd(b, a mod b) with gcd(a, 0) = a, converging in O(log min(a,b)) steps. lcm(a,b) = a·b / gcd(a,b).',
-    primaryLocation: 'Chapter 6 (§ 6.1 Recursion, p. 87)',
+    primaryLocation: 'Chapter 6 (§ 6.1 Fibonacci Numbers)',
     notation: 'gcd(a, b) = gcd(b, a mod b)',
     relatedIds: ['G-273', 'G-344', 'G-112'],
     occurrences: [
       {
         chapter: 'Chapter 6',
-        section: '§ 6.1 Recursion',
-        pageRange: 'pp. 85–91',
+        section: '§ 6.1 Fibonacci Numbers',
         contextSnippet: 'The Euclidean algorithm is a classic recursive definition with a clean base case.',
       },
     ],
@@ -4705,14 +4466,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(primes?|prime numbers?|sieve of eratosthenes|sieves?|primality)\b/gi,
     definition:
       'Marking multiples of each prime up to √n leaves the primes below n, in O(n log log n) time — far better than testing each number separately.',
-    primaryLocation: 'Chapter 3 (§ 3.1 Exhaustive Enumeration, p. 30)',
+    primaryLocation: 'Chapter 3 (§ 3.1 Exhaustive Enumeration)',
     notation: 'sieve O(n log log n) · trial division O(√n) per number',
     relatedIds: ['G-140', 'G-293'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.1 Exhaustive Enumeration',
-        pageRange: 'pp. 28–32',
         contextSnippet: 'Testing divisibility only up to the square root suffices to decide primality.',
       },
     ],
@@ -4725,14 +4485,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(modular arithmetic|mod(ular)? exponentiation|congruences?|wrap[- ]around)\b/gi,
     definition:
       'Arithmetic over remainders. Addition and multiplication distribute over mod, so intermediate values can be reduced at every step to bound magnitude.',
-    primaryLocation: 'Chapter 2 (§ 2.1.1 Operators and Expressions, p. 15)',
+    primaryLocation: 'Chapter 2 (§ 2.2.1 Objects, Expressions, and Numerical Types)',
     notation: '(a·b) mod m == ((a mod m)·(b mod m)) mod m',
     relatedIds: ['G-112', 'G-249', 'G-237'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1.1 Operators and Expressions',
-        pageRange: 'pp. 14–17',
+        section: '§ 2.2.1 Objects, Expressions, and Numerical Types',
         contextSnippet: 'The modulo operator gives the remainder and underlies cyclic index arithmetic.',
       },
     ],
@@ -4747,14 +4506,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(binary representations?|base conversions?|binary numbers?|radix|base[- ]2)\b/gi,
     definition:
       'Every integer is a sum of powers of two. Repeated division by 2, collecting remainders, converts decimal to binary; the reverse is positional weighting.',
-    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats, p. 36)',
+    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats)',
     notation: 'n = Σ bᵢ · 2ⁱ',
     relatedIds: ['G-346', 'G-359', 'G-112'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.3 A Few Words About Using Floats',
-        pageRange: 'pp. 36–39',
         contextSnippet: 'Computers represent numbers in binary, which is why some decimal fractions cannot be exact.',
       },
     ],
@@ -4767,14 +4525,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(bitwise( operators?| and| or| xor| not)?|bit operations?)\b/gi,
     definition:
       'AND (&), OR (|), XOR (^), NOT (~), and the shifts, applied position by position in a single machine instruction.',
-    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats, p. 37)',
+    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats)',
     notation: '& masks · | sets · ^ toggles · ~ inverts',
     relatedIds: ['G-347', 'G-349', 'G-353'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.3 A Few Words About Using Floats',
-        pageRange: 'pp. 36–39',
         contextSnippet: 'Bitwise operators act on the binary representation of integers directly.',
       },
     ],
@@ -4787,14 +4544,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(bitmasks?|masks?|masking)\b/gi,
     definition:
       'An integer used as a compact set of Boolean flags: bit i marks whether element i is present, so a whole subset fits in one machine word.',
-    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats, p. 37)',
+    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats)',
     notation: '1 << i selects bit i',
     relatedIds: ['G-355', 'G-357', 'G-290'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.3 A Few Words About Using Floats',
-        pageRange: 'pp. 36–39',
         contextSnippet: 'A single integer can encode a set of on/off choices, one per bit.',
       },
     ],
@@ -4807,14 +4563,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(left shifts?|right shifts?|bit shifts?|shift operators?|arithmetic shifts?)\b/gi,
     definition:
       'n << k multiplies by 2ᵏ; n >> k floor-divides by 2ᵏ. Python’s right shift is arithmetic, preserving sign.',
-    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats, p. 37)',
+    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats)',
     notation: 'n << k == n · 2ᵏ  ·  n >> k == n // 2ᵏ',
     relatedIds: ['G-346', 'G-347', 'G-352'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.3 A Few Words About Using Floats',
-        pageRange: 'pp. 36–39',
         contextSnippet: 'Shifting the binary representation multiplies or divides by powers of two.',
       },
     ],
@@ -4827,14 +4582,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(brian kernighan’s algorithm|brian kernighan's algorithm|kernighan’s algorithm|kernighan's algorithm|brian kernighan)\b/gi,
     definition:
       'n & (n − 1) clears the lowest set bit, so looping until n is zero counts set bits in exactly as many steps as there are 1-bits.',
-    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats, p. 37)',
+    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats)',
     notation: 'while n: n &= n - 1; count += 1',
     relatedIds: ['G-351', 'G-354', 'G-356'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.3 A Few Words About Using Floats',
-        pageRange: 'pp. 36–39',
         contextSnippet: 'Subtracting one flips every bit below the lowest set bit, so the AND clears exactly that bit.',
       },
     ],
@@ -4847,14 +4601,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(hamming weights?|hamming distances?|popcounts?|set bits?|bit counts?)\b/gi,
     definition:
       'Hamming weight is the number of 1-bits in a value; Hamming distance between a and b is the weight of a ^ b.',
-    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats, p. 38)',
+    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats)',
     notation: 'distance(a, b) = popcount(a ^ b)',
     relatedIds: ['G-350', 'G-353', 'G-438'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.3 A Few Words About Using Floats',
-        pageRange: 'pp. 36–39',
         contextSnippet: 'Counting the one bits of a value is a common low-level primitive.',
       },
     ],
@@ -4867,14 +4620,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(two’s complement|two's complement|sign bits?|signed integers?|unsigned integers?)\b/gi,
     definition:
       'Fixed-width negatives are stored as ~n + 1, letting one adder handle both signs. Python’s unbounded ints simulate this with an explicit 0xFFFFFFFF mask.',
-    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats, p. 38)',
+    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats)',
     notation: '−n == ~n + 1',
     relatedIds: ['G-124', 'G-349', 'G-356'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.3 A Few Words About Using Floats',
-        pageRange: 'pp. 36–39',
         contextSnippet: 'Signed integers are encoded so that the same circuitry performs addition and subtraction.',
       },
     ],
@@ -4887,14 +4639,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(xor|exclusive or|parity bits?)\b/gi,
     definition:
       'XOR is its own inverse (a ^ a = 0), has identity 0, and is commutative and associative — so pairing elements cancel and only the unpaired one survives.',
-    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats, p. 38)',
+    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats)',
     notation: 'a ^ a = 0 · a ^ 0 = a',
     relatedIds: ['G-346', 'G-351'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.3 A Few Words About Using Floats',
-        pageRange: 'pp. 36–39',
         contextSnippet: 'XOR yields 1 exactly when the two bits differ, making it self-inverse.',
       },
     ],
@@ -4907,14 +4658,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(powers? of two|power[- ]of[- ]two tests?)\b/gi,
     definition:
       'A positive n is a power of two exactly when it has one set bit, testable as n & (n − 1) == 0.',
-    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats, p. 38)',
+    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats)',
     notation: 'n > 0 and n & (n − 1) == 0',
     relatedIds: ['G-350', 'G-356', 'G-349'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.3 A Few Words About Using Floats',
-        pageRange: 'pp. 36–39',
         contextSnippet: 'Powers of two have exactly one bit set in their binary representation.',
       },
     ],
@@ -4927,14 +4677,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(bit tests?|setting bits?|clearing bits?|toggling bits?|flipping bits?)\b/gi,
     definition:
       'Test (n >> i) & 1, set n | (1 << i), clear n & ~(1 << i), toggle n ^ (1 << i) — the four primitive bit operations.',
-    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats, p. 37)',
+    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats)',
     notation: 'test · set · clear · toggle — all O(1)',
     relatedIds: ['G-347', 'G-346', 'G-357'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.3 A Few Words About Using Floats',
-        pageRange: 'pp. 36–39',
         contextSnippet: 'Individual bits are addressed by shifting a mask into position.',
       },
     ],
@@ -4947,14 +4696,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(lowest set bits?|least significant bits?|lsb|rightmost set bits?)\b/gi,
     definition:
       'n & -n isolates the lowest set bit, exploiting the two’s-complement identity −n == ~n + 1. The indexing trick behind Fenwick trees.',
-    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats, p. 38)',
+    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats)',
     notation: 'lowbit(n) = n & -n',
     relatedIds: ['G-350', 'G-352', 'G-354'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.3 A Few Words About Using Floats',
-        pageRange: 'pp. 36–39',
         contextSnippet: 'Two’s complement makes isolating the lowest set bit a single AND.',
       },
     ],
@@ -4967,14 +4715,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(bitmask dp|subset enumerations?|submask enumerations?|state compression dp)\b/gi,
     definition:
       'Encoding a subset as an integer so DP can be indexed by mask. Iterating masks 0…2ⁿ−1 enumerates every subset; sub = (sub − 1) & mask walks submasks.',
-    primaryLocation: 'Chapter 15 (§ 15.2 Dynamic Programming and the 0/1 Knapsack, p. 256)',
+    primaryLocation: 'Chapter 15 (§ 15.2 Dynamic Programming and the 0/1 Knapsack Problem)',
     notation: 'dp[mask] over 2ⁿ states',
     relatedIds: ['G-347', 'G-284', 'G-290'],
     occurrences: [
       {
         chapter: 'Chapter 15',
-        section: '§ 15.2 Dynamic Programming and the 0/1 Knapsack',
-        pageRange: 'pp. 253–259',
+        section: '§ 15.2 Dynamic Programming and the 0/1 Knapsack Problem',
         contextSnippet: 'Compact state encodings let dynamic programming index subsets directly.',
       },
     ],
@@ -4987,14 +4734,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(word sizes?|32[- ]bit|64[- ]bit|fixed[- ]width integers?|machine words?)\b/gi,
     definition:
       'Hardware registers hold a fixed number of bits (32 or 64), bounding the integers other languages can represent and defining where overflow occurs.',
-    primaryLocation: 'Chapter 2 (§ 2.1 The Basic Elements of Python, p. 12)',
+    primaryLocation: 'Chapter 2 (§ 2.2 The Basic Elements of Python)',
     notation: 'int32 ∈ [−2³¹, 2³¹ − 1]',
     relatedIds: ['G-124', 'G-352', 'G-107'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1 The Basic Elements',
-        pageRange: 'pp. 12–15',
+        section: '§ 2.2 The Basic Elements of Python',
         contextSnippet: 'Most languages bound integers by the machine’s word size; Python does not.',
       },
     ],
@@ -5007,14 +4753,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(hexadecimals?|hex literals?|octals?|0x prefix)\b/gi,
     definition:
       'Base 16 (0x) and base 8 (0o) notations. One hex digit is exactly four bits, making hex the compact way to write masks.',
-    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats, p. 37)',
+    primaryLocation: 'Chapter 3 (§ 3.3 A Few Words About Using Floats)',
     notation: '0xFF == 255 == 0b11111111',
     relatedIds: ['G-345', 'G-347', 'G-117'],
     occurrences: [
       {
         chapter: 'Chapter 3',
         section: '§ 3.3 A Few Words About Using Floats',
-        pageRange: 'pp. 36–39',
         contextSnippet: 'Hexadecimal groups binary digits in fours, shortening long bit patterns.',
       },
     ],
@@ -5028,13 +4773,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(testing|tests?|unit tests?|integration tests?|test cases?)\b/gi,
     definition:
       'Running a program on sample inputs to see whether it behaves as specified. Testing shows the presence of bugs, never their absence.',
-    primaryLocation: 'Chapter 8 (§ 8.1 Testing, p. 118)',
+    primaryLocation: 'Chapter 8 (§ 8.1 Testing)',
     relatedIds: ['G-361', 'G-362', 'G-363'],
     occurrences: [
       {
         chapter: 'Chapter 8',
         section: '§ 8.1 Testing',
-        pageRange: 'pp. 117–124',
         contextSnippet: 'The goal of testing is to establish that bugs exist, not to prove that none do.',
       },
     ],
@@ -5047,13 +4791,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(black[- ]box testing|glass[- ]box testing|white[- ]box testing|specification[- ]based testing)\b/gi,
     definition:
       'Black-box tests are derived from the specification alone; glass-box tests are derived from the code, aiming to exercise every path.',
-    primaryLocation: 'Chapter 8 (§ 8.1.1 Black-Box Testing, p. 119)',
+    primaryLocation: 'Chapter 8 (§ 8.1.1 Black-Box Testing)',
     relatedIds: ['G-171', 'G-362', 'G-369'],
     occurrences: [
       {
         chapter: 'Chapter 8',
         section: '§ 8.1.1 Black-Box Testing',
-        pageRange: 'pp. 118–124',
         contextSnippet: 'Black-box tests are built from the specification, so they survive a change of implementation.',
       },
     ],
@@ -5066,13 +4809,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(path completeness|test suites?|branch coverage|path coverage)\b/gi,
     definition:
       'A glass-box suite is path-complete when every potential path through the code is exercised. Loops make full path completeness unattainable in general.',
-    primaryLocation: 'Chapter 8 (§ 8.1.2 Glass-Box Testing, p. 121)',
+    primaryLocation: 'Chapter 8 (§ 8.1.2 Glass-Box Testing)',
     relatedIds: ['G-361', 'G-369', 'G-363'],
     occurrences: [
       {
         chapter: 'Chapter 8',
         section: '§ 8.1.2 Glass-Box Testing',
-        pageRange: 'pp. 118–125',
         contextSnippet: 'Even a path-complete suite can miss a bug when the code omits a needed path entirely.',
       },
     ],
@@ -5085,13 +4827,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(edge cases?|boundary (cases?|conditions?|values?)|corner cases?|degenerate cases?)\b/gi,
     definition:
       'Inputs at the limits of the valid domain: empty, single-element, maximum size, duplicates, negatives, equal keys. Bugs cluster here.',
-    primaryLocation: 'Chapter 8 (§ 8.1.1 Black-Box Testing, p. 120)',
+    primaryLocation: 'Chapter 8 (§ 8.1.1 Black-Box Testing)',
     relatedIds: ['G-371', 'G-360', 'G-361'],
     occurrences: [
       {
         chapter: 'Chapter 8',
         section: '§ 8.1.1 Black-Box Testing',
-        pageRange: 'pp. 118–125',
         contextSnippet: 'Boundary conditions deserve explicit tests because that is where errors concentrate.',
       },
     ],
@@ -5104,13 +4845,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(debugging|debuggers?|bisection debugging|binary search debugging)\b/gi,
     definition:
       'Locating the defect once a test fails. Bisection debugging halves the suspect region each check, finding the fault in O(log n) probes.',
-    primaryLocation: 'Chapter 8 (§ 8.2 Debugging, p. 125)',
+    primaryLocation: 'Chapter 8 (§ 8.2 Debugging)',
     relatedIds: ['G-374', 'G-375', 'G-251'],
     occurrences: [
       {
         chapter: 'Chapter 8',
         section: '§ 8.2 Debugging',
-        pageRange: 'pp. 124–132',
         contextSnippet: 'Checking the middle of the suspect region halves the search space with each probe.',
       },
     ],
@@ -5123,13 +4863,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(defensive programming|input validations?|sanity checks?)\b/gi,
     definition:
       'Writing code that checks its own assumptions and fails loudly at the point of violation rather than producing corrupted results downstream.',
-    primaryLocation: 'Chapter 9 (§ 9.2 Assertions, p. 140)',
+    primaryLocation: 'Chapter 9 (§ 9.3 Assertions)',
     relatedIds: ['G-366', 'G-172', 'G-382'],
     occurrences: [
       {
         chapter: 'Chapter 9',
-        section: '§ 9.2 Assertions',
-        pageRange: 'pp. 138–142',
+        section: '§ 9.3 Assertions',
         contextSnippet: 'Failing early and visibly is preferable to producing a silently wrong result.',
       },
     ],
@@ -5142,14 +4881,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(assertions?|assert statements?)\b/gi,
     definition:
       'A runtime check that a condition holds, raising AssertionError otherwise. Used to enforce preconditions and representation invariants at their point of violation.',
-    primaryLocation: 'Chapter 9 (§ 9.2 Assertions, p. 140)',
+    primaryLocation: 'Chapter 9 (§ 9.3 Assertions)',
     notation: 'assert invariant, "message"',
     relatedIds: ['G-172', 'G-211', 'G-365'],
     occurrences: [
       {
         chapter: 'Chapter 9',
-        section: '§ 9.2 Assertions',
-        pageRange: 'pp. 138–142',
+        section: '§ 9.3 Assertions',
         contextSnippet: 'Assertions catch violated assumptions at the moment they occur rather than later.',
       },
     ],
@@ -5162,13 +4900,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(regression tests?|regression testing|regressions?)\b/gi,
     definition:
       'Re-running the whole suite after every change so a fix in one place cannot silently break another.',
-    primaryLocation: 'Chapter 8 (§ 8.2.1 Learning to Debug, p. 128)',
+    primaryLocation: 'Chapter 8 (§ 8.2.1 Learning to Debug)',
     relatedIds: ['G-360', 'G-362'],
     occurrences: [
       {
         chapter: 'Chapter 8',
         section: '§ 8.2 Debugging',
-        pageRange: 'pp. 124–132',
         contextSnippet: 'After fixing a bug, run all the tests again — repairs often introduce new failures.',
       },
     ],
@@ -5181,13 +4918,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(stubs?|drivers?|test harness(es)?|mocks?)\b/gi,
     definition:
       'A driver sets up inputs and invokes the unit under test; a stub stands in for a dependency that is unavailable or not yet written.',
-    primaryLocation: 'Chapter 8 (§ 8.1 Testing, p. 122)',
+    primaryLocation: 'Chapter 8 (§ 8.1 Testing)',
     relatedIds: ['G-360', 'G-178'],
     occurrences: [
       {
         chapter: 'Chapter 8',
         section: '§ 8.1 Testing',
-        pageRange: 'pp. 117–124',
         contextSnippet: 'Drivers and stubs let a unit be tested before the rest of the system exists.',
       },
     ],
@@ -5200,13 +4936,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(test coverage|code coverage|coverage metrics?)\b/gi,
     definition:
       'The fraction of statements, branches, or paths a suite exercises. High coverage is necessary but not sufficient for confidence.',
-    primaryLocation: 'Chapter 8 (§ 8.1.2 Glass-Box Testing, p. 122)',
+    primaryLocation: 'Chapter 8 (§ 8.1.2 Glass-Box Testing)',
     relatedIds: ['G-362', 'G-361'],
     occurrences: [
       {
         chapter: 'Chapter 8',
         section: '§ 8.1.2 Glass-Box Testing',
-        pageRange: 'pp. 118–125',
         contextSnippet: 'Coverage tells you what was executed, not whether what executed was correct.',
       },
     ],
@@ -5219,13 +4954,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(reproducib(le|ility)|determinis(m|tic)|non[- ]deterministic)\b/gi,
     definition:
       'A defect can only be fixed reliably if it can be triggered on demand. Seeding the random generator makes stochastic programs reproducible.',
-    primaryLocation: 'Chapter 8 (§ 8.2 Debugging, p. 127)',
+    primaryLocation: 'Chapter 8 (§ 8.2 Debugging)',
     relatedIds: ['G-372', 'G-407', 'G-180'],
     occurrences: [
       {
         chapter: 'Chapter 8',
         section: '§ 8.2 Debugging',
-        pageRange: 'pp. 124–132',
         contextSnippet: 'Intermittent bugs are hard to fix precisely because they resist reproduction.',
       },
     ],
@@ -5238,14 +4972,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(off[- ]by[- ]one( errors?)?|fencepost errors?)\b/gi,
     definition:
       'Miscounting a boundary by one: inclusive versus exclusive ranges, < versus <=, or n versus n−1 as the last index.',
-    primaryLocation: 'Chapter 8 (§ 8.2 Debugging, p. 129)',
+    primaryLocation: 'Chapter 8 (§ 8.2 Debugging)',
     notation: 'range(n) covers 0…n−1, never n',
     relatedIds: ['G-134', 'G-363', 'G-233'],
     occurrences: [
       {
         chapter: 'Chapter 8',
         section: '§ 8.2 Debugging',
-        pageRange: 'pp. 124–132',
         contextSnippet: 'Index errors at the boundaries of a range are among the most common defects.',
       },
     ],
@@ -5258,13 +4991,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(overt bugs?|covert bugs?|persistent bugs?|intermittent bugs?|silent failures?)\b/gi,
     definition:
       'Guttag’s bug taxonomy: overt bugs announce themselves, covert ones return wrong answers silently; persistent bugs recur every run, intermittent ones do not. Covert + intermittent is the worst quadrant.',
-    primaryLocation: 'Chapter 8 (§ 8.2 Debugging, p. 126)',
+    primaryLocation: 'Chapter 8 (§ 8.2 Debugging)',
     relatedIds: ['G-370', 'G-373', 'G-364'],
     occurrences: [
       {
         chapter: 'Chapter 8',
         section: '§ 8.2 Debugging',
-        pageRange: 'pp. 124–132',
         contextSnippet: 'A covert, intermittent bug is the hardest kind to find and the most dangerous to ship.',
       },
     ],
@@ -5277,13 +5009,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(semantic (bugs?|errors?)|logic errors?|runtime errors?)\b/gi,
     definition:
       'A syntax error stops the program from running; a semantic bug lets it run and produce a wrong answer. Only the second requires reasoning about meaning.',
-    primaryLocation: 'Chapter 1 (§ 1 Getting Started, p. 6) and Chapter 8 (§ 8.2)',
+    primaryLocation: 'Chapter 1 (§ 1 Getting Started) and Chapter 8 (§ 8.2)',
     relatedIds: ['G-145', 'G-372', 'G-364'],
     occurrences: [
       {
         chapter: 'Chapter 8',
         section: '§ 8.2 Debugging',
-        pageRange: 'pp. 124–132',
         contextSnippet: 'Programs that run without complaint but produce wrong answers are the real problem.',
       },
     ],
@@ -5296,13 +5027,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(scientific method|hypothes(is|es) testing|systematic debugging)\b/gi,
     definition:
       'Study the data, form a hypothesis that explains all of it, design an experiment that could refute it, then run the experiment.',
-    primaryLocation: 'Chapter 8 (§ 8.2.1 Learning to Debug, p. 127)',
+    primaryLocation: 'Chapter 8 (§ 8.2.1 Learning to Debug)',
     relatedIds: ['G-364', 'G-375', 'G-419'],
     occurrences: [
       {
         chapter: 'Chapter 8',
         section: '§ 8.2.1 Learning to Debug',
-        pageRange: 'pp. 124–132',
         contextSnippet: 'Debugging is a search, and it should be conducted systematically rather than by guesswork.',
       },
     ],
@@ -5315,13 +5045,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(instrumentations?|print debugging|trace statements?|logging)\b/gi,
     definition:
       'Inserting output at chosen points to observe intermediate state, narrowing where the actual and expected computations diverge.',
-    primaryLocation: 'Chapter 8 (§ 8.2 Debugging, p. 129)',
+    primaryLocation: 'Chapter 8 (§ 8.2 Debugging)',
     relatedIds: ['G-364', 'G-374', 'G-196'],
     occurrences: [
       {
         chapter: 'Chapter 8',
         section: '§ 8.2 Debugging',
-        pageRange: 'pp. 124–132',
         contextSnippet: 'Well-placed print statements reveal where the computation departs from expectation.',
       },
     ],
@@ -5336,13 +5065,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(exceptions?|errors? raised|exception objects?)\b/gi,
     definition:
       'An object signaling that something unexpected occurred, propagating up the call stack until a handler catches it or the program halts.',
-    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions, p. 133)',
+    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions)',
     relatedIds: ['G-381', 'G-382', 'G-383'],
     occurrences: [
       {
         chapter: 'Chapter 9',
         section: '§ 9.1 Handling Exceptions',
-        pageRange: 'pp. 133–140',
         contextSnippet: 'An unhandled exception terminates the program and prints a traceback.',
       },
     ],
@@ -5355,13 +5083,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(try[- ]except|except clauses?|finally clauses?|exception handlers?|handling exceptions?)\b/gi,
     definition:
       'try guards a block; except handles a matching exception; else runs when none was raised; finally always runs, for cleanup.',
-    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions, p. 134)',
+    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions)',
     relatedIds: ['G-380', 'G-384', 'G-398'],
     occurrences: [
       {
         chapter: 'Chapter 9',
         section: '§ 9.1 Handling Exceptions',
-        pageRange: 'pp. 133–140',
         contextSnippet: 'The except clause names which exceptions it is prepared to handle.',
       },
     ],
@@ -5374,13 +5101,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(raising exceptions?|raise statements?|throwing errors?)\b/gi,
     definition:
       'Signals an error condition explicitly. Guttag’s rule: raise when a precondition is violated rather than returning a special value the caller may ignore.',
-    primaryLocation: 'Chapter 9 (§ 9.1.1 Raising Exceptions, p. 136)',
+    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions)',
     relatedIds: ['G-172', 'G-365', 'G-390'],
     occurrences: [
       {
         chapter: 'Chapter 9',
         section: '§ 9.1 Handling Exceptions',
-        pageRange: 'pp. 133–140',
         contextSnippet: 'Raising an exception is preferable to returning a value the caller might not check.',
       },
     ],
@@ -5393,13 +5119,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(exception hierarch(y|ies)|built[- ]in exceptions?|base exceptions?)\b/gi,
     definition:
       'Exceptions form an inheritance tree rooted at BaseException. Catching a superclass catches every subclass, so ordering except clauses matters.',
-    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions, p. 137)',
+    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions)',
     relatedIds: ['G-199', 'G-381', 'G-390'],
     occurrences: [
       {
         chapter: 'Chapter 9',
         section: '§ 9.1 Handling Exceptions',
-        pageRange: 'pp. 133–141',
         contextSnippet: 'Python’s built-in exceptions are organized into a class hierarchy.',
       },
     ],
@@ -5412,13 +5137,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(eafp|lbyl|ask forgiveness|look before you leap)\b/gi,
     definition:
       'EAFP ("easier to ask forgiveness") attempts the operation and handles failure; LBYL ("look before you leap") tests first. EAFP avoids a check-then-act race and is idiomatic Python.',
-    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions, p. 135)',
+    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions)',
     relatedIds: ['G-381', 'G-385', 'G-234'],
     occurrences: [
       {
         chapter: 'Chapter 9',
         section: '§ 9.1 Handling Exceptions',
-        pageRange: 'pp. 133–140',
         contextSnippet: 'Exceptions can be used as ordinary control flow rather than only for catastrophic errors.',
       },
     ],
@@ -5431,13 +5155,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(indexerror|keyerror|index out of (range|bounds))\b/gi,
     definition:
       'IndexError signals a sequence index outside its range; KeyError signals a missing dictionary key.',
-    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions, p. 134)',
+    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions)',
     relatedIds: ['G-371', 'G-233', 'G-234'],
     occurrences: [
       {
         chapter: 'Chapter 9',
         section: '§ 9.1 Handling Exceptions',
-        pageRange: 'pp. 133–140',
         contextSnippet: 'Indexing beyond the end of a list raises IndexError rather than returning a default.',
       },
     ],
@@ -5450,13 +5173,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(typeerror|valueerror)\b/gi,
     definition:
       'TypeError means the operation is undefined for that type; ValueError means the type was right but the value was unacceptable — int("abc").',
-    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions, p. 135)',
+    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions)',
     relatedIds: ['G-114', 'G-111', 'G-209'],
     occurrences: [
       {
         chapter: 'Chapter 9',
         section: '§ 9.1 Handling Exceptions',
-        pageRange: 'pp. 133–140',
         contextSnippet: 'Strong typing surfaces mismatched operations as TypeError at the point of use.',
       },
     ],
@@ -5469,13 +5191,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(zerodivisionerror|division by zero|divide by zero)\b/gi,
     definition:
       'Raised when dividing by zero. In numerical code it usually signals an unhandled degenerate case rather than a typo.',
-    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions, p. 134)',
+    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions)',
     relatedIds: ['G-363', 'G-253'],
     occurrences: [
       {
         chapter: 'Chapter 9',
         section: '§ 9.1 Handling Exceptions',
-        pageRange: 'pp. 133–140',
         contextSnippet: 'Division by zero is detected at runtime and raises an exception.',
       },
     ],
@@ -5488,13 +5209,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(recursionerror|maximum recursion depth exceeded)\b/gi,
     definition:
       'Raised when the interpreter’s stack depth limit is exceeded, usually from a missing base case or a genuinely deep structure.',
-    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions, p. 136) and Chapter 6 (§ 6.1)',
+    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions) and Chapter 6 (§ 6.1)',
     relatedIds: ['G-165', 'G-273', 'G-152'],
     occurrences: [
       {
         chapter: 'Chapter 6',
-        section: '§ 6.1 Recursion',
-        pageRange: 'pp. 85–92',
+        section: '§ 6.1 Fibonacci Numbers',
         contextSnippet: 'A recursion without a reachable base case exhausts the stack and terminates the program.',
       },
     ],
@@ -5507,13 +5227,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(unboundlocalerror|referenced before assignment)\b/gi,
     definition:
       'Raised when a name is read before assignment in a scope where it is also assigned — assignment anywhere in a function makes the name local throughout it.',
-    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping, p. 49)',
+    primaryLocation: 'Chapter 4 (§ 4.1 Functions and Scoping)',
     relatedIds: ['G-153', 'G-154', 'G-155'],
     occurrences: [
       {
         chapter: 'Chapter 4',
         section: '§ 4.1 Functions and Scoping',
-        pageRange: 'pp. 46–52',
         contextSnippet: 'Assigning to a name anywhere in a function makes it local for the whole function body.',
       },
     ],
@@ -5526,13 +5245,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(custom exceptions?|user[- ]defined exceptions?|exception subclass(es)?)\b/gi,
     definition:
       'Subclassing Exception to name a domain-specific failure, so callers can catch precisely that condition rather than a generic type.',
-    primaryLocation: 'Chapter 9 (§ 9.1.1 Raising Exceptions, p. 138)',
+    primaryLocation: 'Chapter 9 (§ 9.1 Handling Exceptions)',
     relatedIds: ['G-383', 'G-199', 'G-382'],
     occurrences: [
       {
         chapter: 'Chapter 9',
         section: '§ 9.1 Handling Exceptions',
-        pageRange: 'pp. 133–141',
         contextSnippet: 'Defining a new exception type lets clients handle a specific failure mode.',
       },
     ],
@@ -5547,13 +5265,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(modules?|import statements?|packages?)\b/gi,
     definition:
       'A .py file of related definitions. import binds the module object in the current namespace; from M import x binds the name directly.',
-    primaryLocation: 'Chapter 7 (§ 7.1 Modules, p. 103)',
+    primaryLocation: 'Chapter 7 (§ 7.1 Modules)',
     relatedIds: ['G-396', 'G-159', 'G-397'],
     occurrences: [
       {
         chapter: 'Chapter 7',
         section: '§ 7.1 Modules',
-        pageRange: 'pp. 103–108',
         contextSnippet: 'Modules let a large program be split into files that can be developed separately.',
       },
     ],
@@ -5566,13 +5283,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(namespace collisions?|qualified names?|name collisions?|shadowing)\b/gi,
     definition:
       'Importing names directly can overwrite existing bindings. Qualified access (module.name) keeps origins explicit and collisions impossible.',
-    primaryLocation: 'Chapter 7 (§ 7.1 Modules, p. 105)',
+    primaryLocation: 'Chapter 7 (§ 7.1 Modules)',
     relatedIds: ['G-395', 'G-159', 'G-129'],
     occurrences: [
       {
         chapter: 'Chapter 7',
         section: '§ 7.1 Modules',
-        pageRange: 'pp. 103–108',
         contextSnippet: 'from M import * risks silently replacing names already bound in the importing scope.',
       },
     ],
@@ -5585,13 +5301,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(standard librar(y|ies)|built[- ]in modules?|collections module|itertools|functools)\b/gi,
     definition:
       'Modules shipped with Python: collections (deque, Counter, defaultdict), heapq, bisect, itertools, functools, math, random.',
-    primaryLocation: 'Chapter 7 (§ 7.1 Modules, p. 106)',
+    primaryLocation: 'Chapter 7 (§ 7.1 Modules)',
     relatedIds: ['G-395', 'G-224', 'G-234'],
     occurrences: [
       {
         chapter: 'Chapter 7',
         section: '§ 7.1 Modules',
-        pageRange: 'pp. 103–109',
         contextSnippet: 'Python ships with an extensive library of modules for common tasks.',
       },
     ],
@@ -5604,14 +5319,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(file handles?|with statements?|context managers?|file objects?)\b/gi,
     definition:
       'open() returns a handle; the with statement guarantees it is closed on exit, including when an exception propagates.',
-    primaryLocation: 'Chapter 7 (§ 7.2 Files, p. 108)',
+    primaryLocation: 'Chapter 7 (§ 7.3 Files)',
     notation: 'with open(path) as f: …',
     relatedIds: ['G-381', 'G-395', 'G-247'],
     occurrences: [
       {
         chapter: 'Chapter 7',
-        section: '§ 7.2 Files',
-        pageRange: 'pp. 106–113',
+        section: '§ 7.3 Files',
         contextSnippet: 'The with statement ensures resources are released even when an error occurs.',
       },
     ],
@@ -5624,13 +5338,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(serializations?|serializ(e|ing)|deserializ(e|ation|ing)|encodings?)\b/gi,
     definition:
       'Converting an in-memory structure to a linear byte or character sequence and back, preserving enough structure to reconstruct it exactly.',
-    primaryLocation: 'Chapter 7 (§ 7.2 Files, p. 111)',
+    primaryLocation: 'Chapter 7 (§ 7.3 Files)',
     relatedIds: ['G-398', 'G-246', 'G-227'],
     occurrences: [
       {
         chapter: 'Chapter 7',
-        section: '§ 7.2 Files',
-        pageRange: 'pp. 106–113',
+        section: '§ 7.3 Files',
         contextSnippet: 'Writing structured data to a file requires a format that can be parsed back.',
       },
     ],
@@ -5643,13 +5356,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(standard input|standard output|stdin|stdout|input\(\)|print statements?)\b/gi,
     definition:
       'The default text streams a program reads from and writes to. input() returns a string always — numeric input must be cast explicitly.',
-    primaryLocation: 'Chapter 2 (§ 2.1.3 Strings and Input, p. 21)',
+    primaryLocation: 'Chapter 2 (§ 2.4 Strings and Input)',
     relatedIds: ['G-111', 'G-246', 'G-375'],
     occurrences: [
       {
         chapter: 'Chapter 2',
-        section: '§ 2.1.3 Strings and Input',
-        pageRange: 'pp. 18–23',
+        section: '§ 2.4 Strings and Input',
         contextSnippet: 'The input function always returns a string, whatever the user typed.',
       },
     ],
@@ -5664,14 +5376,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(random walks?|drunkard’s walk|drunkard's walk)\b/gi,
     definition:
       'A path built from successive random steps. Expected distance from the origin after n unbiased steps grows as √n, not n.',
-    primaryLocation: 'Chapter 16 (§ 16.1 Random Walks, p. 261)',
+    primaryLocation: 'Chapter 16 (§ 16.1 Random Walks)',
     notation: 'E[|displacement|] ∝ √n',
     relatedIds: ['G-406', 'G-296', 'G-409'],
     occurrences: [
       {
         chapter: 'Chapter 16',
         section: '§ 16.1 Random Walks',
-        pageRange: 'pp. 261–270',
         contextSnippet: 'The random walk is a simple model with surprisingly broad application.',
       },
     ],
@@ -5684,13 +5395,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(stochastic (processes|programs?|models?)|stochastic|randomness)\b/gi,
     definition:
       'A process whose next state is drawn from a probability distribution rather than determined by the current state alone.',
-    primaryLocation: 'Chapter 17 (§ 17.1 Stochastic Programs, p. 273)',
+    primaryLocation: 'Chapter 17 (§ 17.1 Stochastic Programs)',
     relatedIds: ['G-407', 'G-408', 'G-370'],
     occurrences: [
       {
         chapter: 'Chapter 17',
         section: '§ 17.1 Stochastic Programs',
-        pageRange: 'pp. 273–280',
         contextSnippet: 'A stochastic program produces different results on different runs with the same input.',
       },
     ],
@@ -5703,14 +5413,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(pseudorandom|random seeds?|seeding|random number generators?|prng)\b/gi,
     definition:
       'A deterministic algorithm producing a statistically random-looking sequence from a seed. The same seed reproduces the same sequence exactly.',
-    primaryLocation: 'Chapter 17 (§ 17.1 Stochastic Programs, p. 274)',
+    primaryLocation: 'Chapter 17 (§ 17.1 Stochastic Programs)',
     notation: 'random.seed(0) ⟹ identical runs',
     relatedIds: ['G-370', 'G-406'],
     occurrences: [
       {
         chapter: 'Chapter 17',
         section: '§ 17.1 Stochastic Programs',
-        pageRange: 'pp. 273–280',
         contextSnippet: 'Setting the seed makes a stochastic simulation reproducible for debugging.',
       },
     ],
@@ -5723,14 +5432,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(probabilit(y|ies)|independent events?|independence|mutually exclusive)\b/gi,
     definition:
       'Probability measures the fraction of outcomes in which an event occurs. Independent events multiply: P(A ∧ B) = P(A)·P(B).',
-    primaryLocation: 'Chapter 17 (§ 17.2 Inferential Statistics, p. 276)',
+    primaryLocation: 'Chapter 17 (§ 17.3 Inferential Statistics)',
     notation: 'P(A ∧ B) = P(A)·P(B) when independent',
     relatedIds: ['G-291', 'G-410', 'G-412'],
     occurrences: [
       {
         chapter: 'Chapter 17',
-        section: '§ 17.2 Inferential Statistics',
-        pageRange: 'pp. 274–282',
+        section: '§ 17.3 Inferential Statistics',
         contextSnippet: 'The probability of a conjunction of independent events is the product of their probabilities.',
       },
     ],
@@ -5743,14 +5451,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(monte carlo( simulations?| methods?)?)\b/gi,
     definition:
       'Estimating a quantity by repeated random sampling. Accuracy improves as √n, so 100× more samples buys only 10× more precision.',
-    primaryLocation: 'Chapter 18 (§ 18.1 Pascal’s Problem, p. 293)',
+    primaryLocation: 'Chapter 18 (§ 18.1 Pascal’s Problem)',
     notation: 'error ∝ 1/√n',
     relatedIds: ['G-296', 'G-417', 'G-415'],
     occurrences: [
       {
         chapter: 'Chapter 18',
-        section: '§ 18.1 Monte Carlo Simulation',
-        pageRange: 'pp. 293–302',
+        section: '§ 18.1 Pascal’s Problem',
         contextSnippet: 'Monte Carlo methods estimate quantities that are hard to compute analytically.',
       },
     ],
@@ -5763,13 +5470,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(law of large numbers|gambler’s fallacy|gambler's fallacy|regression to the mean)\b/gi,
     definition:
       'Sample means converge to the true mean as n grows. The gambler’s fallacy wrongly infers that past outcomes make future ones "due" — independent trials have no memory.',
-    primaryLocation: 'Chapter 17 (§ 17.2 Inferential Statistics, p. 278)',
+    primaryLocation: 'Chapter 17 (§ 17.3 Inferential Statistics)',
     relatedIds: ['G-408', 'G-417', 'G-416'],
     occurrences: [
       {
         chapter: 'Chapter 17',
-        section: '§ 17.2 Inferential Statistics',
-        pageRange: 'pp. 274–283',
+        section: '§ 17.3 Inferential Statistics',
         contextSnippet: 'Independent trials do not compensate for earlier outcomes; they merely dilute them.',
       },
     ],
@@ -5782,13 +5488,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(simulation models?|computational models?|modeling assumptions?)\b/gi,
     definition:
       'A computational description of a system used to study it. Every model embeds assumptions, and results are only as sound as those assumptions.',
-    primaryLocation: 'Chapter 16 (§ 16.1 Random Walks, p. 262)',
+    primaryLocation: 'Chapter 16 (§ 16.1 Random Walks)',
     relatedIds: ['G-296', 'G-405', 'G-426'],
     occurrences: [
       {
         chapter: 'Chapter 16',
         section: '§ 16.1 Random Walks',
-        pageRange: 'pp. 261–270',
         contextSnippet: 'A model is an abstraction; its conclusions hold only where its assumptions do.',
       },
     ],
@@ -5801,14 +5506,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(expected values?|expectations?|mean outcomes?)\b/gi,
     definition:
       'The probability-weighted average of outcomes: E[X] = Σ p(x)·x. Linearity of expectation holds even when the variables are dependent.',
-    primaryLocation: 'Chapter 17 (§ 17.2 Inferential Statistics, p. 279)',
+    primaryLocation: 'Chapter 17 (§ 17.3 Inferential Statistics)',
     notation: 'E[X + Y] = E[X] + E[Y], always',
     relatedIds: ['G-408', 'G-414', 'G-428'],
     occurrences: [
       {
         chapter: 'Chapter 17',
-        section: '§ 17.2 Inferential Statistics',
-        pageRange: 'pp. 274–283',
+        section: '§ 17.3 Inferential Statistics',
         contextSnippet: 'Expected value weights each possible outcome by its probability.',
       },
     ],
@@ -5821,13 +5525,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(distributions?|uniform distributions?|normal distributions?|gaussians?|exponential distributions?|bell curves?)\b/gi,
     definition:
       'How probability mass is spread over outcomes. Uniform weights all equally; normal concentrates around the mean; exponential models waiting times.',
-    primaryLocation: 'Chapter 17 (§ 17.4 Distributions, p. 284)',
+    primaryLocation: 'Chapter 17 (§ 17.4 Distributions)',
     relatedIds: ['G-414', 'G-415', 'G-417'],
     occurrences: [
       {
         chapter: 'Chapter 17',
         section: '§ 17.4 Distributions',
-        pageRange: 'pp. 283–292',
         contextSnippet: 'A distribution describes the relative likelihood of the possible outcomes.',
       },
     ],
@@ -5840,14 +5543,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(variances?|standard deviations?|dispersions?|spread of data)\b/gi,
     definition:
       'Variance is the mean squared deviation from the mean; standard deviation is its square root, expressed in the data’s own units.',
-    primaryLocation: 'Chapter 17 (§ 17.3 Distributions, p. 283)',
+    primaryLocation: 'Chapter 17 (§ 17.4 Distributions)',
     notation: 'σ² = Σ(xᵢ − μ)² / n',
     relatedIds: ['G-415', 'G-413', 'G-428'],
     occurrences: [
       {
         chapter: 'Chapter 17',
-        section: '§ 17.3 Distributions',
-        pageRange: 'pp. 283–292',
+        section: '§ 17.4 Distributions',
         contextSnippet: 'Standard deviation quantifies how tightly values cluster around the mean.',
       },
     ],
@@ -5860,14 +5562,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(confidence intervals?|confidence levels?|empirical rule|68[- ]95[- ]99)\b/gi,
     definition:
       'A range expected to contain the true value at a stated confidence. For a normal distribution ~68% of mass lies within 1σ, ~95% within 2σ, ~99.7% within 3σ.',
-    primaryLocation: 'Chapter 19 (§ 19.1 Sampling and Confidence, p. 305)',
+    primaryLocation: 'Chapter 19 (§ 19.1 Sampling the Boston Marathon)',
     notation: 'CI = mean ± z · (σ / √n)',
     relatedIds: ['G-414', 'G-417', 'G-418'],
     occurrences: [
       {
         chapter: 'Chapter 19',
-        section: '§ 19.1 Sampling and Confidence',
-        pageRange: 'pp. 305–314',
+        section: '§ 19.1 Sampling the Boston Marathon',
         contextSnippet: 'An estimate should always be reported together with a confidence interval.',
       },
     ],
@@ -5880,13 +5581,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(sampling|samples?|sample sizes?|random sampling)\b/gi,
     definition:
       'Inferring population properties from a subset. Estimate precision improves with √n, and only representative samples support valid inference.',
-    primaryLocation: 'Chapter 19 (§ 19.1 Sampling and Confidence, p. 305)',
+    primaryLocation: 'Chapter 19 (§ 19.1 Sampling the Boston Marathon)',
     relatedIds: ['G-417', 'G-427', 'G-415'],
     occurrences: [
       {
         chapter: 'Chapter 19',
-        section: '§ 19.1 Sampling and Confidence',
-        pageRange: 'pp. 305–314',
+        section: '§ 19.1 Sampling the Boston Marathon',
         contextSnippet: 'Inference from a sample is valid only when the sample is representative of the population.',
       },
     ],
@@ -5899,13 +5599,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(central limit theorem|clt)\b/gi,
     definition:
       'Means of sufficiently large samples are approximately normally distributed around the population mean, whatever the underlying distribution.',
-    primaryLocation: 'Chapter 19 (§ 19.3 The Central Limit Theorem, p. 312)',
+    primaryLocation: 'Chapter 19 (§ 19.2 The Central Limit Theorem)',
     relatedIds: ['G-415', 'G-418', 'G-413'],
     occurrences: [
       {
         chapter: 'Chapter 19',
-        section: '§ 19.3 The Central Limit Theorem',
-        pageRange: 'pp. 305–316',
+        section: '§ 19.2 The Central Limit Theorem',
         contextSnippet: 'The distribution of sample means approaches a normal distribution as sample size grows.',
       },
     ],
@@ -5918,14 +5617,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(standard errors?|sem|standard error of the mean)\b/gi,
     definition:
       'The standard deviation of the sampling distribution of the mean: SE = σ / √n. Quadrupling the sample halves the error.',
-    primaryLocation: 'Chapter 19 (§ 19.3 The Central Limit Theorem, p. 313)',
+    primaryLocation: 'Chapter 19 (§ 19.2 The Central Limit Theorem)',
     notation: 'SE = σ / √n',
     relatedIds: ['G-417', 'G-415', 'G-409'],
     occurrences: [
       {
         chapter: 'Chapter 19',
-        section: '§ 19.3 The Central Limit Theorem',
-        pageRange: 'pp. 305–316',
+        section: '§ 19.2 The Central Limit Theorem',
         contextSnippet: 'The standard error shrinks with the square root of the number of samples.',
       },
     ],
@@ -5938,13 +5636,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(randomized trials?|null hypothes(is|es)|control groups?|alternative hypothes(is|es))\b/gi,
     definition:
       'Random assignment to treatment and control isolates the effect of the treatment. The null hypothesis says there is no effect; evidence is measured against it.',
-    primaryLocation: 'Chapter 21 (§ 21.1 Checking Significance, p. 336)',
+    primaryLocation: 'Chapter 21 (§ 21.1 Checking Significance)',
     relatedIds: ['G-420', 'G-421', 'G-374'],
     occurrences: [
       {
         chapter: 'Chapter 21',
-        section: '§ 21.1 Randomized Trials and Hypothesis Checking',
-        pageRange: 'pp. 335–345',
+        section: '§ 21.1 Checking Significance',
         contextSnippet: 'The null hypothesis assumes no difference; the data must argue against it.',
       },
     ],
@@ -5959,14 +5656,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(p[- ]values?|statistical significance|significance levels?|p < 0\.05)\b/gi,
     definition:
       'The probability of seeing an effect at least this extreme if the null hypothesis were true. A small p-value does not measure effect size or importance.',
-    primaryLocation: 'Chapter 21 (§ 21.1 Checking Significance, p. 337)',
+    primaryLocation: 'Chapter 21 (§ 21.1 Checking Significance)',
     notation: 'p < 0.05 is a convention, not a law of nature',
     relatedIds: ['G-419', 'G-421', 'G-426'],
     occurrences: [
       {
         chapter: 'Chapter 21',
-        section: '§ 21.1 Randomized Trials and Hypothesis Checking',
-        pageRange: 'pp. 335–345',
+        section: '§ 21.1 Checking Significance',
         contextSnippet: 'Statistical significance says nothing about whether an effect matters practically.',
       },
     ],
@@ -5979,13 +5675,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(type i errors?|type ii errors?|false positives?|false negatives?)\b/gi,
     definition:
       'A Type I error rejects a true null hypothesis (false positive); a Type II error fails to reject a false one (false negative). Lowering one raises the other.',
-    primaryLocation: 'Chapter 21 (§ 21.2 Checking Significance, p. 340)',
+    primaryLocation: 'Chapter 21 (§ 21.2 Beware of P-values)',
     relatedIds: ['G-420', 'G-443', 'G-444'],
     occurrences: [
       {
         chapter: 'Chapter 21',
-        section: '§ 21.2 Checking Significance',
-        pageRange: 'pp. 335–346',
+        section: '§ 21.2 Beware of P-values',
         contextSnippet: 'Reducing the chance of one kind of error increases the chance of the other.',
       },
     ],
@@ -5998,14 +5693,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(linear regressions?|least squares|curve fitting|line of best fit|polynomial fits?)\b/gi,
     definition:
       'Fitting a model by minimizing the sum of squared vertical distances between observations and the fitted curve.',
-    primaryLocation: 'Chapter 20 (§ 20.1 The Behavior of Springs, p. 319)',
+    primaryLocation: 'Chapter 20 (§ 20.1 The Behavior of Springs)',
     notation: 'minimize Σ(yᵢ − ŷᵢ)²',
     relatedIds: ['G-423', 'G-424', 'G-449'],
     occurrences: [
       {
         chapter: 'Chapter 20',
-        section: '§ 20.1 Understanding Experimental Data',
-        pageRange: 'pp. 319–330',
+        section: '§ 20.1 The Behavior of Springs',
         contextSnippet: 'A best-fit curve minimizes the sum of the squares of the vertical distances to the data.',
       },
     ],
@@ -6018,14 +5712,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(coefficients? of determination|r[- ]squared|r2 values?|goodness of fit)\b/gi,
     definition:
       'The fraction of variance in the data explained by the model, from 0 to 1. A high R² does not establish that the model is the right one.',
-    primaryLocation: 'Chapter 20 (§ 20.2 The Coefficient of Determination, p. 325)',
+    primaryLocation: 'Chapter 20 (§ 20.2.1 Coefficient of Determination)',
     notation: 'R² = 1 − SS_res / SS_tot',
     relatedIds: ['G-422', 'G-424'],
     occurrences: [
       {
         chapter: 'Chapter 20',
-        section: '§ 20.2 The Coefficient of Determination',
-        pageRange: 'pp. 319–331',
+        section: '§ 20.2.1 Coefficient of Determination',
         contextSnippet: 'R² measures how much of the variability the model accounts for.',
       },
     ],
@@ -6038,13 +5731,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(overfit(ting|s|ted)?|underfit(ting|s|ted)?|model complexity)\b/gi,
     definition:
       'Fitting noise instead of signal. A sufficiently complex model reproduces the training data perfectly and generalizes badly.',
-    primaryLocation: 'Chapter 20 (§ 20.3 Using a Higher-Order Polynomial, p. 327)',
+    primaryLocation: 'Chapter 20 (§ 20.3 Fitting Exponentially Distributed Data)',
     relatedIds: ['G-425', 'G-445', 'G-423'],
     occurrences: [
       {
         chapter: 'Chapter 20',
-        section: '§ 20.3 Using a Higher-Order Polynomial',
-        pageRange: 'pp. 319–332',
+        section: '§ 20.3 Fitting Exponentially Distributed Data',
         contextSnippet: 'A higher-degree polynomial fits the training data better while predicting new data worse.',
       },
     ],
@@ -6057,13 +5749,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(cross[- ]validations?|holdout sets?|k[- ]fold)\b/gi,
     definition:
       'Repeatedly training on part of the data and validating on the held-out remainder, to estimate performance on data never seen.',
-    primaryLocation: 'Chapter 20 (§ 20.4 Cross Validation, p. 330)',
+    primaryLocation: 'Chapter 20 (§ 20.4 When Theory Is Missing)',
     relatedIds: ['G-424', 'G-445'],
     occurrences: [
       {
         chapter: 'Chapter 20',
-        section: '§ 20.4 Cross Validation',
-        pageRange: 'pp. 319–333',
+        section: '§ 20.4 When Theory Is Missing',
         contextSnippet: 'Testing on data not used for fitting is the check against overfitting.',
       },
     ],
@@ -6076,13 +5767,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(correlations?|causations?|causal inference|confounding variables?|lurking variables?)\b/gi,
     definition:
       'Correlation measures co-variation; causation requires an intervention or a randomized trial. A confounder can produce correlation with no causal link.',
-    primaryLocation: 'Chapter 22 (§ 22.1 Garbage In Garbage Out, p. 350)',
+    primaryLocation: 'Chapter 22 (§ 22.1 Garbage In Garbage Out (GIGO))',
     relatedIds: ['G-419', 'G-427', 'G-420'],
     occurrences: [
       {
         chapter: 'Chapter 22',
-        section: '§ 22 Lies, Damned Lies, and Statistics',
-        pageRange: 'pp. 349–360',
+        section: '§ 22.1 Garbage In Garbage Out (GIGO)',
         contextSnippet: 'Correlation does not imply causation, however tempting the narrative.',
       },
     ],
@@ -6095,13 +5785,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(sampling bias(es)?|selection bias(es)?|non[- ]response bias(es)?|survivorship bias(es)?)\b/gi,
     definition:
       'Systematic error from a non-representative sample. No amount of additional data corrects a biased sampling procedure.',
-    primaryLocation: 'Chapter 22 (§ 22.3 Sampling Bias, p. 354)',
+    primaryLocation: 'Chapter 22 (§ 22.6 Sampling Bias)',
     relatedIds: ['G-416', 'G-426'],
     occurrences: [
       {
         chapter: 'Chapter 22',
-        section: '§ 22 Lies, Damned Lies, and Statistics',
-        pageRange: 'pp. 349–360',
+        section: '§ 22.1 Garbage In Garbage Out (GIGO)',
         contextSnippet: 'A biased sample yields a confidently wrong answer no matter how large it is.',
       },
     ],
@@ -6114,13 +5803,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(sample means?|arithmetic means?|the mean|medians?|central tendenc(y|ies)|averages?)\b/gi,
     definition:
       'Three measures of center: the mean is sensitive to outliers, the median is robust to them, the mode is the most frequent value.',
-    primaryLocation: 'Chapter 17 (§ 17.3 Distributions, p. 282)',
+    primaryLocation: 'Chapter 17 (§ 17.4 Distributions)',
     relatedIds: ['G-429', 'G-414', 'G-412'],
     occurrences: [
       {
         chapter: 'Chapter 17',
-        section: '§ 17.3 Distributions',
-        pageRange: 'pp. 280–292',
+        section: '§ 17.4 Distributions',
         contextSnippet: 'Which measure of central tendency to report depends on the shape of the distribution.',
       },
     ],
@@ -6133,13 +5821,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(outliers?|anomal(y|ies)|extreme values?)\b/gi,
     definition:
       'An observation far from the rest of the data. It may be measurement error or the most informative point in the set — the distinction requires domain judgment.',
-    primaryLocation: 'Chapter 22 (§ 22.2 Pictures Can Be Deceiving, p. 352)',
+    primaryLocation: 'Chapter 22 (§ 22.3 Pictures Can Be Deceiving)',
     relatedIds: ['G-428', 'G-414', 'G-427'],
     occurrences: [
       {
         chapter: 'Chapter 22',
-        section: '§ 22 Lies, Damned Lies, and Statistics',
-        pageRange: 'pp. 349–360',
+        section: '§ 22.1 Garbage In Garbage Out (GIGO)',
         contextSnippet: 'Discarding inconvenient data points is one of the easiest ways to lie with statistics.',
       },
     ],
@@ -6152,13 +5839,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(data visualizations?|plotting|plots?|charts?|histograms?|scatter plots?)\b/gi,
     definition:
       'Rendering data graphically to expose structure. Axis choices, scaling, and truncation can mislead as easily as they illuminate.',
-    primaryLocation: 'Chapter 13 (§ 13.1 Plotting Using PyLab, p. 216)',
+    primaryLocation: 'Chapter 13 (§ 13.1 Plotting Using PyLab)',
     relatedIds: ['G-429', 'G-426', 'G-422'],
     occurrences: [
       {
         chapter: 'Chapter 13',
         section: '§ 13.1 Plotting Using PyLab',
-        pageRange: 'pp. 215–226',
         contextSnippet: 'A plot makes patterns visible that are invisible in a table of numbers.',
       },
     ],
@@ -6173,13 +5859,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(machine learning|supervised learning|unsupervised learning|learning algorithms?)\b/gi,
     definition:
       'Programs that infer a model from data rather than following explicitly coded rules. Supervised learning uses labels; unsupervised learning finds structure without them.',
-    primaryLocation: 'Chapter 24 (§ 24.1 Feature Vectors, p. 371)',
+    primaryLocation: 'Chapter 24 (§ 24.1 Feature Vectors)',
     relatedIds: ['G-436', 'G-440', 'G-445'],
     occurrences: [
       {
         chapter: 'Chapter 24',
-        section: '§ 24 A Quick Look at Machine Learning',
-        pageRange: 'pp. 371–382',
+        section: '§ 24.1 Feature Vectors',
         contextSnippet: 'Machine learning programs learn a model from examples rather than being told the rule.',
       },
     ],
@@ -6192,13 +5877,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(feature vectors?|features?|feature engineering|feature selections?)\b/gi,
     definition:
       'Representing an example as a numeric vector. Which features are chosen matters more than which algorithm consumes them.',
-    primaryLocation: 'Chapter 24 (§ 24.1 Feature Vectors, p. 372)',
+    primaryLocation: 'Chapter 24 (§ 24.1 Feature Vectors)',
     relatedIds: ['G-437', 'G-438', 'G-447'],
     occurrences: [
       {
         chapter: 'Chapter 24',
         section: '§ 24.1 Feature Vectors',
-        pageRange: 'pp. 371–380',
         contextSnippet: 'Choosing the right features is the most important step in building a learning system.',
       },
     ],
@@ -6211,14 +5895,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(feature scaling|normalizations?|z[- ]scaling|standardizations?|z[- ]scores?)\b/gi,
     definition:
       'Rescaling features to comparable ranges (commonly z = (x − μ)/σ) so a large-magnitude dimension does not dominate a distance metric.',
-    primaryLocation: 'Chapter 24 (§ 24.2 Distance Metrics, p. 376)',
+    primaryLocation: 'Chapter 24 (§ 24.2 Distance Metrics)',
     notation: 'z = (x − μ) / σ',
     relatedIds: ['G-438', 'G-414', 'G-436'],
     occurrences: [
       {
         chapter: 'Chapter 24',
         section: '§ 24.2 Distance Metrics',
-        pageRange: 'pp. 371–382',
         contextSnippet: 'Without scaling, features measured on larger scales dominate the distance calculation.',
       },
     ],
@@ -6231,14 +5914,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(distance metrics?|euclidean distances?|manhattan distances?|minkowski|cosine similarit(y|ies))\b/gi,
     definition:
       'A function measuring dissimilarity. Euclidean (p=2) and Manhattan (p=1) are Minkowski special cases; a true metric satisfies the triangle inequality.',
-    primaryLocation: 'Chapter 24 (§ 24.2 Distance Metrics, p. 375)',
+    primaryLocation: 'Chapter 24 (§ 24.2 Distance Metrics)',
     notation: 'Minkowski_p(a,b) = (Σ|aᵢ − bᵢ|^p)^(1/p)',
     relatedIds: ['G-437', 'G-439', 'G-440'],
     occurrences: [
       {
         chapter: 'Chapter 24',
         section: '§ 24.2 Distance Metrics',
-        pageRange: 'pp. 371–382',
         contextSnippet: 'The choice of distance metric determines which examples count as similar.',
       },
     ],
@@ -6251,14 +5933,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(k[- ]nearest neighbou?rs?|knn|nearest neighbou?rs?)\b/gi,
     definition:
       'Classify a point by majority vote among its k nearest labeled examples. No training phase; all cost is paid at query time.',
-    primaryLocation: 'Chapter 26 (§ 26.1 Evaluating Classifiers, p. 400)',
+    primaryLocation: 'Chapter 26 (§ 26.1 Evaluating Classifiers)',
     notation: 'query O(n·d) without an index',
     relatedIds: ['G-438', 'G-224', 'G-445'],
     occurrences: [
       {
         chapter: 'Chapter 26',
-        section: '§ 26 Classification Methods',
-        pageRange: 'pp. 399–412',
+        section: '§ 26.1 Evaluating Classifiers',
         contextSnippet: 'k-nearest neighbors classifies by looking at the labels of the closest training examples.',
       },
     ],
@@ -6271,14 +5952,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(k[- ]means|clustering|clusters?|centroids?)\b/gi,
     definition:
       'Partition points into k groups by alternating assignment to the nearest centroid and recomputation of centroids, until assignments stop changing.',
-    primaryLocation: 'Chapter 25 (§ 25.2 K-means Clustering, p. 390)',
+    primaryLocation: 'Chapter 25 (§ 25.2 K-means Clustering)',
     notation: 'minimize Σ_clusters Σ_points ‖x − μ_c‖²',
     relatedIds: ['G-441', 'G-438', 'G-448'],
     occurrences: [
       {
         chapter: 'Chapter 25',
         section: '§ 25.2 K-means Clustering',
-        pageRange: 'pp. 385–398',
         contextSnippet: 'K-means iterates between assigning points to clusters and recomputing cluster centers.',
       },
     ],
@@ -6291,13 +5971,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(hierarchical clustering|dendrograms?|linkage criteri(a|on)|agglomerative)\b/gi,
     definition:
       'Repeatedly merging the two closest clusters, producing a dendrogram. Single, complete, and average linkage define "closest" differently and yield different trees.',
-    primaryLocation: 'Chapter 25 (§ 25.1 Hierarchical Clustering, p. 386)',
+    primaryLocation: 'Chapter 25 (§ 25.1 Class Cluster)',
     relatedIds: ['G-440', 'G-438', 'G-312'],
     occurrences: [
       {
         chapter: 'Chapter 25',
-        section: '§ 25.1 Hierarchical Clustering',
-        pageRange: 'pp. 385–396',
+        section: '§ 25.1 Class Cluster',
         contextSnippet: 'Agglomerative clustering merges the nearest pair of clusters at each step.',
       },
     ],
@@ -6310,14 +5989,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(logistic regressions?|sigmoid functions?|log[- ]odds)\b/gi,
     definition:
       'Predicts class probability by passing a linear combination of features through the sigmoid, yielding a value in (0, 1) that a threshold converts to a label.',
-    primaryLocation: 'Chapter 26 (§ 26.3 Logistic Regression, p. 406)',
+    primaryLocation: 'Chapter 26 (§ 26.4 Regression-based Classifiers)',
     notation: 'σ(z) = 1 / (1 + e^(−z))',
     relatedIds: ['G-443', 'G-444', 'G-449'],
     occurrences: [
       {
         chapter: 'Chapter 26',
-        section: '§ 26.3 Logistic Regression',
-        pageRange: 'pp. 399–412',
+        section: '§ 26.4 Regression-based Classifiers',
         contextSnippet: 'Logistic regression estimates the probability that an example belongs to a class.',
       },
     ],
@@ -6330,14 +6008,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(confusion matri(x|ces)|sensitivit(y|ies)|specificit(y|ies)|precisions? and recalls?|recall)\b/gi,
     definition:
       'The 2×2 table of true/false positives and negatives. Sensitivity (recall) = TP/(TP+FN); specificity = TN/(TN+FP); precision = TP/(TP+FP).',
-    primaryLocation: 'Chapter 26 (§ 26.1 Evaluating Classifiers, p. 401)',
+    primaryLocation: 'Chapter 26 (§ 26.1 Evaluating Classifiers)',
     notation: 'accuracy = (TP + TN) / total',
     relatedIds: ['G-421', 'G-444', 'G-446'],
     occurrences: [
       {
         chapter: 'Chapter 26',
         section: '§ 26.1 Evaluating Classifiers',
-        pageRange: 'pp. 399–412',
         contextSnippet: 'Accuracy alone is misleading when one class is far more common than the other.',
       },
     ],
@@ -6350,13 +6027,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(roc curves?|auc|receiver operating characteristic)\b/gi,
     definition:
       'Plots true-positive rate against false-positive rate across every threshold. AUC summarizes it: 0.5 is chance, 1.0 is perfect separation.',
-    primaryLocation: 'Chapter 26 (§ 26.2 Receiver Operating Characteristic, p. 404)',
+    primaryLocation: 'Chapter 26 (§ 26.1 Evaluating Classifiers)',
     relatedIds: ['G-443', 'G-421', 'G-442'],
     occurrences: [
       {
         chapter: 'Chapter 26',
-        section: '§ 26.2 Receiver Operating Characteristic',
-        pageRange: 'pp. 399–412',
+        section: '§ 26.1 Evaluating Classifiers',
         contextSnippet: 'The ROC curve shows the tradeoff available across all possible thresholds.',
       },
     ],
@@ -6369,13 +6045,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(training sets?|test sets?|validation sets?|held[- ]out data)\b/gi,
     definition:
       'The model is fit on the training set and evaluated on a disjoint test set. Any leakage between them inflates the reported score.',
-    primaryLocation: 'Chapter 24 (§ 24.3 Clustering / Evaluation, p. 378)',
+    primaryLocation: 'Chapter 24 (§ 24.1 Feature Vectors)',
     relatedIds: ['G-425', 'G-424', 'G-435'],
     occurrences: [
       {
         chapter: 'Chapter 24',
-        section: '§ 24 A Quick Look at Machine Learning',
-        pageRange: 'pp. 371–382',
+        section: '§ 24.1 Feature Vectors',
         contextSnippet: 'Performance must be measured on data that played no part in building the model.',
       },
     ],
@@ -6388,13 +6063,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(class imbalances?|imbalanced (data|class(es)?|datasets?)|rare class(es)?)\b/gi,
     definition:
       'One label vastly outnumbering another, so a model predicting only the majority class scores high accuracy while being useless.',
-    primaryLocation: 'Chapter 26 (§ 26.1 Evaluating Classifiers, p. 402)',
+    primaryLocation: 'Chapter 26 (§ 26.1 Evaluating Classifiers)',
     relatedIds: ['G-443', 'G-421'],
     occurrences: [
       {
         chapter: 'Chapter 26',
         section: '§ 26.1 Evaluating Classifiers',
-        pageRange: 'pp. 399–412',
         contextSnippet: 'With rare positives, always predicting negative yields a high accuracy and no value.',
       },
     ],
@@ -6407,13 +6081,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(curse of dimensionality|high[- ]dimensional (data|spaces?)|dimensionality)\b/gi,
     definition:
       'As dimensions grow, points spread out until all pairwise distances converge, so distance-based methods lose discriminating power.',
-    primaryLocation: 'Chapter 24 (§ 24.2 Distance Metrics, p. 377)',
+    primaryLocation: 'Chapter 24 (§ 24.2 Distance Metrics)',
     relatedIds: ['G-438', 'G-436', 'G-439'],
     occurrences: [
       {
         chapter: 'Chapter 24',
         section: '§ 24.2 Distance Metrics',
-        pageRange: 'pp. 371–382',
         contextSnippet: 'In high-dimensional spaces, everything is far from everything else.',
       },
     ],
@@ -6426,13 +6099,12 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(objective functions?|loss functions?|cost functions?|error functions?)\b/gi,
     definition:
       'The scalar quantity an algorithm minimizes or maximizes. Defining it precisely is what turns a vague goal into a solvable optimization.',
-    primaryLocation: 'Chapter 24 (§ 24.1 Feature Vectors, p. 373)',
+    primaryLocation: 'Chapter 24 (§ 24.1 Feature Vectors)',
     relatedIds: ['G-316', 'G-449', 'G-422'],
     occurrences: [
       {
         chapter: 'Chapter 24',
-        section: '§ 24 A Quick Look at Machine Learning',
-        pageRange: 'pp. 371–382',
+        section: '§ 24.1 Feature Vectors',
         contextSnippet: 'Learning is framed as optimizing an objective function over the model’s parameters.',
       },
     ],
@@ -6445,14 +6117,13 @@ export const GUTTAG_CONCORDANCE_LEXICON: ConcordanceEntry[] = [
     patterns: /\b(gradient descents?|learning rates?|step sizes?|local minim(um|a))\b/gi,
     definition:
       'Iteratively stepping downhill along the negative gradient. The step size trades convergence speed against overshoot; convergence is to a local minimum.',
-    primaryLocation: 'Chapter 26 (§ 26.3 Logistic Regression, p. 408)',
+    primaryLocation: 'Chapter 26 (§ 26.4 Regression-based Classifiers)',
     notation: 'θ ← θ − η·∇L(θ)',
     relatedIds: ['G-253', 'G-448', 'G-141'],
     occurrences: [
       {
         chapter: 'Chapter 26',
-        section: '§ 26.3 Logistic Regression',
-        pageRange: 'pp. 399–412',
+        section: '§ 26.4 Regression-based Classifiers',
         contextSnippet: 'Parameters are adjusted in the direction that most reduces the loss.',
       },
     ],
