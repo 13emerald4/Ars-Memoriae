@@ -21,7 +21,8 @@ const TRACKS = [
   { id: 'track_4_custom_sorting', label: '🟠 Track 4: Divide-and-Conquer Sorting (Guttag Ch. 12)', icon: '🔀' },
   { id: 'track_5_bit_manipulation', label: '🔴 Track 5: Binary Encodings & Bits (Guttag Ch. 3.4)', icon: '🔢' },
   { id: 'track_6_complexity_math', label: '🟤 Track 6: Asymptotic Complexity & Math (Guttag Ch. 11)', icon: '⏱' },
-  { id: 'track_7_testing_exceptions', label: '⚪ Track 7: Testing, Debugging & Exceptions (Guttag Ch. 8–9)', icon: '🧪' },
+  { id: 'track_7_testing_exceptions', label: '⚪ Track 7: Testing, Debugging & Exceptions (Guttag Ch. 7–9)', icon: '🧪' },
+  { id: 'track_8_graphs', label: '🟩 Track 8: Graphs & Optimization (Guttag Ch. 14)', icon: '🕸' },
 ]
 
 export default function FundamentalsStudio() {

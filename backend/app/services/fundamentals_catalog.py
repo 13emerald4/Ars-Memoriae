@@ -3754,4 +3754,1685 @@ def binary_search(L, x):
             "Append None inside the except clause so the output length matches the input.",
         ],
     },
+    # ── Track 8: Graphs & Graph Optimization (Guttag Ch. 14) ──────────────────
+    {
+        "slug": "py-graph-adjacency-build",
+        "title": "Graphs, Digraphs & Adjacency (Guttag Ch. 14)",
+        "kind": "fundamental",
+        "track": "track_8_graphs",
+        "difficulty": "Easy",
+        "category": "Graphs",
+        "tags": ["Guttag \u00a7 14.2", "Graphs", "Adjacency List", "Digraph"],
+        "description": """### \U0001f3db\ufe0f Finger Exercise: Building the Adjacency Structure
+**Guttag Citation**: *Chapter 14: Knapsack and Graph Optimization Problems (\u00a7 14.2 Graph Optimization Problems)*
+
+A **graph** is a set of **nodes** (vertices) connected by **edges** (arcs). In a **digraph** the edges are
+one-way: each has a **source** (parent) node and a **destination** (child) node.
+
+Write `build_adjacency(n: int, edges: list[tuple[int, int]], directed: bool) -> list[list[int]]` returning an
+adjacency list of `n` entries, where entry `i` holds `i`'s neighbours in ascending order. When `directed` is
+`False`, every edge is added in both directions.
+""",
+        "examples": [
+            {"input": "n = 3, edges = [(0,1),(0,2)], directed = False", "output": "[[1, 2], [0], [0]]"},
+            {"input": "n = 3, edges = [(0,1),(0,2)], directed = True", "output": "[[1, 2], [], []]"},
+        ],
+        "constraints": ["1 <= n <= 1000", "0 <= u, v < n"],
+        "starter_codes": {
+            "python": """def build_adjacency(n: int, edges: list, directed: bool) -> list:
+    # Return a list of n neighbour-lists, each sorted ascending
+    pass
+"""
+        },
+        "solutions": {
+            "python": """def build_adjacency(n: int, edges: list, directed: bool) -> list:
+    adj = [[] for _ in range(n)]
+    for u, v in edges:
+        adj[u].append(v)
+        if not directed:
+            adj[v].append(u)
+    for row in adj:
+        row.sort()
+    return adj
+"""
+        },
+        "editorial": """# \U0001f4d6 Chapter 14: Knapsack and Graph Optimization Problems (\u00a7 14.2)
+*John V. Guttag \u2014 Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### \u00a7 1. Theoretical Foundations: Why Graphs Matter
+A graph is a set of **nodes** (also called vertices) connected by **edges** (also called arcs). That is the entire
+definition, and its generality is the point: any pairwise relation is a graph.
+
+Guttag's framing is that formulating a problem as a graph is valuable precisely because **well-known algorithms
+already exist** for the optimization problems that arise on them. You do not invent an algorithm; you recognize
+a shape and reach for the matching tool.
+
+Two variants matter:
+- **Undirected graph** \u2014 the relation is symmetric. Facebook's "friend" relation: if Sam is a friend of Andrea,
+  Andrea is a friend of Sam.
+- **Directed graph (digraph)** \u2014 the relation is asymmetric. Each edge has a **source (parent)** node and a
+  **destination (child)** node, and they are not interchangeable.
+
+---
+
+### \u00a7 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 14, \u00a7 14.2 and Figures 14-7/14-8 \u2014 paraphrase, not a verbatim quotation)*
+
+Guttag builds the abstraction in layers: a `Node` class, an `Edge` class holding a source and a destination, then
+`Graph` and `Digraph` classes. Notably he makes `Graph` a **subclass of `Digraph`** \u2014 an undirected graph is a
+digraph in which every edge exists in both directions, so `Graph.add_edge` adds the reverse edge as well.
+
+He names the two standard representations:
+
+- **Adjacency matrix** \u2014 a 2-D table where cell `(i, j)` records whether an edge runs from `i` to `j`.
+  $O(V^2)$ space; edge lookup is $O(1)$.
+- **Adjacency list** \u2014 for each node, a list of the nodes it connects to. $O(V + E)$ space.
+
+Which to choose depends on **density**. A graph where most possible edges exist (dense) suits a matrix; a graph
+where each node has few neighbours (sparse) suits a list. Almost every interview graph is sparse, so the
+adjacency list is the default.
+
+---
+
+### \u00a7 3. Canonical Code Walkthrough
+```python
+n = 4
+edges = [(0, 1), (0, 2), (1, 3)]
+
+# UNDIRECTED -- each edge recorded from both endpoints
+adj = [[] for _ in range(n)]
+for u, v in edges:
+    adj[u].append(v)
+    adj[v].append(u)
+# [[1, 2], [0, 3], [0], [1]]
+
+# DIRECTED -- source to destination only
+adj = [[] for _ in range(n)]
+for u, v in edges:
+    adj[u].append(v)
+# [[1, 2], [3], [], []]
+```
+
+The dict form, when nodes are not integers `0..n-1`:
+
+```python
+from collections import defaultdict
+adj = defaultdict(list)
+for u, v in edges:
+    adj[u].append(v)
+    adj[v].append(u)      # drop this line for a digraph
+```
+
+---
+
+### \u00a7 4. Common Pitfalls & Invariant Rules
+1. **Forgetting the reverse edge** is the classic undirected-graph bug. The traversal runs, finds a subset of the
+   graph, and reports a confidently wrong answer.
+2. **`[[]] * n` aliases one list `n` times.** Use `[[] for _ in range(n)]` \u2014 the same trap as the DP-grid drill.
+3. **Self-loops and duplicate edges.** `(u, u)` adds `u` as its own neighbour; a repeated edge appears twice. Both
+   are legal graphs, and both break code that assumes otherwise.
+4. **Matrix costs $O(V^2)$ even when empty.** For $V = 10^5$ that is $10^{10}$ cells \u2014 not allocatable. Sparse
+   graphs must use lists.
+5. **Build once, outside the traversal.** Rebuilding adjacency inside a loop turns $O(V+E)$ into $O(V \\cdot E)$.
+
+---
+
+### \u00a7 5. Bridging to LeetCode Mastery
+- **LeetCode 207/210 (Course Schedule I/II)**: prerequisites are a digraph; build adjacency plus in-degrees first.
+- **LeetCode 133 (Clone Graph)**, **LeetCode 323 (Connected Components)**: undirected, both directions required.
+- **LeetCode 1971 (Find if Path Exists)**: the minimal build-then-traverse exercise.
+- Grids are **implicit** graphs \u2014 no adjacency structure needed, the 4 direction offsets *are* the edges.
+""",
+        "test_cases": [
+            {"input": {"n": 3, "edges": [[0, 1], [0, 2]], "directed": False}, "expected": [[1, 2], [0], [0]]},
+            {"input": {"n": 3, "edges": [[0, 1], [0, 2]], "directed": True}, "expected": [[1, 2], [], []]},
+            {"input": {"n": 2, "edges": [], "directed": False}, "expected": [[], []]},
+            {"input": {"n": 4, "edges": [[0, 1], [1, 3]], "directed": False}, "expected": [[1], [0, 3], [], [1]]},
+        ],
+        "hints": [
+            "Build adj = [[] for _ in range(n)] -- never [[]] * n.",
+            "Append v to adj[u]; when undirected also append u to adj[v].",
+            "Sort each neighbour list before returning.",
+        ],
+    },
+    {
+        "slug": "py-graph-bfs-shortest-path",
+        "title": "BFS Shortest Path (Guttag Ch. 14)",
+        "kind": "fundamental",
+        "track": "track_8_graphs",
+        "difficulty": "Medium",
+        "category": "Graphs",
+        "tags": ["Guttag \u00a7 14.2.2", "BFS", "Shortest Path", "Queue"],
+        "description": """### \U0001f3db\ufe0f Finger Exercise: Fewest Edges Wins
+**Guttag Citation**: *Chapter 14 (\u00a7 14.2.2 Shortest Path: Depth-First Search and Breadth-First Search)*
+
+**Breadth-first search** generates paths in **ascending order of length**, so the first path it finds to the goal
+is guaranteed to use the minimum number of edges.
+
+Write `shortest_hops(n: int, edges: list[tuple[int, int]], start: int, end: int) -> int` returning the fewest
+edges on any path from `start` to `end` in an **undirected** graph, or `-1` if unreachable. `start == end` is 0.
+""",
+        "examples": [
+            {"input": "n = 4, edges = [(0,1),(1,2),(2,3),(0,3)], start = 0, end = 2", "output": "2"},
+            {"input": "n = 3, edges = [(0,1)], start = 0, end = 2", "output": "-1"},
+        ],
+        "constraints": ["1 <= n <= 10^4", "0 <= start, end < n"],
+        "starter_codes": {
+            "python": """from collections import deque
+
+def shortest_hops(n: int, edges: list, start: int, end: int) -> int:
+    # BFS level by level; return the depth at which end is first reached
+    pass
+"""
+        },
+        "solutions": {
+            "python": """from collections import deque
+
+def shortest_hops(n: int, edges: list, start: int, end: int) -> int:
+    adj = [[] for _ in range(n)]
+    for u, v in edges:
+        adj[u].append(v)
+        adj[v].append(u)
+
+    if start == end:
+        return 0
+
+    seen = {start}
+    q = deque([(start, 0)])
+    while q:
+        node, d = q.popleft()
+        for nxt in adj[node]:
+            if nxt == end:
+                return d + 1
+            if nxt not in seen:
+                seen.add(nxt)
+                q.append((nxt, d + 1))
+    return -1
+"""
+        },
+        "editorial": """# \U0001f4d6 Chapter 14 (\u00a7 14.2.2 Shortest Path: Depth-First and Breadth-First Search)
+*John V. Guttag \u2014 Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### \u00a7 1. Theoretical Foundations: Why BFS Finds the Shortest Path
+BFS explores **many paths simultaneously**, adding one node to each path on every iteration. Because it extends
+all length-$k$ paths before it creates any length-$(k+1)$ path, it enumerates paths in ascending order of length.
+
+That ordering is the whole guarantee. Guttag states the consequence directly: since BFS generates the paths in
+ascending order of length, **the first path found with the goal as its last node is guaranteed to have a minimum
+number of edges**. No comparison step is needed \u2014 you return on first contact and you are provably optimal.
+
+Guttag also notes the implementation asymmetry: DFS is "often implemented recursively", BFS is "usually
+implemented iteratively" \u2014 because the queue must be explicit.
+
+---
+
+### \u00a7 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 14, \u00a7 14.2.2 and Figure 14-11 \u2014 paraphrase, not a verbatim quotation)*
+
+The motivating example is the "six degrees of separation" question: given a social network as a graph with people
+as nodes and the *friend* relation as edges, how many hops separate you from Lady Gaga? Because friendship is
+symmetric, the graph is undirected.
+
+Guttag's Figure 14-11 keeps a `path_queue` holding every path currently being explored. Each iteration removes
+one path, checks whether its last node is the goal, and otherwise creates a new extended path for each child,
+appending them all back to the queue. Tracing his 6-node digraph prints the paths in exactly ascending length
+order \u2014 `0`, then `0->1`, `0->2`, then the length-3 paths, and so on \u2014 which is the property being relied on.
+
+He closes with a finger exercise worth keeping in mind: *"Consider a digraph with weighted edges. Is the first
+path found by BFS guaranteed to minimize the sum of the weights of the edges?"* The answer is **no** \u2014 BFS
+minimizes the **count** of edges, not their total weight. Weighted shortest paths need Dijkstra.
+
+---
+
+### \u00a7 3. Canonical Code Walkthrough
+```python
+from collections import deque
+
+def bfs(adj, start, end):
+    if start == end:
+        return 0
+    seen = {start}                 # mark on ENQUEUE, never on dequeue
+    q = deque([(start, 0)])        # (node, distance so far)
+    while q:
+        node, d = q.popleft()      # O(1) -- a list would make this O(N)
+        for nxt in adj[node]:
+            if nxt == end:
+                return d + 1       # first contact IS the shortest
+            if nxt not in seen:
+                seen.add(nxt)
+                q.append((nxt, d + 1))
+    return -1                      # queue drained, goal unreachable
+```
+
+Tracing on `edges = [(0,1),(1,2),(2,3),(0,3)]`, from `0` to `2`:
+
+```
+q = [(0,0)]                 seen = {0}
+pop (0,0)  neighbours 1, 3  -> q = [(1,1), (3,1)]   seen = {0,1,3}
+pop (1,1)  neighbour 2 == end  -> return 1 + 1 = 2
+```
+
+Two hops, `0 -> 1 -> 2`. The alternative `0 -> 3 -> 2` is also length 2 \u2014 when several shortest paths exist,
+BFS returns whichever it reaches first, and Guttag notes DFS and BFS need not agree on *which* one.
+
+---
+
+### \u00a7 4. Common Pitfalls & Invariant Rules
+1. **Mark visited on enqueue, not on dequeue.** Marking at pop time lets the same node enter the queue many times
+   before it is first processed \u2014 the queue balloons and the run degrades badly.
+2. **`list.pop(0)` silently makes it $O(V^2)$.** Use `deque.popleft()`. This is the single most common cause of a
+   correct-looking BFS that times out.
+3. **BFS minimizes edge count, not edge weight.** With weights, use Dijkstra \u2014 exactly Guttag's finger exercise.
+4. **Handle `start == end` up front**, or the loop returns `-1` for a trivially reachable node.
+5. **Complexity is $O(V + E)$ time, $O(V)$ space.** Every node is enqueued at most once, every edge inspected at
+   most twice in an undirected graph.
+
+---
+
+### \u00a7 5. Bridging to LeetCode Mastery
+- **LeetCode 1091 (Shortest Path in Binary Matrix)**, **LeetCode 127 (Word Ladder)**: unweighted shortest path.
+- **LeetCode 994 (Rotting Oranges)**: multi-source BFS \u2014 seed the queue with *every* start, distance still works.
+- **LeetCode 102 (Binary Tree Level Order)**: the level-snapshot pattern, `for _ in range(len(q))`.
+- **LeetCode 542 (01 Matrix)**: multi-source BFS on a grid.
+""",
+        "test_cases": [
+            {"input": {"n": 4, "edges": [[0, 1], [1, 2], [2, 3], [0, 3]], "start": 0, "end": 2}, "expected": 2},
+            {"input": {"n": 3, "edges": [[0, 1]], "start": 0, "end": 2}, "expected": -1},
+            {"input": {"n": 1, "edges": [], "start": 0, "end": 0}, "expected": 0},
+            {"input": {"n": 5, "edges": [[0, 1], [1, 2], [2, 3], [3, 4]], "start": 0, "end": 4}, "expected": 4},
+        ],
+        "hints": [
+            "Build the undirected adjacency list first.",
+            "Use deque and store (node, distance) pairs.",
+            "Return d + 1 the moment a neighbour equals end; mark seen when you enqueue.",
+        ],
+    },
+    {
+        "slug": "py-graph-dfs-cycle-detect",
+        "title": "DFS & Cycle Detection (Guttag Ch. 14)",
+        "kind": "fundamental",
+        "track": "track_8_graphs",
+        "difficulty": "Medium",
+        "category": "Graphs",
+        "tags": ["Guttag \u00a7 14.2.2", "DFS", "Cycles", "Backtracking"],
+        "description": """### \U0001f3db\ufe0f Finger Exercise: Cyclic or Acyclic?
+**Guttag Citation**: *Chapter 14 (\u00a7 14.2.2 Shortest Path: Depth-First Search and Breadth-First Search)*
+
+A **path** is a sequence of edges leading from one node to another; a **cycle** is a path that returns to where
+it started. A graph containing a cycle is **cyclic**, one without is **acyclic**.
+
+Write `has_cycle(n: int, edges: list[tuple[int, int]]) -> bool` that returns `True` when the **directed** graph
+contains a cycle. Use DFS with three states so that revisiting a node already finished is not mistaken for a cycle.
+""",
+        "examples": [
+            {"input": "n = 3, edges = [(0,1),(1,2),(2,0)]", "output": "True"},
+            {"input": "n = 3, edges = [(0,1),(0,2),(1,2)]", "output": "False", "explanation": "Diamond shape, but no way back to 0."},
+        ],
+        "constraints": ["1 <= n <= 10^4"],
+        "starter_codes": {
+            "python": """def has_cycle(n: int, edges: list) -> bool:
+    # DFS with WHITE / GREY / BLACK colouring
+    pass
+"""
+        },
+        "solutions": {
+            "python": """def has_cycle(n: int, edges: list) -> bool:
+    adj = [[] for _ in range(n)]
+    for u, v in edges:
+        adj[u].append(v)
+
+    WHITE, GREY, BLACK = 0, 1, 2
+    colour = [WHITE] * n
+
+    def dfs(node):
+        colour[node] = GREY
+        for nxt in adj[node]:
+            if colour[nxt] == GREY:
+                return True
+            if colour[nxt] == WHITE and dfs(nxt):
+                return True
+        colour[node] = BLACK
+        return False
+
+    for i in range(n):
+        if colour[i] == WHITE and dfs(i):
+            return True
+    return False
+"""
+        },
+        "editorial": """# \U0001f4d6 Chapter 14 (\u00a7 14.2.2 Depth-First Search)
+*John V. Guttag \u2014 Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### \u00a7 1. Theoretical Foundations: Depth First, Then Back Up
+Depth-first search follows one branch as far as it will go, then **backtracks** to the most recent unexplored
+alternative. Guttag notes it is "often implemented recursively" \u2014 the call stack *is* the record of the current
+path, which is exactly what makes cycle detection natural.
+
+The vocabulary Guttag introduces here does the work:
+- A **path** is a sequence of edges from one node to another.
+- A **cycle** is a path whose start and end are the same node.
+- A graph with at least one cycle is **cyclic**; one with none is **acyclic**.
+
+An acyclic digraph (a DAG) is the structure that admits a valid ordering of dependencies. A cyclic one does not
+\u2014 which is why "can these courses be scheduled?" is literally "is this digraph acyclic?".
+
+---
+
+### \u00a7 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 14, \u00a7 14.2.2 and Figure 14-9 \u2014 paraphrase, not a verbatim quotation)*
+
+Guttag's DFS shortest-path code (Figure 14-9) carries the path built so far and, critically, checks whether a
+candidate next node is **already in that path** before recursing. Without that guard, a cyclic graph sends the
+recursion around the loop forever.
+
+That guard is the seed of cycle detection. The subtlety is that "already visited" and "currently on the path" are
+different questions. A node reached twice by two different branches is not a cycle; a node reached again *while
+still on the current recursion stack* is. Conflating the two reports cycles that do not exist.
+
+The standard fix is three colours:
+
+| Colour | Meaning |
+| :-- | :-- |
+| **WHITE** | not yet visited |
+| **GREY** | on the current recursion stack \u2014 we are inside its call |
+| **BLACK** | fully explored, its whole subtree is finished |
+
+Encountering a **GREY** node is a back edge, and a back edge is exactly a cycle.
+
+---
+
+### \u00a7 3. Canonical Code Walkthrough
+```python
+WHITE, GREY, BLACK = 0, 1, 2
+colour = [WHITE] * n
+
+def dfs(node):
+    colour[node] = GREY               # entering: now on the stack
+    for nxt in adj[node]:
+        if colour[nxt] == GREY:       # back edge -> CYCLE
+            return True
+        if colour[nxt] == WHITE and dfs(nxt):
+            return True
+    colour[node] = BLACK              # leaving: subtree finished
+    return False
+
+# Every node must be tried: the graph may be disconnected.
+for i in range(n):
+    if colour[i] == WHITE and dfs(i):
+        return True
+```
+
+Tracing `edges = [(0,1),(1,2),(2,0)]`:
+
+```
+dfs(0)  colour[0] = GREY
+  dfs(1)  colour[1] = GREY
+    dfs(2)  colour[2] = GREY
+      neighbour 0 is GREY  ->  CYCLE FOUND
+```
+
+And on the acyclic `[(0,1),(0,2),(1,2)]`:
+
+```
+dfs(0)  GREY
+  dfs(1)  GREY -> dfs(2) GREY -> no neighbours -> BLACK; 1 -> BLACK
+  neighbour 2 is BLACK  ->  finished already, NOT a cycle
+0 -> BLACK, no cycle
+```
+
+Node 2 is reached twice \u2014 and a two-state visited set would wrongly flag it.
+
+---
+
+### \u00a7 4. Common Pitfalls & Invariant Rules
+1. **Two states are not enough for a digraph.** A plain `visited` set reports a false cycle whenever two branches
+   converge on the same node. You need to distinguish "on the stack" from "done".
+2. **Undirected graphs use a different rule.** There, track the **parent** and ignore the edge you arrived on;
+   any *other* visited neighbour is a cycle. Applying the directed rule to an undirected graph flags every edge.
+3. **Loop over every node.** A disconnected graph can hide its cycle in a component your first DFS never reaches.
+4. **Recursion depth is $O(V)$.** A 10^5-node chain overflows CPython's stack \u2014 convert to an explicit stack.
+5. **Complexity is $O(V + E)$.** Each node is coloured once and each edge examined once.
+
+---
+
+### \u00a7 5. Bridging to LeetCode Mastery
+- **LeetCode 207 (Course Schedule)**: literally "is this digraph acyclic?" \u2014 this exact algorithm.
+- **LeetCode 210 (Course Schedule II)**: same detection, plus emit the order (nodes turn BLACK in reverse
+  topological order).
+- **LeetCode 802 (Find Eventual Safe States)**: the colouring generalizes directly.
+- **LeetCode 261 (Graph Valid Tree)**: undirected \u2014 use the parent rule, and check edge count is `n - 1`.
+""",
+        "test_cases": [
+            {"input": {"n": 3, "edges": [[0, 1], [1, 2], [2, 0]]}, "expected": True},
+            {"input": {"n": 3, "edges": [[0, 1], [0, 2], [1, 2]]}, "expected": False},
+            {"input": {"n": 2, "edges": []}, "expected": False},
+            {"input": {"n": 4, "edges": [[0, 1], [2, 3], [3, 2]]}, "expected": True},
+        ],
+        "hints": [
+            "Colour each node WHITE (unvisited), GREY (on stack), BLACK (finished).",
+            "Seeing a GREY neighbour means a back edge, which is a cycle.",
+            "Start a DFS from every WHITE node -- the graph may be disconnected.",
+        ],
+    },
+    {
+        "slug": "py-graph-greedy-vs-optimal",
+        "title": "Greedy Algorithms & Where They Fail (Guttag Ch. 14)",
+        "kind": "fundamental",
+        "track": "track_8_graphs",
+        "difficulty": "Easy",
+        "category": "Optimization",
+        "tags": ["Guttag \u00a7 14.1.1", "Greedy", "Optimization", "Local vs Global"],
+        "description": """### \U0001f3db\ufe0f Finger Exercise: Locally Optimal Is Not Globally Optimal
+**Guttag Citation**: *Chapter 14 (\u00a7 14.1.1 Greedy Algorithms)*
+
+A **greedy algorithm** makes the choice that looks best right now and never reconsiders. It is fast and simple,
+and for the **0/1 knapsack** it is **not guaranteed to be optimal**.
+
+Write `greedy_by_density(weights, values, capacity) -> int` that takes items in descending value-to-weight
+order, adding each whole item that still fits, and returns the total value obtained. The drill is to see the
+greedy answer, then compare it to the true optimum from the knapsack DP drill.
+""",
+        "examples": [
+            {
+                "input": "weights = [1, 2, 3], values = [6, 10, 12], capacity = 5",
+                "output": "16",
+                "explanation": "Greedy takes item 0 (density 6.0) then item 1 (5.0), filling 3 of 5 units for value 16. The optimum is items 1+2: weight exactly 5, value 22. Greedy committed to item 0 and could not take it back.",
+            }
+        ],
+        "constraints": ["len(weights) == len(values) <= 100", "capacity >= 0"],
+        "starter_codes": {
+            "python": """def greedy_by_density(weights: list, values: list, capacity: int) -> int:
+    # Sort by value/weight descending, take each whole item that fits
+    pass
+"""
+        },
+        "solutions": {
+            "python": """def greedy_by_density(weights: list, values: list, capacity: int) -> int:
+    items = sorted(
+        range(len(weights)),
+        key=lambda i: values[i] / weights[i],
+        reverse=True,
+    )
+    total = 0
+    remaining = capacity
+    for i in items:
+        if weights[i] <= remaining:
+            remaining -= weights[i]
+            total += values[i]
+    return total
+"""
+        },
+        "editorial": """# \U0001f4d6 Chapter 14 (\u00a7 14.1.1 Greedy Algorithms)
+*John V. Guttag \u2014 Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### \u00a7 1. Theoretical Foundations: The Shape of an Optimization Problem
+Guttag frames every optimization problem with two parts:
+
+1. An **objective function** to maximize or minimize.
+2. A **set of constraints** that any solution must satisfy.
+
+For the knapsack, the objective is total value and the constraint is total weight. Recognizing this shape is what
+tells you which family of algorithms applies.
+
+A **greedy algorithm** makes a sequence of **locally optimal** choices, hoping to arrive somewhere **globally
+optimal**. It usually will not. That gap \u2014 locally optimal versus globally optimal \u2014 is the vocabulary Guttag
+introduces here, and it is the entire lesson.
+
+---
+
+### \u00a7 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 14, \u00a7 14.1.1 \u2014 paraphrase, not a verbatim quotation)*
+
+The obvious appeal of greedy is cost: sort the items, walk the list once. That is $O(n \\log n)$, against
+exponential brute force.
+
+The catch is that "best" is ambiguous, and the answer changes with the definition. Guttag runs the same greedy
+scaffold under different metrics \u2014 take the most valuable item first, take the lightest item first, take the
+best value-per-unit-weight first \u2014 and gets **different answers**, none reliably optimal. A greedy algorithm is
+only as good as the ordering you happen to choose, and nothing about the method tells you which ordering is right.
+
+The one case where greedy *is* provably optimal is the **continuous (fractional) knapsack**, where items may be
+split. There you fill with the densest item until it runs out, then the next, and the last item is taken
+fractionally to exactly fill the bag. No better packing exists.
+
+The moment items become all-or-nothing \u2014 the **0/1 knapsack** \u2014 that proof collapses, and dynamic programming
+becomes necessary.
+
+---
+
+### \u00a7 3. Canonical Code Walkthrough
+```python
+def greedy_by_density(weights, values, capacity):
+    order = sorted(range(len(weights)),
+                   key=lambda i: values[i] / weights[i],
+                   reverse=True)
+    total, remaining = 0, capacity
+    for i in order:
+        if weights[i] <= remaining:      # whole item only -- this is the 0/1 constraint
+            remaining -= weights[i]
+            total += values[i]
+    return total
+```
+
+**The counterexample that matters.** `weights = [1, 2, 3]`, `values = [6, 10, 12]`, `capacity = 5`:
+
+```
+densities: item0 = 6/1 = 6.0,  item1 = 10/2 = 5.0,  item2 = 12/3 = 4.0
+greedy order: item0, item1, item2   (densest first)
+  take item0 (w=1)  remaining 4,  value 6
+  take item1 (w=2)  remaining 2,  value 16
+  item2 (w=3) does not fit in the remaining 2
+greedy total = 16
+
+optimum: item1 + item2 = weight 2 + 3 = 5 exactly, value 10 + 12 = 22
+```
+
+Greedy scores **16 against an optimum of 22** — a 27% shortfall, on three items. And note *why* it lost: item0
+had the best density, so greedy grabbed it first, and that single unit of wasted capacity locked out the pairing
+that exactly filled the bag. The choice was irrevocable, and that irrevocability is the defect.
+
+---
+
+### \u00a7 4. Common Pitfalls & Invariant Rules
+1. **Greedy needs a proof, not a vibe.** It is correct only when the problem has the greedy-choice property.
+   Without one, an interviewer's follow-up counterexample sinks the answer.
+2. **The metric changes the answer.** Most-valuable-first, lightest-first and best-density-first are all "greedy"
+   and all give different results. Say which ordering you mean.
+3. **Fractional is optimal; 0/1 is not.** Know which variant you have been handed.
+4. **Greedy never backtracks.** That is the source of both its speed and its wrongness.
+5. **Use greedy as the baseline.** State it, show the counterexample, then reach for DP \u2014 that sequence
+   demonstrates you know *why* DP is required.
+
+---
+
+### \u00a7 5. Bridging to LeetCode Mastery
+- **Genuinely greedy**: LeetCode 55 (Jump Game), 134 (Gas Station), 435 (Non-overlapping Intervals),
+  452 (Burst Balloons with arrows) \u2014 each has a provable exchange argument.
+- **Looks greedy, is not**: LeetCode 322 (Coin Change) \u2014 largest-coin-first fails on `coins=[1,3,4], amount=6`
+  (greedy gives 4+1+1 = 3 coins; optimal is 3+3 = 2). Needs DP.
+- **LeetCode 416 (Partition Equal Subset Sum)**: the 0/1 knapsack in disguise \u2014 greedy cannot solve it.
+""",
+        "test_cases": [
+            {"input": {"weights": [5, 4, 6], "values": [10, 8, 12], "capacity": 10}, "expected": 18},
+            {"input": {"weights": [1, 2, 3], "values": [6, 10, 12], "capacity": 5}, "expected": 16},
+            {"input": {"weights": [10], "values": [100], "capacity": 5}, "expected": 0},
+            {"input": {"weights": [2, 2], "values": [3, 3], "capacity": 4}, "expected": 6},
+        ],
+        "hints": [
+            "Sort item indices by values[i] / weights[i], descending.",
+            "Walk that order, taking a whole item only when it still fits.",
+            "Compare your answer to the 0/1 knapsack DP drill -- greedy can be lower.",
+        ],
+    },
+    {
+        "slug": "py-fluency-tuples-multiple-assign",
+        "title": "Tuples & Multiple Assignment (Guttag Ch. 5)",
+        "kind": "fundamental",
+        "track": "track_1_pythonic_fluency",
+        "difficulty": "Easy",
+        "category": "Structured Types",
+        "tags": ["Guttag § 5.1", "Tuples", "Multiple Assignment", "Immutable"],
+        "description": """### \U0001f3db️ Finger Exercise: Packing and Unpacking
+**Guttag Citation**: *Chapter 5: Structured Types and Mutability (§ 5.1 Tuples, § 5.1.1 Multiple Assignment)*
+
+A **tuple** is an ordered, **immutable** sequence. Because it cannot change, it is hashable, so it can key a
+dict or join a set. **Multiple assignment** unpacks one in a single statement.
+
+Write `min_max_swap(pairs: list[tuple[int, int]]) -> list[tuple[int, int]]` that returns each pair reordered
+so the smaller value comes first, using tuple unpacking rather than indexing.
+""",
+        "examples": [{"input": "pairs = [(3, 1), (2, 8)]", "output": "[(1, 3), (2, 8)]"}],
+        "constraints": ["0 <= len(pairs) <= 1000"],
+        "starter_codes": {
+            "python": """def min_max_swap(pairs: list) -> list:
+    # Unpack each pair with `a, b = pair` and return it ordered
+    pass
+"""
+        },
+        "solutions": {
+            "python": """def min_max_swap(pairs: list) -> list:
+    out = []
+    for a, b in pairs:
+        if a > b:
+            a, b = b, a
+        out.append((a, b))
+    return out
+"""
+        },
+        "editorial": """# \U0001f4d6 Chapter 5: Structured Types and Mutability (§ 5.1 Tuples)
+*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### § 1. Theoretical Foundations: Ordered and Frozen
+A tuple is an ordered sequence, written with parentheses, whose elements may be of any type — including other
+tuples. It is Python's first **non-scalar immutable** type, and that immutability is not a restriction so much as
+a capability: it is exactly what makes a tuple **hashable**.
+
+Guttag pairs tuples with **multiple assignment**, the idiom that binds several names at once:
+
+```python
+x, y = 1, 2
+```
+
+The right-hand side is evaluated *fully* before any binding happens, which is what makes the one-line swap work.
+
+---
+
+### § 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 5, § 5.1 — paraphrase, not a verbatim quotation)*
+
+Guttag's point is that multiple assignment is "particularly convenient when functions return multiple values."
+A function computing both a minimum and a maximum returns them as one tuple, and the caller unpacks:
+
+```python
+def get_min_and_max(vals):
+    return min(vals), max(vals)     # packs into a tuple
+
+low, high = get_min_and_max([3, 1, 4])   # unpacks into two names
+```
+
+The alternative — returning a list and indexing `result[0]`, `result[1]` — is both noisier and less safe: the
+unpacking form raises immediately if the arity is wrong, rather than silently reading the wrong slot.
+
+The syntactic wrinkle worth remembering: a **one-element tuple needs a trailing comma**. `(1)` is just the
+integer `1` in parentheses; `(1,)` is a tuple of length one.
+
+---
+
+### § 3. Canonical Code Walkthrough
+```python
+t = (1, 'two', 3)
+t[0]                 # 1        indexing works
+t[1:]                # ('two', 3)   slicing returns a tuple
+len(t)               # 3
+# t[0] = 9           # TypeError: 'tuple' object does not support item assignment
+
+# The swap -- right side fully evaluated first, so no temp variable needed
+a, b = 3, 1
+a, b = b, a          # a = 1, b = 3
+
+# Packing on return, unpacking at the call site
+def divide(n, d):
+    return n // d, n % d
+
+q, r = divide(17, 5)     # q = 3, r = 2
+
+# Hashability is the payoff
+seen = {(0, 1), (2, 3)}       # tuples in a set -- fine
+# {[0, 1]}                    # TypeError: unhashable type: 'list'
+memo = {(3, 7): 'computed'}   # the standard DP memo key
+
+# The trailing-comma trap
+type((1))        # <class 'int'>
+type((1,))       # <class 'tuple'>
+```
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **`(1)` is not a tuple.** Without the trailing comma it is a parenthesized integer. This bites when returning
+   a single-element tuple.
+2. **Immutable does not mean deeply immutable.** `([1], 2)` is a tuple whose first element is a mutable list —
+   and that tuple is *unhashable*, because hashability requires every element to be hashable.
+3. **Unpacking arity must match exactly.** `a, b = (1, 2, 3)` raises `ValueError: too many values to unpack`.
+   Use `a, *rest = ...` when the tail length varies.
+4. **Tuples compare lexicographically**, element by element — which is why `key=lambda x: (-count, name)` gives
+   multi-level sorting for free.
+5. **Prefer a tuple for a fixed-arity record**, a list for a homogeneous collection. The type documents intent.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
+- **DP memo keys**: `memo[(i, remaining)]` requires a tuple — a list key raises `TypeError`.
+- **Heap entries**: `heappush(h, (priority, tiebreak, item))` sorts by the tuple order automatically.
+- **Coordinate sets**: `visited = {(r, c)}` in grid traversals.
+- **Returning two values from a DFS**: `return height, is_balanced` avoids a second traversal.
+""",
+        "test_cases": [
+            {"input": {"pairs": [[3, 1], [2, 8]]}, "expected": [[1, 3], [2, 8]]},
+            {"input": {"pairs": []}, "expected": []},
+            {"input": {"pairs": [[5, 5]]}, "expected": [[5, 5]]},
+        ],
+        "hints": ["Iterate with `for a, b in pairs`.", "Swap with `a, b = b, a` when a > b."],
+    },
+    {
+        "slug": "py-fluency-sets-dicts",
+        "title": "Sets, Dictionaries & Hashable Types (Guttag Ch. 5)",
+        "kind": "fundamental",
+        "track": "track_1_pythonic_fluency",
+        "difficulty": "Easy",
+        "category": "Structured Types",
+        "tags": ["Guttag § 5.6", "Guttag § 5.7", "Sets", "Dictionaries", "Hashable"],
+        "description": """### \U0001f3db️ Finger Exercise: Membership in Constant Time
+**Guttag Citation**: *Chapter 5: Structured Types and Mutability (§ 5.6 Sets, § 5.7 Dictionaries)*
+
+A **set** is an unordered collection of distinct **hashable** objects. A **dictionary** maps hashable **keys**
+to **values**. Both give average $O(1)$ membership — against $O(n)$ for a list.
+
+Write `common_counts(a: list[str], b: list[str]) -> dict` returning, for every string appearing in **both**
+lists, how many times it appears in `a`. Words absent from `b` are excluded.
+""",
+        "examples": [
+            {"input": "a = ['x','y','x','z'], b = ['x','z']", "output": "{'x': 2, 'z': 1}"},
+        ],
+        "constraints": ["0 <= len(a), len(b) <= 10^4"],
+        "starter_codes": {
+            "python": """def common_counts(a: list, b: list) -> dict:
+    # Use a set for membership and a dict for counting
+    pass
+"""
+        },
+        "solutions": {
+            "python": """def common_counts(a: list, b: list) -> dict:
+    in_b = set(b)
+    out = {}
+    for w in a:
+        if w in in_b:
+            out[w] = out.get(w, 0) + 1
+    return out
+"""
+        },
+        "editorial": """# \U0001f4d6 Chapter 5 (§ 5.6 Sets, § 5.7 Dictionaries)
+*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### § 1. Theoretical Foundations: Hashability Is the Entry Requirement
+Both `set` and `dict` are built on hashing, and both impose the same admission rule: their members (or keys)
+must be **hashable**. Guttag introduces `hashable type` as a term precisely here.
+
+An object is hashable when its hash value stays fixed for its lifetime. Mutable containers cannot promise that —
+change the contents and the correct bucket changes, so the object would go missing from the table it was filed
+in. Hence: `int`, `str`, `tuple`, `frozenset` may be keys; `list`, `dict`, `set` may not.
+
+The payoff is the complexity difference that decides most interview problems:
+
+| Operation | `list` | `set` / `dict` |
+| :-- | :-- | :-- |
+| `x in c` | $O(n)$ | $O(1)$ average |
+| insert | $O(1)$ amortized | $O(1)$ average |
+| delete | $O(n)$ | $O(1)$ average |
+
+---
+
+### § 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 5, § 5.6–5.7 — paraphrase, not a verbatim quotation)*
+
+Guttag presents sets as the computational form of the mathematical set: unordered, no duplicates, supporting
+union (`|`), intersection (`&`), difference (`-`) and subset tests. The unorderedness is a real constraint —
+he is explicit that you should not rely on the iteration order of a set.
+
+Dictionaries he describes as a mapping from keys to values, and he stresses the **`view object`**: `d.keys()`,
+`d.values()` and `d.items()` are not snapshots but *live views* onto the dict. Mutate the dict and the view
+reflects it — which is why mutating a dict while iterating its keys raises `RuntimeError`.
+
+He returns to dicts in Chapter 12 to explain *why* they are fast: hashing converts a key into a list index, and
+lookup is constant time provided collisions stay rare. The Chapter 5 promise is cashed by the Chapter 12
+mechanism.
+
+---
+
+### § 3. Canonical Code Walkthrough
+```python
+# SETS -- membership, dedupe, algebra
+s = {3, 1, 4, 1}          # {1, 3, 4}   duplicates collapse
+3 in s                    # True, O(1)
+s.add(5); s.discard(9)    # discard tolerates a missing element; remove raises
+
+{1, 2} | {2, 3}           # {1, 2, 3}   union
+{1, 2} & {2, 3}           # {2}         intersection
+{1, 2} - {2, 3}           # {1}         difference
+
+# DICTIONARIES -- mapping and safe access
+d = {'a': 1, 'b': 2}
+d['a']                    # 1
+d['zz']                   # KeyError
+d.get('zz', 0)            # 0      <- the branch-free idiom
+d.setdefault('c', []).append(7)
+
+for k, v in d.items():    # a live view, not a copy
+    ...
+
+from collections import Counter, defaultdict
+Counter('mississippi')    # {'i': 4, 's': 4, 'p': 2, 'm': 1}
+g = defaultdict(list); g['k'].append(1)   # no "if key not in" branch
+
+# HASHABILITY
+{(1, 2)}                  # fine -- tuple is immutable
+# {[1, 2]}                # TypeError: unhashable type: 'list'
+frozenset([1, 2]) in {frozenset([1, 2])}   # True -- frozenset IS hashable
+```
+
+The $O(n)$ to $O(1)$ swap that wins interviews:
+
+```python
+# O(n^2): `in` on a list scans it every time
+out = []
+for x in items:
+    if x not in out:
+        out.append(x)
+
+# O(n): `in` on a set is constant
+seen = set()
+for x in items:
+    if x not in seen:
+        seen.add(x)
+```
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **`{}` is an empty dict, not an empty set.** The empty set is `set()`.
+2. **Never rely on set iteration order.** Sort explicitly when the output order is graded.
+3. **A list cannot be a key.** Convert to `tuple(...)` — this is exactly why *Group Anagrams* keys on
+   `tuple(sorted(word))`.
+4. **Mutating a dict while iterating raises `RuntimeError`.** Iterate over `list(d.keys())` when you must delete.
+5. **`d[k]` raises; `d.get(k, default)` does not.** Choose deliberately — a `KeyError` is sometimes the correct,
+   loud behaviour.
+6. **$O(1)$ is *expected*, not worst case.** Adversarial keys can collide into one bucket and degrade to $O(n)$.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
+- **LeetCode 1 (Two Sum)**: dict from value to index; look up the complement in $O(1)$.
+- **LeetCode 49 (Group Anagrams)**: `defaultdict(list)` keyed on the sorted-character tuple.
+- **LeetCode 128 (Longest Consecutive Sequence)**: set membership turns $O(n \\log n)$ into $O(n)$.
+- **LeetCode 217 (Contains Duplicate)**, **242 (Valid Anagram)**, **560 (Subarray Sum Equals K)**.
+""",
+        "test_cases": [
+            {"input": {"a": ["x", "y", "x", "z"], "b": ["x", "z"]}, "expected": {"x": 2, "z": 1}},
+            {"input": {"a": [], "b": ["x"]}, "expected": {}},
+            {"input": {"a": ["q"], "b": []}, "expected": {}},
+            {"input": {"a": ["m", "m", "m"], "b": ["m"]}, "expected": {"m": 3}},
+        ],
+        "hints": [
+            "Convert b to a set once, before the loop.",
+            "Count with out[w] = out.get(w, 0) + 1.",
+        ],
+    },
+    {
+        "slug": "py-scaffold-recursive-factorial",
+        "title": "Recursion & Recurrences: Factorial (Guttag Ch. 6)",
+        "kind": "fundamental",
+        "track": "track_3_algorithmic_scaffolds",
+        "difficulty": "Easy",
+        "category": "Inductive Recursion",
+        "tags": ["Guttag § 6.1", "Recursion", "Base Case", "Recurrence"],
+        "description": """### \U0001f3db️ Finger Exercise: The Simplest Recursion
+**Guttag Citation**: *Chapter 6: Recursion and Global Variables (§ 6.1 Fibonacci Numbers)*
+
+Guttag's Figure 6-1 gives **iterative and recursive implementations of factorial** side by side. The recursive
+one is the definition transcribed:
+$$n! = n \\times (n-1)! \\qquad 1! = 1$$
+
+Write `factorial_recursive(n: int) -> int` using a base case and one recursive call. `factorial_recursive(0)`
+must return `1`.
+""",
+        "examples": [{"input": "n = 5", "output": "120"}, {"input": "n = 0", "output": "1"}],
+        "constraints": ["0 <= n <= 900"],
+        "starter_codes": {
+            "python": """def factorial_recursive(n: int) -> int:
+    # Base case, then n * factorial_recursive(n - 1)
+    pass
+"""
+        },
+        "solutions": {
+            "python": """def factorial_recursive(n: int) -> int:
+    if n <= 1:
+        return 1
+    return n * factorial_recursive(n - 1)
+"""
+        },
+        "editorial": """# \U0001f4d6 Chapter 6: Recursion and Global Variables (§ 6.1)
+*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### § 1. Theoretical Foundations: An Inductive Definition Is Already Code
+Guttag introduces recursion through **inductive definitions**. A recursive definition has exactly two parts:
+
+1. A **base case** — the answer for the smallest input, given directly and without recursion.
+2. A **recursive (inductive) case** — the answer for $n$ expressed in terms of strictly smaller inputs.
+
+Factorial is the canonical example because the mathematics *is* the program:
+$$1! = 1 \\qquad n! = n \\times (n-1)!$$
+
+The mapping to code is mechanical. This is why Guttag places recursion immediately after functions: it is not a
+trick, it is a definition style that Python can execute directly.
+
+---
+
+### § 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 6, § 6.1 and Figure 6-1 — paraphrase, not a verbatim quotation)*
+
+Guttag shows the iterative and recursive versions together to make the trade explicit. The iterative version
+carries an accumulator and a loop counter; the recursive version carries neither, because the call stack holds
+that state implicitly.
+
+His judgement is that the recursive version is easier to read and easier to convince yourself is correct — it
+matches the definition line for line — while the iterative version avoids the per-call overhead and the depth
+limit. Neither is universally better.
+
+The correctness argument is induction: the base case is correct by inspection, and *if* the recursive call
+returns the right answer for `n - 1`, then multiplying by `n` gives the right answer for `n`. Termination follows
+because `n` strictly decreases toward the base case — the same **decrementing function** idea Guttag uses for
+`while` loops.
+
+---
+
+### § 3. Canonical Code Walkthrough
+```python
+# RECURSIVE -- the definition, transcribed
+def fact_recur(n):
+    if n <= 1:            # BASE CASE
+        return 1
+    return n * fact_recur(n - 1)     # RECURSIVE CASE
+
+# ITERATIVE -- explicit accumulator, explicit loop
+def fact_iter(n):
+    result = 1
+    for i in range(2, n + 1):
+        result *= i
+    return result
+```
+
+Tracing `fact_recur(4)` — note the stack grows on the way down, and the multiplications happen on the way *back up*:
+
+```
+fact_recur(4)                       -> 4 * fact_recur(3)
+  fact_recur(3)                     -> 3 * fact_recur(2)
+    fact_recur(2)                   -> 2 * fact_recur(1)
+      fact_recur(1)                 -> 1          <- base case
+    returns 2 * 1  = 2
+  returns 3 * 2  = 6
+returns 4 * 6  = 24
+```
+
+Four stack frames live simultaneously at the deepest point. That is the recursion's real cost: $O(n)$ space,
+against $O(1)$ for the loop.
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **The base case must be reachable from every input.** `if n == 1` looks fine until someone passes `0`, and the
+   recursion runs to `-1`, `-2`, ... until `RecursionError`. `if n <= 1` is the safe guard.
+2. **`0! = 1`, by definition.** Not zero. Getting this wrong breaks every combinatorics problem downstream.
+3. **Recursion depth is $O(n)$ and CPython caps it near 1000.** `factorial_recursive(5000)` raises
+   `RecursionError` even though the arithmetic is fine — Python's ints are unbounded, its stack is not.
+4. **Every recursive call must strictly shrink the input.** `fact(n)` calling `fact(n)` never terminates; so does
+   calling `fact(n - 0)`.
+5. **The multiplication happens on unwinding.** Nothing is computed on the way down — which is why this is *not*
+   tail recursion in any useful sense, and why the frames must be kept.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
+- **The shape transfers, not the function.** Base case plus a strictly-smaller recursive call is the skeleton of
+  every tree DFS: `if not node: return 0` is the same guard.
+- **LeetCode 104 (Maximum Depth of Binary Tree)**: `1 + max(depth(left), depth(right))` — identical structure.
+- **LeetCode 509 (Fibonacci Number)**, **LeetCode 70 (Climbing Stairs)**: the next recurrence up, and the point
+  where memoization becomes necessary.
+- **Combinatorics problems** need `math.comb` or a factorial table — recursion here is for teaching, not speed.
+""",
+        "test_cases": [
+            {"input": {"n": 5}, "expected": 120},
+            {"input": {"n": 0}, "expected": 1},
+            {"input": {"n": 1}, "expected": 1},
+            {"input": {"n": 10}, "expected": 3628800},
+        ],
+        "hints": ["Guard with `if n <= 1: return 1`.", "Otherwise return n * factorial_recursive(n - 1)."],
+    },
+    {
+        "slug": "py-modules-files-with",
+        "title": "Modules, Files & the with Statement (Guttag Ch. 7)",
+        "kind": "fundamental",
+        "track": "track_7_testing_exceptions",
+        "difficulty": "Easy",
+        "category": "Modules & Files",
+        "tags": ["Guttag § 7.1", "Guttag § 7.3", "Modules", "Files", "Context Manager"],
+        "description": """### \U0001f3db️ Finger Exercise: Qualified Names and Managed Resources
+**Guttag Citation**: *Chapter 7: Modules and Files (§ 7.1 Modules, § 7.3 Files)*
+
+A **module** is a `.py` file of related definitions. `import m` binds the module object, so its contents are
+reached by **fully qualified name** (`m.thing`). A **file handle** must be closed; the **`with` statement`**
+guarantees that even when an exception is raised.
+
+Write `parse_records(lines: list[str]) -> list[tuple[str, int]]` that parses `"name,score"` lines into
+`(name, score)` pairs, skipping blank lines and any line whose score is not an integer.
+""",
+        "examples": [
+            {"input": "lines = ['ann,90', '', 'bob,x', 'cy,75']", "output": "[('ann', 90), ('cy', 75)]"}
+        ],
+        "constraints": ["0 <= len(lines) <= 10^4"],
+        "starter_codes": {
+            "python": """def parse_records(lines: list) -> list:
+    # Split on ',', skip blanks and non-integer scores
+    pass
+"""
+        },
+        "solutions": {
+            "python": """def parse_records(lines: list) -> list:
+    out = []
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            continue
+        parts = line.split(",")
+        if len(parts) != 2:
+            continue
+        name, score = parts[0].strip(), parts[1].strip()
+        try:
+            out.append((name, int(score)))
+        except ValueError:
+            continue
+    return out
+"""
+        },
+        "editorial": """# \U0001f4d6 Chapter 7: Modules and Files
+*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### § 1. Theoretical Foundations: Splitting and Persisting
+Chapter 7 answers two practical questions that Chapters 1–6 deliberately deferred: how do you split a program
+across files, and how do you make data outlive the process?
+
+**Modules** answer the first. A module is just a `.py` file containing definitions and statements. `import m`
+executes it once and binds the resulting module object to the name `m`. Everything inside is then reached by
+**fully qualified name** — `m.pi`, `m.area()`. That qualification is a feature, not friction: it says exactly
+where a name came from and makes collisions impossible.
+
+**Files** answer the second, through a **file handle** obtained from `open()`.
+
+---
+
+### § 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 7, § 7.1 and § 7.3 — paraphrase, not a verbatim quotation)*
+
+On modules, Guttag's warning concerns `from m import *`. It dumps every name into the current namespace,
+discarding the qualification. Two modules that both define `area` will silently shadow one another, and the
+resulting bug points at neither import. Qualified access, or naming what you import, avoids the whole class.
+
+On files, the key vocabulary is the **file handle** — the object `open()` returns, which tracks position within
+the file. The modes matter: `'r'` reads, `'w'` **truncates and writes** (destroying existing content), `'a'`
+appends. Guttag also flags the **newline character** `\\n` as the line separator that reading preserves and
+`strip()` removes.
+
+The `with` statement is the safety mechanism. Written as
+
+```python
+with open(path) as f:
+    ...
+```
+
+it closes the handle when the block exits — **including when an exception propagates out of it**. The manual
+`open()` / `close()` pair leaks the handle on any error path between them, which is why `with` is the form to use
+unconditionally.
+
+---
+
+### § 3. Canonical Code Walkthrough
+```python
+# MODULES
+import math                 # bind the module
+math.sqrt(16)               # fully qualified -- origin is explicit
+
+from math import sqrt       # bind one name
+sqrt(16)
+
+# from math import *        # AVOID: dumps every name, invites shadowing
+
+# FILES -- with guarantees the close
+with open('scores.txt', 'w') as f:      # 'w' TRUNCATES an existing file
+    f.write('ann,90\\n')
+    f.write('bob,85\\n')
+
+with open('scores.txt') as f:           # 'r' is the default
+    for line in f:                      # iterating a handle yields lines, lazily
+        print(line.strip())             # strip() removes the trailing newline
+
+# Equivalent without `with` -- and why it is worse
+f = open('scores.txt')
+try:
+    data = f.read()
+finally:
+    f.close()          # `with` does exactly this, in one line, unmissably
+```
+
+Parsing defensively, which is what the drill exercises:
+
+```python
+for raw in lines:
+    line = raw.strip()
+    if not line:                  # skip blanks
+        continue
+    parts = line.split(',')
+    if len(parts) != 2:           # malformed -- skip rather than crash
+        continue
+    try:
+        out.append((parts[0].strip(), int(parts[1])))
+    except ValueError:            # non-numeric score -- skip
+        continue
+```
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **`open(path, 'w')` destroys the file immediately**, before you write anything. Use `'a'` to append, and be
+   certain which you meant.
+2. **Always `with`.** A bare `open()` leaks the handle whenever anything between it and `close()` raises.
+3. **Lines keep their `\\n`.** `line == 'ann,90'` fails while `line.strip() == 'ann,90'` succeeds — a classic
+   silent parsing bug.
+4. **`from m import *` invites shadowing.** Qualify, or import the specific names.
+5. **A module runs on first import, once.** Top-level side effects fire then — guard scripts with
+   `if __name__ == '__main__':`.
+6. **Real input is dirty.** Blank lines, wrong field counts and non-numeric values are the norm; decide per case
+   whether to skip or raise.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
+- LeetCode passes arguments directly, so file I/O rarely appears — but **competitive judges read stdin**, where
+  this exact strip/split/convert discipline applies.
+- **The standard library is the real transfer**: `from collections import deque, defaultdict, Counter`,
+  `import heapq`, `import bisect`. Knowing what to import is worth more than any single algorithm.
+- **`bisect.bisect_left`** is an already-correct binary search — use it instead of rewriting one under pressure.
+- **Defensive parsing** is exactly the skill in *String to Integer (atoi)* and *Valid Number*.
+""",
+        "test_cases": [
+            {"input": {"lines": ["ann,90", "", "bob,x", "cy,75"]}, "expected": [["ann", 90], ["cy", 75]]},
+            {"input": {"lines": []}, "expected": []},
+            {"input": {"lines": ["  spaced , 42 "]}, "expected": [["spaced", 42]]},
+            {"input": {"lines": ["too,many,fields", "ok,1"]}, "expected": [["ok", 1]]},
+        ],
+        "hints": [
+            "strip() each line and skip empties.",
+            "split(',') and require exactly 2 parts.",
+            "Wrap int(score) in try/except ValueError and skip on failure.",
+        ],
+    },
+    {
+        "slug": "py-basics-loops-range",
+        "title": "while Loops, for Loops & range (Guttag Ch. 2)",
+        "kind": "fundamental",
+        "track": "track_0_python_basics",
+        "difficulty": "Easy",
+        "category": "Python Basics",
+        "tags": ["Guttag § 2.5", "Guttag § 2.6", "Iteration", "range", "break"],
+        "description": """### \U0001f3db️ Finger Exercise: Iteration and Its Termination Argument
+**Guttag Citation**: *Chapter 2: Introduction to Python (§ 2.5 While Loops, § 2.6 For Loops and Range)*
+
+**Iteration** is what lets a fixed-length program do an amount of work that depends on its input. A `while` loop
+repeats while a test holds; a `for` loop walks a finite sequence, usually generated by `range`.
+
+Write `first_divisor(n: int) -> int` returning the smallest integer `d` with `2 <= d <= n` that divides `n`
+exactly, or `n` itself when `n` is prime. Stop scanning as soon as you find it.
+""",
+        "examples": [
+            {"input": "n = 15", "output": "3"},
+            {"input": "n = 13", "output": "13", "explanation": "13 is prime, so its smallest divisor above 1 is itself."},
+        ],
+        "constraints": ["2 <= n <= 10^6"],
+        "starter_codes": {
+            "python": """def first_divisor(n: int) -> int:
+    # Scan upward from 2; return the first exact divisor, else n
+    pass
+"""
+        },
+        "solutions": {
+            "python": """def first_divisor(n: int) -> int:
+    d = 2
+    while d * d <= n:
+        if n % d == 0:
+            return d
+        d += 1
+    return n
+"""
+        },
+        "editorial": """# \U0001f4d6 Chapter 2 (§ 2.5 While Loops, § 2.6 For Loops and Range)
+*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### § 1. Theoretical Foundations: Why Loops Change What Programs Can Do
+A straight-line program executes each statement once, so the work it does is fixed by its source length. A
+branching program adds decisions but still cannot repeat. **Iteration** removes that ceiling: a few lines can now
+do work proportional to the input.
+
+Guttag pairs iteration with the obligation it creates. A loop that never stops is not a program, so every `while`
+loop needs a **decrementing function** — a non-negative integer measure of the state that strictly decreases each
+pass. When it hits zero, the loop exits. This is the same argument he later reuses to prove binary search
+terminates.
+
+A `for` loop needs no such argument: it walks a finite sequence, so termination is structural.
+
+---
+
+### § 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 2, § 2.5–2.6 — paraphrase, not a verbatim quotation)*
+
+Guttag introduces `while` first because it is the general form, then `for` as the common special case. `range` is
+what makes `for` numeric: `range(start, stop, step)` produces values from `start` up to **but not including**
+`stop`. He is careful that `range` does not build a list — it generates values on demand, so `range(10**9)` costs
+no memory.
+
+`break` exits the innermost enclosing loop immediately, skipping any remaining iterations. Guttag's caution is
+that `break` interacts with the loop's exit reasoning: after a `break` you can no longer assume the loop
+condition became false, so any code depending on "the loop ran to completion" must be guarded.
+
+The half-open convention of `range` — inclusive start, exclusive stop — is deliberate: it makes `range(len(L))`
+exactly the valid indices of `L`, and makes adjacent ranges tile without overlap or gap.
+
+---
+
+### § 3. Canonical Code Walkthrough
+```python
+# WHILE -- general form; needs an explicit termination argument
+d = 2
+while d * d <= n:          # decrementing function: n - d*d, shrinks as d grows
+    if n % d == 0:
+        return d           # early exit the moment we succeed
+    d += 1
+return n
+
+# FOR + range -- termination is structural
+for i in range(5):         # 0, 1, 2, 3, 4   -- 5 is EXCLUDED
+    ...
+for i in range(2, 10, 3):  # 2, 5, 8
+    ...
+for i in range(len(L) - 1, -1, -1):    # walk backwards: len-1 down to 0
+    ...
+
+# range does not materialize
+r = range(10**9)           # instant, O(1) memory
+len(r)                     # 1000000000
+```
+
+Why `d * d <= n` and not `d <= n`: divisors come in pairs. If `n = a * b` with `a <= b`, then
+`a <= sqrt(n)`. So the smallest non-trivial divisor, if one exists, is at or below the square root — scanning
+past it is wasted work. That turns $O(n)$ into $O(\\sqrt{n})$: for `n = 10^6`, 1000 iterations instead of a million.
+
+Tracing `first_divisor(15)`:
+
+```
+d = 2:  2*2 = 4  <= 15,  15 % 2 = 1   -> continue
+d = 3:  3*3 = 9  <= 15,  15 % 3 = 0   -> return 3
+```
+
+And `first_divisor(13)`:
+
+```
+d = 2:  4  <= 13,  13 % 2 = 1  -> continue
+d = 3:  9  <= 13,  13 % 3 = 1  -> continue
+d = 4:  16 > 13   -> loop test fails, fall through
+return 13    (prime)
+```
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **Forgetting to advance the loop variable** is the classic infinite `while`. If `d += 1` is missing, nothing
+   decrements and the loop never ends.
+2. **`range(stop)` excludes `stop`.** `range(1, 5)` is `1,2,3,4`. Off-by-one here is the most common beginner bug.
+3. **Counting down needs all three arguments.** `range(n, -1, -1)` — omit the `-1` stop and you never reach 0.
+4. **Never mutate a list while iterating it.** The hidden loop counter and the shifting list disagree — see the
+   aliasing drill.
+5. **`break` skips the `else` clause.** Python's `for...else` runs `else` only when the loop was *not* broken —
+   useful for search, and surprising if unknown.
+6. **Prefer `for x in L` over `for i in range(len(L))`** unless you genuinely need the index; use `enumerate`
+   when you need both.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
+- **The $\\sqrt{n}$ divisor bound** is the whole trick in *Count Primes*, *Happy Number* and *Perfect Squares*.
+- **Reverse iteration** `range(n-1, -1, -1)` drives suffix DP and in-place array shifting.
+- **Two pointers and sliding window** are both `while` loops whose termination argument is that an index strictly
+  advances — write that argument down when the loop looks suspicious.
+- **`while` over `for`** whenever the step is data-dependent rather than a fixed count.
+""",
+        "test_cases": [
+            {"input": {"n": 15}, "expected": 3},
+            {"input": {"n": 13}, "expected": 13},
+            {"input": {"n": 2}, "expected": 2},
+            {"input": {"n": 49}, "expected": 7},
+            {"input": {"n": 1000000}, "expected": 2},
+        ],
+        "hints": [
+            "Start d at 2 and loop while d * d <= n.",
+            "Return d as soon as n % d == 0; if the loop finishes, n is prime so return n.",
+        ],
+    },
+    {
+        "slug": "py-basics-string-indexing-slicing",
+        "title": "String Indexing & Slicing (Guttag Ch. 2)",
+        "kind": "fundamental",
+        "track": "track_0_python_basics",
+        "difficulty": "Easy",
+        "category": "Python Basics",
+        "tags": ["Guttag § 2.4", "Strings", "Indexing", "Slicing"],
+        "description": """### \U0001f3db️ Finger Exercise: Half-Open Slices
+**Guttag Citation**: *Chapter 2: Introduction to Python (§ 2.4 Strings and Input)*
+
+**Indexing** selects one character; **slicing** selects a range, `s[start:end]`, including `start` and
+**excluding** `end`. Negative indices count from the right, so `s[-1]` is the last character.
+
+Write `extract_middle(s: str) -> str` returning `s` with its first and last characters removed. Strings of
+length 2 or less return the empty string.
+""",
+        "examples": [
+            {"input": "s = 'python'", "output": "'ytho'"},
+            {"input": "s = 'ab'", "output": "''"},
+        ],
+        "constraints": ["0 <= len(s) <= 10^4"],
+        "starter_codes": {
+            "python": """def extract_middle(s: str) -> str:
+    # Slice away the first and last characters
+    pass
+"""
+        },
+        "solutions": {
+            "python": """def extract_middle(s: str) -> str:
+    if len(s) <= 2:
+        return ""
+    return s[1:-1]
+"""
+        },
+        "editorial": """# \U0001f4d6 Chapter 2 (§ 2.4 Strings and Input)
+*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### § 1. Theoretical Foundations: A String Is a Sequence
+A `str` is an ordered sequence of characters, and Guttag introduces it as the first type with internal structure
+worth addressing. Two operations follow from that: **indexing** picks out one element, **slicing** picks out a
+contiguous run.
+
+The convention that governs both is **half-open**: `s[i:j]` includes index `i` and excludes index `j`. Two
+properties fall out of it, and they are why the convention was chosen:
+
+- The length of `s[i:j]` is exactly `j - i`.
+- `s[:k]` and `s[k:]` partition the string perfectly — no overlap, no gap, for any `k`.
+
+Guttag also introduces the **overloaded operator** here: `+` means addition on numbers and *concatenation* on
+strings, and `*` means multiplication or **repetition**. Same symbol, type-dependent meaning.
+
+---
+
+### § 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 2, § 2.4 — paraphrase, not a verbatim quotation)*
+
+Indices run from `0` to `len(s) - 1`. Negative indices count backwards from the end, `-1` being the last
+character — so `s[-1]` avoids the noisier `s[len(s) - 1]`.
+
+Slicing takes an optional third value, the step: `s[::2]` takes every second character and `s[::-1]` walks the
+string backwards, which is the idiomatic reverse.
+
+The property Guttag stresses hardest is that strings are **immutable**. `s[0] = 'x'` raises `TypeError`. Every
+operation that appears to modify a string in fact returns a new one, leaving the original untouched. To change a
+character you convert to a list, mutate, and `join` back.
+
+Out-of-range *indexing* raises `IndexError`; out-of-range *slicing* silently clamps. `'abc'[5]` is an error,
+`'abc'[1:99]` is `'bc'`. That asymmetry is deliberate and worth memorizing — it is why slice-based code so often
+fails quietly rather than loudly.
+
+---
+
+### § 3. Canonical Code Walkthrough
+```python
+s = 'python'
+#    p  y  t  h  o  n
+#    0  1  2  3  4  5      forward
+#   -6 -5 -4 -3 -2 -1      backward
+
+s[0]        # 'p'
+s[-1]       # 'n'          last character
+s[1:4]      # 'yth'        indices 1,2,3 -- 4 EXCLUDED, length 4-1 = 3
+s[:3]       # 'pyt'        start defaults to 0
+s[3:]       # 'hon'        end defaults to len(s)
+s[:]        # 'python'     a full copy
+s[1:-1]     # 'ytho'       drop first and last -- the drill
+s[::-1]     # 'nohtyp'     reversed
+s[::2]      # 'pto'        every second character
+
+len(s)      # 6
+'y' in s    # True         substring test
+
+# Immutability
+# s[0] = 'P'          # TypeError
+s.replace('p', 'P')   # 'Python'  -- a NEW string; s is unchanged
+
+# Out-of-range: indexing raises, slicing clamps
+# s[99]               # IndexError
+s[2:99]               # 'thon'    -- no error
+s[99:]                # ''        -- empty, still no error
+```
+
+Why the guard in the drill matters — the clamping is what makes it necessary:
+
+```python
+'ab'[1:-1]    # ''   correct by luck
+'a'[1:-1]     # ''   correct by luck
+''[1:-1]      # ''   correct by luck
+```
+
+Here the slice happens to give the right answer, but relying on clamping to handle your edge cases is fragile —
+state the length condition explicitly so the intent is visible.
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **The end index is excluded.** `s[0:len(s)]` is the whole string; `s[0:len(s)-1]` quietly drops the last
+   character.
+2. **Slicing never raises, indexing does.** A bad slice returns something plausible and wrong; a bad index stops
+   the program. Silent is worse.
+3. **`s[:]` copies.** On a string that is harmless; on a list it is the standard shallow clone.
+4. **`s[::-1]` is $O(n)$ and allocates.** Fine once, quadratic inside a loop.
+5. **Every "modification" allocates.** Building a string with `+=` in a loop is $\\Theta(n^2)$ — collect into a
+   list and `''.join(...)` once.
+6. **`s[1:-1]` on short strings yields `''`, not an error** — check the length when the distinction matters.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
+- **LeetCode 125 (Valid Palindrome)**, **344 (Reverse String)**: index from both ends rather than slicing, to
+  stay $O(1)$ in space.
+- **LeetCode 5 (Longest Palindromic Substring)**: expand around a centre with indices; slicing inside the loop
+  turns it quadratic.
+- **LeetCode 3 (Longest Substring Without Repeating Characters)**: the window is a pair of indices, never a slice.
+- **General rule**: pass `(left, right)` indices through recursion instead of `s[1:-1]`, and an $O(n^2)$ solution
+  becomes $O(n)$.
+""",
+        "test_cases": [
+            {"input": {"s": "python"}, "expected": "ytho"},
+            {"input": {"s": "ab"}, "expected": ""},
+            {"input": {"s": ""}, "expected": ""},
+            {"input": {"s": "abc"}, "expected": "b"},
+        ],
+        "hints": ["Return '' when len(s) <= 2.", "Otherwise s[1:-1] drops the first and last characters."],
+    },
+    {
+        "slug": "py-ds-inheritance-substitution",
+        "title": "Inheritance & the Substitution Principle (Guttag Ch. 10)",
+        "kind": "fundamental",
+        "track": "track_2_data_structures",
+        "difficulty": "Medium",
+        "category": "Abstract Data Types",
+        "tags": ["Guttag § 10.2", "Inheritance", "Substitution Principle", "Polymorphism"],
+        "description": """### \U0001f3db️ Finger Exercise: A Subclass Must Be Usable as Its Superclass
+**Guttag Citation**: *Chapter 10 (§ 10.2 Inheritance, § 10.2.2 The Substitution Principle)*
+
+**Inheritance** builds a type hierarchy: a subclass inherits its superclass's attributes and methods, and may
+add or **override** them. The **substitution principle** constrains what an override may do — anywhere the
+superclass works, the subclass must work too.
+
+Write `describe_shapes(specs: list[tuple[str, float]]) -> list[str]` where each spec is `(kind, size)` with
+`kind` in `"square"` / `"circle"`. Define a `Shape` base class with an `area()` method, override it in two
+subclasses, and return `"kind:area"` strings with the area rounded to 2 decimals.
+""",
+        "examples": [
+            {"input": "specs = [('square', 2), ('circle', 1)]", "output": "['square:4.0', 'circle:3.14']"}
+        ],
+        "constraints": ["0 <= len(specs) <= 500", "size > 0"],
+        "starter_codes": {
+            "python": """def describe_shapes(specs: list) -> list:
+    class Shape:
+        def area(self) -> float:
+            raise NotImplementedError
+
+    # Define Square and Circle subclasses overriding area()
+    pass
+"""
+        },
+        "solutions": {
+            "python": """def describe_shapes(specs: list) -> list:
+    import math
+
+    class Shape:
+        def __init__(self, size):
+            self.size = size
+
+        def area(self) -> float:
+            raise NotImplementedError
+
+        def describe(self) -> str:
+            return self.name + ":" + str(round(self.area(), 2))
+
+    class Square(Shape):
+        name = "square"
+
+        def area(self) -> float:
+            return float(self.size ** 2)
+
+    class Circle(Shape):
+        name = "circle"
+
+        def area(self) -> float:
+            return math.pi * self.size ** 2
+
+    kinds = {"square": Square, "circle": Circle}
+    return [kinds[k](sz).describe() for k, sz in specs]
+"""
+        },
+        "editorial": """# \U0001f4d6 Chapter 10 (§ 10.2 Inheritance)
+*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+
+---
+
+### § 1. Theoretical Foundations: Hierarchies of Types
+Inheritance lets one class be defined as a specialization of another. The subclass gets everything the superclass
+has, and may **add** new attributes or **override** existing methods. The relation it expresses is *is-a*: a
+`Square` **is a** `Shape`.
+
+Guttag's own worked hierarchy runs `Person` → `MIT_person` → `Student` → `UG`, adding capability at each level.
+The payoff is **polymorphism**: code written against `Shape` works unchanged on any subclass, because dispatch
+happens on the actual object at call time.
+
+Note the design point from Chapter 14: Guttag makes `Graph` a subclass of `Digraph`, not the reverse — an
+undirected graph *is* a digraph in which every edge exists both ways. The direction of the hierarchy is a claim
+about substitutability, and it has to be defensible.
+
+---
+
+### § 2. Reconstructed Reading
+*(Reconstructed from Guttag, Chapter 10, § 10.2 and § 10.2.2 — paraphrase, not a verbatim quotation)*
+
+When a method is called on an instance, Python looks for it on the object's class first, and only then walks up
+the chain of superclasses. The first definition found wins — that is what makes overriding work, and it is why
+a subclass method with the same name silently replaces the inherited one.
+
+§ 10.2.2 states the rule that keeps hierarchies honest. The **substitution principle** says that wherever an
+instance of the superclass is expected, an instance of any subclass must be acceptable. Concretely: an override
+may **weaken** what it demands of callers and **strengthen** what it guarantees, but never the reverse. A
+subclass that requires more, or delivers less, breaks code that was written correctly against the superclass —
+and it breaks it silently, at a call site that never mentions the subclass.
+
+Guttag's practical caution is that inheritance couples the subclass to the superclass's implementation, not just
+its interface. Change the parent and every child may break. Where an *is-a* relation is not genuinely present,
+**composition** — holding an instance rather than deriving from it — keeps the coupling narrow.
+
+---
+
+### § 3. Canonical Code Walkthrough
+```python
+import math
+
+class Shape:                          # the abstraction
+    def __init__(self, size):
+        self.size = size
+
+    def area(self):
+        raise NotImplementedError     # subclasses MUST override
+
+    def describe(self):               # inherited unchanged by both subclasses
+        return f"{self.name}:{round(self.area(), 2)}"
+
+class Square(Shape):
+    name = "square"
+    def area(self):                   # OVERRIDE
+        return float(self.size ** 2)
+
+class Circle(Shape):
+    name = "circle"
+    def area(self):                   # OVERRIDE
+        return math.pi * self.size ** 2
+```
+
+Polymorphism in action — `describe` was written once, on `Shape`, and calls whichever `area` the object actually
+has:
+
+```python
+shapes = [Square(2), Circle(1)]
+[s.describe() for s in shapes]        # ['square:4.0', 'circle:3.14']
+
+isinstance(Square(2), Shape)          # True  -- respects the hierarchy
+type(Square(2)) is Shape              # False -- exact type, rejects subclasses
+```
+
+`describe` never branches on kind. Adding a `Triangle` requires no change to it at all — that is the whole return
+on the hierarchy.
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **Overriding `__init__` without calling `super().__init__()`** leaves the superclass's attributes unset, so
+   inherited methods fail on a half-built object.
+2. **The substitution principle is directional.** An override may accept *more* inputs and promise *more* about
+   its output. Narrowing what it accepts, or weakening its guarantee, breaks existing callers.
+3. **`isinstance` respects the hierarchy; `type(x) is C` does not.** Prefer `isinstance` unless you deliberately
+   want to exclude subclasses.
+4. **Deep hierarchies are a liability.** Each level adds coupling. Guttag's own examples stay shallow.
+5. **Prefer composition when the relation is *has-a*.** LRU Cache *has* a dict and *has* a linked list; it is
+   neither.
+6. **`raise NotImplementedError` documents an abstract method** and fails loudly if a subclass forgets it — far
+   better than returning `None` and corrupting a result downstream.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
+- Rare in algorithm rounds, **central in design rounds** — modelling a type hierarchy is the common ask.
+- **LeetCode 341 (Flatten Nested List Iterator)**: implement an interface someone else defined.
+- **LeetCode 146 (LRU Cache)**: the counterexample — composition, not inheritance.
+- **Custom exception classes** subclass `Exception`, the same mechanism in a different setting.
+""",
+        "test_cases": [
+            {"input": {"specs": [["square", 2], ["circle", 1]]}, "expected": ["square:4.0", "circle:3.14"]},
+            {"input": {"specs": []}, "expected": []},
+            {"input": {"specs": [["square", 3]]}, "expected": ["square:9.0"]},
+        ],
+        "hints": [
+            "Give Shape an __init__ storing size, and an area() that raises NotImplementedError.",
+            "Square.area returns size ** 2; Circle.area returns math.pi * size ** 2.",
+            "Round to 2 decimals and join with ':'.",
+        ],
+    },
 ]
