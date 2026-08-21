@@ -614,7 +614,41 @@ def outer_search_engine(data: list[int]) -> int:
 
 ---
 
-### § 4. Bridging to LeetCode Mastery
+### § 4. Common Pitfalls & Invariant Rules
+1. **Assignment anywhere makes the name local everywhere.** Python decides scope
+   statically, for the whole function body, before a line runs. So this fails on the
+   *read*, not the write:
+
+   ```python
+   count = 0
+   def bump():
+       count = count + 1      # UnboundLocalError: count referenced before assignment
+   ```
+
+   The `count` on the right is already classified local because of the assignment on the
+   left. `nonlocal count` (enclosing scope) or `global count` (module scope) fixes it.
+
+2. **Reading needs no declaration; only rebinding does.** A helper can freely *read* an
+   enclosing variable. The declaration is required only when you assign to the name.
+
+3. **Mutating is not rebinding.** `results.append(x)` needs no `nonlocal`, because it
+   mutates the object rather than rebinding the name. `results = []` does need it. This is
+   why the mutable-accumulator pattern works without any declaration at all.
+
+4. **`nonlocal` and `global` are different targets.** `nonlocal` binds to the nearest
+   *enclosing function* scope and fails at compile time if there is none. `global` binds at
+   module level. A helper nested one deep inside `solve()` wants `nonlocal`.
+
+5. **The LEGB order is fixed: Local, Enclosing, Global, Built-in.** Shadowing a builtin
+   (`list`, `sum`, `max`, `id`) at any inner level hides it from everything below.
+
+6. **Prefer returning values when the recursion is small.** `nonlocal` is the clean answer
+   for a running maximum threaded through a deep DFS; for a two-line helper, returning a
+   tuple is easier to test.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
 - **DFS Tree Traversals with Global Counters**: In problems like *Diameter of Binary Tree*, *Binary Tree Maximum Path Sum*, and *Count Good Nodes in Binary Tree*, writing a recursive helper function `def dfs(node):` that updates `nonlocal max_diameter` avoids messy return tuples or mutable class properties.
 """,
         "test_cases": [
@@ -730,7 +764,44 @@ for x in nums[:]:
 
 ---
 
-### § 4. Bridging to LeetCode Mastery
+### § 4. Common Pitfalls & Invariant Rules
+1. **Guttag's rule, stated plainly: "It is usually prudent to avoid mutating a list over
+   which one is iterating."** The `for` loop holds a hidden integer counter, incremented
+   after each iteration and compared against the list's *current* length. Remove an element
+   and every later element slides down one slot while the counter still moves up — so exactly
+   one element gets skipped per removal.
+
+2. **`new_L = L` does not help.** Guttag calls this out explicitly: it "would not create a
+   copy of `L`, but would merely introduce a new name for the existing list." Only
+   `L[:]`, `L.copy()`, `list(L)` or a comprehension actually copy.
+
+3. **Shallow copies share their contents.** `L[:]` and `L.copy()` both build a new outer
+   list holding *the same objects*. For a list of lists, mutating an inner list is still
+   visible through both. `copy.deepcopy(L)` is the fix when the elements are themselves
+   mutable.
+
+   ```python
+   L = [2]
+   L1 = [L]
+   L2 = L1[:]           # shallow
+   L.append(3)
+   print(L1, L2)        # [[2, 3]] [[2, 3]]  -- both see it
+   ```
+
+4. **Iterating a clone is safe but still $O(n^2)$.** `for e in L1[:]` fixes correctness, not
+   speed: each `L1.remove(e)` is itself $O(n)$. The comprehension
+   `[e for e in L1 if e not in L2]` is the idiomatic and faster answer.
+
+5. **`==` is not `is`.** Two lists can hold equal values and be different objects. Use `==`
+   for value comparison and reserve `is` for identity (and for `None`).
+
+6. **The backtracking corollary.** `result.append(path)` stores an alias to the live path
+   object, which the recursion then keeps mutating — so every entry ends up identical (often
+   empty). `result.append(path[:])` snapshots it.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
 - **Backtracking & Subsets**: In LeetCode 78 (*Subsets*) and LeetCode 46 (*Permutations*), appending the current path to the result list requires cloning `result.append(list(path))` or `result.append(path[:])`. If you write `result.append(path)`, every entry in `result` aliases the exact same `path` object, which gets emptied at the end of recursion resulting in `[[], [], []]`.
 """,
         "test_cases": [
@@ -816,7 +887,42 @@ points.sort(key=lambda p: -p[1])  # Result: [(1, 9), (3, 7), (5, 2)]
 
 ---
 
-### § 4. Bridging to LeetCode Mastery
+### § 4. Common Pitfalls & Invariant Rules
+1. **A `lambda` is a single *expression*, not a body.** No statements, no assignments, no
+   `return`, no multi-line logic. The moment you want a branch, `def` is the answer —
+   `lambda x: a if cond else b` is the limit of what belongs inline.
+
+2. **Late binding: lambdas capture the *variable*, not its value.** All three functions
+   below return `4`, because each captured the same `i`, whose final value is 2:
+
+   ```python
+   fs = [lambda x: x * i for i in range(3)]
+   [f(2) for f in fs]                # [4, 4, 4]  -- not [0, 2, 4]
+
+   fs = [lambda x, i=i: x * i for i in range(3)]   # bind at definition time
+   [f(2) for f in fs]                # [0, 2, 4]
+   ```
+
+3. **`map` and `filter` return lazy iterators in Python 3.** They are consumed once. Wrap
+   in `list(...)` if you need to iterate twice, or use a comprehension, which most readers
+   find clearer anyway.
+
+4. **A function object is not a call.** `sorted(L, key=len)` passes the function;
+   `sorted(L, key=len(L))` calls it and passes an integer. Dropping or adding parentheses
+   here is a common and confusing error.
+
+5. **Assigning a lambda to a name defeats the point.** `f = lambda x: x + 1` is just a
+   worse `def f(x): return x + 1` — it loses the useful `__name__` in tracebacks. Use
+   `lambda` where a function is *passed*, not where one is *defined*.
+
+6. **`key=` is evaluated once per element; a comparator would be once per comparison.**
+   This is why Python dropped `cmp` in favour of `key` — $O(n)$ evaluations rather than
+   $O(n \\log n)$. When you genuinely need pairwise logic, wrap it in
+   `functools.cmp_to_key`.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
 - **Custom Priority Queue Comparators & Sorting**: In LeetCode 56 (*Merge Intervals*), intervals are sorted by start time `intervals.sort(key=lambda x: x[0])`. In LeetCode 692 (*Top K Frequent Words*), words are sorted with multi-key lambdas `sorted(count.keys(), key=lambda w: (-count[w], w))`.
 """,
         "test_cases": [
@@ -891,7 +997,72 @@ creates an outer list containing 3 pointers, **all pointing to the exact same in
 
 ---
 
-### § 3. Bridging to LeetCode Mastery
+### § 3. Canonical Code Walkthrough
+```python
+R, C = 3, 3
+
+# BROKEN -- one row object, replicated three times
+grid = [[0] * C] * R
+grid[0][0] = 1
+# [[1, 0, 0],
+#  [1, 0, 0],      <- all three rows changed
+#  [1, 0, 0]]
+
+# CORRECT -- the inner expression is re-evaluated once per row
+grid = [[0] * C for _ in range(R)]
+grid[0][0] = 1
+# [[1, 0, 0],
+#  [0, 0, 0],      <- independent rows
+#  [0, 0, 0]]
+```
+
+Proving it with identities rather than eyeballing output:
+
+```python
+bad = [[0] * 3] * 3
+id(bad[0]) == id(bad[1])      # True  -- ONE list, three references
+bad[0] is bad[1]              # True
+
+good = [[0] * 3 for _ in range(3)]
+id(good[0]) == id(good[1])    # False -- three distinct lists
+good[0] is good[1]            # False
+```
+
+**Why the inner `[0] * C` is still safe.** The multiplication operator replicates
+*references*, not objects — in both cases. It is harmless for `[0] * C` because `0` is an
+immutable `int`: assigning `row[i] = 5` rebinds that slot rather than mutating the shared
+object. It is fatal for `[row] * R` because a list *is* mutable, so `grid[0][0] = 1` reaches
+through every reference at once.
+
+```
+[[0] * C] * R                  [[0] * C for _ in range(R)]
+
+grid[0] ─┐                     grid[0] ──> [0, 0, 0]
+grid[1] ─┼──> [0, 0, 0]        grid[1] ──> [0, 0, 0]
+grid[2] ─┘                     grid[2] ──> [0, 0, 0]
+        ONE object                     THREE objects
+```
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **The bug is silent.** No exception, no warning — just a DP table or visited grid whose
+   rows are secretly the same object, producing answers that are wrong in ways that look
+   like an algorithm error rather than an allocation error.
+2. **`copy()` and `[:]` do not fix it.** Both are *shallow* copies: they build a new outer
+   list holding the same inner objects. `copy.deepcopy(grid)` fixes it, or just build it
+   correctly in the first place.
+3. **It applies to any mutable element, not just lists.** `[set()] * n`, `[{}] * n` and
+   `[[] for _ in range(n)]` vs `[[]] * n` are the same trap.
+4. **`_` signals a deliberately unused loop variable.** `for _ in range(R)` says the index
+   is irrelevant — only the repetition matters.
+5. **Guttag's general rule covers this case.** Slicing and `L.copy()` "perform what is
+   known as a shallow copy" — a new list holding *the objects*, not copies of them. The
+   grid trap is that rule applied to a list of lists.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
 - **Grid DP & Graph Matrices**: In LeetCode 200 (*Number of Islands*), LeetCode 62 (*Unique Paths*), and LeetCode 733 (*Flood Fill*), allocating visited matrices or DP tables using `[[0]*C]*R` introduces silent, fatal cross-row corruption bugs.
 """,
         "test_cases": [
@@ -1277,7 +1448,71 @@ This is what data abstraction buys: **representation-independence**. A client wr
 
 ---
 
-### § 3. Bridging to LeetCode Mastery
+### § 3. Canonical Code Walkthrough: The Invariant Doing Work
+Watch the invariant get established, maintained, and then exploited:
+
+```python
+s = Int_set()          # __init__ ESTABLISHES it: [] trivially has no duplicates
+s.insert(3)            # _vals = [3]     guard passed, invariant maintained
+s.insert(1)            # _vals = [3, 1]  invariant maintained
+s.insert(3)            # _vals = [3, 1]  guard REJECTED it -- this is the maintenance
+s.remove(3)            # ONE list.remove call is provably enough -- this is the payoff
+```
+
+The `insert` guard and the `remove` shortcut are the same fact seen from two sides:
+
+```python
+def insert(self, e):
+    if e not in self._vals:      # PAYS to maintain the invariant
+        self._vals.append(e)
+
+def remove(self, e):
+    try:
+        self._vals.remove(e)     # SPENDS the invariant: at most one occurrence exists,
+    except ValueError:           # so one call cannot leave a duplicate behind
+        raise ValueError(str(e) + ' not found')
+```
+
+Without the invariant, `remove` would need a loop to strip every copy. The check in
+`insert` is not defensive clutter — it is what buys the simplicity in `remove`.
+
+**The abstraction barrier in one line.** Compare what a client may do with what an
+implementer may do:
+
+```python
+# CLIENT side of the barrier -- uses only exported operations
+s.insert(3); s.member(3); s.remove(3); print(s)
+
+# IMPLEMENTER side -- may touch the representation
+self._vals.append(e)
+
+# VIOLATION -- reaching across the barrier
+s._vals.append('banana')     # invariant destroyed; every later method now lies
+```
+
+The leading underscore is the convention Guttag uses to mark exactly this line.
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **A getter that returns the internal list leaks the representation.** Returning
+   `self._vals` hands the caller a live alias — `s.get_vals().append('banana')` silently
+   breaks the invariant from outside. Return a copy (`self._vals[:]`) when you must expose it.
+2. **The docstring describes the abstraction; comments describe the implementation.**
+   Guttag is deliberate about this split: the docstring is for people *using* the class, the
+   comments below it for people *modifying* it. Leaking representation detail into the
+   docstring defeats the barrier.
+3. **State the invariant as a comment, in words.** "`_vals` contains no duplicates" is what
+   lets a future reader (you) know which shortcuts are legal.
+4. **Every public method is a checkpoint.** The invariant must hold when a method returns,
+   even if it is temporarily broken partway through.
+5. **This `Int_set` is deliberately inefficient.** `member` is $O(n)$ because `_vals` is an
+   unsorted list. Guttag says outright the class is "unnecessary and unnecessarily
+   complicated" given Python's built-in `set` — it exists to teach the barrier, not to be used.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
 - **Design Problems**: In LeetCode 146 (*LRU Cache*), LeetCode 380 (*Insert Delete GetRandom O(1)*), and LeetCode 208 (*Implement Trie*), maintaining internal representation invariants across hash maps and doubly linked lists is the core testing metric.
 """,
         "test_cases": [
@@ -1357,7 +1592,83 @@ Guttag's § 11.3 point is that a per-operation cost you assume is $O(1)$ can sil
 
 ---
 
-### § 3. Bridging to LeetCode Mastery
+### § 3. Canonical Code Walkthrough
+```python
+from collections import deque
+
+q = deque()
+q.append(10)        # [10]          O(1)
+q.append(20)        # [10, 20]      O(1)
+q.popleft()         # -> 10,  [20]  O(1)   <- the operation a list gets wrong
+q.append(30)        # [20, 30]      O(1)
+list(q)             # [20, 30]
+```
+
+Why the same program on a `list` degrades. Removing index 0 must slide every remaining
+element down one slot in the contiguous buffer:
+
+```
+list.pop(0) on [a, b, c, d, e]
+     [a][b][c][d][e]
+        \\  \\  \\  \\        every element shifts left  ->  O(N) per pop
+     [b][c][d][e]
+
+deque.popleft() on the same data
+     unlink the head entry, move the head index  ->  O(1), nothing else touched
+```
+
+Full complexity comparison:
+
+| Operation | `list` | `deque` |
+| :-- | :-- | :-- |
+| `append` / `push_back` | $O(1)$ amortized | $O(1)$ |
+| `pop()` / from the right | $O(1)$ amortized | $O(1)$ |
+| `pop(0)` / `popleft()` | **$O(N)$** | $O(1)$ |
+| `insert(0, x)` / `appendleft(x)` | **$O(N)$** | $O(1)$ |
+| `q[i]` random access | $O(1)$ | **$O(N)$** |
+
+That last row is the trade: a deque gives up cheap indexing to get cheap ends. For BFS
+you only ever touch the ends, so it is pure win.
+
+The canonical BFS skeleton this exists to serve:
+
+```python
+from collections import deque
+
+def bfs(start, neighbors):
+    seen = {start}                     # mark on PUSH, not on pop
+    q = deque([start])
+    depth = 0
+    while q:
+        for _ in range(len(q)):        # snapshot the level size first
+            node = q.popleft()
+            for nxt in neighbors(node):
+                if nxt not in seen:
+                    seen.add(nxt)
+                    q.append(nxt)
+        depth += 1
+    return depth
+```
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **`list.pop(0)` in a BFS is a silent $O(V^2)$.** The code looks correct and passes the
+   small examples; it only fails on the large hidden cases, as a timeout rather than a wrong
+   answer. This is the single most common cause of a "my BFS is right but TLEs" bug.
+2. **Mark visited when you *enqueue*, not when you dequeue.** Marking on pop lets the same
+   node be pushed several times before it is first processed, inflating the queue and, with
+   weights, producing wrong answers.
+3. **Snapshot `len(q)` before iterating a level.** Reading `len(q)` inside the loop sees the
+   children you just appended and collapses the level boundaries.
+4. **`deque[i]` is $O(N)$.** Never index into the middle of a deque inside a loop; if you
+   need random access you wanted a list.
+5. **`deque(maxlen=k)` silently discards from the far end** when it overflows — excellent for
+   sliding windows, a data-loss bug anywhere else.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
 - **Breadth-First Search (BFS)**: In LeetCode 102 (*Binary Tree Level Order Traversal*), LeetCode 127 (*Word Ladder*), and LeetCode 994 (*Rotting Oranges*), using `queue = collections.deque([start])` and `node = queue.popleft()` is mandatory.
 """,
         "test_cases": [
@@ -1774,7 +2085,60 @@ def isPalindrome(s):
 
 ---
 
-### § 3. Bridging to LeetCode Mastery
+### § 3. Canonical Code Walkthrough (after Guttag Figure 6-4, "Palindrome testing")
+Guttag's version separates **normalizing** the input from **testing** it — two jobs, two
+functions:
+
+```python
+def is_palindrome(s):
+    # Assumes s is a str. Returns True if s is a palindrome; False otherwise.
+    # Punctuation, blanks and capitalization are ignored.
+
+    def to_chars(s):
+        s = s.lower()
+        letters = ''
+        for c in s:
+            if c in 'abcdefghijklmnopqrstuvwxyz':
+                letters = letters + c
+        return letters
+
+    def is_pal(s):
+        if len(s) <= 1:            # BASE CASE
+            return True
+        return s[0] == s[-1] and is_pal(s[1:-1])   # INDUCTIVE STEP
+
+    return is_pal(to_chars(s))
+```
+
+Tracing `is_pal('radar')`:
+
+```
+is_pal('radar')   r == r  ->  and is_pal('ada')
+  is_pal('ada')   a == a  ->  and is_pal('d')
+    is_pal('d')   len <= 1 -> True          <- base case reached
+```
+
+Three frames, each shrinking the string by two characters. `and` short-circuits, so a
+mismatch at any level returns `False` without descending further.
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **Both base cases matter.** `len(s) <= 1` covers the empty string *and* the single
+   character. Testing only `len(s) == 1` makes even-length inputs recurse past the bottom
+   and raise `IndexError`.
+2. **`s[1:-1]` is a copy, and that is the hidden cost.** Each level allocates a new string
+   of length $n - 2$, so total work is $n + (n-2) + (n-4) + \\dots = \\Theta(n^2)$ — quadratic,
+   despite only $n/2$ frames. The linear version passes indices instead:
+   `is_pal(s, left + 1, right - 1)`.
+3. **Recursion depth is $n/2$.** For $n = 10^5$ that exceeds CPython's default limit.
+   The two-pointer loop is the production form.
+4. **Normalize before testing, never during.** Folding the `to_chars` filter into `is_pal`
+   makes the base case fire on stripped punctuation and quietly returns wrong answers.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
 - **Divide-and-Conquer Strings & Trees**: In LeetCode 131 (*Palindrome Partitioning*), LeetCode 9 (*Palindrome Number*), and LeetCode 100 (*Same Tree*), decomposing problems into `root.val == other.val and isSame(left) and isSame(right)` directly applies Guttag's inductive base case decomposition.
 """,
         "test_cases": [
@@ -1871,7 +2235,63 @@ def fastFib(n, memo={}):
 
 ---
 
-### § 3. Bridging to LeetCode Mastery
+### § 3. Canonical Code Walkthrough (after Guttag Figure 15-2, "Implementing Fibonacci using a memo")
+Guttag gives **both** dynamic-programming approaches in one figure, and names them:
+
+```python
+# MEMOIZATION - top-down. Start at the original problem, break it down,
+# and record each answer in the table on the way back up.
+def fib_memo(n, memo=None):
+    # Assumes n is an int >= 0, memo used only by recursive calls.
+    if memo is None:
+        memo = {}
+    if n == 0 or n == 1:
+        return 1
+    try:
+        return memo[n]
+    except KeyError:
+        result = fib_memo(n - 1, memo) + fib_memo(n - 2, memo)
+        memo[n] = result
+        return result
+
+
+# TABULAR - bottom-up. Start at the smallest subproblems and build upward.
+# Works here because all the subproblems are known in advance and easy to
+# enumerate in a useful order.
+def fib_tab(n):
+    tab = [1] * (n + 1)          # only first two entries are correct initially
+    for i in range(2, n + 1):
+        tab[i] = tab[i - 1] + tab[i - 2]
+    return tab[n]
+```
+
+Guttag's own base case is `fib(0) == 1`; this drill uses the `{0: 0, 1: 1}` convention
+instead, which is the one LeetCode expects. The *mechanism* is identical — only the
+seed values differ.
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **The naive cost is $O(fib(n))$, not $O(2^n)$.** Guttag is precise here: the growth is
+   "proportional to the growth in the value of the result." The tree is lopsided — the
+   `n-2` branch is shorter than the `n-1` branch — so the true base is the golden ratio
+   $\\varphi \\approx 1.618$, not 2. $O(2^n)$ is a loose upper bound; $\\Theta(\\varphi^n)$ is tight.
+2. **The scale is not rhetorical.** $fib(120) = 8{,}670{,}007{,}398{,}507{,}948{,}658{,}051{,}921$.
+   At one nanosecond per recursive call, `fib(120)` would take roughly **250,000 years**.
+   With a memo it is instant.
+3. **`memo={}` as a default is the shared-mutable-default trap.** Guttag uses it
+   deliberately — for a pure function the cache *should* persist. It becomes a defect the
+   moment the cached values depend on anything besides `n`. The `None` sentinel is the
+   safe default. See [Mutable Default Argument Trap](#).
+4. **Memoize on the full state.** The key must capture everything the result depends on.
+   `memo[n]` is right for Fibonacci; a two-argument recursion needs `memo[(i, j)]`.
+5. **Top-down computes only what it reaches; bottom-up computes everything.** Prefer
+   memoization when the reachable state space is sparse, tabulation when it is dense and
+   you want to drop the recursion entirely.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
 - **1D Dynamic Programming**: In LeetCode 70 (*Climbing Stairs*), LeetCode 198 (*House Robber*), and LeetCode 322 (*Coin Change*), recognizing overlapping subproblems and memoizing states with `@functools.cache` or dictionary tables transforms brute-force backtracking into optimal linear solutions.
 """,
         "test_cases": [
@@ -1948,7 +2368,76 @@ However, when a collection is **sorted in monotonic ascending order**, we can ut
 
 ---
 
-### § 3. Bridging to LeetCode Mastery
+### § 3. Canonical Code Walkthrough (after Guttag Figure 12-3, "Recursive binary search")
+Guttag's implementation is split in two, and the split is the point of the example:
+
+```python
+# The WRAPPER: the interface clients actually call.
+def search(L, e):
+    # Assumes L is a list, sorted in ascending order.
+    # Returns True if e is in L, False otherwise.
+    def bin_search(L, e, low, high):
+        # Decrementing function is high - low.
+        if high == low:
+            return L[low] == e
+        mid = (low + high) // 2
+        if L[mid] == e:
+            return True
+        elif L[mid] > e:
+            if low == mid:        # nothing left to the left
+                return False
+            return bin_search(L, e, low, mid - 1)
+        else:
+            return bin_search(L, e, mid + 1, high)
+
+    if len(L) == 0:
+        return False
+    return bin_search(L, e, 0, len(L) - 1)
+```
+
+Guttag calls `search` a **wrapper function**: it does no serious computation, it
+just calls the helper with the right arguments. The reason it exists is an abstraction
+argument — `low` and `high` "have nothing to do with the abstraction of searching a list
+for an element. They are implementation details that should be hidden from those writing
+programs that call `search`."
+
+The iterative form in this drill collapses the same logic into one loop, trading the
+recursion for an explicit `left`/`right` pair — no stack frames, same invariant.
+
+---
+
+### § 4. Why It Terminates, and Common Pitfalls
+**The decrementing function.** Guttag proves termination the same way he does for
+`while` loops: exhibit a quantity that maps the parameters to a non-negative integer,
+halts the recursion at 0, and strictly shrinks on every call. For `bin_search` that
+quantity is **`high - low`**:
+
+1. It is at least 0 the first time it is called.
+2. When it is exactly 0, no recursive call is made — the function just returns `L[low] == e`.
+3. Each recursive call covers either the elements left of `mid` or those right of it,
+   halving `high - low`.
+
+Since `high - low` starts at `len(L) - 1` and can be halved at most $\\log_2(\\text{len}(L))$
+times before reaching 0, the complexity is $\\Theta(\\log(\\text{len}(L)))$.
+
+**Pitfalls:**
+1. **The sorted precondition is the caller's job.** Guttag is explicit: if the assumption
+   is not satisfied, "the implementation has no obligation to behave well. It could work,
+   but it could also crash or return an incorrect answer." Should `search` verify it?
+   No — checking would itself cost $O(\\text{len}(L))$ and destroy the whole point.
+2. **`mid + 1` and `mid - 1`, never `mid`.** Recursing on `mid` itself does not shrink
+   the decrementing function, so the recursion never terminates. *(Guttag leaves this as a
+   finger exercise: "Why does the code use `mid+1` rather than `mid` in the second
+   recursive call?")*
+3. **Sorting first is not free.** Sorting to enable binary search costs
+   $\\Theta(n \\log n)$. For a single lookup, a linear scan wins. It pays off across $k$
+   searches: $\\Theta(n \\log n + k \\log n)$.
+4. **A sorted linear scan is still $O(n)$.** Guttag's Figure 12-2 stops early once it
+   passes the target — better average time, identical worst case.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
 - **LeetCode 704 (Binary Search)**, **LeetCode 33 (Search in Rotated Sorted Array)**, and **LeetCode 34 (Find First and Last Position)**: Mastering the `while left <= right:` template and strict boundary updates (`mid + 1`, `mid - 1`) prevents infinite loops and off-by-one errors.
 """,
         "test_cases": [
@@ -2072,7 +2561,25 @@ def fastMaxVal(toConsider, avail, memo={}):
 
 ---
 
-### § 4. Bridging to LeetCode Mastery
+### § 4. Common Pitfalls & Invariant Rules
+1. **Greedy does not work here, and Guttag proves it.** He introduces knapsack precisely to
+   show a greedy algorithm making "a sequence of local choices" that need not reach a global
+   optimum. Sorting by value-to-weight ratio is optimal only when items can be split
+   (the *fractional* knapsack). With all-or-nothing items, it fails.
+2. **The state is `(index, capacity remaining)` — nothing else.** Two different item subsets
+   reaching item `i` with the same remaining capacity have identical futures. That collapse
+   is the entire optimization, taking $2^n$ leaves down to $n \\times W$ states.
+3. **$O(n \\times W)$ is pseudo-polynomial, not polynomial.** $W$ is a *value*, and its
+   encoding length is $\\log W$ bits, so the table is exponential in the input size. This is
+   why knapsack DP is fast for `W = 1000` and hopeless for `W = 10^9`.
+4. **Check `weights[i] <= avail` before taking.** Skipping the guard produces negative
+   remaining capacity and a silently wrong memo entry keyed on an unreachable state.
+5. **Both base cases are needed.** `i == n` (no items left) and `avail == 0` (no room left)
+   each return 0; dropping either lets the recursion run off the end of the list.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
 - **2D Dynamic Programming**: LeetCode 416 (*Partition Equal Subset Sum*), LeetCode 494 (*Target Sum*), and LeetCode 474 (*Ones and Zeroes*) are direct variations of Guttag's 0/1 Knapsack Take/Don't-Take decision tree.
 """,
         "test_cases": [
@@ -2199,7 +2706,49 @@ def mergeSort(L, compare=lambda x, y: x < y):
 
 ---
 
-### § 3. Bridging to LeetCode Mastery
+### § 3. Tracing the Merge
+The recursion is easy; the merge is where the linear-time claim is earned. Merging
+`[1, 5, 9]` with `[2, 3, 8]`:
+
+```
+left  = [1, 5, 9]      right = [2, 3, 8]      out = []
+ i=0, j=0   1 <= 2  -> take 1 from left       out = [1]
+ i=1, j=0   5 >  2  -> take 2 from right      out = [1, 2]
+ i=1, j=1   5 >  3  -> take 3 from right      out = [1, 2, 3]
+ i=1, j=2   5 <= 8  -> take 5 from left       out = [1, 2, 3, 5]
+ i=2, j=2   9 >  8  -> take 8 from right      out = [1, 2, 3, 5, 8]
+ right exhausted -> extend with left[2:]      out = [1, 2, 3, 5, 8, 9]
+```
+
+Six elements, six placements, each decided by one comparison. Every comparison commits
+at least one element to its final position permanently, which is why the merge cannot
+exceed $n_1 + n_2$ steps.
+
+**Why `<=` and not `<`.** When the two fronts are equal, taking from the **left** first
+preserves the original relative order of equal elements. That single character is what
+makes merge sort a **stable** sort. *(Guttag leaves exactly this as a finger exercise:
+"Is `merge_sort` a stable sort?")*
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **Base case must be `len < 2`, not `len == 1`.** An empty list has to terminate too, or
+   an empty half sends the recursion into infinite descent.
+2. **Return a copy at the base case.** Guttag's version returns `L[:]`. Returning `L`
+   itself hands the caller an alias into the input, so a later in-place step corrupts data
+   the caller still owns.
+3. **The $O(n)$ auxiliary space is not optional.** Merge sort allocates a new list at every
+   level. When a problem demands $O(1)$ extra space, merge sort is disqualified — reach for
+   heapsort instead.
+4. **Recursion depth is $\\log n$, not $n$.** Halving keeps the stack shallow; 10^6 elements
+   is only ~20 frames deep. This is what makes it safe on inputs that would overflow a
+   linear recursion.
+5. **Slicing in the split costs real time.** `L[:middle]` copies. It does not change the
+   asymptotic order but it doubles the constant factor; index-based merges avoid it.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
 - **Two-Pointer Merges & Linked Lists**: LeetCode 88 (*Merge Sorted Array*), LeetCode 21 (*Merge Two Sorted Lists*), and LeetCode 148 (*Sort List*) directly test this divide-and-conquer recurrence.
 """,
         "test_cases": [
@@ -2275,7 +2824,66 @@ When comparing two tuples `(a1, a2, a3)` and `(b1, b2, b3)`:
 
 ---
 
-### § 3. Bridging to LeetCode Mastery
+### § 3. Canonical Code Walkthrough
+```python
+records = [('Alice', 90, 20), ('Bob', 90, 19), ('Charlie', 85, 22)]
+
+# Score DESC, then age ASC, then name ASC.
+# Negating the numeric field reverses that field only.
+sorted(records, key=lambda r: (-r[1], r[2], r[0]))
+# -> [('Bob', 90, 19), ('Alice', 90, 20), ('Charlie', 85, 22)]
+```
+
+How the tuple key decides the order:
+
+```
+Bob   -> (-90, 19, 'Bob')     first field ties with Alice (-90 == -90)
+Alice -> (-90, 20, 'Alice')   second field breaks it: 19 < 20, so Bob wins
+Charlie -> (-85, 22, ...)     -85 > -90, so Charlie sorts last
+```
+
+`sorted` and `list.sort` are not interchangeable — Guttag draws the distinction explicitly:
+
+```python
+L = [3, 5, 2]
+sorted(L)        # -> [2, 3, 5]   returns a NEW list
+L                # -> [3, 5, 2]   original untouched
+L.sort()         # mutates in place, returns None
+L                # -> [2, 3, 5]
+
+D = {'a': 12, 'c': 5, 'b': 'dog'}
+sorted(D)        # -> ['a', 'b', 'c']   sorting a dict sorts its KEYS
+D.sort()         # AttributeError: 'dict' object has no attribute 'sort'
+```
+
+Both accept `key` and `reverse`. `key` plays the role that the `compare` parameter plays in
+Guttag's hand-written merge sort — it supplies the comparison to be used:
+
+```python
+L = [[1, 2, 3], (3, 2, 1, 0), 'abc']
+sorted(L, key=len, reverse=True)     # -> [(3, 2, 1, 0), [1, 2, 3], 'abc']
+```
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **`reverse=True` reverses everything.** It flips *all* fields, including the tie-breakers
+   you wanted ascending. Negate the individual numeric field instead.
+2. **Negation only works on numbers.** There is no `-name`. To sort a string field
+   descending while others ascend, exploit stability: sort by the string ascending first,
+   then sort by the other key. Guttag guarantees this works — both `list.sort` and `sorted`
+   "provide stable sorts", meaning elements that compare equal keep their relative order.
+3. **`list.sort()` returns `None`.** `L = L.sort()` silently destroys the list. This is the
+   mutator-returns-None convention shared with `append`, `reverse` and `extend`.
+4. **Timsort's advantage is real data.** Guttag notes its worst case matches merge sort's,
+   but "on average it performs considerably better" because it exploits the fact that many
+   real data sets are already partially sorted.
+5. **The key function is called once per element**, not once per comparison — so an
+   expensive key is $O(n)$ evaluations, not $O(n \\log n)$.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
 - **Interval & Custom Object Sorting**: In LeetCode 435 (*Non-overlapping Intervals*) and LeetCode 179 (*Largest Number*), custom projection lambdas form the backbone of greedy intervals and custom ordering.
 """,
         "test_cases": [
@@ -2347,7 +2955,68 @@ Bitwise operations manipulate individual bit positions directly in the CPU's Ari
 
 ---
 
-### § 3. Bridging to LeetCode Mastery
+### § 3. Canonical Code Walkthrough
+Guttag does establish the foundation these operators act on. In § 3.3 he derives binary
+positional notation directly: a binary number is a sequence of digits each 0 or 1, "often
+called **bits**"; the rightmost is the $2^0$ place, the next the $2^1$ place, and so on, so
+`101` represents $1 \\times 4 + 0 \\times 2 + 1 \\times 1 = 5$. A sequence of length $n$ can
+represent $2^n$ different numbers. Computers use this representation, he notes, not out of
+anatomy but because "it is easy to build hardware switches" that hold one of two states.
+
+*(Finger exercise from the text: what is the decimal equivalent of the binary number `10011`?)*
+
+The four primitive operations, traced on `n = 5` (binary `0101`) at bit `i = 1`:
+
+```python
+n = 5        # 0101
+i = 1
+
+# 1. BUILD THE MASK -- a 1 in position i, zeros everywhere else
+mask = 1 << i               # 0010   (this is 2**i)
+
+# 2. TEST bit i
+(n >> i) & 1                # 0101 >> 1 = 0010, & 1 -> 0   (bit 1 is clear)
+bool(n & mask)              # equivalent, without the shift
+
+# 3. SET bit i  -- OR forces a 1, leaves every other bit alone
+n | mask                    # 0101 | 0010 = 0111 -> 7
+
+# 4. CLEAR bit i -- AND with the inverted mask
+~mask                       # ...11111101
+n & ~mask                   # 0101 & 1101 = 0101 -> 5   (already clear, unchanged)
+
+# 5. TOGGLE bit i -- XOR flips exactly the masked position
+n ^ mask                    # 0101 ^ 0010 = 0111 -> 7
+```
+
+Why each operator is the right one:
+
+| Goal | Operator | Because |
+| :-- | :-- | :-- |
+| set | `|` | `x | 1 = 1`, `x | 0 = x` — forces on, leaves the rest |
+| clear | `& ~` | `x & 0 = 0`, `x & 1 = x` — forces off, leaves the rest |
+| toggle | `^` | `x ^ 1 = not x`, `x ^ 0 = x` — flips, leaves the rest |
+| test | `& ` | isolates the bit, discarding everything else |
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **Bitwise operators bind looser than comparison.** `n & 1 == 0` parses as
+   `n & (1 == 0)` — always `0`. Write `(n & 1) == 0`. This is the single most common
+   bit-manipulation bug in Python.
+2. **`~n` is not "flip within 32 bits".** Python integers are unbounded, so `~5 == -6`,
+   not `0xFFFFFFFA`. To simulate fixed-width behaviour, mask explicitly with
+   `& 0xFFFFFFFF`.
+3. **Shifting by a negative amount raises `ValueError`.** Guard `i >= 0`.
+4. **`n >> i` on a negative `n` is an arithmetic shift.** The sign bit propagates, so the
+   result stays negative forever. Mask to a fixed width first when treating a value as a
+   bit pattern rather than a number.
+5. **`1 << i` overflows nothing, but a wrong `i` silently gives a huge number.** `1 << 100`
+   is a perfectly valid 101-bit integer in Python; there is no error to catch.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
 - **Bitmask DP & State Compression**: In LeetCode 78 (*Subsets*), LeetCode 136 (*Single Number*), and LeetCode 847 (*Shortest Path Visiting All Nodes*), sets of size $\\le 30$ are encoded as integer bitmasks where checking membership is `(mask >> i) & 1` and adding an element is `mask | (1 << i)`.
 """,
         "test_cases": [
@@ -2415,7 +3084,64 @@ $$n \\& (n - 1) = x000...00_2$$
 
 ---
 
-### § 3. Bridging to LeetCode Mastery
+### § 3. Canonical Code Walkthrough
+```python
+def count_set_bits(n):
+    count = 0
+    while n > 0:
+        n &= (n - 1)      # clears exactly the lowest set bit
+        count += 1
+    return count
+```
+
+Tracing `n = 11` (binary `1011`, three set bits, therefore three iterations):
+
+```
+iter 1:  n     = 1011
+         n - 1 = 1010          (lowest 1 flipped to 0, nothing below it)
+         n & (n-1) = 1010      -> count = 1
+
+iter 2:  n     = 1010
+         n - 1 = 1001          (lowest 1 at position 1 -> 0, bit 0 -> 1)
+         n & (n-1) = 1000      -> count = 2
+
+iter 3:  n     = 1000
+         n - 1 = 0111          (all lower bits flip on)
+         n & (n-1) = 0000      -> count = 3, loop ends
+```
+
+Contrast with the naive scan, which always runs the full word width:
+
+```python
+def count_naive(n):
+    count = 0
+    while n:
+        count += n & 1        # 32 iterations for a 32-bit int,
+        n >>= 1               # regardless of how few bits are set
+    return count
+```
+
+For `n = 2**31` (a single set bit), the naive version runs **32** iterations and
+Kernighan's runs **1**.
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **`n & (n - 1) == 0` tests a power of two — but guard `n > 0` first.** `n = 0` also
+   satisfies the expression, and zero is not a power of two.
+2. **Negative inputs never terminate under `while n > 0`.** Python's arbitrary-precision
+   negatives have conceptually infinite leading 1s. Mask with `& 0xFFFFFFFF` before counting.
+3. **The complexity is $O(K)$, not $O(1)$.** $K$ is the number of set bits — bounded by the
+   word size, so it is $O(1)$ *for fixed-width* integers, but genuinely $O(\\log n)$ for
+   Python's unbounded ones.
+4. **`int.bit_count()` exists in Python 3.10+** and `bin(n).count('1')` works everywhere.
+   Know the trick because it is asked; use the builtin when the interviewer allows it.
+5. **Related identity: `n & -n` isolates the lowest set bit** (rather than clearing it),
+   because `-n == ~n + 1` in two's complement. That is the indexing trick behind Fenwick trees.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
 - **LeetCode 191 (Number of 1 Bits)**, **LeetCode 231 (Power of Two)**: An integer $n > 0$ is a power of two if and only if `(n & (n - 1)) == 0`.
 - **LeetCode 338 (Counting Bits)**: Dynamic programming state transition: `dp[i] = dp[i & (i - 1)] + 1`.
 """,
@@ -2504,7 +3230,92 @@ Big-O provides an asymptotic **upper bound** on the worst-case growth rate of th
 
 ---
 
-### § 3. Bridging to LeetCode Mastery
+### § 3. Canonical Code Walkthrough: Reading Complexity Off the Code
+Guttag's own § 11.3 examples, and how the shape of the code gives the class away:
+
+```python
+# THETA(1) -- constant. No dependence on input size at all.
+def first(L):
+    return L[0]
+
+# THETA(log n) -- the search space is divided by a constant each step.
+def bin_search(L, e, low, high):
+    ...                       # halves high - low per call
+
+# THETA(n) -- one bounded amount of work per element.
+def total(L):
+    s = 0
+    for e in L:               # n iterations
+        s += e                # O(1) body
+    return s
+
+# THETA(n log n) -- linear work repeated across log n levels.
+def merge_sort(L):
+    ...                       # log n levels, THETA(n) merging per level
+
+# THETA(n^2) -- nested loops over the same collection.
+def has_duplicate(L):
+    for i in range(len(L)):       # n
+        for j in range(len(L)):   # x n
+            if i != j and L[i] == L[j]:
+                return True
+    return False
+
+# THETA(2^n) -- one binary choice per element.
+def power_set(L):                 # 2^n subsets to generate
+    ...
+```
+
+**The multiplication rule.** Nested loops multiply; sequential blocks add, and the sum
+collapses to its dominant term:
+
+```python
+for x in L:          # n
+    ...
+for y in L:          # + n        ->  2n  ->  THETA(n)
+    ...
+
+for x in L:          # n
+    for y in L:      # * n        ->  n^2 ->  THETA(n^2)
+        ...
+```
+
+**The trap: an $O(n)$ operation hidden inside an $O(n)$ loop.**
+
+```python
+out = []
+for x in L:              # n iterations
+    if x not in out:     # `in` on a LIST is O(n) -- so this is O(n^2) total
+        out.append(x)
+
+seen = set()
+for x in L:              # n iterations
+    if x not in seen:    # `in` on a SET is O(1) -- so this is O(n) total
+        seen.add(x)
+```
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **Complexity is about the input *size*, not the input *value*.** An algorithm looping
+   `n` times where `n` is a supplied number is exponential in the input's encoding length —
+   the pseudo-polynomial trap that makes knapsack's $O(nW)$ misleading.
+2. **Drop constants and lower-order terms, but not before comparing correctly.**
+   $3n^2 + 500n + 10^6$ is $\\Theta(n^2)$ — yet for $n < 100$ the constant dominates. Asymptotic
+   analysis describes the limit, not small inputs.
+3. **Say which case you mean.** Quicksort is $O(n \\log n)$ expected and $O(n^2)$ worst.
+   Dictionary lookup is $O(1)$ expected and $O(n)$ worst. Stating only the good number is
+   the most common complexity error in interviews.
+4. **Count recursion frames in the space bound.** A recursive tree traversal is $O(H)$ space
+   even with no explicit data structure allocated.
+5. **The base of a logarithm never matters.** $\\log_2 n$ and $\\log_{10} n$ differ by a
+   constant factor, so both are $O(\\log n)$.
+6. **Amortized is not average.** `list.append` is $O(1)$ amortized — a guarantee about any
+   sequence of operations, not a probabilistic claim about one call.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
 - Evaluating constraints during interviews:
   - $N \\le 20 \\implies \\mathcal{O}(2^N)$ or $\\mathcal{O}(N!)$ (Backtracking, Bitmask DP).
   - $N \\le 10^3 \\implies \\mathcal{O}(N^2)$ (2D DP, Nested loops).
@@ -2579,7 +3390,61 @@ A central theme in computational efficiency is trading space for time: spending 
 
 ---
 
-### § 3. Bridging to LeetCode Mastery
+### § 3. Canonical Code Walkthrough
+```python
+def build_prefix_sum(nums):
+    prefix = [0] * (len(nums) + 1)        # note: length n + 1
+    for i, num in enumerate(nums):
+        prefix[i + 1] = prefix[i] + num
+    return prefix
+```
+
+Building it for `nums = [1, 2, 3, 4]`:
+
+```
+prefix[0] = 0                    <- the empty prefix; this entry is why the array is n+1 long
+prefix[1] = prefix[0] + 1 = 1    <- sum of nums[0:1]
+prefix[2] = prefix[1] + 2 = 3    <- sum of nums[0:2]
+prefix[3] = prefix[2] + 3 = 6    <- sum of nums[0:3]
+prefix[4] = prefix[3] + 4 = 10   <- sum of nums[0:4]
+
+prefix = [0, 1, 3, 6, 10]
+```
+
+Answering queries in $O(1)$ each, by subtraction:
+
+```python
+# sum of nums[L..R] inclusive  ==  prefix[R + 1] - prefix[L]
+sum(1..2) = prefix[3] - prefix[1] = 6 - 1 = 5      # nums[1] + nums[2] = 2 + 3
+sum(0..3) = prefix[4] - prefix[0] = 10 - 0 = 10    # the whole array
+sum(2..2) = prefix[3] - prefix[2] = 6 - 3 = 3      # a single element
+```
+
+The cost profile: $\\Theta(n)$ once to build, $\\Theta(1)$ per query, $\\Theta(n)$ extra memory.
+Across $Q$ queries that is $\\Theta(n + Q)$ instead of the naive $\\Theta(n \\times Q)$.
+
+---
+
+### § 4. Common Pitfalls & Invariant Rules
+1. **The array must have length $n + 1$.** The leading `0` represents the empty prefix and
+   is what makes `L = 0` work without a special case. Building an $n$-length array forces an
+   `if L == 0` branch into every query.
+2. **`prefix[R + 1]`, not `prefix[R]`.** The off-by-one here is the whole technique.
+   Write the invariant down: *`prefix[i]` is the sum of the first `i` elements* — then
+   `sum(L..R)` is "first `R+1`" minus "first `L`".
+3. **It only works on an immutable array.** A single update to `nums[i]` invalidates every
+   `prefix[j]` for `j > i`, costing $O(n)$ to repair. If updates interleave with queries,
+   you need a Fenwick tree or segment tree instead.
+4. **The same trick generalizes.** Prefix XOR, prefix product, prefix counts and 2-D prefix
+   sums all work by the same subtraction identity — any associative operation with an
+   inverse.
+5. **Pair it with a hash map for subarray-target problems.** Counting subarrays summing to
+   `k` is not a range query: store the *frequency* of each prefix value seen so far and look
+   up `prefix - k` in $O(1)$.
+
+---
+
+### § 5. Bridging to LeetCode Mastery
 - **LeetCode 303 (Range Sum Query - Immutable)**: Direct implementation of prefix sum array.
 - **LeetCode 560 (Subarray Sum Equals K)**: Combines prefix sums with hash map frequency counts to find subarrays summing to $k$ in single-pass $\\mathcal{O}(N)$ time.
 """,
