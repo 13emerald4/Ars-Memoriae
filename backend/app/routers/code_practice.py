@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import UTC, datetime
 
@@ -36,10 +37,56 @@ from app.services.problems_catalog import PROBLEMS_CATALOG
 router = APIRouter(prefix="/api/code", tags=["code_practice"])
 
 
-async def ensure_catalog_seeded(db: AsyncSession) -> None:
-    """Seeds or refreshes the default fundamentals and problem catalogs."""
+_seed_lock = asyncio.Lock()
+_seeded = False
+
+
+async def ensure_catalog_seeded(db: AsyncSession, force: bool = False) -> None:
+    """Seeds or refreshes the default fundamentals and problem catalogs.
+
+    Runs once per process rather than once per request. Previously every
+    endpoint re-ran the whole upsert, which meant concurrent requests could
+    each observe a newly-added catalog slug as missing and each insert it —
+    the frontend fires three requests on page load, so adding N drills to the
+    catalog produced N duplicate rows. `slug` cannot simply be made UNIQUE:
+    catalog rows have `user_id IS NULL`, and both SQLite and Postgres treat
+    NULLs as distinct in a unique index, so the constraint would not bite.
+    """
+    global _seeded
+    if _seeded and not force:
+        return
+
+    async with _seed_lock:
+        # Re-check: a concurrent caller may have finished while we waited.
+        if _seeded and not force:
+            return
+        await _seed_catalog(db)
+        _seeded = True
+
+
+async def _seed_catalog(db: AsyncSession) -> None:
     stmt = select(CodeProblem).where(CodeProblem.user_id.is_(None))
-    existing_probs = {p.slug: p for p in (await db.execute(stmt)).scalars().all()}
+    rows = (await db.execute(stmt)).scalars().all()
+
+    # Self-heal any duplicates a previous racing build left behind. Keep the
+    # oldest row (submissions cascade off problem_id, so the survivor must be
+    # the one users have history against) and drop copies nothing points at.
+    by_slug: dict[str, list[CodeProblem]] = {}
+    for p in rows:
+        by_slug.setdefault(p.slug, []).append(p)
+
+    existing_probs: dict[str, CodeProblem] = {}
+    for slug, dupes in by_slug.items():
+        dupes.sort(key=lambda p: (p.created_at, str(p.id)))
+        existing_probs[slug] = dupes[0]
+        for extra in dupes[1:]:
+            has_history = (
+                await db.execute(
+                    select(CodeSubmission.id).where(CodeSubmission.problem_id == extra.id).limit(1)
+                )
+            ).first()
+            if has_history is None:
+                await db.delete(extra)
 
     all_catalog_items = list(FUNDAMENTALS_CATALOG) + list(PROBLEMS_CATALOG)
     for item in all_catalog_items:
@@ -95,11 +142,18 @@ async def _get_problem(db: AsyncSession, id_or_slug: str, user: User) -> CodePro
             or_(CodeProblem.user_id.is_(None), CodeProblem.user_id == user.id),
         )
     except ValueError:
-        stmt = select(CodeProblem).where(
-            CodeProblem.slug == id_or_slug,
-            or_(CodeProblem.user_id.is_(None), CodeProblem.user_id == user.id),
+        stmt = (
+            select(CodeProblem)
+            .where(
+                CodeProblem.slug == id_or_slug,
+                or_(CodeProblem.user_id.is_(None), CodeProblem.user_id == user.id),
+            )
+            # A slug is not UNIQUE at the DB level, so take the oldest match
+            # deterministically. scalar_one_or_none() would raise
+            # MultipleResultsFound here and 500 the whole lesson pane.
+            .order_by(CodeProblem.created_at, CodeProblem.id)
         )
-    prob = (await db.execute(stmt)).scalar_one_or_none()
+    prob = (await db.execute(stmt)).scalars().first()
     if prob is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Code problem not found.")
     return prob
