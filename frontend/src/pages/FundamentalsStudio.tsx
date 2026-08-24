@@ -78,6 +78,9 @@ export default function FundamentalsStudio() {
     }
   }, [readingMode])
 
+  // Peek answer toggle for questions
+  const [showPeekAnswer, setShowPeekAnswer] = useState<boolean>(false)
+
   // All-questions overview: every drill across every chapter, not just the active track
   const [allDrills, setAllDrills] = useState<CodeProblemSummary[]>([])
   const [showAllQuestions, setShowAllQuestions] = useState<boolean>(false)
@@ -156,6 +159,7 @@ export default function FundamentalsStudio() {
         setCode(starter)
         setRunResult(null)
         setActiveTab('textbook')
+        setShowPeekAnswer(false)
         setTimerSec(60)
         setTimerRunning(false)
       })
@@ -561,12 +565,27 @@ export default function FundamentalsStudio() {
                       </span>
                     </div>
 
-                    <button
-                      onClick={() => setActiveTab('socratic')}
-                      className="text-xs text-sky-400 hover:text-sky-300 underline font-medium"
-                    >
-                      Need help? Ask Socratic Guide ➔
-                    </button>
+                    <div className="flex items-center gap-3">
+                      {drillDetail.solutions && Object.keys(drillDetail.solutions).length > 0 && (
+                        <button
+                          onClick={() => setShowPeekAnswer((prev) => !prev)}
+                          className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition border ${
+                            showPeekAnswer
+                              ? 'border-amber-500/50 bg-amber-950/40 text-amber-200 shadow-sm'
+                              : 'border-slate-700 bg-slate-800/60 text-slate-300 hover:border-amber-500/30 hover:text-amber-200'
+                          }`}
+                          title={showPeekAnswer ? 'Hide answer' : 'Peek canonical answer'}
+                        >
+                          <span>{showPeekAnswer ? '🙈 Hide Answer' : '👁️ Peek Answer'}</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setActiveTab('socratic')}
+                        className="text-xs text-sky-400 hover:text-sky-300 underline font-medium"
+                      >
+                        Need help? Ask Socratic Guide ➔
+                      </button>
+                    </div>
                   </div>
 
                   <h2 className="text-base font-bold text-slate-100">{drillDetail.title}</h2>
@@ -626,6 +645,77 @@ export default function FundamentalsStudio() {
                           <p className="mt-1.5 text-slate-400 text-[11px]">{hint}</p>
                         </details>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Peek Answer / Canonical Solution Section */}
+                  {drillDetail.solutions && Object.keys(drillDetail.solutions).length > 0 && (
+                    <div className="space-y-2 pt-2">
+                      <div className="flex items-center justify-between border-t border-ink-line/40 pt-3">
+                        <div>
+                          <p className="font-bold text-slate-400 text-xs uppercase tracking-wider">
+                            Answer / Solution
+                          </p>
+                          <p className="text-[11px] text-slate-500">
+                            Stuck or want to check your approach against the textbook?
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setShowPeekAnswer((prev) => !prev)}
+                          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition border ${
+                            showPeekAnswer
+                              ? 'border-amber-500/50 bg-amber-950/40 text-amber-200 shadow-sm'
+                              : 'border-slate-700 bg-slate-800/60 text-slate-300 hover:border-amber-500/30 hover:text-amber-200'
+                          }`}
+                        >
+                          <span>{showPeekAnswer ? '🙈 Hide Answer' : '👁️ Peek Answer'}</span>
+                        </button>
+                      </div>
+
+                      {showPeekAnswer && (
+                        <div className="rounded-xl border border-amber-500/40 bg-[#090d14] p-4 space-y-3 shadow-xl animate-in fade-in duration-150">
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-line/60 pb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-base">💡</span>
+                              <span className="font-bold text-amber-300 text-xs uppercase tracking-wider">
+                                Canonical Solution (Guttag Pattern)
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  const sol =
+                                    drillDetail.solutions?.python ||
+                                    Object.values(drillDetail.solutions || {})[0] ||
+                                    ''
+                                  if (sol) void navigator.clipboard.writeText(sol)
+                                }}
+                                className="flex items-center gap-1 rounded bg-slate-800 px-2 py-1 text-[11px] font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition"
+                                title="Copy solution to clipboard"
+                              >
+                                📋 Copy
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const sol =
+                                    drillDetail.solutions?.python ||
+                                    Object.values(drillDetail.solutions || {})[0] ||
+                                    ''
+                                  if (sol) setCode(sol)
+                                }}
+                                className="flex items-center gap-1 rounded bg-sky-500/20 border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/30 hover:text-white transition"
+                                title="Load this solution into code editor"
+                              >
+                                Load into Editor ➔
+                              </button>
+                            </div>
+                          </div>
+
+                          <pre className="rounded-lg border border-emerald-500/30 bg-[#05080e] p-3.5 text-emerald-300 font-mono text-xs overflow-x-auto whitespace-pre leading-relaxed shadow-inner">
+                            {drillDetail.solutions.python || Object.values(drillDetail.solutions)[0]}
+                          </pre>
+                        </div>
+                      )}
                     </div>
                   )}
 
