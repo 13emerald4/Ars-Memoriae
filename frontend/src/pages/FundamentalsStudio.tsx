@@ -12,6 +12,25 @@ import { CodeSocraticTutor } from '../components/CodeSocraticTutor'
 import { CodeTestConsole } from '../components/CodeTestConsole'
 import { ConcordanceReader } from '../components/ConcordanceReader'
 import { ErrorNote, Spinner } from '../components/ui'
+import {
+  READING_MODES,
+  ReadingMode,
+  estimateReadMinutes,
+  filterEditorialByMode,
+  sectionCount,
+} from '../services/reading_mode'
+
+const READING_MODE_KEY = 'memorization.readingMode'
+
+function loadReadingMode(): ReadingMode {
+  try {
+    const saved = localStorage.getItem(READING_MODE_KEY)
+    if (saved === 'concise' || saved === 'normal' || saved === 'robust') return saved
+  } catch {
+    /* private mode / storage disabled — fall through to the default */
+  }
+  return 'normal'
+}
 
 const TRACKS = [
   { id: 'track_0_python_basics', label: '🟢 Track 0: Python Basics & Numerics (Guttag Ch. 2–3)', icon: '🐍' },
@@ -47,6 +66,17 @@ export default function FundamentalsStudio() {
 
   // Fullscreen reading mode
   const [isFullscreenReading, setIsFullscreenReading] = useState<boolean>(false)
+
+  // Guttag lesson depth: Concise / Normal / Robust (persisted across sessions)
+  const [readingMode, setReadingMode] = useState<ReadingMode>(loadReadingMode)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(READING_MODE_KEY, readingMode)
+    } catch {
+      /* storage unavailable — the choice just won't persist */
+    }
+  }, [readingMode])
 
   // All-questions overview: every drill across every chapter, not just the active track
   const [allDrills, setAllDrills] = useState<CodeProblemSummary[]>([])
@@ -199,6 +229,40 @@ export default function FundamentalsStudio() {
 
   const currentIndex = drills.findIndex((d) => d.slug === selectedDrillSlug)
   const isFailed = runResult && runResult.status !== 'Accepted'
+
+  const lessonMarkdown = drillDetail?.editorial
+    ? filterEditorialByMode(drillDetail.editorial, readingMode)
+    : ''
+  const lessonSections = drillDetail?.editorial
+    ? sectionCount(drillDetail.editorial, readingMode)
+    : { shown: 0, total: 0 }
+  const lessonReadTime = lessonMarkdown ? estimateReadMinutes(lessonMarkdown) : ''
+
+  const readingModeToggle = (size: 'sm' | 'md' = 'sm') => (
+    <div
+      className="flex items-center gap-0.5 rounded-lg border border-ink-line/80 bg-[#090d13] p-0.5"
+      role="group"
+      aria-label="Lesson reading depth"
+    >
+      {READING_MODES.map((m) => (
+        <button
+          key={m.id}
+          onClick={() => setReadingMode(m.id)}
+          title={m.hint}
+          aria-pressed={readingMode === m.id}
+          className={`rounded-md font-semibold transition ${
+            size === 'md' ? 'px-3 py-1 text-xs' : 'px-2 py-0.5 text-[10px]'
+          } ${
+            readingMode === m.id
+              ? 'bg-sky-500 text-white shadow'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          {m.label}
+        </button>
+      ))}
+    </div>
+  )
 
   const overviewQuery = allQuestionsSearch.trim().toLowerCase()
   const filteredAllDrills = overviewQuery
@@ -427,6 +491,7 @@ export default function FundamentalsStudio() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {readingModeToggle('sm')}
                       <button
                         onClick={() => setIsFullscreenReading(true)}
                         className="flex items-center gap-1 rounded-md border border-sky-500/40 bg-sky-950/40 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/30 hover:text-white transition shadow"
@@ -435,13 +500,24 @@ export default function FundamentalsStudio() {
                         <span>⛶ Fullscreen Mode</span>
                       </button>
                       <span className="text-[11px] font-mono text-slate-400">
-                        📖 ~4–6 min
+                        📖 {lessonReadTime}
                       </span>
                     </div>
                   </div>
 
                   {drillDetail.editorial ? (
-                    <ConcordanceReader content={drillDetail.editorial} />
+                    <>
+                      <ConcordanceReader content={lessonMarkdown} />
+                      {lessonSections.shown < lessonSections.total && (
+                        <button
+                          onClick={() => setReadingMode('robust')}
+                          className="w-full rounded-lg border border-dashed border-sky-500/40 bg-sky-950/20 px-4 py-2.5 text-[11px] text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 transition"
+                        >
+                          Showing {lessonSections.shown} of {lessonSections.total} sections —
+                          switch to <strong>Robust</strong> for the textbook reading and pitfalls ➔
+                        </button>
+                      )}
+                    </>
                   ) : (
                     <p className="text-slate-400 italic">No textbook excerpt available.</p>
                   )}
@@ -723,6 +799,8 @@ export default function FundamentalsStudio() {
             </div>
 
             <div className="flex items-center gap-3">
+              {readingModeToggle('md')}
+
               {/* Prev / Next Controls */}
               <div className="flex items-center gap-1 bg-[#161f2e] border border-ink-line/80 rounded-lg p-1">
                 <button
@@ -771,7 +849,18 @@ export default function FundamentalsStudio() {
           <div className="flex-1 overflow-y-auto px-6 py-8">
             <div className="max-w-4xl mx-auto space-y-6">
               {drillDetail.editorial ? (
-                <ConcordanceReader content={drillDetail.editorial} />
+                <>
+                  <ConcordanceReader content={lessonMarkdown} />
+                  {lessonSections.shown < lessonSections.total && (
+                    <button
+                      onClick={() => setReadingMode('robust')}
+                      className="w-full rounded-xl border border-dashed border-sky-500/40 bg-sky-950/20 px-4 py-3 text-xs text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 transition"
+                    >
+                      Showing {lessonSections.shown} of {lessonSections.total} sections —
+                      switch to <strong>Robust</strong> for the textbook reading and pitfalls ➔
+                    </button>
+                  )}
+                </>
               ) : (
                 <p className="text-slate-400 italic">No textbook excerpt available.</p>
               )}
