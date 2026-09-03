@@ -8,16 +8,15 @@ from __future__ import annotations
 
 import ast
 import asyncio
-import io
+import json
 import sys
 import time
-import traceback
 from typing import Any
 
 
 def _find_entrypoint(code: str) -> tuple[str, bool]:
     """Finds the function or method name to invoke.
-    
+
     Returns (func_name, is_method).
     """
     try:
@@ -39,11 +38,11 @@ def _find_entrypoint(code: str) -> tuple[str, bool]:
 def _deep_equal(a: Any, b: Any) -> bool:
     """Tolerant structural comparison (tuples vs lists, float precision)."""
     if isinstance(a, tuple) and isinstance(b, list):
-        return len(a) == len(b) and all(_deep_equal(x, y) for x, y in zip(a, b))
+        return len(a) == len(b) and all(_deep_equal(x, y) for x, y in zip(a, b, strict=False))
     if isinstance(a, list) and isinstance(b, tuple):
-        return len(a) == len(b) and all(_deep_equal(x, y) for x, y in zip(a, b))
+        return len(a) == len(b) and all(_deep_equal(x, y) for x, y in zip(a, b, strict=False))
     if isinstance(a, (list, tuple)) and isinstance(b, (list, tuple)):
-        return len(a) == len(b) and all(_deep_equal(x, y) for x, y in zip(a, b))
+        return len(a) == len(b) and all(_deep_equal(x, y) for x, y in zip(a, b, strict=False))
     if isinstance(a, dict) and isinstance(b, dict):
         if set(a.keys()) != set(b.keys()):
             return False
@@ -62,141 +61,80 @@ async def run_python_code(
     custom_entrypoint: str | None = None,
     timeout_sec: float = 3.0,
 ) -> dict[str, Any]:
-    """Executes Python code against a list of test cases in an async worker."""
-    entrypoint, is_method = _find_entrypoint(code)
-    if custom_entrypoint:
-        entrypoint = custom_entrypoint
+    """Executes Python code against a list of test cases in an isolated child subprocess."""
+    payload = json.dumps({
+        "code": code,
+        "test_cases": test_cases,
+        "custom_entrypoint": custom_entrypoint,
+    }).encode("utf-8")
 
-    if not entrypoint:
-        # Check if syntax error
-        try:
-            ast.parse(code)
-        except SyntaxError as e:
-            return {
-                "status": "Compile Error",
-                "passed_count": 0,
-                "total_count": len(test_cases),
-                "runtime_ms": 0.0,
-                "error": f"SyntaxError: {e.msg} on line {e.lineno}",
-                "results": [],
-            }
-        return {
-            "status": "Compile Error",
-            "passed_count": 0,
-            "total_count": len(test_cases),
-            "runtime_ms": 0.0,
-            "error": "No callable function or Solution method found.",
-            "results": [],
-        }
-
-    results = []
-    passed_count = 0
     total_start = time.perf_counter()
 
-    # Pre-compile the code
     try:
-        compiled_code = compile(code, "<user_code>", "exec")
+        proc = await asyncio.create_subprocess_exec(
+            sys.executable,
+            "-m",
+            "app.services.code_sandbox_worker",
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
     except Exception as e:
         return {
-            "status": "Compile Error",
+            "status": "Runtime Error",
             "passed_count": 0,
             "total_count": len(test_cases),
             "runtime_ms": 0.0,
-            "error": f"Compilation error: {e}",
+            "error": f"Failed to spawn execution worker: {e}",
             "results": [],
         }
 
-    overall_status = "Accepted"
-
-    for idx, tc in enumerate(test_cases):
-        inputs = tc.get("input", {})
-        expected = tc.get("expected")
-
-        stdout_buf = io.StringIO()
-        tc_start = time.perf_counter()
-        tc_runtime = 0.0
-        error_msg = None
-        actual_output = None
-        is_passed = False
-
-        def _execute_sync() -> tuple[Any, str, str | None]:
-            old_stdout = sys.stdout
-            sys.stdout = stdout_buf
-            glob: dict[str, Any] = {}
-            try:
-                exec(compiled_code, glob)
-                if is_method:
-                    sol_cls = glob.get("Solution")
-                    if sol_cls is None:
-                        return None, stdout_buf.getvalue(), "Solution class not found."
-                    instance = sol_cls()
-                    func = getattr(instance, entrypoint, None)
-                else:
-                    func = glob.get(entrypoint)
-
-                if not callable(func):
-                    return None, stdout_buf.getvalue(), f"Function '{entrypoint}' is not callable."
-
-                # Call function with kwargs or positional args
-                if isinstance(inputs, dict):
-                    output = func(**inputs)
-                elif isinstance(inputs, (list, tuple)):
-                    output = func(*inputs)
-                else:
-                    output = func(inputs)
-
-                return output, stdout_buf.getvalue(), None
-            except Exception:
-                return None, stdout_buf.getvalue(), traceback.format_exc()
-            finally:
-                sys.stdout = old_stdout
-
-        try:
-            # Run with timeout
-            output, captured_stdout, err = await asyncio.wait_for(
-                asyncio.to_thread(_execute_sync),
-                timeout=timeout_sec,
-            )
-            tc_runtime = (time.perf_counter() - tc_start) * 1000.0
-
-            if err:
-                error_msg = err.strip().split("\n")[-1]  # Last line of traceback
-                overall_status = "Runtime Error" if overall_status == "Accepted" else overall_status
-                is_passed = False
-            else:
-                actual_output = output
-                is_passed = _deep_equal(actual_output, expected)
-                if is_passed:
-                    passed_count += 1
-                else:
-                    if overall_status == "Accepted":
-                        overall_status = "Wrong Answer"
-
-        except TimeoutError:
-            tc_runtime = timeout_sec * 1000.0
-            error_msg = f"Time Limit Exceeded (> {timeout_sec}s)"
-            overall_status = "Time Limit Exceeded"
-            is_passed = False
-
-        results.append(
-            {
-                "test_index": idx + 1,
-                "passed": is_passed,
-                "input": inputs,
-                "expected": expected,
-                "actual": actual_output,
-                "stdout": captured_stdout if 'captured_stdout' in locals() else "",
-                "error": error_msg,
-                "runtime_ms": round(tc_runtime, 2),
-            }
+    try:
+        stdout_bytes, stderr_bytes = await asyncio.wait_for(
+            proc.communicate(input=payload),
+            timeout=timeout_sec,
         )
+    except TimeoutError:
+        try:
+            proc.kill()
+            await proc.wait()
+        except Exception:
+            pass
+        return {
+            "status": "Time Limit Exceeded",
+            "passed_count": 0,
+            "total_count": len(test_cases),
+            "runtime_ms": round(timeout_sec * 1000.0, 2),
+            "error": f"Time Limit Exceeded (> {timeout_sec}s)",
+            "results": [
+                {
+                    "test_index": idx + 1,
+                    "passed": False,
+                    "input": tc.get("input", {}),
+                    "expected": tc.get("expected"),
+                    "actual": None,
+                    "stdout": "",
+                    "error": f"Time Limit Exceeded (> {timeout_sec}s)",
+                    "runtime_ms": round(timeout_sec * 1000.0, 2),
+                }
+                for idx, tc in enumerate(test_cases)
+            ],
+        }
 
-    total_runtime = (time.perf_counter() - total_start) * 1000.0
+    try:
+        data = json.loads(stdout_bytes.decode("utf-8"))
+    except Exception:
+        err_msg = (
+            stderr_bytes.decode("utf-8", errors="replace").strip()
+            or "Execution worker returned invalid output."
+        )
+        return {
+            "status": "Runtime Error",
+            "passed_count": 0,
+            "total_count": len(test_cases),
+            "runtime_ms": round((time.perf_counter() - total_start) * 1000.0, 2),
+            "error": err_msg,
+            "results": [],
+        }
 
-    return {
-        "status": overall_status if passed_count == len(test_cases) else (overall_status or "Wrong Answer"),
-        "passed_count": passed_count,
-        "total_count": len(test_cases),
-        "runtime_ms": round(total_runtime, 2),
-        "results": results,
-    }
+    return data

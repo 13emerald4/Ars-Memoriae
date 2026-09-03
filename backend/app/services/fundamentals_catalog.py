@@ -1,5 +1,10 @@
 """Pre-LeetCode Fundamentals & Python Basics Catalog.
 
+Grounded foundationally in MIT 6.0001: 'Introduction to Computer Science and
+Programming in Python' (MIT OpenCourseWare / Profs. John V. Guttag, Eric Grimson,
+and Dr. Ana Bell) and the official companion textbook 'Introduction to Computation
+and Programming Using Python' (Third Edition, MIT Press).
+
 Grounded in John V. Guttag's 'Introduction to Computation and Programming
 Using Python' (Third Edition, MIT Press / MIT 6.0001 & 6.0002).
 
@@ -24,7 +29,7 @@ Citation conventions
 from __future__ import annotations
 
 FUNDAMENTALS_CATALOG = [
-    # ── Track 0: Python Core & Numerical Programs (Guttag Ch. 2 & 3) ──────────
+    # ── Track 0: Python Core & Numerical Programs (MIT 6.0001 Lec 1–3, Pset 1) ──────────
     {
         "slug": "py-basics-type-casting",
         "title": "Type Casting & Conversions",
@@ -32,9 +37,9 @@ FUNDAMENTALS_CATALOG = [
         "track": "track_0_python_basics",
         "difficulty": "Easy",
         "category": "Python Basics",
-        "tags": ["Guttag § 2.2", "Types", "Type Casting", "Scalar Primitives"],
+        "tags": ["MIT 6.0001 Lec 1", "Guttag § 2.2", "Types", "Type Casting", "Scalar Primitives"],
         "description": """### 🏛️ Finger Exercise: Type Conversions & Scalar Evaluation
-**Guttag Citation**: *Chapter 2: Introduction to Python (§ 2.2 The Basic Elements of Python)*
+**MIT 6.0001 Citation**: *Chapter 2: Introduction to Python (§ 2.2 The Basic Elements of Python)*
 
 Write a function `convert_types(val_str: str, num: int)` that returns a tuple of:
 1. `val_str` converted to an integer.
@@ -62,7 +67,7 @@ Write a function `convert_types(val_str: str, num: int)` that returns a tuple of
 """
         },
         "editorial": """# 📖 Chapter 2: Introduction to Python (§ 2.2 The Basic Elements of Python)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -160,9 +165,9 @@ print(a is b)  # False (different heap allocations, though a == b is True)
         "track": "track_0_python_basics",
         "difficulty": "Easy",
         "category": "Python Basics",
-        "tags": ["Guttag § 2.2.1", "Arithmetic", "Modulo", "Floor Division"],
+        "tags": ["MIT 6.0001 Lec 1", "Guttag § 2.2.1", "Arithmetic", "Modulo", "Floor Division"],
         "description": """### 🏛️ Finger Exercise: Integer Division Invariant
-**Guttag Citation**: *Chapter 2: Introduction to Python (§ 2.2.1 Objects, Expressions, and Numerical Types)*
+**MIT 6.0001 Citation**: *Chapter 2: Introduction to Python (§ 2.2.1 Objects, Expressions, and Numerical Types)*
 
 Write a function `div_mod_stats(a: int, b: int)` that returns a tuple of:
 1. `float_div`: `a / b` (standard floating point division)
@@ -187,7 +192,7 @@ Write a function `div_mod_stats(a: int, b: int)` that returns a tuple of:
 """
         },
         "editorial": """# 📖 Chapter 2: Introduction to Python (§ 2.2.1 Objects, Expressions, and Numerical Types)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -272,9 +277,9 @@ assert verify_division_invariant(-7, -2)  # q=3, r=-1
         "track": "track_0_python_basics",
         "difficulty": "Easy",
         "category": "Numerical Programs",
-        "tags": ["Guttag § 3.2", "Bisection Search", "Approximation", "MIT 6.0001"],
+        "tags": ["MIT 6.0001 Lec 3", "MIT 6.0001 Pset 1", "Bisection Search", "Approximation"],
         "description": """### 🏛️ Finger Exercise: Bisection Search Approximation
-**Guttag Citation**: *Chapter 3: Some Simple Numerical Programs (§ 3.2 Approximate Solutions and Bisection Search)*
+**MIT 6.0001 Citation**: *Chapter 3: Some Simple Numerical Programs (§ 3.2 Approximate Solutions and Bisection Search)*
 
 Implement Guttag's classic bisection search algorithm from Figure 3-5 to find the square root of $x \\ge 1$.
 Write a function `bisection_sqrt(x: float, epsilon: float = 0.01) -> float` that finds an approximation $ans$ such that $|ans^2 - x| \\le \\epsilon$.
@@ -316,7 +321,7 @@ Write a function `bisection_sqrt(x: float, epsilon: float = 0.01) -> float` that
 """
         },
         "editorial": """# 📖 Chapter 3: Some Simple Numerical Programs (§ 3.2 Approximate Solutions & Bisection Search)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -409,9 +414,9 @@ This continuous bisection search is the direct foundation of one of LeetCode's m
         "track": "track_0_python_basics",
         "difficulty": "Easy",
         "category": "Numerical Programs",
-        "tags": ["Guttag § 3.4", "Newton-Raphson", "Calculus", "Optimization"],
+        "tags": ["MIT 6.0001 Lec 3", "Guttag § 3.4", "Newton-Raphson", "Root Finding"],
         "description": """### 🏛️ Finger Exercise: Newton-Raphson Root Finding
-**Guttag Citation**: *Chapter 3: Some Simple Numerical Programs (§ 3.4 Newton-Raphson)*
+**MIT 6.0001 Citation**: *Chapter 3: Some Simple Numerical Programs (§ 3.4 Newton-Raphson)*
 
 Implement Guttag's Newton-Raphson root finder from Figure 3-7 for $f(y) = y^2 - k = 0$.
 The update rule is:
@@ -436,7 +441,7 @@ Write a function `newton_raphson_sqrt(k: float, epsilon: float = 0.001) -> float
 """
         },
         "editorial": """# 📖 Chapter 3: Some Simple Numerical Programs (§ 3.4 Newton-Raphson Approximation)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -521,9 +526,9 @@ print(f'{guess} is close to square root of {k}')
         "track": "track_0_python_basics",
         "difficulty": "Easy",
         "category": "Python Basics",
-        "tags": ["Guttag § 4.1", "Scope", "Stack Frames", "Recursion Helper"],
+        "tags": ["MIT 6.0001 Lec 4", "Guttag § 4.1", "Scope", "Stack Frames", "LEGB Rule"],
         "description": """### 🏛️ Finger Exercise: Scoping & Stack Frames
-**Guttag Citation**: *Chapter 4: Functions, Scoping, and Abstraction (§ 4.1 Functions and Scoping)*
+**MIT 6.0001 Citation**: *Chapter 4: Functions, Scoping, and Abstraction (§ 4.1 Functions and Scoping)*
 
 In tree and graph algorithms, helper functions frequently need to mutate state in an outer enclosing frame.
 Write a function `count_nested_events(events: list[int])` that defines an inner function `process()`.
@@ -554,7 +559,7 @@ The inner function should use the `nonlocal` keyword to count how many events ar
 """
         },
         "editorial": """# 📖 Chapter 4: Functions, Scoping, and Abstraction (§ 4.1 Functions and Scoping)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -659,7 +664,7 @@ def outer_search_engine(data: list[int]) -> int:
         "hints": ["Inside process(), write 'nonlocal count' before modifying count."],
     },
 
-    # ── Track 1: Structured Types, Mutability & Higher-Order Functions (Guttag Ch. 4 & 5) ──
+    # ── Track 1: Structured Types, Mutability & Scoping (MIT 6.0001 Lec 4–5, Pset 2) ──
     {
         "slug": "py-fluency-mutability-aliasing",
         "title": "List Mutability & Aliasing Trap (Guttag Ch. 5)",
@@ -667,9 +672,9 @@ def outer_search_engine(data: list[int]) -> int:
         "track": "track_1_pythonic_fluency",
         "difficulty": "Easy",
         "category": "Structured Types",
-        "tags": ["Guttag § 5.3", "Mutability", "Aliasing", "Side-Effects"],
+        "tags": ["MIT 6.0001 Lec 5", "Guttag § 5.3", "Mutability", "Aliasing", "Side-Effects"],
         "description": """### 🏛️ Finger Exercise: Mutating While Iterating & Aliasing
-**Guttag Citation**: *Chapter 5: Structured Types and Mutability (§ 5.3 Lists and Mutability)*
+**MIT 6.0001 Citation**: *Chapter 5: Structured Types and Mutability (§ 5.3 Lists and Mutability)*
 
 Guttag warns against a notorious Python trap: **mutating a list while iterating over it**.
 Write a function `safe_filter_evens(nums: list[int]) -> tuple[list[int], list[int]]` that:
@@ -692,7 +697,7 @@ Write a function `safe_filter_evens(nums: list[int]) -> tuple[list[int], list[in
 """
         },
         "editorial": """# 📖 Chapter 5: Structured Types and Mutability (§ 5.3 Lists and Mutability)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -817,9 +822,9 @@ for x in nums[:]:
         "track": "track_1_pythonic_fluency",
         "difficulty": "Easy",
         "category": "Functional Abstractions",
-        "tags": ["Guttag § 4.4", "Higher-Order Functions", "Lambdas", "First-Class"],
+        "tags": ["MIT 6.0001 Lec 4", "Guttag § 4.4", "Higher-Order Functions", "Lambdas"],
         "description": """### 🏛️ Finger Exercise: First-Class Functions
-**Guttag Citation**: *Chapter 4: Functions, Scoping, and Abstraction (§ 4.4 Functions as Objects)*
+**MIT 6.0001 Citation**: *Chapter 4: Functions, Scoping, and Abstraction (§ 4.4 Functions as Objects)*
 
 Write a function `apply_scaling(nums: list[int], factor: int, offset: int) -> list[int]` that creates an internal lambda function `transform = lambda x: (x * factor) + offset` and applies it across `nums` using `[transform(x) for x in nums]`.
 """,
@@ -838,7 +843,7 @@ Write a function `apply_scaling(nums: list[int], factor: int, offset: int) -> li
 """
         },
         "editorial": """# 📖 Chapter 4: Functions, Scoping, and Abstraction (§ 4.4 Functions as Objects)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -939,9 +944,9 @@ points.sort(key=lambda p: -p[1])  # Result: [(1, 9), (3, 7), (5, 2)]
         "track": "track_1_pythonic_fluency",
         "difficulty": "Easy",
         "category": "Python Fluency",
-        "tags": ["Guttag § 5.3.1", "2D Matrix", "List Comprehension", "Aliasing Trap"],
+        "tags": ["MIT 6.0001 Lec 5", "Guttag § 5.3.1", "2D Matrix", "List Comprehension"],
         "description": """### 🏛️ Finger Exercise: 2D Matrix Memory Initialization
-**Guttag Citation**: *Chapter 5: Structured Types and Mutability (§ 5.3.1 Cloning, § 5.3.2 List Comprehension)*
+**MIT 6.0001 Citation**: *Chapter 5: Structured Types and Mutability (§ 5.3.1 Cloning, § 5.3.2 List Comprehension)*
 
 Writing `[[0] * C] * R` replicates the outer list pointer $R$ times to the **exact same row list in memory**. Modifying `grid[0][0] = 1` mutates every row simultaneously!
 Write a function `init_grid(R: int, C: int, default_val: int)` that uses a list comprehension to create an independent $R \\times C$ matrix initialized to `default_val`.
@@ -960,7 +965,7 @@ Write a function `init_grid(R: int, C: int, default_val: int)` that uses a list 
 """
         },
         "editorial": """# 📖 Chapter 5: Structured Types and Mutability (§ 5.3.1 Cloning, § 5.3.2 List Comprehension)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -1079,9 +1084,9 @@ grid[2] ─┘                     grid[2] ──> [0, 0, 0]
         "track": "track_1_pythonic_fluency",
         "difficulty": "Easy",
         "category": "Functional Abstractions",
-        "tags": ["Guttag § 4.1.2", "Default Values", "Aliasing", "Memoization Trap"],
+        "tags": ["MIT 6.0001 Lec 4", "Guttag § 4.2", "Default Arguments", "Mutable Traps"],
         "description": """### 🏛️ Finger Exercise: Default Values Are Evaluated Once
-**Guttag Citation**: *Chapter 4: Functions, Scoping, and Abstraction (§ 4.1.2 Keyword Arguments and Default Values)*
+**MIT 6.0001 Citation**: *Chapter 4: Functions, Scoping, and Abstraction (§ 4.1.2 Keyword Arguments and Default Values)*
 
 A default value is evaluated **once, when the `def` statement executes** — not on each call.
 A mutable default (`def f(acc=[])`) is therefore shared by every call and silently accumulates state between them.
@@ -1109,7 +1114,7 @@ and returns it, using the `None` sentinel idiom so that **each call with no buck
 """
         },
         "editorial": """# 📖 Chapter 4: Functions, Scoping, and Abstraction (§ 4.1.2 Keyword Arguments and Default Values)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -1214,9 +1219,9 @@ assert correct(2) == [2]         # independent
         "track": "track_1_pythonic_fluency",
         "difficulty": "Easy",
         "category": "Structured Types",
-        "tags": ["Guttag § 2.4", "Guttag § 5.3", "Strings", "Immutability", "Quadratic Trap"],
+        "tags": ["MIT 6.0001 Lec 2", "Guttag § 2.3", "Strings", "Immutability", "Join Pattern"],
         "description": """### 🏛️ Finger Exercise: Building Strings Without Quadratic Cost
-**Guttag Citation**: *Chapter 2: Introduction to Python (§ 2.4 Strings and Input) & Chapter 5 (§ 5.3 Lists and Mutability)*
+**MIT 6.0001 Citation**: *Chapter 2: Introduction to Python (§ 2.4 Strings and Input) & Chapter 5 (§ 5.3 Lists and Mutability)*
 
 Strings are **immutable**. `s += c` cannot extend `s` in place — it allocates a new string and copies the whole
 accumulated prefix, so building an $N$-character string one character at a time costs $O(N^2)$.
@@ -1241,7 +1246,7 @@ using `" ".join(...)` so the whole build is $O(N)$.
 """
         },
         "editorial": """# 📖 Chapter 2 (§ 2.4) & Chapter 5 (§ 5.3): Strings, Immutability, and the Cost of Concatenation
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -1330,7 +1335,7 @@ s = "".join(lst)         # 'bat'
         ],
     },
 
-    # ── Track 2: Abstract Data Types & Object-Oriented Structures (Guttag Ch. 10 & 12) ──
+    # ── Track 2: Abstract Data Types & Object-Oriented Design (MIT 6.0001 Lec 8–9, Pset 5) ──
     {
         "slug": "py-ds-custom-intset-adt",
         "title": "Abstract Data Type & Invariant Encapsulation (Guttag Ch. 10)",
@@ -1338,9 +1343,9 @@ s = "".join(lst)         # 'bat'
         "track": "track_2_data_structures",
         "difficulty": "Easy",
         "category": "Abstract Data Types",
-        "tags": ["Guttag § 10.1", "OOP", "ADT", "Representation Invariant"],
+        "tags": ["MIT 6.0001 Lec 8", "Guttag § 10.1", "OOP", "Classes", "Abstract Data Types"],
         "description": """### 🏛️ Finger Exercise: Implementing Guttag's IntSet ADT
-**Guttag Citation**: *Chapter 10: Classes and Object-Oriented Programming (§ 10.1 Abstract Data Types and Classes)*
+**MIT 6.0001 Citation**: *Chapter 10: Classes and Object-Oriented Programming (§ 10.1 Abstract Data Types and Classes)*
 
 In Figure 10-1, Guttag defines the canonical `Int_set` Abstract Data Type.
 Write a function `simulate_intset(ops: list[str], vals: list[int]) -> list[int]` that simulates an `IntSet` maintaining the invariant that its elements are **unique and sorted ascending**:
@@ -1373,7 +1378,7 @@ Return the final sorted elements of the `IntSet`.
 """
         },
         "editorial": """# 📖 Chapter 10: Classes and Object-Oriented Programming (§ 10.1 Abstract Data Types)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -1529,9 +1534,9 @@ The leading underscore is the convention Guttag uses to mark exactly this line.
         "track": "track_2_data_structures",
         "difficulty": "Easy",
         "category": "Data Structures",
-        "tags": ["Guttag § 11.3", "Deque", "Queue", "FIFO", "Beyond the Book"],
+        "tags": ["MIT 6.0001 Lec 10", "Guttag § 12.1", "Queues", "Deque", "FIFO", "O(1) Popping"],
         "description": """### 🏛️ Finger Exercise: FIFO Queue Mechanics
-**Guttag Citation**: *Chapter 11: Algorithmic Complexity (§ 11.3 Some Important Complexity Classes)*
+**MIT 6.0001 Citation**: *Chapter 11: Algorithmic Complexity (§ 11.3 Some Important Complexity Classes)*
 > ⚠️ **Beyond the book**: Guttag does not cover `collections.deque`. The O(N) vs O(1) argument below is his; the deque itself is a Python-fluency extension added for LeetCode work.
 
 `list.pop(0)` takes $O(N)$ time because all remaining elements shift left in memory.
@@ -1570,7 +1575,7 @@ def simulate_queue(ops: list[str], vals: list[int]) -> list[int]:
 """
         },
         "editorial": """# 📖 Chapter 11: Algorithmic Complexity (§ 11.3 Complexity Classes) — extended to FIFO Queues
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -1685,9 +1690,9 @@ def bfs(start, neighbors):
         "track": "track_2_data_structures",
         "difficulty": "Easy",
         "category": "Data Structures",
-        "tags": ["Guttag § 12.3", "Hash Tables", "Dictionaries", "O(1) Lookup"],
+        "tags": ["MIT 6.0001 Lec 6", "MIT 6.0001 Pset 3", "Hash Tables", "Dictionaries"],
         "description": """### 🏛️ Finger Exercise: Trading Space for Constant-Time Lookup
-**Guttag Citation**: *Chapter 12: Some Simple Algorithms and Data Structures (§ 12.3 Hash Tables)*
+**MIT 6.0001 Citation**: *Chapter 12: Some Simple Algorithms and Data Structures (§ 12.3 Hash Tables)*
 
 A hash table converts a key into a bucket index with a hash function, giving **expected $O(1)$** insertion,
 lookup, and deletion — the single most valuable data structure for interview problems.
@@ -1717,7 +1722,7 @@ seen earlier in the list, or `-1` if every value is distinct. Use a `set` so the
 """
         },
         "editorial": """# 📖 Chapter 12: Some Simple Algorithms and Data Structures (§ 12.3 Hash Tables)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -1826,9 +1831,9 @@ d[(1, 2)] = "ok"             # tuple: immutable, hashable
         "track": "track_2_data_structures",
         "difficulty": "Medium",
         "category": "Abstract Data Types",
-        "tags": ["Guttag § 10.1.1", "Magic Methods", "Hashable Types", "Operator Overloading"],
+        "tags": ["MIT 6.0001 Lec 8", "Guttag § 10.1", "Dunder Methods", "Operator Overloading"],
         "description": """### 🏛️ Finger Exercise: Teaching Built-In Operators About Your Type
-**Guttag Citation**: *Chapter 10: Classes and Object-Oriented Programming (§ 10.1.1 Magic Methods and Hashable Types)*
+**MIT 6.0001 Citation**: *Chapter 10: Classes and Object-Oriented Programming (§ 10.1.1 Magic Methods and Hashable Types)*
 
 Special ("dunder") methods let a user-defined class respond to built-in syntax: `__len__` for `len(x)`,
 `__eq__` for `==`, `__lt__` for `<` — and therefore for `sorted()`, `min()`, `max()`, and `heapq`.
@@ -1876,7 +1881,7 @@ then return the task names in sorted order.
 """
         },
         "editorial": """# 📖 Chapter 10: Classes and Object-Oriented Programming (§ 10.1.1 Magic Methods and Hashable Types)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -1999,7 +2004,7 @@ heapq.heappop(ts)   # Task('alpha', 5)
         ],
     },
 
-    # ── Track 3: Inductive Recursion & Algorithmic Scaffolds (Guttag Ch. 6, 12, 14 & 15) ──
+    # ── Track 3: Inductive Recursion & Algorithmic Scaffolds (MIT 6.0001 Lec 6, Pset 3–4) ──
     {
         "slug": "py-scaffold-inductive-palindrome",
         "title": "Inductive Recursive Palindrome (Guttag Ch. 6)",
@@ -2007,9 +2012,9 @@ heapq.heappop(ts)   # Task('alpha', 5)
         "track": "track_3_algorithmic_scaffolds",
         "difficulty": "Easy",
         "category": "Inductive Recursion",
-        "tags": ["Guttag § 6.2", "Recursion", "Induction", "Divide-and-Conquer"],
+        "tags": ["MIT 6.0001 Lec 6", "Guttag § 6.1", "Recursion", "Induction", "Palindromes"],
         "description": """### 🏛️ Finger Exercise: Inductive Palindromic Recursion
-**Guttag Citation**: *Chapter 6: Recursion and Global Variables (§ 6.2 Palindromes)*
+**MIT 6.0001 Citation**: *Chapter 6: Recursion and Global Variables (§ 6.2 Palindromes)*
 
 Implement Guttag's recursive palindrome checker from Figure 6-4.
 1. **Base Case**: A string of length $\\le 1$ is a palindrome (`True`).
@@ -2037,7 +2042,7 @@ Write `is_palindrome_inductive(s: str) -> bool`.
 """
         },
         "editorial": """# 📖 Chapter 6: Recursion and Global Variables (§ 6.2 Inductive Palindromes)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -2156,9 +2161,9 @@ mismatch at any level returns `False` without descending further.
         "track": "track_3_algorithmic_scaffolds",
         "difficulty": "Easy",
         "category": "Dynamic Programming",
-        "tags": ["Guttag § 15.1", "Dynamic Programming", "Memoization", "Decision Trees"],
+        "tags": ["MIT 6.0001 Lec 6", "Guttag § 14.1", "Recursion Trees", "Memoization", "Dynamic Programming"],
         "description": """### 🏛️ Finger Exercise: Memoized Fibonacci Tree
-**Guttag Citation**: *Chapter 15: Dynamic Programming (§ 15.1 Fibonacci Sequences, Revisited)*
+**MIT 6.0001 Citation**: *Chapter 15: Dynamic Programming (§ 15.1 Fibonacci Sequences, Revisited)*
 
 Naive recursion for $Fib(n) = Fib(n-1) + Fib(n-2)$ spawns an exponential $O(2^n)$ call tree because the same subproblems are recomputed repeatedly.
 Guttag introduces **memoization**: caching previously solved subproblems in a dictionary table to reduce complexity from $O(2^n)$ to $O(n)$ linear time.
@@ -2186,7 +2191,7 @@ Write a function `fib_memo(n: int, memo: dict[int, int] | None = None) -> int`:
 """
         },
         "editorial": """# 📖 Chapter 15: Dynamic Programming (§ 15.1 Fibonacci Sequences, Revisited)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -2309,9 +2314,9 @@ seed values differ.
         "track": "track_3_algorithmic_scaffolds",
         "difficulty": "Easy",
         "category": "Algorithmic Scaffolds",
-        "tags": ["Guttag § 12.1", "Binary Search", "Template"],
+        "tags": ["MIT 6.0001 Lec 11", "Guttag § 12.2", "Binary Search", "Decrementing Function"],
         "description": """### 🏛️ Finger Exercise: Binary Search on Ordered Sequences
-**Guttag Citation**: *Chapter 12: Some Simple Algorithms and Data Structures (§ 12.1 Search Algorithms)*
+**MIT 6.0001 Citation**: *Chapter 12: Some Simple Algorithms and Data Structures (§ 12.1 Search Algorithms)*
 
 Implement Guttag's binary search algorithm from Figure 12-3 on sorted array `nums`.
 Return the index of `target` if found, or `-1` if not found.
@@ -2343,7 +2348,7 @@ Return the index of `target` if found, or `-1` if not found.
 """
         },
         "editorial": """# 📖 Chapter 12: Some Simple Algorithms and Data Structures (§ 12.1 Search Algorithms)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -2454,9 +2459,9 @@ times before reaching 0, the complexity is $\\Theta(\\log(\\text{len}(L)))$.
         "track": "track_3_algorithmic_scaffolds",
         "difficulty": "Medium",
         "category": "Optimization",
-        "tags": ["Guttag § 14.1", "Guttag § 15.2", "Knapsack", "Decision Tree"],
+        "tags": ["MIT 6.0002 / Lec 1", "Guttag § 14.2", "0/1 Knapsack", "Memoization"],
         "description": """### 🏛️ Finger Exercise: 0/1 Knapsack Binary Decision Tree
-**Guttag Citation**: *Chapter 14: Knapsack and Graph Optimization Problems (§ 14.1 Knapsack Problems) & Chapter 15 (§ 15.2)*
+**MIT 6.0001 Citation**: *Chapter 14: Knapsack and Graph Optimization Problems (§ 14.1 Knapsack Problems) & Chapter 15 (§ 15.2)*
 
 Guttag models the classic **0/1 Knapsack** problem as exploring a binary decision tree for each item $i$:
 1. **Don't take item $i$**: Subproblem value is `solve(i + 1, avail)`.
@@ -2503,7 +2508,7 @@ Write `knapsack_01_memo(weights: list[int], values: list[int], max_weight: int) 
 """
         },
         "editorial": """# 📖 Chapter 14 & 15: Knapsack Problems & Dynamic Programming
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -2590,7 +2595,7 @@ def fastMaxVal(toConsider, avail, memo={}):
         "hints": ["State is (i, avail). Base case: i == len(weights) or avail == 0 return 0. Explore take vs dont take."],
     },
 
-    # ── Track 4: Divide-and-Conquer & Custom Sorting (Guttag Ch. 12) ──────────
+    # ── Track 4: Divide-and-Conquer & Custom Sorting (MIT 6.0001 Lec 12) ──────────
     {
         "slug": "py-sort-merge-sort",
         "title": "Divide-and-Conquer Merge Sort (Guttag Ch. 12)",
@@ -2598,9 +2603,9 @@ def fastMaxVal(toConsider, avail, memo={}):
         "track": "track_4_custom_sorting",
         "difficulty": "Easy",
         "category": "Divide-and-Conquer",
-        "tags": ["Guttag § 12.2", "Merge Sort", "Sorting", "Divide-and-Conquer"],
+        "tags": ["MIT 6.0001 Lec 12", "Guttag § 12.3", "Merge Sort", "Divide-and-Conquer", "Stability"],
         "description": """### 🏛️ Finger Exercise: Implementing Merge Sort
-**Guttag Citation**: *Chapter 12: Some Simple Algorithms and Data Structures (§ 12.2 Sorting Algorithms)*
+**MIT 6.0001 Citation**: *Chapter 12: Some Simple Algorithms and Data Structures (§ 12.2 Sorting Algorithms)*
 
 Implement Guttag's Merge Sort from Figure 12-5:
 1. **Divide**: If list has length $< 2$, return it. Otherwise split into `left = nums[:mid]` and `right = nums[mid:]`.
@@ -2641,7 +2646,7 @@ Write a function `merge_sort(nums: list[int]) -> list[int]`.
 """
         },
         "editorial": """# 📖 Chapter 12: Some Simple Algorithms and Data Structures (§ 12.2 Merge Sort)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -2766,9 +2771,9 @@ makes merge sort a **stable** sort. *(Guttag leaves exactly this as a finger exe
         "track": "track_4_custom_sorting",
         "difficulty": "Easy",
         "category": "Custom Sorting",
-        "tags": ["Guttag § 12.2", "Sorting", "Lambda", "Comparators"],
+        "tags": ["MIT 6.0001 Lec 12", "Guttag § 12.3", "Multi-Key Sort", "Stable Sorting"],
         "description": """### 🏛️ Finger Exercise: Multi-Attribute Comparator Projections
-**Guttag Citation**: *Chapter 12: Sorting Algorithms (§ 12.2 Sorting with Custom Functions)*
+**MIT 6.0001 Citation**: *Chapter 12: Sorting Algorithms (§ 12.2 Sorting with Custom Functions)*
 
 Write a function `sort_students(records: list[tuple[str, int, int]])` where each record is `(name, score, age)`.
 Sort the list such that:
@@ -2796,7 +2801,7 @@ Return the sorted list.
 """
         },
         "editorial": """# 📖 Chapter 12: Sorting Algorithms (§ 12.2 Custom Multi-Key Comparators)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -2895,7 +2900,7 @@ sorted(L, key=len, reverse=True)     # -> [(3, 2, 1, 0), [1, 2, 3], 'abc']
         "hints": ["Use sorted(records, key=lambda x: (-x[1], x[2], x[0]))."],
     },
 
-    # ── Track 5: Bit Manipulation & Binary Encodings (Guttag Ch. 3.4) ─────────
+    # ── Track 5: Bit Manipulation & Binary Encodings (MIT 6.0001 Numerics) ─────────
     {
         "slug": "py-bit-check-set-clear",
         "title": "Bitwise Check, Set, and Clear (Guttag Ch. 3)",
@@ -2903,7 +2908,7 @@ sorted(L, key=len, reverse=True)     # -> [(3, 2, 1, 0), [1, 2, 3], 'abc']
         "track": "track_5_bit_manipulation",
         "difficulty": "Easy",
         "category": "Bit Manipulation",
-        "tags": ["Beyond the Book", "Bitwise", "Masks", "Binary Encodings"],
+        "tags": ["MIT 6.0001 Numerics", "Guttag § 3.4", "Bitwise Operators", "Bit Manipulation"],
         "description": """### 🏛️ Finger Exercise: Bitmask Formulas
 **Source**: *Beyond the textbook — extends Guttag Chapter 3 (§ 3.3 A Few Words about Using Floats)*
 > ⚠️ **Beyond the book**: Guttag § 3.3 covers binary representation only to explain float rounding error. Bitwise operators and bitmasks are **not** in the text; this drill adds them because LeetCode requires them.
@@ -2931,7 +2936,7 @@ Return `(is_set, set_bit, clear_bit)`.
 """
         },
         "editorial": """# 📖 Bitwise Logic — extending Guttag Chapter 3 (§ 3.3 A Few Words about Using Floats)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -3032,7 +3037,7 @@ Why each operator is the right one:
         "track": "track_5_bit_manipulation",
         "difficulty": "Easy",
         "category": "Bit Manipulation",
-        "tags": ["Beyond the Book", "Bitwise", "Kernighan", "Popcount"],
+        "tags": ["MIT 6.0001 Numerics", "Brian Kernighan", "Set Bits", "Bitmasking"],
         "description": """### 🏛️ Finger Exercise: Brian Kernighan's Bit Invariant
 **Source**: *Beyond the textbook — classical bit-manipulation result, not covered by Guttag*
 > ⚠️ **Beyond the book**: Brian Kernighan’s algorithm does not appear anywhere in Guttag. It is included because it is standard interview material.
@@ -3060,7 +3065,7 @@ Write a function `count_set_bits(n: int) -> int` that uses `n & (n - 1)` to coun
 """
         },
         "editorial": """# 📖 Brian Kernighan’s Algorithm — beyond Guttag
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -3153,7 +3158,7 @@ Kernighan's runs **1**.
         "hints": ["Initialize count = 0. While n > 0: n &= (n - 1); count += 1."],
     },
 
-    # ── Track 6: Asymptotic Complexity & Mathematical Models (Guttag Ch. 11) ──
+    # ── Track 6: Asymptotic Complexity & Efficiency (MIT 6.0001 Lec 10–11) ──
     {
         "slug": "py-math-asymptotic-complexity",
         "title": "Asymptotic Orders & Big-O Invariants (Guttag Ch. 11)",
@@ -3161,9 +3166,9 @@ Kernighan's runs **1**.
         "track": "track_6_complexity_math",
         "difficulty": "Easy",
         "category": "Complexity Theory",
-        "tags": ["Guttag § 11.2", "Big-O", "Asymptotic Analysis", "MIT 6.0001"],
+        "tags": ["MIT 6.0001 Lec 10", "Guttag § 11.1", "Big-O", "Complexity Classes"],
         "description": """### 🏛️ Finger Exercise: Asymptotic Growth Classification
-**Guttag Citation**: *Chapter 11: A Simplistic Introduction to Algorithmic Complexity (§ 11.2 Asymptotic Notation)*
+**MIT 6.0001 Citation**: *Chapter 11: A Simplistic Introduction to Algorithmic Complexity (§ 11.2 Asymptotic Notation)*
 
 Write a function `classify_algorithm(operation_count_formula: str) -> str` that maps typical algorithmic structures to their canonical Big-O class:
 - `"nested_loops"` $\\implies$ `"O(n^2)"`
@@ -3195,7 +3200,7 @@ Write a function `classify_algorithm(operation_count_formula: str) -> str` that 
 """
         },
         "editorial": """# 📖 Chapter 11: A Simplistic Introduction to Algorithmic Complexity (§ 11.2 Asymptotic Notation)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -3336,7 +3341,7 @@ for x in L:              # n iterations
         "track": "track_6_complexity_math",
         "difficulty": "Easy",
         "category": "Math & Complexity",
-        "tags": ["Beyond the Book", "Prefix Sums", "Array", "Range Queries"],
+        "tags": ["MIT 6.0001 Lec 10", "Prefix Sums", "Range Queries", "O(1) Lookup"],
         "description": """### 🏛️ Finger Exercise: Prefix Sum Array & Range Query Invariant
 **Source**: *Beyond the textbook — applies the space-for-time tradeoff Guttag draws in Chapter 12 (§ 12.3 Hash Tables)*
 > ⚠️ **Beyond the book**: prefix sums are not in Guttag. The trade-space-for-time principle they rest on is his (§ 12.3, on sizing a hash table); the technique itself is added for LeetCode.
@@ -3363,7 +3368,7 @@ Write a function `build_prefix_sum(nums: list[int]) -> list[int]` that returns a
 """
         },
         "editorial": """# 📖 Prefix Sums — applying Guttag’s space-for-time tradeoff (§ 12.3)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -3456,7 +3461,7 @@ Across $Q$ queries that is $\\Theta(n + Q)$ instead of the naive $\\Theta(n \\ti
         "hints": ["Initialize prefix = [0] * (len(nums) + 1), then prefix[i+1] = prefix[i] + num."],
     },
 
-    # ── Track 7: Testing, Debugging & Exceptions (Guttag Ch. 8 & 9) ───────────
+    # ── Track 7: Testing, Debugging & Exceptions (MIT 6.0001 Lec 7) ───────────
     {
         "slug": "py-verify-black-glass-box-testing",
         "title": "Black-Box & Glass-Box Testing (Guttag Ch. 8)",
@@ -3464,9 +3469,9 @@ Across $Q$ queries that is $\\Theta(n + Q)$ instead of the naive $\\Theta(n \\ti
         "track": "track_7_testing_exceptions",
         "difficulty": "Easy",
         "category": "Testing & Debugging",
-        "tags": ["Guttag § 8.1.1", "Guttag § 8.1.2", "Testing", "Boundary Conditions"],
+        "tags": ["MIT 6.0001 Lec 7", "Guttag § 8.1", "Black-Box Testing", "Glass-Box Testing"],
         "description": """### 🏛️ Finger Exercise: Deriving Test Cases From a Specification
-**Guttag Citation**: *Chapter 8: Testing and Debugging (§ 8.1 Testing)*
+**MIT 6.0001 Citation**: *Chapter 8: Testing and Debugging (§ 8.1 Testing)*
 
 Guttag's partition of test design:
 - **Black-box tests** come from the *specification* — they survive a rewrite of the implementation.
@@ -3499,7 +3504,7 @@ canonical boundary probes for a size-`n` input, in this order and with no duplic
 """
         },
         "editorial": """# 📖 Chapter 8: Testing and Debugging (§ 8.1 Testing)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -3605,9 +3610,9 @@ assert find_max([8, 7]) == 8              # loop body runs 1 time, branch NOT ta
         "track": "track_7_testing_exceptions",
         "difficulty": "Easy",
         "category": "Testing & Debugging",
-        "tags": ["Guttag § 9.1", "Guttag § 9.3", "Exceptions", "Assertions", "Defensive Programming"],
+        "tags": ["MIT 6.0001 Lec 7", "Guttag § 9.1", "Exceptions", "Assertions", "Defensive Programming"],
         "description": """### 🏛️ Finger Exercise: Failing Loudly at the Point of Violation
-**Guttag Citation**: *Chapter 9: Exceptions and Assertions (§ 9.1 Handling Exceptions, § 9.3 Assertions)*
+**MIT 6.0001 Citation**: *Chapter 9: Exceptions and Assertions (§ 9.1 Handling Exceptions, § 9.3 Assertions)*
 
 An unhandled exception halts the program with a traceback. A handled one lets the caller recover.
 An **assertion** checks that an assumption actually holds, so a violated precondition is caught where it
@@ -3638,7 +3643,7 @@ Write `safe_divide(pairs: list[tuple[int, int]]) -> list[float | None]` that ret
 """
         },
         "editorial": """# 📖 Chapter 9: Exceptions and Assertions (§ 9.1 Handling Exceptions, § 9.3 Assertions)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -3754,7 +3759,7 @@ def binary_search(L, x):
             "Append None inside the except clause so the output length matches the input.",
         ],
     },
-    # ── Track 8: Graphs & Graph Optimization (Guttag Ch. 14) ──────────────────
+    # ── Track 8: Graphs & Graph Optimization (MIT 6.0002 / 6.0001 Adv) ──────────────────
     {
         "slug": "py-graph-adjacency-build",
         "title": "Graphs, Digraphs & Adjacency (Guttag Ch. 14)",
@@ -3762,9 +3767,9 @@ def binary_search(L, x):
         "track": "track_8_graphs",
         "difficulty": "Easy",
         "category": "Graphs",
-        "tags": ["Guttag \u00a7 14.2", "Graphs", "Adjacency List", "Digraph"],
+        "tags": ["MIT 6.0002 / 6.0001 Adv", "Guttag § 14.3", "Graphs", "Adjacency List", "Adjacency Matrix"],
         "description": """### \U0001f3db\ufe0f Finger Exercise: Building the Adjacency Structure
-**Guttag Citation**: *Chapter 14: Knapsack and Graph Optimization Problems (\u00a7 14.2 Graph Optimization Problems)*
+**MIT 6.0001 Citation**: *Chapter 14: Knapsack and Graph Optimization Problems (\u00a7 14.2 Graph Optimization Problems)*
 
 A **graph** is a set of **nodes** (vertices) connected by **edges** (arcs). In a **digraph** the edges are
 one-way: each has a **source** (parent) node and a **destination** (child) node.
@@ -3904,9 +3909,9 @@ for u, v in edges:
         "track": "track_8_graphs",
         "difficulty": "Medium",
         "category": "Graphs",
-        "tags": ["Guttag \u00a7 14.2.2", "BFS", "Shortest Path", "Queue"],
+        "tags": ["MIT 6.0002 / 6.0001 Adv", "Guttag § 14.4", "BFS", "Shortest Path", "Queue Scaffold"],
         "description": """### \U0001f3db\ufe0f Finger Exercise: Fewest Edges Wins
-**Guttag Citation**: *Chapter 14 (\u00a7 14.2.2 Shortest Path: Depth-First Search and Breadth-First Search)*
+**MIT 6.0001 Citation**: *Chapter 14 (\u00a7 14.2.2 Shortest Path: Depth-First Search and Breadth-First Search)*
 
 **Breadth-first search** generates paths in **ascending order of length**, so the first path it finds to the goal
 is guaranteed to use the minimum number of edges.
@@ -4058,9 +4063,9 @@ BFS returns whichever it reaches first, and Guttag notes DFS and BFS need not ag
         "track": "track_8_graphs",
         "difficulty": "Medium",
         "category": "Graphs",
-        "tags": ["Guttag \u00a7 14.2.2", "DFS", "Cycles", "Backtracking"],
+        "tags": ["MIT 6.0002 / 6.0001 Adv", "Guttag § 14.4", "DFS", "Cycle Detection", "3-State Coloring"],
         "description": """### \U0001f3db\ufe0f Finger Exercise: Cyclic or Acyclic?
-**Guttag Citation**: *Chapter 14 (\u00a7 14.2.2 Shortest Path: Depth-First Search and Breadth-First Search)*
+**MIT 6.0001 Citation**: *Chapter 14 (\u00a7 14.2.2 Shortest Path: Depth-First Search and Breadth-First Search)*
 
 A **path** is a sequence of edges leading from one node to another; a **cycle** is a path that returns to where
 it started. A graph containing a cycle is **cyclic**, one without is **acyclic**.
@@ -4227,9 +4232,9 @@ Node 2 is reached twice \u2014 and a two-state visited set would wrongly flag it
         "track": "track_8_graphs",
         "difficulty": "Easy",
         "category": "Optimization",
-        "tags": ["Guttag \u00a7 14.1.1", "Greedy", "Optimization", "Local vs Global"],
+        "tags": ["MIT 6.0002 / 6.0001 Adv", "Guttag § 14.2", "Greedy Heuristics", "Optimization"],
         "description": """### \U0001f3db\ufe0f Finger Exercise: Locally Optimal Is Not Globally Optimal
-**Guttag Citation**: *Chapter 14 (\u00a7 14.1.1 Greedy Algorithms)*
+**MIT 6.0001 Citation**: *Chapter 14 (\u00a7 14.1.1 Greedy Algorithms)*
 
 A **greedy algorithm** makes the choice that looks best right now and never reconsiders. It is fast and simple,
 and for the **0/1 knapsack** it is **not guaranteed to be optimal**.
@@ -4379,9 +4384,9 @@ that exactly filled the bag. The choice was irrevocable, and that irrevocability
         "track": "track_1_pythonic_fluency",
         "difficulty": "Easy",
         "category": "Structured Types",
-        "tags": ["Guttag § 5.1", "Tuples", "Multiple Assignment", "Immutable"],
+        "tags": ["MIT 6.0001 Lec 5", "Guttag § 5.1", "Tuples", "Destructuring", "Immutability"],
         "description": """### \U0001f3db️ Finger Exercise: Packing and Unpacking
-**Guttag Citation**: *Chapter 5: Structured Types and Mutability (§ 5.1 Tuples, § 5.1.1 Multiple Assignment)*
+**MIT 6.0001 Citation**: *Chapter 5: Structured Types and Mutability (§ 5.1 Tuples, § 5.1.1 Multiple Assignment)*
 
 A **tuple** is an ordered, **immutable** sequence. Because it cannot change, it is hashable, so it can key a
 dict or join a set. **Multiple assignment** unpacks one in a single statement.
@@ -4408,7 +4413,7 @@ so the smaller value comes first, using tuple unpacking rather than indexing.
 """
         },
         "editorial": """# \U0001f4d6 Chapter 5: Structured Types and Mutability (§ 5.1 Tuples)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -4511,9 +4516,9 @@ type((1,))       # <class 'tuple'>
         "track": "track_1_pythonic_fluency",
         "difficulty": "Easy",
         "category": "Structured Types",
-        "tags": ["Guttag § 5.6", "Guttag § 5.7", "Sets", "Dictionaries", "Hashable"],
+        "tags": ["MIT 6.0001 Lec 5", "MIT 6.0001 Pset 3", "Sets", "Dicts", "Hashable Types"],
         "description": """### \U0001f3db️ Finger Exercise: Membership in Constant Time
-**Guttag Citation**: *Chapter 5: Structured Types and Mutability (§ 5.6 Sets, § 5.7 Dictionaries)*
+**MIT 6.0001 Citation**: *Chapter 5: Structured Types and Mutability (§ 5.6 Sets, § 5.7 Dictionaries)*
 
 A **set** is an unordered collection of distinct **hashable** objects. A **dictionary** maps hashable **keys**
 to **values**. Both give average $O(1)$ membership — against $O(n)$ for a list.
@@ -4542,7 +4547,7 @@ lists, how many times it appears in `a`. Words absent from `b` are excluded.
 """
         },
         "editorial": """# \U0001f4d6 Chapter 5 (§ 5.6 Sets, § 5.7 Dictionaries)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -4666,9 +4671,9 @@ for x in items:
         "track": "track_3_algorithmic_scaffolds",
         "difficulty": "Easy",
         "category": "Inductive Recursion",
-        "tags": ["Guttag § 6.1", "Recursion", "Base Case", "Recurrence"],
+        "tags": ["MIT 6.0001 Lec 6", "Guttag § 6.1", "Recursion", "Factorial", "Call Stack"],
         "description": """### \U0001f3db️ Finger Exercise: The Simplest Recursion
-**Guttag Citation**: *Chapter 6: Recursion and Global Variables (§ 6.1 Fibonacci Numbers)*
+**MIT 6.0001 Citation**: *Chapter 6: Recursion and Global Variables (§ 6.1 Fibonacci Numbers)*
 
 Guttag's Figure 6-1 gives **iterative and recursive implementations of factorial** side by side. The recursive
 one is the definition transcribed:
@@ -4693,7 +4698,7 @@ must return `1`.
 """
         },
         "editorial": """# \U0001f4d6 Chapter 6: Recursion and Global Variables (§ 6.1)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -4798,9 +4803,9 @@ against $O(1)$ for the loop.
         "track": "track_7_testing_exceptions",
         "difficulty": "Easy",
         "category": "Modules & Files",
-        "tags": ["Guttag § 7.1", "Guttag § 7.3", "Modules", "Files", "Context Manager"],
+        "tags": ["MIT 6.0001 Lec 7", "Guttag § 7.1", "Modules", "File IO", "Context Managers"],
         "description": """### \U0001f3db️ Finger Exercise: Qualified Names and Managed Resources
-**Guttag Citation**: *Chapter 7: Modules and Files (§ 7.1 Modules, § 7.3 Files)*
+**MIT 6.0001 Citation**: *Chapter 7: Modules and Files (§ 7.1 Modules, § 7.3 Files)*
 
 A **module** is a `.py` file of related definitions. `import m` binds the module object, so its contents are
 reached by **fully qualified name** (`m.thing`). A **file handle** must be closed; the **`with` statement`**
@@ -4838,7 +4843,7 @@ Write `parse_records(lines: list[str]) -> list[tuple[str, int]]` that parses `"n
 """
         },
         "editorial": """# \U0001f4d6 Chapter 7: Modules and Files
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -4967,9 +4972,9 @@ for raw in lines:
         "track": "track_0_python_basics",
         "difficulty": "Easy",
         "category": "Python Basics",
-        "tags": ["Guttag § 2.5", "Guttag § 2.6", "Iteration", "range", "break"],
+        "tags": ["MIT 6.0001 Lec 2", "Guttag § 2.4", "Loops", "While", "For", "Range"],
         "description": """### \U0001f3db️ Finger Exercise: Iteration and Its Termination Argument
-**Guttag Citation**: *Chapter 2: Introduction to Python (§ 2.5 While Loops, § 2.6 For Loops and Range)*
+**MIT 6.0001 Citation**: *Chapter 2: Introduction to Python (§ 2.5 While Loops, § 2.6 For Loops and Range)*
 
 **Iteration** is what lets a fixed-length program do an amount of work that depends on its input. A `while` loop
 repeats while a test holds; a `for` loop walks a finite sequence, usually generated by `range`.
@@ -4999,7 +5004,7 @@ exactly, or `n` itself when `n` is prime. Stop scanning as soon as you find it.
 """
         },
         "editorial": """# \U0001f4d6 Chapter 2 (§ 2.5 While Loops, § 2.6 For Loops and Range)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -5119,9 +5124,9 @@ return 13    (prime)
         "track": "track_0_python_basics",
         "difficulty": "Easy",
         "category": "Python Basics",
-        "tags": ["Guttag § 2.4", "Strings", "Indexing", "Slicing"],
+        "tags": ["MIT 6.0001 Lec 2", "Guttag § 2.3", "Strings", "Indexing", "Slicing"],
         "description": """### \U0001f3db️ Finger Exercise: Half-Open Slices
-**Guttag Citation**: *Chapter 2: Introduction to Python (§ 2.4 Strings and Input)*
+**MIT 6.0001 Citation**: *Chapter 2: Introduction to Python (§ 2.4 Strings and Input)*
 
 **Indexing** selects one character; **slicing** selects a range, `s[start:end]`, including `start` and
 **excluding** `end`. Negative indices count from the right, so `s[-1]` is the last character.
@@ -5148,7 +5153,7 @@ length 2 or less return the empty string.
 """
         },
         "editorial": """# \U0001f4d6 Chapter 2 (§ 2.4 Strings and Input)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 
@@ -5267,9 +5272,9 @@ state the length condition explicitly so the intent is visible.
         "track": "track_2_data_structures",
         "difficulty": "Medium",
         "category": "Abstract Data Types",
-        "tags": ["Guttag § 10.2", "Inheritance", "Substitution Principle", "Polymorphism"],
+        "tags": ["MIT 6.0001 Lec 9", "MIT 6.0001 Pset 5", "Inheritance", "Liskov Substitution"],
         "description": """### \U0001f3db️ Finger Exercise: A Subclass Must Be Usable as Its Superclass
-**Guttag Citation**: *Chapter 10 (§ 10.2 Inheritance, § 10.2.2 The Substitution Principle)*
+**MIT 6.0001 Citation**: *Chapter 10 (§ 10.2 Inheritance, § 10.2.2 The Substitution Principle)*
 
 **Inheritance** builds a type hierarchy: a subclass inherits its superclass's attributes and methods, and may
 add or **override** them. The **substitution principle** constrains what an override may do — anywhere the
@@ -5324,7 +5329,7 @@ subclasses, and return `"kind:area"` strings with the area rounded to 2 decimals
 """
         },
         "editorial": """# \U0001f4d6 Chapter 10 (§ 10.2 Inheritance)
-*John V. Guttag — Introduction to Computation and Programming Using Python (3rd Edition, MIT Press)*
+*MIT 6.0001: Introduction to Computer Science and Programming in Python (Profs. John Guttag, Eric Grimson, Ana Bell — MIT Press Companion Text)*
 
 ---
 

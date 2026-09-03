@@ -114,3 +114,42 @@ class CodeSubmissionOut(BaseModel):
     total_tests: int
     runtime_ms: float | None
     created_at: datetime
+
+
+class CodeLeechOut(BaseModel):
+    problem_id: str
+    slug: str
+    title: str
+    difficulty: str
+    category: str
+    lapse_count: int
+    last_error: str | None = None
+    suggestion_kind: str = "conceptual"
+    suggestion_rationale: str = "Focus on the core algorithmic pattern and dry-run small test cases."
+
+
+class CategoryProgression(BaseModel):
+    category: str
+    total: int
+    solved: int
+    attempted: int
+    percentage: float
+
+
+class DifficultyTierProgression(BaseModel):
+    total: int
+    solved: int
+    attempted: int
+    percentage: float
+
+
+class CodeProgressionStats(BaseModel):
+    totals: dict[str, float]  # cards, in_review, reviews_logged, avg_stability_days, avg_difficulty, solved, attempted
+    velocity: dict[str, float]  # rate, mastered_in_sessions, mastered_total, active_hours
+    retention: dict[str, float]  # "<1d", "1-3d", "3-7d", etc.
+    heatmap: dict[str, int]  # YYYY-MM-DD -> count
+    forecast: dict[str, int]  # YYYY-MM-DD -> count
+    leeches: list[CodeLeechOut] = Field(default_factory=list)
+    categories: list[CategoryProgression] = Field(default_factory=list)
+    difficulty: dict[str, DifficultyTierProgression] = Field(default_factory=dict)
+    recent_activity: list[CodeSubmissionOut] = Field(default_factory=list)

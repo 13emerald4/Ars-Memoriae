@@ -10,6 +10,9 @@ __pycache__/
 backend/dev.db
 backend/bench.db
 *.db
+*.db-shm
+*.db-wal
+*.db-journal
 backend/media/
 
 # node

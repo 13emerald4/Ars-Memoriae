@@ -58,4 +58,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["E402"]  # conftest sets env vars before importing the app
+"tests/*" = ["E402", "F401"]  # conftest sets env vars before importing the app
+"app/services/fundamentals_catalog.py" = ["RUF001", "RUF003", "W291", "W293"]
+"app/services/problems_catalog.py" = ["W291", "W293"]
+

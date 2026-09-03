@@ -57,6 +57,20 @@ async def test_python_code_runner_syntax_error():
 
 
 @pytest.mark.asyncio
+async def test_python_code_runner_timeout_kill():
+    code = """def infinite_loop():
+    while True:
+        pass
+"""
+    test_cases = [{"input": {}, "expected": None}]
+    res = await run_python_code(code, test_cases, timeout_sec=0.5)
+    assert res["status"] == "Time Limit Exceeded"
+    assert "Time Limit Exceeded" in (res.get("error") or "")
+    assert res["passed_count"] == 0
+
+
+
+@pytest.mark.asyncio
 async def test_code_practice_api_endpoints(auth_client):
     # 1. List problems (catalogs seeded automatically)
     resp = await auth_client.get("/api/code/problems")
@@ -130,3 +144,17 @@ async def test_code_practice_api_endpoints(auth_client):
     )
     assert export_resp.status_code == 200
     assert "note_id" in export_resp.json()
+
+    # 7. Progression Stats
+    stats_resp = await auth_client.get("/api/code/stats")
+    assert stats_resp.status_code == 200
+    stats_data = stats_resp.json()
+    assert "totals" in stats_data
+    assert stats_data["totals"]["cards"] >= 75
+    assert stats_data["totals"]["reviews_logged"] >= 1
+    assert "velocity" in stats_data
+    assert "heatmap" in stats_data
+    assert "categories" in stats_data
+    assert len(stats_data["categories"]) >= 18
+    assert "difficulty" in stats_data
+    assert stats_data["difficulty"]["easy"]["total"] > 0

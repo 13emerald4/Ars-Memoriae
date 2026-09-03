@@ -648,4 +648,43 @@ export interface CodeSubmissionOut {
   created_at: string
 }
 
+export interface CodeLeech {
+  problem_id: string
+  slug: string
+  title: string
+  difficulty: string
+  category: string
+  lapse_count: number
+  last_error: string | null
+  suggestion_kind: string
+  suggestion_rationale: string
+}
+
+export interface CategoryProgression {
+  category: string
+  total: number
+  solved: number
+  attempted: number
+  percentage: number
+}
+
+export interface DifficultyTierProgression {
+  total: number
+  solved: number
+  attempted: number
+  percentage: number
+}
+
+export interface CodeProgressionStats {
+  totals: Record<string, number>
+  velocity: Record<string, number>
+  retention: Record<string, number>
+  heatmap: Record<string, number>
+  forecast: Record<string, number>
+  leeches: CodeLeech[]
+  categories: CategoryProgression[]
+  difficulty: Record<string, DifficultyTierProgression>
+  recent_activity: CodeSubmissionOut[]
+}
+
 

@@ -11,15 +11,14 @@ from __future__ import annotations
 
 import math
 from datetime import UTC, datetime
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decrypt_api_key
 from app.db import get_db
-from app.models import Card, Deck, Note, NoteType, User
+from app.models import Card, Deck, Note, User
 from app.routers.deps import current_user, parse_uuid
 from app.schemas.core import (
     AtomicityIssueOut,
@@ -160,10 +159,9 @@ async def get_event_readiness(
     deck = None
     if deck_id:
         deck = await db.get(Deck, parse_uuid(deck_id, "deck_id"))
-        if deck and deck.user_id == user.id:
-            if deck.target_event_date:
-                target_event_date = deck.target_event_date
-                target_event_title = deck.target_event_title or deck.name
+        if deck and deck.user_id == user.id and deck.target_event_date:
+            target_event_date = deck.target_event_date
+            target_event_title = deck.target_event_title or deck.name
 
     now = datetime.now(UTC)
 

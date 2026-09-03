@@ -10,7 +10,11 @@ import type {
 import { CodeEditor } from '../components/CodeEditor'
 import { CodeSocraticTutor } from '../components/CodeSocraticTutor'
 import { CodeTestConsole } from '../components/CodeTestConsole'
-import { ConcordanceReader } from '../components/ConcordanceReader'
+import {
+  ConcordanceReader,
+  CONCORDANCE_ENABLED_STORAGE_KEY,
+  getStoredConcordanceEnabled,
+} from '../components/ConcordanceReader'
 import { ErrorNote, Spinner } from '../components/ui'
 import {
   READING_MODES,
@@ -19,6 +23,7 @@ import {
   filterEditorialByMode,
   sectionCount,
 } from '../services/reading_mode'
+import { getGuidingQuestions } from '../services/guiding_questions'
 
 const READING_MODE_KEY = 'memorization.readingMode'
 
@@ -33,15 +38,15 @@ function loadReadingMode(): ReadingMode {
 }
 
 const TRACKS = [
-  { id: 'track_0_python_basics', label: '🟢 Track 0: Python Basics & Numerics (Guttag Ch. 2–3)', icon: '🐍' },
-  { id: 'track_1_pythonic_fluency', label: '🔵 Track 1: Structured Types & Aliasing (Guttag Ch. 4–5)', icon: '⚡' },
-  { id: 'track_2_data_structures', label: '🟣 Track 2: ADTs, Hash Tables & Queues (Guttag Ch. 10, 12)', icon: '🧱' },
-  { id: 'track_3_algorithmic_scaffolds', label: '🟡 Track 3: Recursion & Scaffolds (Guttag Ch. 6, 12, 15)', icon: '📐' },
-  { id: 'track_4_custom_sorting', label: '🟠 Track 4: Divide-and-Conquer Sorting (Guttag Ch. 12)', icon: '🔀' },
-  { id: 'track_5_bit_manipulation', label: '🔴 Track 5: Binary Encodings & Bits (Guttag Ch. 3.4)', icon: '🔢' },
-  { id: 'track_6_complexity_math', label: '🟤 Track 6: Asymptotic Complexity & Math (Guttag Ch. 11)', icon: '⏱' },
-  { id: 'track_7_testing_exceptions', label: '⚪ Track 7: Testing, Debugging & Exceptions (Guttag Ch. 7–9)', icon: '🧪' },
-  { id: 'track_8_graphs', label: '🟩 Track 8: Graphs & Optimization (Guttag Ch. 14)', icon: '🕸' },
+  { id: 'track_0_python_basics', label: '🟢 Track 0: Python Basics & Numerics (MIT 6.0001 Lec 1–3, Pset 1)', icon: '🐍' },
+  { id: 'track_1_pythonic_fluency', label: '🔵 Track 1: Structured Types & Aliasing (MIT 6.0001 Lec 4–5, Pset 2)', icon: '⚡' },
+  { id: 'track_2_data_structures', label: '🟣 Track 2: ADTs, Hash Tables & OOP (MIT 6.0001 Lec 8–9, Pset 5)', icon: '🧱' },
+  { id: 'track_3_algorithmic_scaffolds', label: '🟡 Track 3: Recursion & Scaffolds (MIT 6.0001 Lec 6, Pset 3–4)', icon: '📐' },
+  { id: 'track_4_custom_sorting', label: '🟠 Track 4: Divide-and-Conquer Sorting (MIT 6.0001 Lec 12)', icon: '🔀' },
+  { id: 'track_5_bit_manipulation', label: '🔴 Track 5: Binary Encodings & Bits (MIT 6.0001 Numerics)', icon: '🔢' },
+  { id: 'track_6_complexity_math', label: '🟤 Track 6: Asymptotic Complexity & Efficiency (MIT 6.0001 Lec 10–11)', icon: '⏱' },
+  { id: 'track_7_testing_exceptions', label: '⚪ Track 7: Testing, Debugging & Exceptions (MIT 6.0001 Lec 7)', icon: '🧪' },
+  { id: 'track_8_graphs', label: '🟩 Track 8: Graphs & Optimization (MIT 6.0002 / 6.0001 Adv)', icon: '🕸' },
 ]
 
 export default function FundamentalsStudio() {
@@ -77,6 +82,17 @@ export default function FundamentalsStudio() {
       /* storage unavailable — the choice just won't persist */
     }
   }, [readingMode])
+
+  // Concordance term highlights on/off toggle (persisted across sessions)
+  const [concordanceEnabled, setConcordanceEnabled] = useState<boolean>(getStoredConcordanceEnabled)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CONCORDANCE_ENABLED_STORAGE_KEY, String(concordanceEnabled))
+    } catch {
+      /* storage unavailable */
+    }
+  }, [concordanceEnabled])
 
   // Peek answer toggle for questions
   const [showPeekAnswer, setShowPeekAnswer] = useState<boolean>(false)
@@ -241,6 +257,52 @@ export default function FundamentalsStudio() {
     ? sectionCount(drillDetail.editorial, readingMode)
     : { shown: 0, total: 0 }
   const lessonReadTime = lessonMarkdown ? estimateReadMinutes(lessonMarkdown) : ''
+  const guidingQuestions = drillDetail
+    ? getGuidingQuestions(drillDetail.slug, drillDetail.title, drillDetail.category)
+    : []
+
+  const renderGuidingQuestionsBox = (isCompact = false) => {
+    if (!guidingQuestions || guidingQuestions.length === 0) return null
+
+    return (
+      <div
+        className={`rounded-xl border border-sky-500/30 bg-gradient-to-br from-sky-950/40 via-[#0d1524] to-[#090e17] ${
+          isCompact ? 'p-3.5' : 'p-5'
+        } shadow-lg space-y-2.5`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-sky-500/20 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🧠</span>
+            <div>
+              <h3 className="font-bold text-sky-200 text-xs tracking-wide">
+                Core Questions to Ponder as You Read
+              </h3>
+              <p className="text-[10px] text-slate-400">
+                Active Inquiry — reflect on these fundamental mechanisms and edge cases throughout the lesson:
+              </p>
+            </div>
+          </div>
+          <span className="chip border-sky-500/40 bg-sky-500/10 text-[10px] text-sky-300 font-semibold">
+            Pre-Reading Focus
+          </span>
+        </div>
+
+        <ul className="space-y-2 text-xs text-slate-200">
+          {guidingQuestions.map((q, idx) => (
+            <li
+              key={idx}
+              className="flex items-start gap-2.5 rounded-lg border border-sky-500/15 bg-black/25 p-2.5 transition hover:border-sky-500/35 hover:bg-black/40"
+            >
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-sky-500/20 font-mono text-[10px] font-bold text-sky-300">
+                {idx + 1}
+              </span>
+              <span className="leading-relaxed text-slate-200 font-medium">{q}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
 
   const readingModeToggle = (size: 'sm' | 'md' = 'sm') => (
     <div
@@ -266,6 +328,36 @@ export default function FundamentalsStudio() {
         </button>
       ))}
     </div>
+  )
+
+  const concordanceToggle = (size: 'sm' | 'md' = 'sm') => (
+    <button
+      onClick={() => setConcordanceEnabled((prev) => !prev)}
+      aria-pressed={concordanceEnabled}
+      title={
+        concordanceEnabled
+          ? "Strong's Concordance is active — click to turn off inline term highlights and tooltips"
+          : "Strong's Concordance is off — click to enable inline term highlights and formal definitions"
+      }
+      className={`flex items-center gap-1.5 rounded-lg border font-semibold transition shadow-sm ${
+        size === 'md' ? 'px-3 py-1 text-xs' : 'px-2 py-0.5 text-[10px]'
+      } ${
+        concordanceEnabled
+          ? 'border-sky-500/40 bg-sky-950/40 text-sky-200 hover:bg-sky-500/30 hover:text-white'
+          : 'border-slate-700 bg-slate-800/60 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+      }`}
+    >
+      <span>🏷️ Concordance:</span>
+      <span
+        className={`font-mono text-[9px] uppercase px-1 rounded ${
+          concordanceEnabled
+            ? 'bg-sky-500/30 text-sky-200 font-bold'
+            : 'bg-black/30 text-slate-500'
+        }`}
+      >
+        {concordanceEnabled ? 'ON' : 'OFF'}
+      </span>
+    </button>
   )
 
   const overviewQuery = allQuestionsSearch.trim().toLowerCase()
@@ -295,11 +387,11 @@ export default function FundamentalsStudio() {
               Pre-LeetCode Fundamentals Studio
             </h1>
             <span className="chip border-sky-500/40 bg-sky-950/40 text-sky-300 text-[11px] font-semibold">
-              🏛️ Grounded in MIT 6.0001 (John V. Guttag)
+              🏛️ Grounded in MIT 6.0001: Intro to CS & Python (Grimson, Guttag, Bell)
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Follow the 3-step learning loop: <strong>1. Textbook Concept</strong> ➔ <strong>2. Solve Question</strong> ➔ <strong>3. Socratic AI Guide (if stuck/failed)</strong>.
+            Follow the 3-step learning loop: <strong>1. MIT 6.0001 Lecture & Companion Text</strong> ➔ <strong>2. Finger Exercise / Pset Scaffold</strong> ➔ <strong>3. Socratic AI Guide</strong>.
           </p>
         </div>
 
@@ -400,7 +492,7 @@ export default function FundamentalsStudio() {
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <span>📖 1. Guttag Lesson</span>
+                  <span>📖 1. MIT 6.0001 Lesson</span>
                 </button>
 
                 <button
@@ -496,6 +588,7 @@ export default function FundamentalsStudio() {
 
                     <div className="flex items-center gap-2">
                       {readingModeToggle('sm')}
+                      {concordanceToggle('sm')}
                       <button
                         onClick={() => setIsFullscreenReading(true)}
                         className="flex items-center gap-1 rounded-md border border-sky-500/40 bg-sky-950/40 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/30 hover:text-white transition shadow"
@@ -509,9 +602,15 @@ export default function FundamentalsStudio() {
                     </div>
                   </div>
 
+                  {renderGuidingQuestionsBox(true)}
+
                   {drillDetail.editorial ? (
                     <>
-                      <ConcordanceReader content={lessonMarkdown} />
+                      <ConcordanceReader
+                        content={lessonMarkdown}
+                        enabled={concordanceEnabled}
+                        onToggleEnabled={setConcordanceEnabled}
+                      />
                       {lessonSections.shown < lessonSections.total && (
                         <button
                           onClick={() => setReadingMode('robust')}
@@ -530,7 +629,7 @@ export default function FundamentalsStudio() {
                   {drillDetail.solutions?.python && (
                     <div className="space-y-1.5 pt-2">
                       <p className="font-semibold text-slate-400 uppercase text-[10px] tracking-wider">
-                        Canonical Textbook Pattern:
+                        MIT 6.0001 Canonical Pattern:
                       </p>
                       <pre className="rounded-lg border border-emerald-500/30 bg-emerald-950/15 p-3.5 text-emerald-300 font-mono overflow-x-auto whitespace-pre text-xs">
                         {drillDetail.solutions.python}
@@ -678,7 +777,7 @@ export default function FundamentalsStudio() {
                             <div className="flex items-center gap-2">
                               <span className="text-base">💡</span>
                               <span className="font-bold text-amber-300 text-xs uppercase tracking-wider">
-                                Canonical Solution (Guttag Pattern)
+                                Canonical Solution (MIT 6.0001 Pattern)
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -890,6 +989,7 @@ export default function FundamentalsStudio() {
 
             <div className="flex items-center gap-3">
               {readingModeToggle('md')}
+              {concordanceToggle('md')}
 
               {/* Prev / Next Controls */}
               <div className="flex items-center gap-1 bg-[#161f2e] border border-ink-line/80 rounded-lg p-1">
@@ -938,9 +1038,15 @@ export default function FundamentalsStudio() {
           {/* Fullscreen Reading Container */}
           <div className="flex-1 overflow-y-auto px-6 py-8">
             <div className="max-w-4xl mx-auto space-y-6">
+              {renderGuidingQuestionsBox(false)}
+
               {drillDetail.editorial ? (
                 <>
-                  <ConcordanceReader content={lessonMarkdown} />
+                  <ConcordanceReader
+                    content={lessonMarkdown}
+                    enabled={concordanceEnabled}
+                    onToggleEnabled={setConcordanceEnabled}
+                  />
                   {lessonSections.shown < lessonSections.total && (
                     <button
                       onClick={() => setReadingMode('robust')}
@@ -959,7 +1065,7 @@ export default function FundamentalsStudio() {
               {drillDetail.solutions?.python && (
                 <div className="space-y-2 pt-4 border-t border-ink-line/60">
                   <p className="font-semibold text-slate-400 uppercase text-xs tracking-wider">
-                    Canonical Textbook Pattern:
+                    MIT 6.0001 Canonical Pattern:
                   </p>
                   <pre className="rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-5 text-emerald-300 font-mono overflow-x-auto whitespace-pre text-sm shadow-inner">
                     {drillDetail.solutions.python}

@@ -6,6 +6,7 @@ import type {
   CitedCard,
   CodeProblemOut,
   CodeProblemSummary,
+  CodeProgressionStats,
   CodeSubmissionOut,
   ConfirmReviewResponse,
   Deck,
@@ -389,4 +390,5 @@ export const api = {
     request<CodeSubmissionOut[]>(
       `/api/code/submissions?limit=${limit}${problemId ? `&problem_id=${problemId}` : ''}`,
     ),
+  getCodeStats: () => request<CodeProgressionStats>('/api/code/stats'),
 }

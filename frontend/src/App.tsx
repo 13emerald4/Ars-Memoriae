@@ -1,16 +1,18 @@
+import { lazy, Suspense } from 'react'
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { Spinner } from './components/ui'
 import { useAuth } from './hooks/useAuth'
-import CodeLab from './pages/CodeLab'
-import Decks from './pages/Decks'
-import FundamentalsStudio from './pages/FundamentalsStudio'
-import Login from './pages/Login'
-import Read from './pages/Read'
-import Review from './pages/Review'
-import Settings from './pages/Settings'
-import Stats from './pages/Stats'
-import Tree from './pages/Tree'
-import Tutorial from './pages/Tutorial'
+
+const CodeLab = lazy(() => import('./pages/CodeLab'))
+const Decks = lazy(() => import('./pages/Decks'))
+const FundamentalsStudio = lazy(() => import('./pages/FundamentalsStudio'))
+const Login = lazy(() => import('./pages/Login'))
+const Read = lazy(() => import('./pages/Read'))
+const Review = lazy(() => import('./pages/Review'))
+const Settings = lazy(() => import('./pages/Settings'))
+const Stats = lazy(() => import('./pages/Stats'))
+const Tree = lazy(() => import('./pages/Tree'))
+const Tutorial = lazy(() => import('./pages/Tutorial'))
 
 const NAV = [
   { to: '/tutorial', label: 'Start here' },
@@ -35,7 +37,19 @@ export default function App() {
     )
   }
 
-  if (!user) return <Login />
+  if (!user) {
+    return (
+      <Suspense
+        fallback={
+          <div className="flex min-h-screen items-center justify-center">
+            <Spinner />
+          </div>
+        }
+      >
+        <Login />
+      </Suspense>
+    )
+  }
 
   return (
     <div className="min-h-screen">
@@ -63,20 +77,28 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-8">
-        <Routes>
-          <Route path="/" element={<Navigate to="/review" replace />} />
-          <Route path="/tutorial" element={<Tutorial />} />
-          <Route path="/review" element={<Review />} />
-          <Route path="/code" element={<CodeLab />} />
-          <Route path="/code/fundamentals" element={<FundamentalsStudio />} />
-          <Route path="/tree" element={<Tree />} />
-          <Route path="/read" element={<Read />} />
-          <Route path="/read/:extractId" element={<Read />} />
-          <Route path="/decks" element={<Decks />} />
-          <Route path="/stats" element={<Stats />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<Navigate to="/review" replace />} />
-        </Routes>
+        <Suspense
+          fallback={
+            <div className="flex min-h-[50vh] items-center justify-center">
+              <Spinner />
+            </div>
+          }
+        >
+          <Routes>
+            <Route path="/" element={<Navigate to="/review" replace />} />
+            <Route path="/tutorial" element={<Tutorial />} />
+            <Route path="/review" element={<Review />} />
+            <Route path="/code" element={<CodeLab />} />
+            <Route path="/code/fundamentals" element={<FundamentalsStudio />} />
+            <Route path="/tree" element={<Tree />} />
+            <Route path="/read" element={<Read />} />
+            <Route path="/read/:extractId" element={<Read />} />
+            <Route path="/decks" element={<Decks />} />
+            <Route path="/stats" element={<Stats />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="*" element={<Navigate to="/review" replace />} />
+          </Routes>
+        </Suspense>
       </main>
     </div>
   )

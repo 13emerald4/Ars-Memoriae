@@ -10,11 +10,44 @@ import {
   searchConcordance,
 } from '../services/concordance_engine'
 
-export interface ConcordanceReaderProps {
-  content: string
+export const CONCORDANCE_ENABLED_STORAGE_KEY = 'fundamentals_concordance_enabled'
+
+export const getStoredConcordanceEnabled = (): boolean => {
+  try {
+    const raw = localStorage.getItem(CONCORDANCE_ENABLED_STORAGE_KEY)
+    if (raw !== null) {
+      return raw === 'true'
+    }
+  } catch {
+    /* storage unavailable */
+  }
+  return true
 }
 
-export function ConcordanceReader({ content }: ConcordanceReaderProps) {
+export interface ConcordanceReaderProps {
+  content: string
+  enabled?: boolean
+  onToggleEnabled?: (enabled: boolean) => void
+}
+
+export function ConcordanceReader({
+  content,
+  enabled: controlledEnabled,
+  onToggleEnabled,
+}: ConcordanceReaderProps) {
+  const [internalEnabled, setInternalEnabled] = useState<boolean>(getStoredConcordanceEnabled)
+  const isEnabled = controlledEnabled !== undefined ? controlledEnabled : internalEnabled
+
+  const handleToggle = (next: boolean) => {
+    if (onToggleEnabled) {
+      onToggleEnabled(next)
+    } else {
+      setInternalEnabled(next)
+      try {
+        localStorage.setItem(CONCORDANCE_ENABLED_STORAGE_KEY, String(next))
+      } catch {}
+    }
+  }
   const [hoveredEntry, setHoveredEntry] = useState<{
     entry: ConcordanceEntry
     x: number
@@ -56,14 +89,14 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
    * Tokenizes text and attaches Strong's concordance tags to matching terms.
    */
   const tokenizeText = (text: string): React.ReactNode[] => {
-    if (!text) return [text]
+    if (!isEnabled || !text) return [text]
 
     const parts: React.ReactNode[] = []
     let lastIndex = 0
     let match: RegExpExecArray | null
 
-    masterRegex.lastIndex = 0
-    while ((match = masterRegex.exec(text)) !== null) {
+    const localRegex = new RegExp(masterRegex.source, 'gi')
+    while ((match = localRegex.exec(text)) !== null) {
       const matchText = match[0]
       const startIndex = match.index
 
@@ -94,7 +127,7 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
         parts.push(matchText)
       }
 
-      lastIndex = masterRegex.lastIndex
+      lastIndex = localRegex.lastIndex
     }
 
     if (lastIndex < text.length) {
@@ -316,31 +349,73 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
     [lexiconSearch, selectedCategory]
   )
 
+  const renderedContent = useMemo(
+    () => renderRichText(content),
+    [content, isEnabled]
+  )
+
   return (
     <div className="relative space-y-4">
       {/* Concordance Header Action Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-500/30 bg-sky-950/20 px-3.5 py-2 text-xs">
-        <div className="flex items-center gap-2">
-          <span className="text-sm">📖</span>
-          <span className="font-semibold text-sky-200">
-            Exhaustive Strong's CS Concordance Active
-          </span>
-          <span className="text-[10px] text-slate-400">
-            ({GUTTAG_CONCORDANCE_LEXICON.length} indexed terms across {CONCORDANCE_CATEGORIES.length} domains — hover any concept for formal definition & cross-references)
-          </span>
-        </div>
+      {isEnabled ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-500/30 bg-sky-950/20 px-3.5 py-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">📖</span>
+            <span className="font-semibold text-sky-200">
+              Exhaustive MIT 6.0001 CS Concordance Active
+            </span>
+            <span className="text-[10px] text-slate-400">
+              ({GUTTAG_CONCORDANCE_LEXICON.length} indexed terms across {CONCORDANCE_CATEGORIES.length} domains — hover any concept for definition & cross-references)
+            </span>
+          </div>
 
-        <button
-          onClick={() => setShowLexiconModal(true)}
-          className="flex items-center gap-1.5 rounded-md bg-sky-500/20 border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/30 transition shadow"
-        >
-          <span>🔍 Browse All {GUTTAG_CONCORDANCE_LEXICON.length} Concordance Terms</span>
-        </button>
-      </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowLexiconModal(true)}
+              className="flex items-center gap-1.5 rounded-md bg-sky-500/20 border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/30 transition shadow"
+              title="Search all Strong's Concordance definitions and cross references"
+            >
+              <span>🔍 Lexicon Index</span>
+              <span className="font-mono text-[9px] bg-sky-500/30 text-sky-100 px-1 py-0.2 rounded">
+                {GUTTAG_CONCORDANCE_LEXICON.length}
+              </span>
+            </button>
+            <button
+              onClick={() => handleToggle(false)}
+              className="flex items-center gap-1 rounded-md bg-slate-800/80 border border-slate-700 px-2 py-1 text-[11px] text-slate-400 hover:text-slate-200 hover:border-slate-600 transition"
+              title="Hide all concordance annotations and inline identifiers"
+            >
+              <span>Disable</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-900/40 px-3.5 py-2 text-xs">
+          <div className="flex items-center gap-2 text-slate-400">
+            <span className="text-sm">📖</span>
+            <span>MIT 6.0001 Concordance annotations are currently disabled.</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowLexiconModal(true)}
+              className="flex items-center gap-1.5 rounded-md bg-slate-800/80 border border-slate-700 px-2 py-1 text-[11px] text-slate-400 hover:text-slate-200 transition"
+            >
+              <span>🔍 Browse Lexicon</span>
+            </button>
+            <button
+              onClick={() => handleToggle(true)}
+              className="flex items-center gap-1 rounded-md bg-sky-500/20 border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-300 hover:bg-sky-500/30 hover:text-white transition shadow-sm"
+              title="Turn on concordance annotations and hover definitions"
+            >
+              <span>⚡ Enable Concordance</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Formatted Reading */}
       <div className="prose prose-invert max-w-none text-xs leading-relaxed text-slate-200 bg-[#090d13] p-5 rounded-xl border border-ink-line/80 shadow-inner">
-        {renderRichText(content)}
+        {renderedContent}
       </div>
 
       {/* FLOATING HOVER CARD */}
@@ -536,11 +611,11 @@ export function ConcordanceReader({ content }: ConcordanceReaderProps) {
                 <span className="text-xl">📚</span>
                 <div>
                   <h3 className="text-base font-bold text-slate-100">
-                    Guttag MIT 6.0001 Strong's Concordance Lexicon
+                    MIT 6.0001 Computational Thinking Lexicon
                   </h3>
                   <p className="text-[11px] text-slate-400">
                     Search {GUTTAG_CONCORDANCE_LEXICON.length} computer science definitions across{' '}
-                    {CONCORDANCE_CATEGORIES.length} domains, Guttag Ch. 1–26
+                    {CONCORDANCE_CATEGORIES.length} domains (Grounded in MIT 6.0001 & Guttag text)
                   </p>
                 </div>
               </div>

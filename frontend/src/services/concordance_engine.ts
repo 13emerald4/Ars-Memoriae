@@ -1,13 +1,13 @@
 /**
- * Exhaustive Guttag Computational Strong's Concordance Lexicon & Cross-Reference Engine.
+ * Exhaustive MIT 6.0001 Computational Thinking & Computer Science Lexicon.
+ * Grounded in MIT 6.0001 (Introduction to Computer Science and Programming in Python)
+ * by Profs. John V. Guttag, Eric Grimson, and Dr. Ana Bell.
  *
- * Indexes the computer-science vocabulary of John V. Guttag, "Introduction to
- * Computation and Programming Using Python" (3rd Edition, MIT Press — MIT 6.0001 /
- * 6.0002), spanning Chapters 1–26: the Python computational model, control flow,
- * memory and runtime semantics, functional abstraction, object-oriented design,
- * data structures and ADTs, searching and sorting, algorithmic paradigms, graph
- * optimization, asymptotic complexity, binary arithmetic, testing and debugging,
- * exceptions, stochastic programs and statistics, and machine learning.
+ * Every entry provides:
+ *   - Formal definition derived from MIT 6.0001 lecture principles & textbook
+ *   - Primary chapter / lecture citation
+ *   - Exact character offsets for multi-word surface forms
+ *   - Canonical cross-references (related concepts)
  *
  * Chapter and section anchors were checked against the 3rd-edition PDF and corrected
  * where they were wrong (e.g. "The Basic Elements of Python" is § 2.2 not § 2.1;

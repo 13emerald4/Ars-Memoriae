@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import UTC, datetime
+from collections import defaultdict
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
@@ -12,12 +13,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decrypt_api_key
 from app.db import get_db
-from app.models import Card, CodeProblem, CodeSubmission, Deck, Note, NoteType, User
+from app.models import Card, CodeProblem, CodeSubmission, Deck, Note, NoteType, StudySession, User
 from app.routers.deps import current_user, parse_uuid
 from app.schemas.code_practice import (
+    CategoryProgression,
+    CodeLeechOut,
     CodeProblemOut,
     CodeProblemSummary,
+    CodeProgressionStats,
     CodeSubmissionOut,
+    DifficultyTierProgression,
     ExportToDeckRequest,
     ForgeProblemRequest,
     RunCodeRequest,
@@ -573,3 +578,244 @@ async def list_submissions(
         )
         for r in rows
     ]
+
+
+def _day(dt: datetime) -> str:
+    return (dt if dt.tzinfo else dt.replace(tzinfo=UTC)).date().isoformat()
+
+
+def _interval_bucket(days: float) -> str:
+    if days < 1:
+        return "<1d"
+    if days < 3:
+        return "1-3d"
+    if days < 7:
+        return "3-7d"
+    if days < 14:
+        return "7-14d"
+    if days < 30:
+        return "14-30d"
+    return "30d+"
+
+
+@router.get("/stats", response_model=CodeProgressionStats)
+async def code_stats(
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CodeProgressionStats:
+    """Computes Blind 75 learning and performance progression statistics.
+
+    Mirrors the cognitive performance metrics used for memorization cards:
+    heatmaps, FSRS memory stability/difficulty, interval retention curves,
+    velocity (mastered/hr), and leech detection for recurring failure patterns.
+    """
+    await ensure_catalog_seeded(db)
+
+    # 1. Fetch all problems of kind="problem"
+    p_stmt = select(CodeProblem).where(
+        CodeProblem.kind == "problem",
+        or_(CodeProblem.user_id.is_(None), CodeProblem.user_id == user.id),
+    )
+    problems = (await db.execute(p_stmt)).scalars().all()
+    seen_slugs = set()
+    unique_problems = []
+    for p in problems:
+        if p.slug not in seen_slugs:
+            seen_slugs.add(p.slug)
+            unique_problems.append(p)
+
+    # 2. Fetch all user submissions
+    sub_stmt = (
+        select(CodeSubmission)
+        .where(CodeSubmission.user_id == user.id)
+        .order_by(CodeSubmission.created_at.asc())
+    )
+    subs = (await db.execute(sub_stmt)).scalars().all()
+
+    subs_by_pid: dict[uuid.UUID, list[CodeSubmission]] = defaultdict(list)
+    heatmap: dict[str, int] = defaultdict(int)
+    for s in subs:
+        subs_by_pid[s.problem_id].append(s)
+        heatmap[_day(s.created_at)] += 1
+
+    prob_by_id = {p.id: p for p in unique_problems}
+    solved_pids: set[uuid.UUID] = set()
+    attempted_pids: set[uuid.UUID] = set()
+    first_try_pids: set[uuid.UUID] = set()
+    lapse_counts: dict[uuid.UUID, int] = defaultdict(int)
+    last_error_map: dict[uuid.UUID, str] = {}
+
+    bucket_hit: dict[str, int] = defaultdict(int)
+    bucket_total: dict[str, int] = defaultdict(int)
+
+    for pid, p_subs in subs_by_pid.items():
+        if not p_subs:
+            continue
+        attempted_pids.add(pid)
+        if any(s.status == "Accepted" for s in p_subs):
+            solved_pids.add(pid)
+        if p_subs[0].status == "Accepted":
+            first_try_pids.add(pid)
+
+        failures = [s for s in p_subs if s.status != "Accepted"]
+        lapse_counts[pid] = len(failures)
+        if failures:
+            last_error_map[pid] = failures[-1].status
+
+        # Interval retention calculation on repeat submissions
+        for i in range(1, len(p_subs)):
+            dt_days = (p_subs[i].created_at - p_subs[i - 1].created_at).total_seconds() / 86400.0
+            bucket = _interval_bucket(dt_days)
+            bucket_total[bucket] += 1
+            if p_subs[i].status == "Accepted":
+                bucket_hit[bucket] += 1
+
+    retention = {
+        bucket: round(bucket_hit[bucket] / bucket_total[bucket], 4)
+        for bucket in bucket_total
+        if bucket_total[bucket] >= 1
+    }
+
+    # Leech detection (failing repeated submissions)
+    leeches = []
+    for pid, count in lapse_counts.items():
+        if count >= 2 and pid in prob_by_id:
+            prob = prob_by_id[pid]
+            leeches.append(
+                CodeLeechOut(
+                    problem_id=str(pid),
+                    slug=prob.slug,
+                    title=prob.title,
+                    difficulty=prob.difficulty,
+                    category=prob.category,
+                    lapse_count=count,
+                    last_error=last_error_map.get(pid),
+                    suggestion_kind="Socratic Guidance",
+                    suggestion_rationale=f"Repeated difficulties with {prob.title} ({count} failed runs). Inspect editorial and pattern invariants.",
+                )
+            )
+    leeches.sort(key=lambda l: l.lapse_count, reverse=True)
+
+    STANDARD_CATEGORIES = [
+        "Arrays & Hashing", "Two Pointers", "Sliding Window", "Stack",
+        "Binary Search", "Linked List", "Trees", "Tries",
+        "Heap / Priority Queue", "Backtracking", "Graphs", "Advanced Graphs",
+        "1-D Dynamic Programming", "2-D Dynamic Programming", "Greedy",
+        "Intervals", "Math & Geometry", "Bit Manipulation"
+    ]
+    all_cats = list(STANDARD_CATEGORIES)
+    for p in unique_problems:
+        if p.category not in all_cats:
+            all_cats.append(p.category)
+
+    category_prog = []
+    for cat in all_cats:
+        cat_probs = [p for p in unique_problems if p.category == cat]
+        if not cat_probs:
+            continue
+        c_total = len(cat_probs)
+        c_solved = sum(1 for p in cat_probs if p.id in solved_pids)
+        c_attempted = sum(1 for p in cat_probs if p.id in attempted_pids)
+        pct = round((c_solved / c_total) * 100, 1) if c_total > 0 else 0.0
+        category_prog.append(
+            CategoryProgression(
+                category=cat,
+                total=c_total,
+                solved=c_solved,
+                attempted=c_attempted,
+                percentage=pct,
+            )
+        )
+
+    difficulty_prog = {}
+    for diff in ["Easy", "Medium", "Hard"]:
+        diff_probs = [p for p in unique_problems if p.difficulty.lower() == diff.lower()]
+        d_total = len(diff_probs)
+        d_solved = sum(1 for p in diff_probs if p.id in solved_pids)
+        d_attempted = sum(1 for p in diff_probs if p.id in attempted_pids)
+        pct = round((d_solved / d_total) * 100, 1) if d_total > 0 else 0.0
+        difficulty_prog[diff.lower()] = DifficultyTierProgression(
+            total=d_total,
+            solved=d_solved,
+            attempted=d_attempted,
+            percentage=pct,
+        )
+
+    # Active study session velocity
+    now = datetime.now(UTC)
+    since = now - timedelta(days=365)
+    active_seconds = await db.scalar(
+        select(func.sum(StudySession.active_seconds)).where(
+            StudySession.user_id == user.id,
+            StudySession.ended_at.isnot(None),
+            StudySession.started_at >= since,
+        )
+    )
+    active_hours = (active_seconds or 0) / 3600.0
+    mastered_total = float(len(solved_pids))
+    velocity_rate = round(mastered_total / active_hours, 2) if active_hours > 0.05 else mastered_total
+
+    # FSRS stability and difficulty metrics across any linked cards
+    card_rows = (
+        await db.execute(
+            select(Card.stability, Card.difficulty, Card.due, Card.state)
+            .join(Deck, Deck.id == Card.deck_id)
+            .where(Deck.user_id == user.id)
+        )
+    ).all()
+    stabs = [r[0] for r in card_rows if r[0] is not None]
+    diffs = [r[1] for r in card_rows if r[1] is not None]
+    avg_stab = round(sum(stabs) / len(stabs), 1) if stabs else 21.0
+    avg_diff = round(sum(diffs) / len(diffs), 2) if diffs else 0.45
+
+    forecast: dict[str, int] = defaultdict(int)
+    horizon = now + timedelta(days=30)
+    for stab, diff, due, state in card_rows:
+        if due and due <= horizon and state != "new":
+            forecast[_day(max(due if due.tzinfo else due.replace(tzinfo=UTC), now))] += 1
+
+    totals = {
+        "cards": float(len(unique_problems)),
+        "in_review": float(len(attempted_pids)),
+        "solved": mastered_total,
+        "attempted": float(len(attempted_pids)),
+        "reviews_logged": float(len(subs)),
+        "avg_stability_days": avg_stab,
+        "avg_difficulty": avg_diff,
+        "first_try_solves": float(len(first_try_pids)),
+    }
+
+    velocity = {
+        "rate": float(velocity_rate),
+        "mastered_in_sessions": mastered_total,
+        "mastered_total": mastered_total,
+        "active_hours": round(active_hours, 2),
+    }
+
+    recent_activity = [
+        CodeSubmissionOut(
+            id=str(s.id),
+            problem_id=str(s.problem_id),
+            language=s.language,
+            code=s.code,
+            status=s.status,
+            passed_tests=s.passed_tests,
+            total_tests=s.total_tests,
+            runtime_ms=s.runtime_ms,
+            created_at=s.created_at,
+        )
+        for s in subs[-10:][::-1]
+    ]
+
+    return CodeProgressionStats(
+        totals=totals,
+        velocity=velocity,
+        retention=retention,
+        heatmap=heatmap,
+        forecast=forecast,
+        leeches=leeches,
+        categories=category_prog,
+        difficulty=difficulty_prog,
+        recent_activity=recent_activity,
+    )
+
