@@ -38,6 +38,7 @@ const BLIND75_CATEGORIES = [
 
 export default function CodeLab() {
   const [viewMode, setViewMode] = useState<'workbench' | 'tree' | 'roadmap' | 'stats'>('workbench')
+  const [layoutMode, setLayoutMode] = useState<'split' | 'code' | 'problem'>('split')
   const [problems, setProblems] = useState<CodeProblemSummary[]>([])
   const [codeStats, setCodeStats] = useState<CodeProgressionStats | null>(null)
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null)
@@ -439,20 +440,39 @@ export default function CodeLab() {
         <div className="flex items-center gap-1.5 text-xs">
           <div className="flex items-center rounded-lg border border-[#2d2d2d] bg-[#1e1e1e] p-0.5">
             <button
-              onClick={() => setViewMode('workbench')}
-              className={`rounded px-2.5 py-1 text-xs font-semibold transition ${
-                viewMode === 'workbench'
-                  ? 'bg-[#2cbb5d] text-white'
+              onClick={() => {
+                setViewMode('workbench')
+                setLayoutMode('split')
+              }}
+              title="50/50 Split View (Problem on left, Code editor on right)"
+              className={`rounded px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1 ${
+                viewMode === 'workbench' && layoutMode === 'split'
+                  ? 'bg-[#2cbb5d] text-white shadow'
                   : 'text-[#8a8a8a] hover:text-[#eff1f6]'
               }`}
             >
-              Code
+              <span>◫</span>
+              <span>50/50 Split</span>
+            </button>
+            <button
+              onClick={() => {
+                setViewMode('workbench')
+                setLayoutMode('code')
+              }}
+              title="Full width Code Editor"
+              className={`rounded px-2 py-1 text-xs font-semibold transition hidden sm:inline ${
+                viewMode === 'workbench' && layoutMode === 'code'
+                  ? 'bg-[#2cbb5d] text-white shadow'
+                  : 'text-[#8a8a8a] hover:text-[#eff1f6]'
+              }`}
+            >
+              Code Only
             </button>
             <button
               onClick={() => setViewMode('tree')}
               className={`rounded px-2.5 py-1 text-xs font-semibold transition ${
                 viewMode === 'tree'
-                  ? 'bg-[#2cbb5d] text-white'
+                  ? 'bg-[#2cbb5d] text-white shadow'
                   : 'text-[#8a8a8a] hover:text-[#eff1f6]'
               }`}
             >
@@ -462,7 +482,7 @@ export default function CodeLab() {
               onClick={() => setViewMode('roadmap')}
               className={`rounded px-2.5 py-1 text-xs font-semibold transition ${
                 viewMode === 'roadmap'
-                  ? 'bg-[#2cbb5d] text-white'
+                  ? 'bg-[#2cbb5d] text-white shadow'
                   : 'text-[#8a8a8a] hover:text-[#eff1f6]'
               }`}
             >
@@ -472,7 +492,7 @@ export default function CodeLab() {
               onClick={() => setViewMode('stats')}
               className={`rounded px-2.5 py-1 text-xs font-semibold transition ${
                 viewMode === 'stats'
-                  ? 'bg-[#2cbb5d] text-white'
+                  ? 'bg-[#2cbb5d] text-white shadow'
                   : 'text-[#8a8a8a] hover:text-[#eff1f6]'
               }`}
             >
@@ -498,9 +518,14 @@ export default function CodeLab() {
 
       {/* ── 2. VIEW: LEETCODE SPLIT-PANE WORKBENCH (DEFAULT) ── */}
       {viewMode === 'workbench' && problemDetail && (
-        <div className="grid gap-3 lg:grid-cols-2 min-h-[640px]">
+        <div
+          className={`grid gap-3 min-h-[680px] ${
+            layoutMode === 'split' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'
+          }`}
+        >
           {/* ── LEFT PANE: DESCRIPTION, EDITORIAL, SOLUTIONS, SUBMISSIONS, SOCRATIC ── */}
-          <div className="flex flex-col rounded-xl border border-[#282828] bg-[#1a1a1a] overflow-hidden shadow-2xl">
+          {(layoutMode === 'split' || layoutMode === 'problem') && (
+            <div className="flex flex-col rounded-xl border border-[#282828] bg-[#1a1a1a] overflow-hidden shadow-2xl">
             {/* LeetCode Tab Bar */}
             <div className="flex items-center gap-1 border-b border-[#282828] bg-[#262626] px-3 py-1.5 text-xs">
               {(
@@ -751,36 +776,39 @@ export default function CodeLab() {
               )}
             </div>
           </div>
+          )}
 
           {/* ── RIGHT PANE: CODE EDITOR & TEST CONSOLE (LEETCODE STACK) ── */}
-          <div className="flex flex-col space-y-3">
-            {/* Editor Container */}
-            <div className="flex-1 min-h-[420px]">
-              <CodeEditor
-                code={code}
-                onChange={(val) => setCode(val)}
-                language={language}
-                onLanguageChange={(lang) => setLanguage(lang)}
-                onRun={handleRun}
-                onSubmit={handleSubmit}
-                running={running}
-                submitting={submitting}
-                height="420px"
-              />
-            </div>
+          {(layoutMode === 'split' || layoutMode === 'code') && (
+            <div className="flex flex-col space-y-3">
+              {/* Editor Container */}
+              <div className="flex-1 min-h-[420px]">
+                <CodeEditor
+                  code={code}
+                  onChange={(val) => setCode(val)}
+                  language={language}
+                  onLanguageChange={(lang) => setLanguage(lang)}
+                  onRun={handleRun}
+                  onSubmit={handleSubmit}
+                  running={running}
+                  submitting={submitting}
+                  height="420px"
+                />
+              </div>
 
-            {/* Test Console Container */}
-            <div>
-              <CodeTestConsole
-                testCases={problemDetail.test_cases || []}
-                runResult={runResult}
-                running={running}
-                onRun={handleRun}
-                onSubmit={handleSubmit}
-                submitting={submitting}
-              />
+              {/* Test Console Container */}
+              <div>
+                <CodeTestConsole
+                  testCases={problemDetail.test_cases || []}
+                  runResult={runResult}
+                  running={running}
+                  onRun={handleRun}
+                  onSubmit={handleSubmit}
+                  submitting={submitting}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 

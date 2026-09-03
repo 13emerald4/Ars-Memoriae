@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Spinner } from './components/ui'
 import { useAuth } from './hooks/useAuth'
 
@@ -51,10 +51,19 @@ export default function App() {
     )
   }
 
+  const location = useLocation()
+  const isCodeLab = location.pathname.startsWith('/code')
+
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-10 border-b border-ink-line bg-ink/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
+        <div
+          className={
+            isCodeLab
+              ? 'mx-auto flex w-full max-w-[1850px] items-center justify-between gap-4 px-4 py-2.5'
+              : 'mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3'
+          }
+        >
           <span className="text-sm font-semibold tracking-tight text-slate-100">Memorization</span>
           <nav className="flex flex-wrap gap-1">
             {NAV.map((item) => (
@@ -76,7 +85,13 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main
+        className={
+          isCodeLab
+            ? 'mx-auto w-full max-w-[1850px] px-3 py-3'
+            : 'mx-auto max-w-6xl px-6 py-8'
+        }
+      >
         <Suspense
           fallback={
             <div className="flex min-h-[50vh] items-center justify-center">
