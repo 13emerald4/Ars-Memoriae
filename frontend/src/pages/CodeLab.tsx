@@ -64,6 +64,10 @@ export default function CodeLab() {
   const [statusFilter, setStatusFilter] = useState<'All' | 'Solved' | 'Todo'>('All')
   const [searchQuery, setSearchQuery] = useState<string>('')
 
+  // Popover toggles in Left Pane
+  const [showTopics, setShowTopics] = useState(false)
+  const [showHints, setShowHints] = useState(false)
+
   // Tree View Expand / Collapse State
   const [expandedBranches, setExpandedBranches] = useState<Set<string>>(
     new Set(BLIND75_CATEGORIES.map((c) => c.name)),
@@ -122,13 +126,15 @@ export default function CodeLab() {
         setRunResult(null)
         setTimerSec(0)
         setTimerActive(true)
+        setShowTopics(false)
+        setShowHints(false)
       })
       .catch((err) => {
         if (active) setError(err)
       })
 
     api
-      .listCodeSubmissions(undefined, 10)
+      .listCodeSubmissions(undefined, 15)
       .then((subs) => {
         if (active) setSubmissions(subs)
       })
@@ -204,6 +210,12 @@ export default function CodeLab() {
   const nextProblem =
     currentIndex >= 0 && currentIndex < problems.length - 1 ? problems[currentIndex + 1] : null
 
+  const handleShuffle = () => {
+    if (problems.length === 0) return
+    const randIdx = Math.floor(Math.random() * problems.length)
+    setSelectedSlug(problems[randIdx].slug)
+  }
+
   const toggleBranch = (categoryName: string) => {
     setExpandedBranches((prev) => {
       const next = new Set(prev)
@@ -252,7 +264,7 @@ export default function CodeLab() {
       })
       setRunResult(res)
       const [subs, refreshedStats, refreshedList] = await Promise.all([
-        api.listCodeSubmissions(undefined, 10),
+        api.listCodeSubmissions(undefined, 15),
         api.getCodeStats().catch(() => null),
         api.listCodeProblems({ kind: 'problem' }),
       ])
@@ -307,135 +319,495 @@ export default function CodeLab() {
   const solvedPct =
     totalProblemsCount > 0 ? Math.round((solvedCount / totalProblemsCount) * 100) : 0
 
+  const isCurrentSolved =
+    problemDetail &&
+    (submissions.some((s) => s.problem_id === problemDetail.id && s.status === 'Accepted') ||
+      problems.find((p) => p.slug === problemDetail.slug)?.last_status === 'Accepted')
+
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col space-y-3">
       <ErrorNote error={error} />
 
-      {/* ── Blind 75 Master Navigation & Progress Banner ── */}
-      <div className="rounded-2xl border border-ink-line bg-[#0d1117] p-4 shadow-xl">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-ink-line/80 pb-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-extrabold tracking-tight text-slate-100">
-                ⚡ Blind 75 Problem Studio
-              </span>
-              <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">
-                Curated High-Yield
-              </span>
-            </div>
-            <p className="mt-0.5 text-xs text-slate-400">
-              Master the essential 75 algorithmic patterns for technical interviews with FSRS retention & Socratic AI.
-            </p>
+      {/* ── 1. LEETCODE GLOBAL TOP NAVIGATION BAR ── */}
+      <header className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#282828] bg-[#1a1a1a] px-3.5 py-2 shadow-md">
+        {/* Left: Problem Navigator (Blind 75 selector + < > arrows + Shuffle) */}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setViewMode('workbench')}
+            className="flex items-center gap-1.5 text-xs font-bold text-[#eff1f6] hover:text-[#2cbb5d] transition pr-1"
+            title="LeetCode Problem Studio"
+          >
+            <span className="text-[#ffa116] text-base font-extrabold">⚡</span>
+          </button>
+
+          {/* Categorized Dropdown Selector */}
+          <div className="relative">
+            <select
+              value={selectedSlug || ''}
+              onChange={(e) => {
+                setSelectedSlug(e.target.value)
+                setViewMode('workbench')
+              }}
+              className="rounded-lg border border-[#333333] bg-[#262626] px-3 py-1.5 text-xs font-bold text-[#eff1f6] focus:border-[#2cbb5d] focus:outline-none max-w-[280px] sm:max-w-[320px] cursor-pointer truncate"
+            >
+              {groupedCategories.map((group) => (
+                <optgroup
+                  key={group.category}
+                  label={`${group.icon} ${group.category} (${group.solved}/${group.total})`}
+                  className="bg-[#1e1e1e] text-[#569cd6] font-bold"
+                >
+                  {group.problems.map((p) => (
+                    <option
+                      key={p.slug}
+                      value={p.slug}
+                      className="bg-[#1a1a1a] text-[#eff1f6] font-normal"
+                    >
+                      {p.last_status === 'Accepted' ? '✅' : p.has_submission ? '🟡' : '⚪'}{' '}
+                      {p.difficulty === 'Easy' ? '🟢' : p.difficulty === 'Medium' ? '🟡' : '🔴'}{' '}
+                      {p.title}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </div>
 
-          {/* View Mode Switcher */}
-          <div className="flex items-center gap-1 rounded-xl border border-ink-line bg-[#161b22] p-1">
+          {/* Prev / Next navigation */}
+          <button
+            disabled={!prevProblem}
+            onClick={() => prevProblem && setSelectedSlug(prevProblem.slug)}
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#333333] bg-[#262626] text-xs font-bold text-[#eff1f6] hover:bg-[#333333] disabled:opacity-30 transition"
+            title={prevProblem ? `Previous: ${prevProblem.title}` : 'No previous problem'}
+          >
+            &lt;
+          </button>
+          <button
+            disabled={!nextProblem}
+            onClick={() => nextProblem && setSelectedSlug(nextProblem.slug)}
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#333333] bg-[#262626] text-xs font-bold text-[#eff1f6] hover:bg-[#333333] disabled:opacity-30 transition"
+            title={nextProblem ? `Next: ${nextProblem.title}` : 'No next problem'}
+          >
+            &gt;
+          </button>
+
+          {/* Shuffle button */}
+          <button
+            onClick={handleShuffle}
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#333333] bg-[#262626] text-xs text-[#8a8a8a] hover:text-[#eff1f6] hover:bg-[#333333] transition"
+            title="Pick Random Problem (Shuffle)"
+          >
+            🔀
+          </button>
+        </div>
+
+        {/* Center: Run & Submit Buttons (LeetCode style) */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRun}
+            disabled={running || submitting}
+            className="flex items-center gap-1.5 rounded-lg border border-[#3a3a3a] bg-[#262626] hover:bg-[#333333] px-3.5 py-1 text-xs font-semibold text-[#eff1f6] transition disabled:opacity-40"
+            title="Run Code (Ctrl+Enter)"
+          >
+            <span className="text-xs text-[#8a8a8a]">▶</span>
+            <span>{running ? 'Running…' : 'Run'}</span>
+          </button>
+
+          <button
+            onClick={handleSubmit}
+            disabled={running || submitting}
+            className="flex items-center gap-1.5 rounded-lg bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 px-4 py-1 text-xs font-bold text-white shadow transition disabled:opacity-40"
+            title="Submit Code (Ctrl+Shift+Enter)"
+          >
+            <span>☁️</span>
+            <span>{submitting ? 'Submitting…' : 'Submit'}</span>
+          </button>
+
+          {/* Reflex Timer */}
+          <div className="hidden md:flex items-center gap-1 rounded-lg border border-[#2d2d2d] bg-[#1e1e1e] px-2.5 py-1 text-xs font-mono text-[#8a8a8a]">
+            <span>⏱</span>
+            <span className="font-bold text-[#eff1f6]">{formatTimer(timerSec)}</span>
+            <button
+              onClick={() => setTimerActive((a) => !a)}
+              className="text-[10px] text-[#8a8a8a] hover:text-[#eff1f6] ml-0.5"
+            >
+              {timerActive ? '⏸' : '▶'}
+            </button>
+          </div>
+        </div>
+
+        {/* Right: View switcher & AI Tools */}
+        <div className="flex items-center gap-1.5 text-xs">
+          <div className="flex items-center rounded-lg border border-[#2d2d2d] bg-[#1e1e1e] p-0.5">
             <button
               onClick={() => setViewMode('workbench')}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              className={`rounded px-2.5 py-1 text-xs font-semibold transition ${
                 viewMode === 'workbench'
-                  ? 'bg-sky-500 text-white shadow'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#2cbb5d] text-white'
+                  : 'text-[#8a8a8a] hover:text-[#eff1f6]'
               }`}
             >
-              <span>⚡</span> Workbench
+              Code
             </button>
             <button
               onClick={() => setViewMode('tree')}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              className={`rounded px-2.5 py-1 text-xs font-semibold transition ${
                 viewMode === 'tree'
-                  ? 'bg-sky-500 text-white shadow'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#2cbb5d] text-white'
+                  : 'text-[#8a8a8a] hover:text-[#eff1f6]'
               }`}
             >
-              <span>🌳</span> Tree Diagram
+              Tree
             </button>
             <button
               onClick={() => setViewMode('roadmap')}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              className={`rounded px-2.5 py-1 text-xs font-semibold transition ${
                 viewMode === 'roadmap'
-                  ? 'bg-sky-500 text-white shadow'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#2cbb5d] text-white'
+                  : 'text-[#8a8a8a] hover:text-[#eff1f6]'
               }`}
             >
-              <span>🗺️</span> Roadmap
+              Roadmap
             </button>
             <button
               onClick={() => setViewMode('stats')}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              className={`rounded px-2.5 py-1 text-xs font-semibold transition ${
                 viewMode === 'stats'
-                  ? 'bg-sky-500 text-white shadow'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#2cbb5d] text-white'
+                  : 'text-[#8a8a8a] hover:text-[#eff1f6]'
               }`}
             >
-              <span>📈</span> Learning Metrics
+              Metrics
             </button>
           </div>
-        </div>
 
-        {/* Global Progress Bar & Tier Breakdown */}
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-lg font-bold text-slate-100">{solvedCount}</span>
-              <span className="text-xs text-slate-400">/ {totalProblemsCount} solved</span>
-              <span className="ml-1 text-xs font-bold text-emerald-400">({solvedPct}%)</span>
+          <button
+            onClick={() => setForgeOpen(true)}
+            className="hidden sm:flex items-center gap-1 rounded-lg border border-[#333333] bg-[#262626] px-2.5 py-1 text-xs font-semibold text-[#ffa116] hover:bg-[#333333] transition"
+            title="Forge custom challenge with AI"
+          >
+            ✨ Forge
+          </button>
+        </div>
+      </header>
+
+      {exportMsg && (
+        <div className="rounded-lg bg-[#2cbb5d]/10 border border-[#2cbb5d]/30 px-3 py-1.5 text-xs font-semibold text-[#2cbb5d]">
+          {exportMsg}
+        </div>
+      )}
+
+      {/* ── 2. VIEW: LEETCODE SPLIT-PANE WORKBENCH (DEFAULT) ── */}
+      {viewMode === 'workbench' && problemDetail && (
+        <div className="grid gap-3 lg:grid-cols-2 min-h-[640px]">
+          {/* ── LEFT PANE: DESCRIPTION, EDITORIAL, SOLUTIONS, SUBMISSIONS, SOCRATIC ── */}
+          <div className="flex flex-col rounded-xl border border-[#282828] bg-[#1a1a1a] overflow-hidden shadow-2xl">
+            {/* LeetCode Tab Bar */}
+            <div className="flex items-center gap-1 border-b border-[#282828] bg-[#262626] px-3 py-1.5 text-xs">
+              {(
+                [
+                  ['description', '📋 Description'],
+                  ['editorial', '💡 Editorial'],
+                  ['solutions', '✨ Solutions'],
+                  ['submissions', '📊 Submissions'],
+                  ['tutor', '🤖 Socratic AI'],
+                ] as const
+              ).map(([tabId, label]) => (
+                <button
+                  key={tabId}
+                  onClick={() => setActiveTab(tabId)}
+                  className={`rounded-lg px-2.5 py-1 font-medium transition ${
+                    activeTab === tabId
+                      ? 'bg-[#1a1a1a] text-[#eff1f6] font-semibold shadow'
+                      : 'text-[#8a8a8a] hover:text-[#eff1f6]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
-            <div className="h-2.5 w-36 overflow-hidden rounded-full bg-[#161b22] border border-ink-line">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-sky-400 transition-all duration-500"
-                style={{ width: `${Math.max(4, solvedPct)}%` }}
+
+            {/* Left Pane Scrollable Body */}
+            <div className="flex-1 p-5 overflow-y-auto max-h-[720px] text-xs text-[#d4d4d4] leading-relaxed space-y-4">
+              {/* TAB 1: DESCRIPTION */}
+              {activeTab === 'description' && (
+                <div className="space-y-4">
+                  {/* Problem Title & Solved Checkmark */}
+                  <div className="flex items-baseline justify-between gap-2 border-b border-[#282828] pb-3">
+                    <h1 className="text-lg font-bold text-[#eff1f6] tracking-tight">
+                      {problemDetail.title}
+                    </h1>
+
+                    {isCurrentSolved && (
+                      <span className="flex items-center gap-1 text-xs font-semibold text-[#2cbb5d]">
+                        <span>✓</span> Solved
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Metadata Chips: Difficulty, Topics, Hints */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        problemDetail.difficulty === 'Easy'
+                          ? 'text-[#00b8a3] bg-[#00b8a3]/10 border border-[#00b8a3]/30'
+                          : problemDetail.difficulty === 'Medium'
+                          ? 'text-[#ffc01e] bg-[#ffc01e]/10 border border-[#ffc01e]/30'
+                          : 'text-[#ff375f] bg-[#ff375f]/10 border border-[#ff375f]/30'
+                      }`}
+                    >
+                      {problemDetail.difficulty}
+                    </span>
+
+                    <button
+                      onClick={() => setShowTopics((s) => !s)}
+                      className="rounded-full bg-[#282828] hover:bg-[#333333] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#8a8a8a] hover:text-[#eff1f6] transition flex items-center gap-1"
+                    >
+                      <span>🏷️ Topics</span>
+                      <span className="text-[9px]">{showTopics ? '▲' : '▼'}</span>
+                    </button>
+
+                    {problemDetail.hints.length > 0 && (
+                      <button
+                        onClick={() => setShowHints((h) => !h)}
+                        className="rounded-full bg-[#282828] hover:bg-[#333333] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#8a8a8a] hover:text-[#eff1f6] transition flex items-center gap-1"
+                      >
+                        <span>💡 Hint</span>
+                        <span className="text-[9px]">{showHints ? '▲' : '▼'}</span>
+                      </button>
+                    )}
+
+                    {decks.length > 0 && (
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) handleExportCard(e.target.value)
+                        }}
+                        defaultValue=""
+                        className="rounded-full bg-[#282828] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#8a8a8a] focus:outline-none cursor-pointer"
+                      >
+                        <option value="" disabled>
+                          ➕ Add to Deck…
+                        </option>
+                        {decks.map((d) => (
+                          <option key={d.id} value={d.id} className="bg-[#1a1a1a] text-[#eff1f6]">
+                            {d.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  {/* Topics Popover Drawer */}
+                  {showTopics && (
+                    <div className="flex flex-wrap items-center gap-1.5 p-2.5 rounded-lg bg-[#222222] border border-[#333333]">
+                      <span className="rounded bg-[#2cbb5d]/15 text-[#2cbb5d] font-semibold px-2 py-0.5 text-[11px]">
+                        {problemDetail.category}
+                      </span>
+                      {problemDetail.tags.map((t) => (
+                        <span
+                          key={t}
+                          className="rounded bg-[#282828] text-[#eff1f6] px-2 py-0.5 text-[11px]"
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Hints Popover Drawer */}
+                  {showHints && problemDetail.hints.length > 0 && (
+                    <div className="space-y-2 p-3 rounded-lg bg-[#222222] border border-[#333333]">
+                      {problemDetail.hints.map((hint, idx) => (
+                        <div key={idx} className="text-xs text-[#d4d4d4]">
+                          <strong className="text-[#ffa116]">Hint {idx + 1}:</strong> {hint}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Problem Description Content */}
+                  <div className="prose prose-invert text-xs whitespace-pre-wrap leading-relaxed text-[#eff1f6]">
+                    {problemDetail.description}
+                  </div>
+
+                  {/* Examples (Formatted in LeetCode Box) */}
+                  <div className="space-y-3 pt-2">
+                    {problemDetail.examples.map((ex, idx) => (
+                      <div key={idx} className="space-y-1">
+                        <p className="font-bold text-[#eff1f6] text-xs">Example {idx + 1}:</p>
+                        <div className="space-y-1.5 rounded-lg border border-[#333333] bg-[#222222]/70 p-3 font-mono text-xs">
+                          <div>
+                            <span className="font-bold text-[#8a8a8a]">Input: </span>
+                            <span className="text-[#eff1f6]">{ex.input}</span>
+                          </div>
+                          <div>
+                            <span className="font-bold text-[#8a8a8a]">Output: </span>
+                            <span className="text-[#eff1f6]">{ex.output}</span>
+                          </div>
+                          {ex.explanation && (
+                            <div className="pt-1 text-[#8a8a8a] text-[11px] font-sans">
+                              <span className="font-bold text-[#8a8a8a]">Explanation: </span>
+                              {ex.explanation}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Constraints */}
+                  {problemDetail.constraints.length > 0 && (
+                    <div className="space-y-2 pt-2">
+                      <p className="font-bold text-[#eff1f6] text-xs">Constraints:</p>
+                      <ul className="list-disc list-inside space-y-1 font-mono text-[11px] text-[#eff1f6] bg-[#222222]/40 rounded-lg p-3 border border-[#333333]/60">
+                        {problemDetail.constraints.map((c, i) => (
+                          <li key={i}>{c}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: EDITORIAL */}
+              {activeTab === 'editorial' && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold text-[#00b8a3]">
+                    💡 Algorithmic Intuition & Complexity Proof
+                  </h3>
+                  {problemDetail.editorial ? (
+                    <div className="prose prose-invert text-xs whitespace-pre-wrap leading-relaxed text-[#eff1f6]">
+                      {problemDetail.editorial}
+                    </div>
+                  ) : (
+                    <p className="text-[#8a8a8a] italic">No editorial written yet.</p>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: SOLUTIONS */}
+              {activeTab === 'solutions' && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-[#2cbb5d]">
+                    ✨ Canonical Solutions
+                  </h3>
+                  {Object.entries(problemDetail.solutions).map(([lang, solCode]) => (
+                    <div key={lang} className="space-y-1">
+                      <p className="font-bold text-xs uppercase text-[#8a8a8a]">{lang}</p>
+                      <pre className="rounded-lg border border-[#333333] bg-[#222222] p-3 text-xs text-[#eff1f6] font-mono overflow-x-auto whitespace-pre">
+                        {solCode}
+                      </pre>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* TAB 4: SUBMISSIONS */}
+              {activeTab === 'submissions' && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold text-[#eff1f6]">📊 Submissions History</h3>
+                  {submissions.length === 0 ? (
+                    <p className="text-[#8a8a8a] italic">No submissions recorded yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {submissions.map((sub) => (
+                        <div
+                          key={sub.id}
+                          className="flex items-center justify-between rounded-lg border border-[#333333] bg-[#222222] p-2.5 text-xs font-mono"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`font-bold ${
+                                sub.status === 'Accepted' ? 'text-[#2cbb5d]' : 'text-[#ff375f]'
+                              }`}
+                            >
+                              {sub.status}
+                            </span>
+                            <span className="text-[#8a8a8a]">
+                              ({sub.passed_tests}/{sub.total_tests})
+                            </span>
+                          </div>
+                          <div className="text-[#8a8a8a] text-[11px]">
+                            {sub.runtime_ms ? `${sub.runtime_ms} ms` : ''} •{' '}
+                            {new Date(sub.created_at).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 5: SOCRATIC AI */}
+              {activeTab === 'tutor' && (
+                <CodeSocraticTutor
+                  problemTitle={problemDetail.title}
+                  problemSlug={problemDetail.slug}
+                  code={code}
+                  language={language}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* ── RIGHT PANE: CODE EDITOR & TEST CONSOLE (LEETCODE STACK) ── */}
+          <div className="flex flex-col space-y-3">
+            {/* Editor Container */}
+            <div className="flex-1 min-h-[420px]">
+              <CodeEditor
+                code={code}
+                onChange={(val) => setCode(val)}
+                language={language}
+                onLanguageChange={(lang) => setLanguage(lang)}
+                onRun={handleRun}
+                onSubmit={handleSubmit}
+                running={running}
+                submitting={submitting}
+                height="420px"
+              />
+            </div>
+
+            {/* Test Console Container */}
+            <div>
+              <CodeTestConsole
+                testCases={problemDetail.test_cases || []}
+                runResult={runResult}
+                running={running}
+                onRun={handleRun}
+                onSubmit={handleSubmit}
+                submitting={submitting}
               />
             </div>
           </div>
-
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="rounded-lg border border-[#00b8a3]/40 bg-[#00b8a3]/10 px-2.5 py-0.5 font-semibold text-[#00b8a3]">
-              Easy: {codeStats?.difficulty.easy?.solved ?? 0}/{codeStats?.difficulty.easy?.total ?? 0}
-            </span>
-            <span className="rounded-lg border border-[#ffc01e]/40 bg-[#ffc01e]/10 px-2.5 py-0.5 font-semibold text-[#ffc01e]">
-              Medium: {codeStats?.difficulty.medium?.solved ?? 0}/{codeStats?.difficulty.medium?.total ?? 0}
-            </span>
-            <span className="rounded-lg border border-[#ff375f]/40 bg-[#ff375f]/10 px-2.5 py-0.5 font-semibold text-[#ff375f]">
-              Hard: {codeStats?.difficulty.hard?.solved ?? 0}/{codeStats?.difficulty.hard?.total ?? 0}
-            </span>
-            {codeStats?.totals.avg_stability_days && (
-              <span
-                className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 font-medium text-sky-300"
-                title="Days until recall falls to 90%"
-              >
-                ⏱️ Stability: {Math.round(codeStats.totals.avg_stability_days)}d
-              </span>
-            )}
-          </div>
         </div>
-      </div>
+      )}
 
-      {/* ── VIEW 1: INTERACTIVE TREE DIAGRAM (Hierarchical Problem Trees) ── */}
+      {/* ── 3. VIEW: TREE DIAGRAM HIERARCHY ── */}
       {viewMode === 'tree' && (
-        <div className="space-y-6">
-          {/* Tree Toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink-line bg-[#0d1117] p-3">
-            <div className="flex flex-wrap items-center gap-2">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#282828] bg-[#1a1a1a] p-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={expandAllBranches}
-                className="btn btn-secondary px-3 py-1 text-xs font-semibold"
+                className="btn btn-secondary px-3 py-1 text-xs font-semibold text-[#eff1f6]"
               >
                 📂 Expand All Trees
               </button>
               <button
                 onClick={collapseAllBranches}
-                className="btn btn-secondary px-3 py-1 text-xs font-semibold"
+                className="btn btn-secondary px-3 py-1 text-xs font-semibold text-[#eff1f6]"
               >
                 📁 Collapse All
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
               <select
                 value={difficultyFilter}
                 onChange={(e) => setDifficultyFilter(e.target.value)}
-                className="rounded-lg border border-ink-line bg-[#161b22] px-2.5 py-1 text-xs text-slate-200 focus:outline-none"
+                className="rounded-lg border border-[#333333] bg-[#262626] px-2.5 py-1 text-xs text-[#eff1f6] focus:outline-none"
               >
                 <option value="All">All Difficulties</option>
                 <option value="Easy">🟢 Easy</option>
@@ -446,7 +818,7 @@ export default function CodeLab() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="rounded-lg border border-ink-line bg-[#161b22] px-2.5 py-1 text-xs text-slate-200 focus:outline-none"
+                className="rounded-lg border border-[#333333] bg-[#262626] px-2.5 py-1 text-xs text-[#eff1f6] focus:outline-none"
               >
                 <option value="All">All Statuses</option>
                 <option value="Solved">✅ Solved Only</option>
@@ -455,24 +827,22 @@ export default function CodeLab() {
             </div>
           </div>
 
-          {/* Root Tree Diagram Card */}
-          <div className="rounded-2xl border border-ink-line bg-[#0d1117] p-6 shadow-2xl space-y-6">
-            <div className="flex items-center gap-3 border-b border-ink-line/80 pb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/20 text-xl border border-sky-500/30">
-                🌳
-              </div>
+          <div className="rounded-2xl border border-[#282828] bg-[#1a1a1a] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#282828] pb-3">
               <div>
-                <h2 className="text-base font-bold text-slate-100">
+                <h2 className="text-base font-bold text-[#eff1f6]">
                   Blind 75 Curriculum Tree Hierarchy
                 </h2>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-[#8a8a8a]">
                   18 canonical category branches sorting {problems.length} problem subtrees by conceptual prerequisites.
                 </p>
               </div>
+              <span className="text-xs font-mono font-bold text-[#2cbb5d]">
+                {solvedCount} / {totalProblemsCount} Solved ({solvedPct}%)
+              </span>
             </div>
 
-            {/* Tree Branch Hierarchy */}
-            <div className="space-y-4 font-mono">
+            <div className="space-y-3 font-mono">
               {groupedCategories.map((branch, branchIdx) => {
                 const isLastBranch = branchIdx === groupedCategories.length - 1
                 const isExpanded = expandedBranches.has(branch.category)
@@ -484,41 +854,41 @@ export default function CodeLab() {
                 })
 
                 return (
-                  <div key={branch.category} className="group text-xs">
+                  <div key={branch.category} className="text-xs">
                     {/* Category Branch Node */}
                     <div
                       onClick={() => toggleBranch(branch.category)}
-                      className="flex cursor-pointer items-center justify-between rounded-xl border border-ink-line/70 bg-[#161b22]/70 px-4 py-2.5 hover:border-sky-500/50 hover:bg-[#161b22] transition select-none"
+                      className="flex cursor-pointer items-center justify-between rounded-xl border border-[#282828] bg-[#262626]/70 px-4 py-2 hover:border-[#3a3a3a] hover:bg-[#262626] transition select-none"
                     >
                       <div className="flex items-center gap-2.5 font-sans">
-                        <span className="text-slate-500 font-mono text-sm">
+                        <span className="text-[#8a8a8a] font-mono text-sm">
                           {isLastBranch ? '└──' : '├──'}
                         </span>
                         <span className="text-base">{branch.icon}</span>
-                        <span className="font-bold text-slate-100 text-sm">{branch.category}</span>
-                        <span className="text-xs text-slate-500">
+                        <span className="font-bold text-[#eff1f6] text-sm">{branch.category}</span>
+                        <span className="text-xs text-[#8a8a8a]">
                           ({branch.solved}/{branch.total} solved)
                         </span>
                       </div>
 
                       <div className="flex items-center gap-3 font-sans">
-                        <div className="hidden sm:flex h-2 w-24 overflow-hidden rounded-full bg-ink-line">
+                        <div className="hidden sm:flex h-2 w-24 overflow-hidden rounded-full bg-[#1e1e1e]">
                           <div
-                            className="h-full rounded-full bg-emerald-400 transition-all duration-300"
+                            className="h-full rounded-full bg-[#2cbb5d] transition-all duration-300"
                             style={{ width: `${branch.pct}%` }}
                           />
                         </div>
-                        <span className="text-xs font-semibold text-sky-300">
+                        <span className="text-xs font-semibold text-[#569cd6]">
                           {isExpanded ? '▼ collapse' : '▶ expand'}
                         </span>
                       </div>
                     </div>
 
-                    {/* Subtrees: Actual Problem Nodes */}
+                    {/* Problem Subtree Nodes */}
                     {isExpanded && (
-                      <div className="ml-5 border-l-2 border-slate-700/60 pl-4 pt-2 space-y-1.5 font-sans">
+                      <div className="ml-5 border-l-2 border-[#333333] pl-4 pt-2 space-y-1 font-sans">
                         {branchProblems.length === 0 ? (
-                          <div className="text-[11px] text-slate-500 italic py-1 pl-4">
+                          <div className="text-[11px] text-[#8a8a8a] italic py-1 pl-4">
                             No problems match the current filter in this branch.
                           </div>
                         ) : (
@@ -534,14 +904,14 @@ export default function CodeLab() {
                                   setSelectedSlug(p.slug)
                                   setViewMode('workbench')
                                 }}
-                                className={`flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-xs transition select-none ${
+                                className={`flex cursor-pointer items-center justify-between rounded-lg px-3 py-1.5 text-xs transition select-none ${
                                   isSelected
-                                    ? 'border border-sky-500/60 bg-sky-500/15 text-sky-200'
-                                    : 'border border-ink-line/40 bg-[#090d13]/60 text-slate-300 hover:border-ink-line hover:bg-[#161b22]'
+                                    ? 'border border-[#2cbb5d]/60 bg-[#2cbb5d]/10 text-[#eff1f6]'
+                                    : 'border border-[#282828] bg-[#1e1e1e]/60 text-[#d4d4d4] hover:bg-[#262626]'
                                 }`}
                               >
                                 <div className="flex items-center gap-2.5 truncate pr-2">
-                                  <span className="font-mono text-slate-600 text-xs">
+                                  <span className="font-mono text-[#8a8a8a] text-xs">
                                     {isLastProblem ? '└──' : '├──'}
                                   </span>
                                   <span className="text-xs">
@@ -562,7 +932,7 @@ export default function CodeLab() {
                                   >
                                     {p.difficulty}
                                   </span>
-                                  <button className="btn btn-primary px-2 py-0.5 text-[11px] bg-sky-600 hover:bg-sky-500 text-white font-medium">
+                                  <button className="btn btn-primary px-2 py-0.5 text-[11px] bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 text-white font-medium">
                                     Solve ➔
                                   </button>
                                 </div>
@@ -580,27 +950,26 @@ export default function CodeLab() {
         </div>
       )}
 
-      {/* ── VIEW 2: ROADMAP EXPLORER ── */}
+      {/* ── 4. VIEW: ROADMAP EXPLORER ── */}
       {viewMode === 'roadmap' && (
-        <div className="space-y-6">
-          {/* Search & Filter Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink-line bg-[#0d1117] p-3">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#282828] bg-[#1a1a1a] p-3">
             <div className="flex flex-1 items-center gap-2 min-w-[240px]">
-              <span className="text-slate-500">🔍</span>
+              <span className="text-[#8a8a8a]">🔍</span>
               <input
                 type="text"
-                placeholder="Search Blind 75 problems by title, tag, or number..."
+                placeholder="Search Blind 75 problems..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent text-xs text-slate-100 placeholder-slate-500 focus:outline-none"
+                className="w-full bg-transparent text-xs text-[#eff1f6] placeholder-[#8a8a8a] focus:outline-none"
               />
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="rounded-lg border border-ink-line bg-[#161b22] px-2.5 py-1 text-xs text-slate-200 focus:outline-none"
+                className="rounded-lg border border-[#333333] bg-[#262626] px-2.5 py-1 text-xs text-[#eff1f6] focus:outline-none"
               >
                 <option value="All">All Categories ({BLIND75_CATEGORIES.length})</option>
                 {BLIND75_CATEGORIES.map((c) => (
@@ -613,28 +982,17 @@ export default function CodeLab() {
               <select
                 value={difficultyFilter}
                 onChange={(e) => setDifficultyFilter(e.target.value)}
-                className="rounded-lg border border-ink-line bg-[#161b22] px-2.5 py-1 text-xs text-slate-200 focus:outline-none"
+                className="rounded-lg border border-[#333333] bg-[#262626] px-2.5 py-1 text-xs text-[#eff1f6] focus:outline-none"
               >
                 <option value="All">All Difficulties</option>
                 <option value="Easy">🟢 Easy</option>
                 <option value="Medium">🟡 Medium</option>
                 <option value="Hard">🔴 Hard</option>
               </select>
-
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="rounded-lg border border-ink-line bg-[#161b22] px-2.5 py-1 text-xs text-slate-200 focus:outline-none"
-              >
-                <option value="All">All Statuses</option>
-                <option value="Solved">✅ Solved Only</option>
-                <option value="Todo">⚪ Todo Only</option>
-              </select>
             </div>
           </div>
 
-          {/* Categories Grid */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {BLIND75_CATEGORIES.filter(
               (cat) => categoryFilter === 'All' || cat.name === categoryFilter,
             ).map((cat) => {
@@ -648,79 +1006,55 @@ export default function CodeLab() {
               return (
                 <div
                   key={cat.name}
-                  className="flex flex-col rounded-xl border border-ink-line bg-[#0d1117] p-4 shadow hover:border-ink-line/90 transition"
+                  className="flex flex-col rounded-xl border border-[#282828] bg-[#1a1a1a] p-4 shadow hover:border-[#3a3a3a] transition"
                 >
-                  <div className="flex items-start justify-between gap-2 border-b border-ink-line/60 pb-3">
+                  <div className="flex items-start justify-between gap-2 border-b border-[#282828] pb-2.5">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-lg">{cat.icon}</span>
-                        <h3 className="text-sm font-bold text-slate-100">{cat.name}</h3>
+                        <span>{cat.icon}</span>
+                        <h3 className="text-sm font-bold text-[#eff1f6]">{cat.name}</h3>
                       </div>
-                      <p className="mt-1 text-[11px] text-slate-400">{cat.desc}</p>
+                      <p className="mt-0.5 text-[11px] text-[#8a8a8a]">{cat.desc}</p>
                     </div>
-                    <span
-                      className={`chip text-[11px] font-bold ${
-                        catPct === 100
-                          ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-                          : 'border-sky-500/30 bg-sky-500/10 text-sky-300'
-                      }`}
-                    >
+                    <span className="chip text-[11px] font-bold border-[#00b8a3]/30 bg-[#00b8a3]/10 text-[#00b8a3]">
                       {solvedCat}/{totalCat}
                     </span>
                   </div>
 
-                  {/* Category Progress Bar */}
-                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#161b22]">
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#262626]">
                     <div
-                      className="h-full rounded-full bg-emerald-400 transition-all duration-300"
+                      className="h-full rounded-full bg-[#2cbb5d] transition-all duration-300"
                       style={{ width: `${catPct}%` }}
                     />
                   </div>
 
-                  {/* Problems list */}
-                  <div className="mt-3 flex-1 space-y-1.5 overflow-y-auto max-h-[260px] pr-1">
-                    {catProbs.length === 0 ? (
-                      <p className="text-[11px] text-slate-500 italic py-2">
-                        No problems match the current filter.
-                      </p>
-                    ) : (
-                      catProbs.map((p) => {
-                        const isSelected = selectedSlug === p.slug
-                        const isSolved = p.last_status === 'Accepted'
-                        return (
-                          <div
-                            key={p.slug}
-                            onClick={() => {
-                              setSelectedSlug(p.slug)
-                              setViewMode('workbench')
-                            }}
-                            className={`flex cursor-pointer items-center justify-between rounded-lg p-2 text-xs transition ${
-                              isSelected
-                                ? 'border border-sky-500/40 bg-sky-500/10 text-sky-200'
-                                : 'border border-ink-line/40 bg-[#161b22]/50 text-slate-300 hover:bg-[#161b22] hover:text-slate-100'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 truncate pr-2">
-                              <span className="text-xs">
-                                {isSolved ? '✅' : p.has_submission ? '🟡' : '⚪'}
-                              </span>
-                              <span className="truncate font-medium">{p.title}</span>
-                            </div>
-                            <span
-                              className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                                p.difficulty === 'Easy'
-                                  ? 'text-[#00b8a3] bg-[#00b8a3]/10'
-                                  : p.difficulty === 'Medium'
-                                  ? 'text-[#ffc01e] bg-[#ffc01e]/10'
-                                  : 'text-[#ff375f] bg-[#ff375f]/10'
-                              }`}
-                            >
-                              {p.difficulty}
-                            </span>
-                          </div>
-                        )
-                      })
-                    )}
+                  <div className="mt-2.5 flex-1 space-y-1 overflow-y-auto max-h-[220px] pr-1">
+                    {catProbs.map((p) => (
+                      <div
+                        key={p.slug}
+                        onClick={() => {
+                          setSelectedSlug(p.slug)
+                          setViewMode('workbench')
+                        }}
+                        className="flex cursor-pointer items-center justify-between rounded-lg p-1.5 text-xs border border-[#282828] bg-[#222222]/50 hover:bg-[#262626] transition"
+                      >
+                        <div className="flex items-center gap-1.5 truncate pr-2">
+                          <span>{p.last_status === 'Accepted' ? '✅' : '⚪'}</span>
+                          <span className="truncate font-medium text-[#eff1f6]">{p.title}</span>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                            p.difficulty === 'Easy'
+                              ? 'text-[#00b8a3] bg-[#00b8a3]/10'
+                              : p.difficulty === 'Medium'
+                              ? 'text-[#ffc01e] bg-[#ffc01e]/10'
+                              : 'text-[#ff375f] bg-[#ff375f]/10'
+                          }`}
+                        >
+                          {p.difficulty}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )
@@ -729,10 +1063,9 @@ export default function CodeLab() {
         </div>
       )}
 
-      {/* ── VIEW 3: PROGRESSION & LEARNING METRICS (Mirroring Memorization Cards) ── */}
+      {/* ── 5. VIEW: LEARNING METRICS ── */}
       {viewMode === 'stats' && codeStats && (
-        <div className="space-y-8">
-          {/* Topline Cards (identical to Stats.tsx §7) */}
+        <div className="space-y-6">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <StatCard label="Total Problems" value={codeStats.totals.cards} />
             <StatCard label="In Active Review" value={codeStats.totals.in_review} />
@@ -751,10 +1084,8 @@ export default function CodeLab() {
             />
           </div>
 
-          {/* Velocity Dashboard (§ Velocity dashboard: mastered per active hour) */}
           <VelocityCard velocity={codeStats.velocity} />
 
-          {/* 365-Day Practice Activity Heatmap */}
           <Section
             title="Coding Activity Heatmap"
             description="Submissions logged per day across all Blind 75 algorithmic challenges."
@@ -762,7 +1093,6 @@ export default function CodeLab() {
             <HeatmapGrid data={codeStats.heatmap} />
           </Section>
 
-          {/* Retention Curve & 30-Day Forecast */}
           <div className="grid gap-6 lg:grid-cols-2">
             <Section
               title="Retention Curve"
@@ -774,14 +1104,14 @@ export default function CodeLab() {
                 <div className="space-y-2.5">
                   {Object.entries(codeStats.retention).map(([bucket, rate]) => (
                     <div key={bucket} className="flex items-center gap-3">
-                      <span className="w-16 text-xs text-slate-400 font-mono">{bucket}</span>
-                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-ink-line">
+                      <span className="w-16 text-xs text-[#8a8a8a] font-mono">{bucket}</span>
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#262626]">
                         <div
-                          className="h-full rounded-full bg-emerald-400/80 transition-all duration-300"
+                          className="h-full rounded-full bg-[#2cbb5d] transition-all duration-300"
                           style={{ width: `${rate * 100}%` }}
                         />
                       </div>
-                      <span className="w-12 text-right text-xs tabular-nums text-slate-300 font-bold">
+                      <span className="w-12 text-right text-xs tabular-nums text-[#eff1f6] font-bold">
                         {Math.round(rate * 100)}%
                       </span>
                     </div>
@@ -794,11 +1124,10 @@ export default function CodeLab() {
               title="30-Day Spaced Review Forecast"
               description="Coding cards coming due for retention review over the next month."
             >
-              <ForecastBars data={codeStats.forecast} color="bg-sky-400/70" />
+              <ForecastBars data={codeStats.forecast} color="bg-[#00b8a3]/70" />
             </Section>
           </div>
 
-          {/* Coding Leeches & Repeated Lapses (§3.2 Remediation) */}
           <CodingLeeches
             leeches={codeStats.leeches}
             onSelect={(slug) => {
@@ -806,410 +1135,40 @@ export default function CodeLab() {
               setViewMode('workbench')
             }}
           />
-
-          {/* Category Mastery Matrix */}
-          <Section
-            title="Category Mastery Progression"
-            description="Comprehensive pattern coverage across all 18 Blind 75 topics."
-          >
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {codeStats.categories.map((c) => (
-                <div
-                  key={c.category}
-                  onClick={() => {
-                    setCategoryFilter(c.category)
-                    setViewMode('roadmap')
-                  }}
-                  className="cursor-pointer rounded-xl border border-ink-line/60 bg-[#161b22]/60 p-3 hover:border-sky-500/40 transition"
-                >
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-200">{c.category}</span>
-                    <span className="font-mono text-emerald-400 font-bold">
-                      {c.solved}/{c.total} ({c.percentage}%)
-                    </span>
-                  </div>
-                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-ink-line">
-                    <div
-                      className="h-full rounded-full bg-emerald-400 transition-all duration-300"
-                      style={{ width: `${c.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Section>
-        </div>
-      )}
-
-      {/* ── VIEW 4: WORKBENCH SPLIT-PANE ── */}
-      {viewMode === 'workbench' && (
-        <div className="space-y-4">
-          {/* Top Action & Navigation Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-ink-line pb-4">
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Sequential Prev & Next buttons */}
-              <button
-                disabled={!prevProblem}
-                onClick={() => prevProblem && setSelectedSlug(prevProblem.slug)}
-                className="btn btn-secondary px-2.5 py-1.5 text-xs font-semibold disabled:opacity-30"
-                title={prevProblem ? `Previous: ${prevProblem.title}` : 'No previous problem'}
-              >
-                ◀ Prev
-              </button>
-
-              {/* Categorized Tree-Sorted Dropdown */}
-              <select
-                value={selectedSlug || ''}
-                onChange={(e) => setSelectedSlug(e.target.value)}
-                className="rounded-xl border border-ink-line bg-[#0d1117] px-3.5 py-2 text-sm font-semibold text-slate-100 focus:border-sky-500 focus:outline-none max-w-[360px]"
-              >
-                {groupedCategories.map((group) => (
-                  <optgroup
-                    key={group.category}
-                    label={`${group.icon} ${group.category} (${group.solved}/${group.total})`}
-                    className="bg-[#161b22] text-sky-300 font-bold"
-                  >
-                    {group.problems.map((p) => (
-                      <option
-                        key={p.slug}
-                        value={p.slug}
-                        className="bg-[#0d1117] text-slate-200 font-normal"
-                      >
-                        {p.last_status === 'Accepted' ? '✅' : p.has_submission ? '🟡' : '⚪'}{' '}
-                        {p.difficulty === 'Easy' ? '🟢' : p.difficulty === 'Medium' ? '🟡' : '🔴'}{' '}
-                        {p.title}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-
-              <button
-                disabled={!nextProblem}
-                onClick={() => nextProblem && setSelectedSlug(nextProblem.slug)}
-                className="btn btn-secondary px-2.5 py-1.5 text-xs font-semibold disabled:opacity-30"
-                title={nextProblem ? `Next: ${nextProblem.title}` : 'No next problem'}
-              >
-                Next ▶
-              </button>
-
-              <button
-                onClick={() => setViewMode('tree')}
-                className="btn btn-secondary px-3 py-1.5 text-xs font-semibold text-emerald-300"
-                title="Open full interactive tree hierarchy"
-              >
-                🌳 View Tree
-              </button>
-
-              <button
-                onClick={() => setForgeOpen(true)}
-                className="btn btn-secondary px-3 py-1.5 text-xs font-semibold text-sky-300"
-              >
-                ✨ Forge with AI
-              </button>
-            </div>
-
-            {/* Timer & Export */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 rounded-xl border border-ink-line/80 bg-[#0d1117] px-3 py-1 text-xs font-mono text-slate-300">
-                <span>⏱</span>
-                <span className="font-bold text-amber-300">{formatTimer(timerSec)}</span>
-                <button
-                  onClick={() => setTimerActive((a) => !a)}
-                  className="text-[10px] text-slate-500 hover:text-slate-300"
-                >
-                  {timerActive ? '⏸' : '▶'}
-                </button>
-              </div>
-
-              {decks.length > 0 && problemDetail && (
-                <select
-                  onChange={(e) => {
-                    if (e.target.value) handleExportCard(e.target.value)
-                  }}
-                  defaultValue=""
-                  className="rounded-lg border border-ink-line/80 bg-[#0d1117] px-2.5 py-1 text-xs text-slate-300 focus:outline-none"
-                >
-                  <option value="" disabled>
-                    ➕ Add to Deck…
-                  </option>
-                  {decks.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          </div>
-          {exportMsg && <p className="text-xs text-emerald-400 font-semibold">{exportMsg}</p>}
-
-          {/* Main Split-Pane Workbench */}
-          {problemDetail && (
-            <div className="grid gap-6 lg:grid-cols-2">
-              {/* Left Pane (Description, Editorial, Solutions, Submissions, AI Tutor) */}
-              <div className="flex flex-col rounded-xl border border-ink-line bg-[#0d1117] overflow-hidden shadow-2xl">
-                {/* Tab Bar */}
-                <div className="flex flex-wrap items-center gap-1 border-b border-ink-line/80 bg-[#161b22] px-3 py-2 text-xs">
-                  {(
-                    [
-                      ['description', '📋 Description'],
-                      ['editorial', '💡 Editorial & Learn'],
-                      ['solutions', '✨ Solutions'],
-                      ['submissions', '📊 Submissions'],
-                      ['tutor', '🤖 Socratic AI'],
-                    ] as const
-                  ).map(([tabId, label]) => (
-                    <button
-                      key={tabId}
-                      onClick={() => setActiveTab(tabId)}
-                      className={`rounded-lg px-2.5 py-1 font-medium transition ${
-                        activeTab === tabId
-                          ? 'bg-ink text-sky-300 font-semibold shadow'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Tab Body Content */}
-                <div className="p-5 text-xs text-slate-300 leading-relaxed overflow-y-auto max-h-[640px] space-y-4">
-                  {activeTab === 'description' && (
-                    <div className="space-y-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`chip font-semibold ${
-                            problemDetail.difficulty === 'Easy'
-                              ? 'border-[#00b8a3]/40 text-[#00b8a3] bg-[#00b8a3]/10'
-                              : problemDetail.difficulty === 'Medium'
-                              ? 'border-[#ffc01e]/40 text-[#ffc01e] bg-[#ffc01e]/10'
-                              : 'border-[#ff375f]/40 text-[#ff375f] bg-[#ff375f]/10'
-                          }`}
-                        >
-                          {problemDetail.difficulty}
-                        </span>
-                        <span className="chip border-slate-700 text-slate-300 font-semibold">
-                          {problemDetail.category}
-                        </span>
-                        {problemDetail.tags.map((tag) => (
-                          <span key={tag} className="chip border-ink-line text-slate-500">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-
-                      <h2 className="text-base font-bold text-slate-100">{problemDetail.title}</h2>
-
-                      <div className="prose prose-invert text-xs whitespace-pre-wrap leading-relaxed">
-                        {problemDetail.description}
-                      </div>
-
-                      {/* Examples */}
-                      {problemDetail.examples.map((ex, idx) => (
-                        <div
-                          key={idx}
-                          className="rounded-lg border border-ink-line/60 bg-[#090d13] p-3 text-xs space-y-1.5"
-                        >
-                          <p className="font-semibold text-slate-400 uppercase text-[10px] tracking-wider">
-                            Example {idx + 1}:
-                          </p>
-                          <p className="font-mono text-slate-200">
-                            <strong>Input:</strong> {ex.input}
-                          </p>
-                          <p className="font-mono text-emerald-300">
-                            <strong>Output:</strong> {ex.output}
-                          </p>
-                          {ex.explanation && (
-                            <p className="text-slate-400 text-[11px] whitespace-pre-wrap">
-                              {ex.explanation}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-
-                      {/* Constraints */}
-                      {problemDetail.constraints.length > 0 && (
-                        <div className="rounded-lg border border-ink-line/40 bg-[#090d13] p-3 text-xs space-y-1">
-                          <p className="font-semibold text-slate-400 uppercase text-[10px] tracking-wider">
-                            Constraints:
-                          </p>
-                          <ul className="list-disc list-inside space-y-0.5 font-mono text-[11px] text-slate-400">
-                            {problemDetail.constraints.map((c, i) => (
-                              <li key={i}>{c}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Hints */}
-                      {problemDetail.hints.length > 0 && (
-                        <div className="space-y-2 pt-2">
-                          <p className="font-bold text-slate-400 text-xs uppercase tracking-wider">
-                            Hints
-                          </p>
-                          {problemDetail.hints.map((hint, i) => (
-                            <details
-                              key={i}
-                              className="rounded-lg border border-ink-line/60 bg-[#090d13] p-2.5 text-xs"
-                            >
-                              <summary className="font-medium text-slate-300 cursor-pointer select-none">
-                                Hint {i + 1}
-                              </summary>
-                              <p className="mt-1.5 text-slate-400 text-[11px]">{hint}</p>
-                            </details>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {activeTab === 'editorial' && (
-                    <div className="space-y-3">
-                      <h3 className="text-sm font-bold text-sky-300">
-                        💡 Pattern Intuition & Mathematical Proof
-                      </h3>
-                      {problemDetail.editorial ? (
-                        <div className="prose prose-invert text-xs whitespace-pre-wrap leading-relaxed text-slate-200">
-                          {problemDetail.editorial}
-                        </div>
-                      ) : (
-                        <p className="text-slate-500 italic">No editorial written yet.</p>
-                      )}
-                    </div>
-                  )}
-
-                  {activeTab === 'solutions' && (
-                    <div className="space-y-4">
-                      <h3 className="text-sm font-bold text-emerald-300">
-                        ✨ Canonical Reference Solutions
-                      </h3>
-                      {Object.entries(problemDetail.solutions).map(([lang, solCode]) => (
-                        <div key={lang} className="space-y-1">
-                          <p className="font-bold text-xs uppercase text-slate-400">{lang}</p>
-                          <pre className="rounded-lg border border-ink-line/60 bg-[#090d13] p-3 text-xs text-emerald-300 font-mono overflow-x-auto whitespace-pre">
-                            {solCode}
-                          </pre>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {activeTab === 'submissions' && (
-                    <div className="space-y-3">
-                      <h3 className="text-sm font-bold text-slate-100">📊 Past Submissions</h3>
-                      {submissions.length === 0 ? (
-                        <p className="text-slate-500 italic">No submissions recorded yet.</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {submissions.map((sub) => (
-                            <div
-                              key={sub.id}
-                              className="flex items-center justify-between rounded-lg border border-ink-line/60 bg-[#090d13] p-2.5 text-xs font-mono"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`font-bold ${
-                                    sub.status === 'Accepted' ? 'text-emerald-400' : 'text-rose-400'
-                                  }`}
-                                >
-                                  {sub.status}
-                                </span>
-                                <span className="text-slate-500">
-                                  ({sub.passed_tests}/{sub.total_tests})
-                                </span>
-                              </div>
-                              <div className="text-slate-400 text-[11px]">
-                                {sub.runtime_ms ? `${sub.runtime_ms} ms` : ''} •{' '}
-                                {new Date(sub.created_at).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {activeTab === 'tutor' && (
-                    <CodeSocraticTutor
-                      problemTitle={problemDetail.title}
-                      problemSlug={problemDetail.slug}
-                      code={code}
-                      language={language}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Right Pane (Code Editor & Test Harness Console) */}
-              <div className="flex flex-col rounded-xl border border-[#282828] bg-[#1a1a1a] overflow-hidden shadow-2xl space-y-3">
-                {/* Editor Area */}
-                <div className="flex-1">
-                  <CodeEditor
-                    code={code}
-                    onChange={(val) => setCode(val)}
-                    language={language}
-                    onLanguageChange={(lang) => setLanguage(lang)}
-                    onRun={handleRun}
-                    onSubmit={handleSubmit}
-                    running={running}
-                    submitting={submitting}
-                    height="420px"
-                  />
-                </div>
-
-                {/* Test Console */}
-                <div className="border-t border-ink-line/80 bg-[#090d13] p-4">
-                  <CodeTestConsole
-                    testCases={problemDetail.test_cases || []}
-                    runResult={runResult}
-                    running={running}
-                    onRun={handleRun}
-                    onSubmit={handleSubmit}
-                    submitting={submitting}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
       {/* AI Problem Forge Modal */}
       {forgeOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl border border-ink-line bg-[#0d1117] p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-slate-100">✨ Forge Custom Problem with AI</h3>
-            <p className="text-xs text-slate-400">
-              Generate a brand new canonical challenge or targeted drill using Gemini.
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-[#333333] bg-[#1a1a1a] p-6 shadow-2xl space-y-4">
+            <h3 className="text-base font-bold text-[#eff1f6]">✨ Forge Custom Problem with AI</h3>
+            <p className="text-xs text-[#8a8a8a]">
+              Generate a brand new challenge or targeted drill using Gemini.
             </p>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="font-semibold text-slate-300 block mb-1">Topic or Concept:</label>
+                <label className="font-semibold text-[#eff1f6] block mb-1">Topic or Concept:</label>
                 <input
                   type="text"
                   placeholder="e.g. Invert a 3D matrix, Trie with wildcard, Monotonic queue"
                   value={forgeTopic}
                   onChange={(e) => setForgeTopic(e.target.value)}
-                  className="w-full rounded-xl border border-ink-line bg-[#161b22] px-3 py-2 text-slate-100 focus:outline-none"
+                  className="w-full rounded-xl border border-[#333333] bg-[#262626] px-3 py-2 text-[#eff1f6] focus:outline-none focus:border-[#2cbb5d]"
                 />
               </div>
 
               <div>
-                <label className="font-semibold text-slate-300 block mb-1">Target Difficulty:</label>
+                <label className="font-semibold text-[#eff1f6] block mb-1">Target Difficulty:</label>
                 <select
                   value={forgeDifficulty}
                   onChange={(e) => setForgeDifficulty(e.target.value)}
-                  className="w-full rounded-xl border border-ink-line bg-[#161b22] px-3 py-2 text-slate-100 focus:outline-none"
+                  className="w-full rounded-xl border border-[#333333] bg-[#262626] px-3 py-2 text-[#eff1f6] focus:outline-none"
                 >
-                  <option value="Easy">Easy</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Hard">Hard</option>
+                  <option value="Easy">🟢 Easy</option>
+                  <option value="Medium">🟡 Medium</option>
+                  <option value="Hard">🔴 Hard</option>
                 </select>
               </div>
             </div>
@@ -1218,14 +1177,14 @@ export default function CodeLab() {
               <button
                 onClick={() => setForgeOpen(false)}
                 disabled={forging}
-                className="btn btn-secondary px-3 py-1.5 text-xs"
+                className="btn btn-secondary px-3 py-1.5 text-xs text-[#eff1f6]"
               >
                 Cancel
               </button>
               <button
                 onClick={handleForge}
                 disabled={forging || !forgeTopic.trim()}
-                className="btn btn-primary px-3.5 py-1.5 text-xs bg-sky-600 text-white"
+                className="btn btn-primary px-3.5 py-1.5 text-xs bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 text-white font-bold"
               >
                 {forging ? 'Forging Problem…' : 'Generate Challenge'}
               </button>
@@ -1238,7 +1197,7 @@ export default function CodeLab() {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * Helper Components Matching the Rest of the Codebase (§7 Performance Metrics)
+ * Helper Components Matching LeetCode Dark Theme
  * ──────────────────────────────────────────────────────────────────────────── */
 
 function StatCard({
@@ -1253,11 +1212,11 @@ function StatCard({
   hint?: string
 }) {
   return (
-    <div className="card" title={hint}>
-      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-100">
+    <div className="card bg-[#1a1a1a] border border-[#282828]" title={hint}>
+      <p className="text-xs uppercase tracking-wide text-[#8a8a8a]">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-[#eff1f6]">
         {Math.round(value).toLocaleString()}
-        {suffix && <span className="ml-0.5 text-base text-slate-500">{suffix}</span>}
+        {suffix && <span className="ml-0.5 text-base text-[#8a8a8a]">{suffix}</span>}
       </p>
     </div>
   )
@@ -1274,17 +1233,17 @@ function VelocityCard({ velocity }: { velocity: Record<string, number> }) {
       description="Problems solved and consolidated per active practice hour (§ Velocity dashboard)."
     >
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-ink-line/60 bg-[#161b22]/50 p-3">
-          <p className="text-xs text-slate-400">Velocity Rate</p>
-          <p className="text-xl font-bold text-emerald-400 tabular-nums">{rate} / hr</p>
+        <div className="rounded-xl border border-[#282828] bg-[#1e1e1e] p-3">
+          <p className="text-xs text-[#8a8a8a]">Velocity Rate</p>
+          <p className="text-xl font-bold text-[#2cbb5d] tabular-nums">{rate} / hr</p>
         </div>
-        <div className="rounded-xl border border-ink-line/60 bg-[#161b22]/50 p-3">
-          <p className="text-xs text-slate-400">Mastered Total</p>
-          <p className="text-xl font-bold text-slate-100 tabular-nums">{total} problems</p>
+        <div className="rounded-xl border border-[#282828] bg-[#1e1e1e] p-3">
+          <p className="text-xs text-[#8a8a8a]">Mastered Total</p>
+          <p className="text-xl font-bold text-[#eff1f6] tabular-nums">{total} problems</p>
         </div>
-        <div className="rounded-xl border border-ink-line/60 bg-[#161b22]/50 p-3">
-          <p className="text-xs text-slate-400">Active Practice Time</p>
-          <p className="text-xl font-bold text-sky-400 tabular-nums">{hours} hours</p>
+        <div className="rounded-xl border border-[#282828] bg-[#1e1e1e] p-3">
+          <p className="text-xs text-[#8a8a8a]">Active Practice Time</p>
+          <p className="text-xl font-bold text-[#569cd6] tabular-nums">{hours} hours</p>
         </div>
       </div>
     </Section>
@@ -1302,11 +1261,11 @@ function HeatmapGrid({ data }: { data: Record<string, number> }) {
   }
   const max = Math.max(1, ...days.map((d) => d.count))
   const level = (n: number) => {
-    if (n === 0) return 'bg-ink-line'
+    if (n === 0) return 'bg-[#282828]'
     const r = n / max
-    if (r > 0.66) return 'bg-emerald-400'
-    if (r > 0.33) return 'bg-emerald-500/70'
-    return 'bg-emerald-600/50'
+    if (r > 0.66) return 'bg-[#2cbb5d]'
+    if (r > 0.33) return 'bg-[#2cbb5d]/70'
+    return 'bg-[#2cbb5d]/40'
   }
 
   const weeks: { date: string; count: number }[][] = []
@@ -1368,13 +1327,13 @@ function CodingLeeches({
       ) : (
         <div className="space-y-3">
           {leeches.map((l) => (
-            <div key={l.problem_id} className="rounded-xl border border-ink-line p-4 bg-[#161b22]/50">
+            <div key={l.problem_id} className="rounded-xl border border-[#282828] p-4 bg-[#1e1e1e]">
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-2">
-                  <span className="chip text-rose-300 border-rose-500/30 bg-rose-500/10 font-bold">
+                  <span className="chip text-[#ff375f] border-[#ff375f]/30 bg-[#ff375f]/10 font-bold">
                     {l.lapse_count} failed attempts
                   </span>
-                  <span className="chip text-slate-300 font-semibold">{l.category}</span>
+                  <span className="chip text-[#eff1f6] font-semibold">{l.category}</span>
                   <span
                     className={`chip font-semibold ${
                       l.difficulty === 'Easy'
@@ -1389,22 +1348,22 @@ function CodingLeeches({
                 </div>
                 <button
                   onClick={() => onSelect(l.slug)}
-                  className="btn btn-primary px-3 py-1 text-xs bg-sky-600 hover:bg-sky-500 text-white font-semibold"
+                  className="btn btn-primary px-3 py-1 text-xs bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 text-white font-bold"
                 >
                   🛠️ Practice with Socratic AI
                 </button>
               </div>
 
-              <h4 className="mt-2 text-sm font-bold text-slate-100">{l.title}</h4>
+              <h4 className="mt-2 text-sm font-bold text-[#eff1f6]">{l.title}</h4>
 
               {l.last_error && (
-                <p className="mt-1 text-xs font-mono text-rose-400">
+                <p className="mt-1 text-xs font-mono text-[#ff375f]">
                   Last Failure Status: <strong>{l.last_error}</strong>
                 </p>
               )}
 
-              <div className="mt-2.5 rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
-                <p className="text-xs text-sky-200">{l.suggestion_rationale}</p>
+              <div className="mt-2.5 rounded-lg border border-[#333333] bg-[#222222] p-3">
+                <p className="text-xs text-[#8a8a8a]">{l.suggestion_rationale}</p>
               </div>
             </div>
           ))}
