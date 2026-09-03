@@ -35,16 +35,16 @@ export function CodeTestConsole({
   const currentResult: TestCaseResult | undefined = runResult?.results?.[selectedCaseIdx]
 
   return (
-    <div className="flex flex-col rounded-xl border border-ink-line bg-[#0d1117] text-slate-200 overflow-hidden shadow-2xl">
+    <div className="flex flex-col rounded-xl border border-[#282828] bg-[#1a1a1a] text-[#eff1f6] overflow-hidden shadow-2xl">
       {/* Console Tab Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-line/80 bg-[#161b22] px-4 py-2 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#282828] bg-[#262626] px-4 py-2 text-xs">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveTab('cases')}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1 font-medium transition ${
               activeTab === 'cases'
-                ? 'bg-ink text-sky-300 font-semibold shadow'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#1e1e1e] text-[#eff1f6] font-semibold shadow'
+                : 'text-[#8a8a8a] hover:text-[#eff1f6]'
             }`}
           >
             <span>🧪 Testcase</span>
@@ -54,15 +54,15 @@ export function CodeTestConsole({
             onClick={() => setActiveTab('result')}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1 font-medium transition ${
               activeTab === 'result'
-                ? 'bg-ink text-sky-300 font-semibold shadow'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#1e1e1e] text-[#eff1f6] font-semibold shadow'
+                : 'text-[#8a8a8a] hover:text-[#eff1f6]'
             }`}
           >
             <span>📊 Test Result</span>
             {runResult && (
               <span
                 className={`h-2 w-2 rounded-full ${
-                  runResult.status === 'Accepted' ? 'bg-emerald-400' : 'bg-rose-400 animate-pulse'
+                  runResult.status === 'Accepted' ? 'bg-[#2cbb5d]' : 'bg-[#ff375f] animate-pulse'
                 }`}
               />
             )}
@@ -165,18 +165,18 @@ export function CodeTestConsole({
             {runResult && !running && (
               <div className="space-y-4">
                 {/* Result Header Badge */}
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-line/60 pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#282828] pb-3">
                   <div className="flex items-center gap-2.5">
                     <span
                       className={`font-sans text-sm font-bold px-2.5 py-0.5 rounded-full ${
                         runResult.status === 'Accepted'
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                          : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                          ? 'bg-[#2cbb5d]/15 text-[#2cbb5d] border border-[#2cbb5d]/40'
+                          : 'bg-[#ff375f]/15 text-[#ff375f] border border-[#ff375f]/40'
                       }`}
                     >
                       {runResult.status}
                     </span>
-                    <span className="text-slate-400 text-xs font-sans">
+                    <span className="text-[#8a8a8a] text-xs font-sans">
                       {runResult.passed_count} / {runResult.total_count} test cases passed
                     </span>
                   </div>

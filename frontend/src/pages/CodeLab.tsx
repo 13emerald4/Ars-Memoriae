@@ -390,14 +390,14 @@ export default function CodeLab() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-300">
-              🟢 Easy: {codeStats?.difficulty.easy?.solved ?? 0}/{codeStats?.difficulty.easy?.total ?? 0}
+            <span className="rounded-lg border border-[#00b8a3]/40 bg-[#00b8a3]/10 px-2.5 py-0.5 font-semibold text-[#00b8a3]">
+              Easy: {codeStats?.difficulty.easy?.solved ?? 0}/{codeStats?.difficulty.easy?.total ?? 0}
             </span>
-            <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-medium text-amber-300">
-              🟡 Medium: {codeStats?.difficulty.medium?.solved ?? 0}/{codeStats?.difficulty.medium?.total ?? 0}
+            <span className="rounded-lg border border-[#ffc01e]/40 bg-[#ffc01e]/10 px-2.5 py-0.5 font-semibold text-[#ffc01e]">
+              Medium: {codeStats?.difficulty.medium?.solved ?? 0}/{codeStats?.difficulty.medium?.total ?? 0}
             </span>
-            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 font-medium text-rose-300">
-              🔴 Hard: {codeStats?.difficulty.hard?.solved ?? 0}/{codeStats?.difficulty.hard?.total ?? 0}
+            <span className="rounded-lg border border-[#ff375f]/40 bg-[#ff375f]/10 px-2.5 py-0.5 font-semibold text-[#ff375f]">
+              Hard: {codeStats?.difficulty.hard?.solved ?? 0}/{codeStats?.difficulty.hard?.total ?? 0}
             </span>
             {codeStats?.totals.avg_stability_days && (
               <span
@@ -554,10 +554,10 @@ export default function CodeLab() {
                                   <span
                                     className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
                                       p.difficulty === 'Easy'
-                                        ? 'text-emerald-400 bg-emerald-500/10'
+                                        ? 'text-[#00b8a3] bg-[#00b8a3]/10'
                                         : p.difficulty === 'Medium'
-                                        ? 'text-amber-400 bg-amber-500/10'
-                                        : 'text-rose-400 bg-rose-500/10'
+                                        ? 'text-[#ffc01e] bg-[#ffc01e]/10'
+                                        : 'text-[#ff375f] bg-[#ff375f]/10'
                                     }`}
                                   >
                                     {p.difficulty}
@@ -709,10 +709,10 @@ export default function CodeLab() {
                             <span
                               className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
                                 p.difficulty === 'Easy'
-                                  ? 'text-emerald-400 bg-emerald-500/10'
+                                  ? 'text-[#00b8a3] bg-[#00b8a3]/10'
                                   : p.difficulty === 'Medium'
-                                  ? 'text-amber-400 bg-amber-500/10'
-                                  : 'text-rose-400 bg-rose-500/10'
+                                  ? 'text-[#ffc01e] bg-[#ffc01e]/10'
+                                  : 'text-[#ff375f] bg-[#ff375f]/10'
                               }`}
                             >
                               {p.difficulty}
@@ -980,12 +980,12 @@ export default function CodeLab() {
                     <div className="space-y-4">
                       <div className="flex flex-wrap items-center gap-2">
                         <span
-                          className={`chip ${
+                          className={`chip font-semibold ${
                             problemDetail.difficulty === 'Easy'
-                              ? 'border-emerald-500/40 text-emerald-300'
+                              ? 'border-[#00b8a3]/40 text-[#00b8a3] bg-[#00b8a3]/10'
                               : problemDetail.difficulty === 'Medium'
-                              ? 'border-amber-500/40 text-amber-300'
-                              : 'border-rose-500/40 text-rose-300'
+                              ? 'border-[#ffc01e]/40 text-[#ffc01e] bg-[#ffc01e]/10'
+                              : 'border-[#ff375f]/40 text-[#ff375f] bg-[#ff375f]/10'
                           }`}
                         >
                           {problemDetail.difficulty}
@@ -1146,41 +1146,9 @@ export default function CodeLab() {
               </div>
 
               {/* Right Pane (Code Editor & Test Harness Console) */}
-              <div className="flex flex-col rounded-xl border border-ink-line bg-[#0d1117] overflow-hidden shadow-2xl">
-                {/* Editor Header */}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-line/80 bg-[#161b22] px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-400">Language:</span>
-                    <select
-                      value={language}
-                      onChange={(e) => setLanguage(e.target.value)}
-                      className="rounded-lg border border-ink-line bg-[#090d13] px-2.5 py-1 text-xs text-slate-200 focus:outline-none"
-                    >
-                      <option value="python">Python 3</option>
-                      <option value="typescript">TypeScript</option>
-                    </select>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleRun}
-                      disabled={running || submitting}
-                      className="btn btn-secondary px-3 py-1.5 text-xs font-semibold"
-                    >
-                      {running ? 'Running…' : '▶ Run Code'}
-                    </button>
-                    <button
-                      onClick={handleSubmit}
-                      disabled={running || submitting}
-                      className="btn btn-primary px-3.5 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white"
-                    >
-                      {submitting ? 'Submitting…' : '🚀 Submit'}
-                    </button>
-                  </div>
-                </div>
-
+              <div className="flex flex-col rounded-xl border border-[#282828] bg-[#1a1a1a] overflow-hidden shadow-2xl space-y-3">
                 {/* Editor Area */}
-                <div className="min-h-[380px] flex-1 bg-[#090d13]">
+                <div className="flex-1">
                   <CodeEditor
                     code={code}
                     onChange={(val) => setCode(val)}
@@ -1188,6 +1156,8 @@ export default function CodeLab() {
                     onLanguageChange={(lang) => setLanguage(lang)}
                     onRun={handleRun}
                     onSubmit={handleSubmit}
+                    running={running}
+                    submitting={submitting}
                     height="420px"
                   />
                 </div>
@@ -1406,12 +1376,12 @@ function CodingLeeches({
                   </span>
                   <span className="chip text-slate-300 font-semibold">{l.category}</span>
                   <span
-                    className={`chip ${
+                    className={`chip font-semibold ${
                       l.difficulty === 'Easy'
-                        ? 'text-emerald-400'
+                        ? 'text-[#00b8a3] bg-[#00b8a3]/10 border-[#00b8a3]/40'
                         : l.difficulty === 'Medium'
-                        ? 'text-amber-400'
-                        : 'text-rose-400'
+                        ? 'text-[#ffc01e] bg-[#ffc01e]/10 border-[#ffc01e]/40'
+                        : 'text-[#ff375f] bg-[#ff375f]/10 border-[#ff375f]/40'
                     }`}
                   >
                     {l.difficulty}
