@@ -1264,15 +1264,15 @@ add "quote" (+ optional "locator"/"source_title") to a note to enable Learn & Pr
 // Paste-ready prompt for an external LLM chat — kept in sync with
 // docs/llm-flashcard-json-prompt.md. Requires "quote" on every card so the
 // import creates a citation, which is what Learn & Practice teaches from.
-const LLM_PROMPT = `You are generating flashcards for a spaced-repetition app. The user types a full answer from memory (not multiple choice), so cards must have one clear, checkable answer — not vague or multi-part.
+const LLM_PROMPT = `You are generating flashcards for a spaced-repetition app. The user types a full answer from memory (not multiple choice), so cards must have one clear, checkable answer with essential terminology — not vague or multi-part.
 
 Output ONLY a JSON array, no prose before or after. Each element is one card:
 
 Basic (question/answer):
 {
-  "front": "<question, one fact>",
-  "back": "<the answer>",
-  "quote": "<1-4 sentence excerpt from the source that states this fact>",
+  "front": "<question, one clear fact or concept>",
+  "back": "<the complete answer containing key terms and core concept>",
+  "quote": "<1-4 sentence excerpt from the source that explains this fact>",
   "locator": "<section/heading/page this came from, if known>",
   "source_title": "<title of the source material>",
   "tags": ["<topic>"]
@@ -1292,7 +1292,8 @@ Cloze (fill-in-the-blank, for terms/definitions embedded in a sentence):
 Rules:
 - One card = one atomic fact. Split compound facts into separate cards.
 - "front"/"cloze_text" must be answerable without seeing "back" first.
-- "quote" is REQUIRED on every card. It's what the app teaches from before quizzing (Learn & Practice) — write it as a short, self-contained explanation of the fact, not just the bare answer restated. If you're working from a source document, quote it directly; if you're writing from general knowledge, write 1-4 sentences that would teach a newcomer the concept.
+- "back" should state the core answer clearly with essential terminology. The app automatically evaluates student recall against "back" and highlights any omitted or overlooked concepts.
+- "quote" is REQUIRED on every card. It powers the Pre-Answer Primer ("Review Related Content") and reference reading citations. Write 1-4 self-contained sentences from the source that explain the concept. During review, any concepts the student overlooks are highlighted directly in this quote!
 - "locator" and "source_title" are optional but cheap — include them whenever you know where the fact came from.
 - Keep "front"/"back"/"cloze_text" under ~500 characters; "quote" under ~800 characters.
 - Use {{c1::x}}, {{c2::y}} for multiple deletions in one cloze sentence only when the deletions are genuinely linked; otherwise make separate cards.

@@ -103,6 +103,8 @@ the user is reading. Produce at most {max_cards} cards that test the most
 important, self-contained facts in the passage. Prefer cloze deletions for
 definitions and enumerations, Q&A for causal or conceptual material.
 
+For Q&A cards, formulate "back" with clear, precise terminology and the core conceptual components, so an automated grader can accurately evaluate which key concepts the student recalled versus overlooked.
+
 Passage:
 \"\"\"{passage}\"\"\"
 
@@ -121,6 +123,8 @@ contains the answer, COPIED VERBATIM from the text below. Do not paraphrase,
 summarise, correct, or join separated sentences in the quote — it is checked
 against the passage character by character and silently dropped if it does not
 appear there. If no span of the passage supports a card, do not emit that card.
+
+For Q&A cards, formulate "back" with clear, precise terminology and core conceptual components, so an automated grader can accurately detect recalled versus overlooked points.
 
 Use only what this passage states. Do not add outside knowledge.
 
