@@ -1272,6 +1272,11 @@ Analyze the source material provided below and intelligently determine the best 
 2. If the concept is theoretical, architectural, definitional, or system-level:
    -> Create a CONCEPTUAL flashcard ("card_type": "qa").
 
+Language instruction:
+- Use the language taught in the course material (TypeScript/JavaScript or Python). The IDE workbench sandbox supports TypeScript, JavaScript, and Python natively.
+- For TypeScript: write clean typed function or class Solution signatures (e.g. 'function twoSum(nums: number[], target: number): number[]').
+- For Python: write Python 3 signatures (e.g. 'def twoSum(nums: list[int], target: int) -> list[int]:').
+
 Output ONLY a JSON array containing both types:
 
 --- CODING CARD FORMAT ---
@@ -1281,8 +1286,8 @@ Output ONLY a JSON array containing both types:
   "category": "<e.g. Arrays, Dynamic Programming, Trees, Concurrency, Systems>",
   "difficulty": "Easy" | "Medium" | "Hard",
   "front": "<Problem statement with input/output format, examples, and constraints>",
-  "starter_code": "<Python function signature and boilerplate for the student to write>",
-  "back": "<Optimal Python solution with Time & Space complexity commentary>",
+  "starter_code": "<TypeScript or Python function signature and boilerplate for the student to write>",
+  "back": "<Optimal TypeScript or Python solution with Time & Space complexity commentary>",
   "test_cases": [
     {"input": {"nums": [4,5,6,7,0,1,2], "target": 0}, "expected": 4},
     {"input": {"nums": [4,5,6,7,0,1,2], "target": 3}, "expected": -1}
@@ -1308,14 +1313,14 @@ Rules:
 - Intelligently classify: Use "code" for algorithms/coding logic; use "qa" for definitions/theorems/concepts.
 - "quote" is REQUIRED on every card. It powers the Pre-Answer Primer ("Review Related Content") and reference reading citations.
 - "back" on both types must be precise and comprehensive so the automated LLM grader can highlight any overlooked points.
-- Provide 2-4 realistic "test_cases" on every coding card so it can execute in the Python sandbox.
+- Provide 2-4 realistic "test_cases" on every coding card so it can execute in the sandbox.
 
 Material to process:
 <PASTE YOUR TEXTBOOK CHAPTER / NOTES HERE>`
 
-export const CODING_ONLY_PROMPT = `You are generating LeetCode-style coding problems for an IDE spaced-repetition app. The user writes and executes code in an IDE sandbox.
+export const CODING_ONLY_PROMPT = `You are generating LeetCode-style coding problems for an IDE spaced-repetition app. The user writes and executes code in an IDE sandbox supporting TypeScript, JavaScript, and Python.
 
-Output ONLY a JSON array where each element is an executable coding problem:
+Output ONLY a JSON array where each element is an executable coding problem in the course's target language (TypeScript or Python):
 
 {
   "card_type": "code",
@@ -1323,8 +1328,8 @@ Output ONLY a JSON array where each element is an executable coding problem:
   "category": "<e.g., Arrays & Hashing, Two Pointers, Trees, Dynamic Programming>",
   "difficulty": "Easy" | "Medium" | "Hard",
   "front": "<Problem statement with input/output format, examples, and constraints>",
-  "starter_code": "def solveProblem(...):\n    pass",
-  "back": "<Optimal Python solution with Time & Space complexity commentary>",
+  "starter_code": "<TypeScript function signature (e.g. function solve(...): ReturnType) or Python signature>",
+  "back": "<Optimal solution in TypeScript or Python with Time & Space complexity commentary>",
   "test_cases": [
     {"input": {...}, "expected": ...},
     {"input": {...}, "expected": ...}

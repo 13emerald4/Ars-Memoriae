@@ -63,6 +63,9 @@ export default function Review() {
   const [layoutMode, setLayoutMode] = useState<'split' | 'classic'>(() => {
     return (localStorage.getItem('memorization.reviewLayoutMode') as 'split' | 'classic') || 'split'
   })
+  const [codeLanguage, setCodeLanguage] = useState<string>(() => {
+    return localStorage.getItem('memorization.reviewCodeLanguage') || 'typescript'
+  })
   const [codeRunning, setCodeRunning] = useState(false)
   const [codeRunResult, setCodeRunResult] = useState<RunCodeResponse | null>(null)
 
@@ -189,6 +192,19 @@ export default function Review() {
       setItem(next)
       setSession(summary)
       setAnswer(next?.starter_code || '')
+      if (next?.starter_code) {
+        if (next.starter_code.includes('def ') || next.starter_code.includes('class Solution:')) {
+          setCodeLanguage('python')
+        } else if (
+          next.starter_code.includes('function') ||
+          next.starter_code.includes('interface ') ||
+          next.starter_code.includes(': number') ||
+          next.starter_code.includes('const ') ||
+          next.starter_code.includes('let ')
+        ) {
+          setCodeLanguage('typescript')
+        }
+      }
       setResult(null)
       setRevealed(false)
       setConfidence(null)
@@ -227,6 +243,7 @@ export default function Review() {
       const res = await api.runReviewCode(item.id, {
         code: answer,
         custom_test_cases: customCases,
+        language: codeLanguage,
       })
       setCodeRunResult(res)
     } catch (err) {
@@ -806,7 +823,19 @@ export default function Review() {
               <div className="card p-0 overflow-hidden border border-ink-line">
                 <div className="flex flex-wrap items-center justify-between border-b border-ink-line bg-[#1e1e1e] px-4 py-2 text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-300">🐍 Python 3</span>
+                    <select
+                      value={codeLanguage}
+                      onChange={(e) => {
+                        const nextLang = e.target.value
+                        setCodeLanguage(nextLang)
+                        localStorage.setItem('memorization.reviewCodeLanguage', nextLang)
+                      }}
+                      className="rounded border border-ink-line bg-[#282828] px-2 py-0.5 text-xs font-semibold text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer"
+                    >
+                      <option value="typescript">📘 TypeScript</option>
+                      <option value="javascript">💛 JavaScript</option>
+                      <option value="python">🐍 Python 3</option>
+                    </select>
                     {item.starter_code && (
                       <button
                         type="button"
@@ -848,7 +877,7 @@ export default function Review() {
                 <CodeEditor
                   code={answer}
                   onChange={setAnswer}
-                  language="python"
+                  language={codeLanguage}
                   height="460px"
                   onRun={() => void handleRunReviewCode()}
                   onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
@@ -1019,10 +1048,35 @@ export default function Review() {
                 {isCodeCard ? (
                   <div className="my-2 space-y-4">
                     <div className="rounded-lg border border-ink-line overflow-hidden">
+                      <div className="flex items-center justify-between border-b border-ink-line bg-[#1e1e1e] px-3 py-1.5 text-xs">
+                        <select
+                          value={codeLanguage}
+                          onChange={(e) => {
+                            const nextLang = e.target.value
+                            setCodeLanguage(nextLang)
+                            localStorage.setItem('memorization.reviewCodeLanguage', nextLang)
+                          }}
+                          className="rounded border border-ink-line bg-[#282828] px-2 py-0.5 text-xs font-semibold text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer"
+                        >
+                          <option value="typescript">📘 TypeScript</option>
+                          <option value="javascript">💛 JavaScript</option>
+                          <option value="python">🐍 Python 3</option>
+                        </select>
+                        {item.starter_code && (
+                          <button
+                            type="button"
+                            onClick={() => setAnswer(item.starter_code || '')}
+                            className="text-slate-400 hover:text-slate-200 text-[11px] underline"
+                            title="Reset code editor to original starter template"
+                          >
+                            Reset starter template
+                          </button>
+                        )}
+                      </div>
                       <CodeEditor
                         code={answer}
                         onChange={setAnswer}
-                        language="python"
+                        language={codeLanguage}
                         height="320px"
                         onRun={() => void handleRunReviewCode()}
                         onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}

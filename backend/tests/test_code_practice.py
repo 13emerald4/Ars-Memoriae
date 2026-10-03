@@ -71,6 +71,31 @@ async def test_python_code_runner_timeout_kill():
 
 
 @pytest.mark.asyncio
+async def test_typescript_code_runner():
+    from app.services.code_runner_service import run_code
+
+    code = """
+function twoSum(nums: number[], target: number): number[] {
+    const map = new Map<number, number>();
+    for (let i = 0; i < nums.length; i++) {
+        const diff = target - nums[i];
+        if (map.has(diff)) return [map.get(diff)!, i];
+        map.set(nums[i], i);
+    }
+    return [];
+}
+"""
+    test_cases = [
+        {"input": {"nums": [2, 7, 11, 15], "target": 9}, "expected": [0, 1]},
+        {"input": {"nums": [3, 2, 4], "target": 6}, "expected": [1, 2]},
+    ]
+    res = await run_code(code, test_cases, language="typescript")
+    assert res["status"] == "Accepted"
+    assert res["passed_count"] == 2
+    assert res["total_count"] == 2
+
+
+@pytest.mark.asyncio
 async def test_code_practice_api_endpoints(auth_client):
     # 1. List problems (catalogs seeded automatically)
     resp = await auth_client.get("/api/code/problems")

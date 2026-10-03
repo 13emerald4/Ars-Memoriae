@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import asyncio
 import json
+import os
 import sys
 import time
 from typing import Any
@@ -138,3 +139,112 @@ async def run_python_code(
         }
 
     return data
+
+
+async def run_node_code(
+    code: str,
+    test_cases: list[dict],
+    custom_entrypoint: str | None = None,
+    timeout_sec: float = 4.0,
+) -> dict[str, Any]:
+    """Executes TypeScript / JavaScript code against test cases using isolated Node.js worker."""
+    payload = json.dumps({
+        "code": code,
+        "test_cases": test_cases,
+        "custom_entrypoint": custom_entrypoint,
+    }).encode("utf-8")
+
+    total_start = time.perf_counter()
+    worker_script = os.path.join(os.path.dirname(__file__), "ts_sandbox_worker.mjs")
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "node",
+            worker_script,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+    except Exception as e:
+        return {
+            "status": "Runtime Error",
+            "passed_count": 0,
+            "total_count": len(test_cases),
+            "runtime_ms": 0.0,
+            "error": f"Failed to spawn Node execution worker (is Node.js installed?): {e}",
+            "results": [],
+        }
+
+    try:
+        stdout_bytes, stderr_bytes = await asyncio.wait_for(
+            proc.communicate(input=payload),
+            timeout=timeout_sec,
+        )
+    except TimeoutError:
+        try:
+            proc.kill()
+            await proc.wait()
+        except Exception:
+            pass
+        return {
+            "status": "Time Limit Exceeded",
+            "passed_count": 0,
+            "total_count": len(test_cases),
+            "runtime_ms": round(timeout_sec * 1000.0, 2),
+            "error": f"Time Limit Exceeded (> {timeout_sec}s)",
+            "results": [
+                {
+                    "test_index": idx + 1,
+                    "passed": False,
+                    "input": tc.get("input", {}),
+                    "expected": tc.get("expected"),
+                    "actual": None,
+                    "stdout": "",
+                    "error": f"Time Limit Exceeded (> {timeout_sec}s)",
+                    "runtime_ms": round(timeout_sec * 1000.0, 2),
+                }
+                for idx, tc in enumerate(test_cases)
+            ],
+        }
+
+    try:
+        data = json.loads(stdout_bytes.decode("utf-8"))
+    except Exception:
+        err_msg = (
+            stderr_bytes.decode("utf-8", errors="replace").strip()
+            or "Node execution worker returned invalid output."
+        )
+        return {
+            "status": "Runtime Error",
+            "passed_count": 0,
+            "total_count": len(test_cases),
+            "runtime_ms": round((time.perf_counter() - total_start) * 1000.0, 2),
+            "error": err_msg,
+            "results": [],
+        }
+
+    return data
+
+
+async def run_code(
+    code: str,
+    test_cases: list[dict],
+    language: str = "python",
+    custom_entrypoint: str | None = None,
+    timeout_sec: float = 4.0,
+) -> dict[str, Any]:
+    """Universal sandbox runner supporting Python, TypeScript, and JavaScript."""
+    lang = (language or "python").lower().strip()
+    if lang in ("typescript", "javascript", "ts", "js"):
+        return await run_node_code(
+            code=code,
+            test_cases=test_cases,
+            custom_entrypoint=custom_entrypoint,
+            timeout_sec=timeout_sec,
+        )
+    return await run_python_code(
+        code=code,
+        test_cases=test_cases,
+        custom_entrypoint=custom_entrypoint,
+        timeout_sec=timeout_sec,
+    )

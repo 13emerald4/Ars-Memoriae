@@ -71,6 +71,7 @@ class SubmitAnswerRequest(BaseModel):
 class RunReviewCodeRequest(BaseModel):
     code: str
     custom_test_cases: list[dict] = Field(default_factory=list)
+    language: str = "python"
 
 
 class SubmitAnswerResponse(BaseModel):

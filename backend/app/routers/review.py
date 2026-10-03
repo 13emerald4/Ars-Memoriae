@@ -34,7 +34,7 @@ from app.schemas.review import (
     RunReviewCodeRequest,
 )
 from app.services import leech_service, lesson_service, stuck_service
-from app.services.code_runner_service import run_python_code
+from app.services.code_runner_service import run_code, run_python_code
 from app.services.fsrs_service import GRADE_TO_RATING, FSRSService
 from app.services.grading_service import (
     GRADES,
@@ -477,9 +477,10 @@ async def run_card_code(
     if not test_cases and card.note and card.note.field_values:
         test_cases = card.note.field_values.get("test_cases") or []
 
-    res = await run_python_code(
+    res = await run_code(
         code=body.code,
         test_cases=test_cases,
+        language=body.language,
         timeout_sec=4.0,
     )
     return res
