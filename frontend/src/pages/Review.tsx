@@ -89,6 +89,12 @@ export default function Review() {
   const [lessonLoading, setLessonLoading] = useState(false)
   const [taught, setTaught] = useState(false)
 
+  // Pre-answer Related Content Primer: User option to review related source
+  // content / citations before being asked and committing an answer.
+  const [showPrimer, setShowPrimer] = useState(false)
+  const [primerLesson, setPrimerLesson] = useState<Lesson | null>(null)
+  const [primerLoading, setPrimerLoading] = useState(false)
+
   // Socratic AI Guide: one diagnostic question at a time, never the answer.
   // Stateless on the server — the full history rides along with each turn.
   const [guideOpen, setGuideOpen] = useState(false)
@@ -179,6 +185,9 @@ export default function Review() {
       setConfidence(null)
       setLesson(null)
       setTaught(false)
+      setShowPrimer(false)
+      setPrimerLesson(null)
+      setPrimerLoading(false)
       setGuideOpen(false)
       setGuideHistory([])
       setGuideInput('')
@@ -234,6 +243,25 @@ export default function Review() {
     // Lesson-reading time is not recall time — don't let it pollute the
     // informational latency note.
     shownAt.current = Date.now()
+  }
+
+  async function togglePrimer() {
+    if (showPrimer) {
+      setShowPrimer(false)
+      return
+    }
+    setShowPrimer(true)
+    if (!primerLesson && item && item.kind === 'card') {
+      setPrimerLoading(true)
+      try {
+        const l = await api.lesson(item.id)
+        setPrimerLesson(l)
+      } catch {
+        // Fallback gracefully if lesson generation unavailable
+      } finally {
+        setPrimerLoading(false)
+      }
+    }
   }
 
   const llmEnabled = Boolean(user?.llm_grading_consent && user?.has_api_key)
@@ -473,6 +501,21 @@ export default function Review() {
               <span className="chip">{item.state}</span>
               {item.grading_profile && <span className="chip">{item.grading_profile}</span>}
               <span className="chip">priority {item.priority}</span>
+              {!revealed && (
+                <button
+                  type="button"
+                  onClick={togglePrimer}
+                  className={`chip cursor-pointer transition-colors flex items-center gap-1.5 font-medium ${
+                    showPrimer
+                      ? 'border-sky-500/60 bg-sky-500/20 text-sky-200'
+                      : 'border-ink-line text-slate-300 hover:text-slate-100 hover:border-slate-500'
+                  }`}
+                  title="Review related source passages and primer before answering"
+                >
+                  <span>📖</span>
+                  <span>{showPrimer ? 'Hide Related Content' : 'Review Related Content (Primer)'}</span>
+                </button>
+              )}
             </div>
 
             {/* Reaction Latency & Automaticity Telemetry (§Feature 4) */}
@@ -496,6 +539,20 @@ export default function Review() {
               </span>
             )}
           </div>
+
+          {/* Related Content Drawer / Primer */}
+          {!revealed && showPrimer && (
+            <PrimerDrawer
+              item={item}
+              lesson={primerLesson}
+              loading={primerLoading}
+              onReady={() => {
+                setShowPrimer(false)
+                shownAt.current = Date.now()
+                inputRef.current?.focus()
+              }}
+            />
+          )}
 
           {item.occlusion ? (
             <div className="space-y-3">
@@ -607,31 +664,79 @@ export default function Review() {
             </div>
           )}
 
-          {revealed && (
-            <div className="mt-6 space-y-4">
-              <div className="rounded-lg border border-ink-line bg-ink p-4">
-                <p className="label">Reference answer</p>
-                <RichText
-                  text={result?.reference_answer || item.back || ''}
-                  className="text-slate-200"
-                />
-              </div>
+          {revealed && (() => {
+            const overlookedTerms = result
+              ? [
+                  ...(result.overlooked_phrases ?? []),
+                  ...result.missed_points.flatMap((mp) => {
+                    const quotes = mp.match(/["']([^"']{3,})["']/g)
+                    return quotes ? quotes.map((q) => q.slice(1, -1)) : []
+                  }),
+                ].filter(Boolean)
+              : []
 
-              {result?.latency_note && (
-                <p className="text-xs text-slate-600" title="Informational only — never affects the grade">
-                  ⏱ {result.latency_note}
-                </p>
-              )}
+            const matchedTerms = result
+              ? [
+                  ...result.matched_points.flatMap((mp) => {
+                    const quotes = mp.match(/["']([^"']{3,})["']/g)
+                    return quotes ? quotes.map((q) => q.slice(1, -1)) : []
+                  }),
+                ].filter(Boolean)
+              : []
 
-              <ReferenceReadings references={item.references} />
-
-              {result && !result.degraded_to_manual && <GradeReasoning result={result} />}
-              {result?.degraded_to_manual && result.degraded_reason !== 'consent_not_given' && (
-                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-                  Automatic grading was unavailable ({result.degraded_reason}). Grade it yourself —
-                  your scheduling is unaffected.
+            return (
+              <div className="mt-6 space-y-4">
+                <div className="rounded-lg border border-ink-line bg-ink p-4">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <p className="label mb-0">Reference answer</p>
+                    {(overlookedTerms.length > 0 || matchedTerms.length > 0) && (
+                      <div className="flex items-center gap-3 text-[11px]">
+                        {overlookedTerms.length > 0 && (
+                          <span className="flex items-center gap-1 font-medium text-amber-300">
+                            <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
+                            Overlooked in your answer
+                          </span>
+                        )}
+                        {matchedTerms.length > 0 && (
+                          <span className="flex items-center gap-1 font-medium text-emerald-300">
+                            <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+                            Recalled
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <HighlightedText
+                    text={result?.reference_answer || item.back || ''}
+                    overlookedPhrases={overlookedTerms}
+                    matchedPhrases={matchedTerms}
+                    className="text-slate-200"
+                  />
                 </div>
-              )}
+
+                {result?.latency_note && (
+                  <p className="text-xs text-slate-600" title="Informational only — never affects the grade">
+                    ⏱ {result.latency_note}
+                  </p>
+                )}
+
+                {result && !result.degraded_to_manual && (
+                  <OverlookedAnalysisCard result={result} />
+                )}
+
+                <ReferenceReadings
+                  references={item.references}
+                  overlookedPhrases={overlookedTerms}
+                  matchedPhrases={matchedTerms}
+                />
+
+                {result && !result.degraded_to_manual && <GradeReasoning result={result} />}
+                {result?.degraded_to_manual && result.degraded_reason !== 'consent_not_given' && (
+                  <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                    Automatic grading was unavailable ({result.degraded_reason}). Grade it yourself —
+                    your scheduling is unaffected.
+                  </div>
+                )}
 
               <div>
                 <p className="label">
@@ -663,7 +768,8 @@ export default function Review() {
                 </div>
               </div>
             </div>
-          )}
+          )
+        })()}
         </div>
 
         <ErrorNote error={error} />
@@ -948,7 +1054,15 @@ function LessonGate({
  *  stored, so what shows instead is the real passage — the guarantee being
  *  that anything presented in quotation marks genuinely appears in the source.
  */
-function ReferenceReadings({ references }: { references: CardReference[] }) {
+function ReferenceReadings({
+  references,
+  overlookedPhrases = [],
+  matchedPhrases = [],
+}: {
+  references?: CardReference[]
+  overlookedPhrases?: string[]
+  matchedPhrases?: string[]
+}) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   if (!references || references.length === 0) return null
 
@@ -969,12 +1083,21 @@ function ReferenceReadings({ references }: { references: CardReference[] }) {
 
               {ref.quote && !showingPassage ? (
                 <blockquote className="border-l-2 border-sky-500/40 pl-3 text-sm italic leading-6 text-slate-300">
-                  “{ref.quote}”
+                  “
+                  <HighlightedText
+                    text={ref.quote}
+                    overlookedPhrases={overlookedPhrases}
+                    matchedPhrases={matchedPhrases}
+                    className="inline"
+                  />
+                  ”
                 </blockquote>
               ) : (
                 ref.passage && (
-                  <RichText
+                  <HighlightedText
                     text={ref.passage}
+                    overlookedPhrases={overlookedPhrases}
+                    matchedPhrases={matchedPhrases}
                     className="max-h-64 overflow-y-auto border-l-2 border-ink-line pl-3 text-sm leading-6 text-slate-300"
                   />
                 )
@@ -1043,31 +1166,6 @@ function GradeReasoning({ result }: { result: SubmitAnswerResponse }) {
 
       {result.reasoning && <p className="mt-3 text-sm text-slate-300">{result.reasoning}</p>}
 
-      {(result.matched_points.length > 0 || result.missed_points.length > 0) && (
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {result.matched_points.length > 0 && (
-            <div>
-              <p className="label">Got</p>
-              <ul className="space-y-1 text-sm text-emerald-300/90">
-                {result.matched_points.map((p, i) => (
-                  <li key={i}>✓ {p}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {result.missed_points.length > 0 && (
-            <div>
-              <p className="label">Missed</p>
-              <ul className="space-y-1 text-sm text-amber-300/90">
-                {result.missed_points.map((p, i) => (
-                  <li key={i}>· {p}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-
       {result.needs_confirmation && (
         <p className="mt-3 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
           This grade disagreed with the keyword check, or the model wasn't confident — worth a
@@ -1080,6 +1178,317 @@ function GradeReasoning({ result }: { result: SubmitAnswerResponse }) {
           ⚡ {result.automaticity_note || 'Reaction latency exceeded target automaticity threshold.'}
         </p>
       )}
+    </div>
+  )
+}
+
+/** Pre-Answer Primer: collapsible related content drawer allowing the student
+ *  to optionally review source quotes, citations, or lesson before committing
+ *  an answer to memory.
+ */
+function PrimerDrawer({
+  item,
+  lesson,
+  loading,
+  onReady,
+}: {
+  item: QueueItem
+  lesson: Lesson | null
+  loading: boolean
+  onReady: () => void
+}) {
+  const hasReferences = Boolean(item.references && item.references.length > 0)
+  const hasLessonBody = Boolean(lesson && lesson.available && lesson.body)
+
+  return (
+    <div className="mb-5 rounded-lg border border-sky-500/30 bg-sky-950/20 p-4 transition-all">
+      <div className="mb-3 flex items-center justify-between gap-2 border-b border-sky-500/20 pb-2.5">
+        <div className="flex items-center gap-2 text-xs font-semibold text-sky-300">
+          <span>📖 Related Content &amp; Background Primer</span>
+          <span className="chip border-sky-500/30 text-[10px] text-sky-200">Pre-Answer Review</span>
+        </div>
+        <button
+          type="button"
+          onClick={onReady}
+          className="text-xs text-slate-400 underline hover:text-slate-200"
+        >
+          Dismiss
+        </button>
+      </div>
+
+      {loading ? (
+        <Spinner label="Loading related primer…" />
+      ) : (
+        <div className="space-y-3">
+          {hasLessonBody ? (
+            <div className="space-y-2">
+              <RichText text={lesson!.body} className="text-sm leading-relaxed text-slate-200" />
+              {lesson!.key_points && lesson!.key_points.length > 0 && (
+                <div className="pt-2">
+                  <p className="text-xs font-medium text-sky-300">Core Concepts &amp; Key Points:</p>
+                  <ul className="mt-1 space-y-1 text-xs text-slate-300">
+                    {lesson!.key_points.map((p, i) => (
+                      <li key={i}>• {p}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ) : hasReferences ? (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-sky-300">Source Excerpts &amp; Citations:</p>
+              <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+                {item.references!.map((ref, idx) => (
+                  <div key={idx} className="rounded border border-sky-500/20 bg-ink/60 p-2.5 text-xs text-slate-300">
+                    <div className="mb-1 flex items-center gap-2 font-mono text-[10px] text-sky-300">
+                      {ref.locator && <span>[{ref.locator}]</span>}
+                      {ref.source_title && <span>{ref.source_title}</span>}
+                    </div>
+                    {ref.quote && (
+                      <blockquote className="border-l-2 border-sky-400/50 pl-2 italic text-slate-200">
+                        “{ref.quote}”
+                      </blockquote>
+                    )}
+                    {ref.passage && !ref.quote && (
+                      <div className="whitespace-pre-wrap">{ref.passage}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1 text-xs text-slate-400">
+              <p>
+                <strong className="text-slate-300">Deck Context:</strong> {item.deck_name}
+              </p>
+              <p className="text-slate-500">
+                This card has no external document citations attached. Review the question carefully, recall the key concepts, and prepare your response below.
+              </p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between border-t border-sky-500/20 pt-3">
+            <span className="text-xs text-slate-400">Ready to test your active recall?</span>
+            <button
+              type="button"
+              onClick={onReady}
+              className="btn btn-primary flex items-center gap-1.5 px-3 py-1 text-xs font-semibold"
+            >
+              <span>Ready to Answer</span>
+              <span>➔</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Prominent callout card for overlooked or unconsidered content post-grading. */
+function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
+  const hasMissed = result.missed_points.length > 0
+  const hasOverlookedPhrases = Boolean(result.overlooked_phrases && result.overlooked_phrases.length > 0)
+  const isComplete = !hasMissed && !hasOverlookedPhrases && (result.score === null || result.score >= 90)
+
+  if (isComplete) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3.5 text-xs text-emerald-200">
+        <span className="text-base">🌟</span>
+        <div>
+          <span className="font-semibold">Complete Recall:</span> You captured all key concepts and omitted no essential points!
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {(hasMissed || hasOverlookedPhrases) && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-amber-200">
+            <span>⚠️</span>
+            <span>Overlooked / Not Considered in Your Answer</span>
+          </div>
+          <p className="mt-1 text-xs text-amber-300/80">
+            These critical points or concepts were omitted from your answer and are highlighted in the reference text above:
+          </p>
+          {hasMissed && (
+            <ul className="mt-2.5 space-y-1.5 text-sm text-amber-100">
+              {result.missed_points.map((p, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className="font-bold text-amber-400">•</span>
+                  <span>{p}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {hasOverlookedPhrases && (
+            <div className="mt-3 border-t border-amber-500/20 pt-2.5">
+              <p className="mb-1.5 text-[11px] font-medium text-amber-300/70">
+                Omitted Key Phrases:
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {result.overlooked_phrases!.map((phrase, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center rounded border border-amber-500/30 bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-200"
+                  >
+                    {phrase}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {result.matched_points.length > 0 && (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-200">
+            <span>✓</span>
+            <span>Successfully Recalled</span>
+          </div>
+          <ul className="mt-1.5 space-y-1 text-xs text-emerald-100/90">
+            {result.matched_points.map((p, i) => (
+              <li key={i} className="flex items-start gap-1.5">
+                <span className="text-emerald-400">✓</span>
+                <span>{p}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface TermHighlight {
+  term: string
+  type: 'overlooked' | 'matched'
+}
+
+function highlightParts(text: string, terms: TermHighlight[]) {
+  if (!terms.length || !text) return [{ text, type: null }]
+
+  // Sort terms by length descending so longer phrases match first
+  const sorted = [...terms]
+    .filter((t) => t.term && t.term.trim().length > 1)
+    .sort((a, b) => b.term.length - a.term.length)
+
+  if (sorted.length === 0) return [{ text, type: null }]
+
+  const uniqueTerms: TermHighlight[] = []
+  const seen = new Set<string>()
+  for (const t of sorted) {
+    const key = t.term.trim().toLowerCase()
+    if (!seen.has(key)) {
+      seen.add(key)
+      uniqueTerms.push({ term: t.term.trim(), type: t.type })
+    }
+  }
+
+  const escaped = uniqueTerms
+    .map((t) => t.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|')
+
+  let regex: RegExp
+  try {
+    regex = new RegExp(`(${escaped})`, 'gi')
+  } catch {
+    return [{ text, type: null }]
+  }
+
+  const parts = text.split(regex)
+  const termMap = new Map<string, 'overlooked' | 'matched'>()
+  for (const t of uniqueTerms) {
+    termMap.set(t.term.toLowerCase(), t.type)
+  }
+
+  return parts
+    .map((part) => ({
+      text: part,
+      type: termMap.get(part.toLowerCase()) || null,
+    }))
+    .filter((p) => p.text.length > 0)
+}
+
+/** Highlights text with amber for overlooked terms and emerald for matched terms. */
+function HighlightedText({
+  text,
+  overlookedPhrases = [],
+  matchedPhrases = [],
+  className = '',
+}: {
+  text: string
+  overlookedPhrases?: string[]
+  matchedPhrases?: string[]
+  className?: string
+}) {
+  if (!text) return null
+
+  const terms: TermHighlight[] = [
+    ...overlookedPhrases.map((t) => ({ term: t, type: 'overlooked' as const })),
+    ...matchedPhrases.map((t) => ({ term: t, type: 'matched' as const })),
+  ]
+
+  const mediaParts = text.split(/(!\[\]\([^)]+\)|\[audio\]\([^)]+\))/g)
+
+  return (
+    <div className={`whitespace-pre-wrap break-words ${className}`}>
+      {mediaParts.map((part, i) => {
+        const img = part.match(/^!\[\]\(([^)]+)\)$/)
+        if (img) {
+          const src = img[1].startsWith('/')
+            ? `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'}${img[1]}`
+            : img[1]
+          return (
+            <img
+              key={i}
+              src={src}
+              alt=""
+              className="my-2 max-h-72 rounded-lg border border-ink-line"
+            />
+          )
+        }
+        const audio = part.match(/^\[audio\]\(([^)]+)\)$/)
+        if (audio) {
+          const src = audio[1].startsWith('/')
+            ? `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'}${audio[1]}`
+            : audio[1]
+          return <audio key={i} controls src={src} className="my-2 w-full" />
+        }
+
+        const segments = highlightParts(part, terms)
+        return (
+          <span key={i}>
+            {segments.map((seg, j) => {
+              if (seg.type === 'overlooked') {
+                return (
+                  <mark
+                    key={j}
+                    className="rounded border-b-2 border-amber-400 bg-amber-500/25 px-1 py-0.5 font-semibold text-amber-200 shadow-sm"
+                    title="Overlooked / not considered in your answer"
+                  >
+                    {seg.text}
+                  </mark>
+                )
+              }
+              if (seg.type === 'matched') {
+                return (
+                  <mark
+                    key={j}
+                    className="rounded border-b border-emerald-500/40 bg-emerald-500/20 px-1 py-0.5 text-emerald-200"
+                    title="Successfully recalled in your answer"
+                  >
+                    {seg.text}
+                  </mark>
+                )
+              }
+              return <span key={j}>{seg.text}</span>
+            })}
+          </span>
+        )
+      })}
     </div>
   )
 }

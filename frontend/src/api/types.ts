@@ -148,6 +148,7 @@ export interface SubmitAnswerResponse {
   confidence: number
   matched_points: string[]
   missed_points: string[]
+  overlooked_phrases?: string[]
   reasoning: string
   degraded_to_manual: boolean
   reference_answer: string

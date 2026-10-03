@@ -33,7 +33,7 @@ Use this scale as a guide:
 
 Respond with ONLY a JSON object of this shape, no prose and no code fences:
 {{"score": 0-100, "confidence": 0.0-1.0,
-  "matched_points": ["..."], "missed_points": ["..."], "reasoning": "one or two sentences"}}
+  "matched_points": ["..."], "missed_points": ["..."], "overlooked_phrases": ["exact phrases from reference answer omitted"], "reasoning": "one or two sentences"}}
 """
 
 SHORT_ANSWER_RUBRIC = """Rubric (short answer / vocabulary):

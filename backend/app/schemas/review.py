@@ -67,6 +67,7 @@ class SubmitAnswerResponse(BaseModel):
     confidence: float
     matched_points: list[str] = Field(default_factory=list)
     missed_points: list[str] = Field(default_factory=list)
+    overlooked_phrases: list[str] = Field(default_factory=list)
     reasoning: str
     degraded_to_manual: bool = False  # true when §4.3 fallback triggered
     # §4.3 extras

@@ -50,6 +50,7 @@ SCORE_SCHEMA = {
         "confidence": {"type": "NUMBER"},
         "matched_points": {"type": "ARRAY", "items": {"type": "STRING"}},
         "missed_points": {"type": "ARRAY", "items": {"type": "STRING"}},
+        "overlooked_phrases": {"type": "ARRAY", "items": {"type": "STRING"}},
         "reasoning": {"type": "STRING"},
     },
     "required": ["score", "confidence", "reasoning"],
@@ -535,6 +536,7 @@ def _normalize_result(data: dict) -> dict:
         "confidence": min(max(confidence, 0.0), 1.0),
         "matched_points": [str(x) for x in (data.get("matched_points") or [])][:12],
         "missed_points": [str(x) for x in (data.get("missed_points") or [])][:12],
+        "overlooked_phrases": [str(x) for x in (data.get("overlooked_phrases") or [])][:12],
         "reasoning": str(data.get("reasoning", "")).strip(),
     }
 

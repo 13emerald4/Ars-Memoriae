@@ -257,6 +257,7 @@ def _build_response(
         confidence=result["confidence"],
         matched_points=result.get("matched_points", []),
         missed_points=result.get("missed_points", []),
+        overlooked_phrases=result.get("overlooked_phrases", []),
         reasoning=result.get("reasoning", ""),
         reference_answer=reference,
         needs_confirmation=needs_confirmation,
