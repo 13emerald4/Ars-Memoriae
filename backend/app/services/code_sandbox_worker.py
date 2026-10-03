@@ -75,26 +75,78 @@ def main() -> None:
     test_cases = payload.get("test_cases", [])
     custom_entrypoint = payload.get("custom_entrypoint")
 
+    # Pre-compile the code
+    try:
+        compiled_code = compile(code, "<user_code>", "exec")
+    except SyntaxError as e:
+        sys.stdout.write(
+            json.dumps({
+                "status": "Compile Error",
+                "passed_count": 0,
+                "total_count": len(test_cases) or 1,
+                "runtime_ms": 0.0,
+                "error": f"SyntaxError: {e.msg} on line {e.lineno}",
+                "results": [],
+            })
+        )
+        return
+    except Exception as e:
+        sys.stdout.write(
+            json.dumps({
+                "status": "Compile Error",
+                "passed_count": 0,
+                "total_count": len(test_cases) or 1,
+                "runtime_ms": 0.0,
+                "error": f"Compilation error: {e}",
+                "results": [],
+            })
+        )
+        return
+
+    # If no test cases are provided, execute directly and capture stdout / exceptions
+    if not test_cases:
+        stdout_buf = io.StringIO()
+        tc_start = time.perf_counter()
+        old_stdout = sys.stdout
+        sys.stdout = stdout_buf
+        error_msg = None
+        glob: dict[str, Any] = {}
+        try:
+            exec(compiled_code, glob)
+        except Exception:
+            err = traceback.format_exc()
+            error_msg = err.strip().split("\n")[-1]
+        finally:
+            sys.stdout = old_stdout
+
+        tc_runtime = (time.perf_counter() - tc_start) * 1000.0
+        captured_stdout = stdout_buf.getvalue()
+
+        sys.stdout.write(
+            json.dumps({
+                "status": "Runtime Error" if error_msg else "Accepted",
+                "passed_count": 0 if error_msg else 1,
+                "total_count": 1,
+                "runtime_ms": round(tc_runtime, 2),
+                "error": error_msg,
+                "results": [
+                    {
+                        "test_index": 1,
+                        "passed": not bool(error_msg),
+                        "stdout": captured_stdout,
+                        "error": error_msg,
+                        "runtime_ms": round(tc_runtime, 2),
+                    }
+                ],
+            })
+        )
+        return
+
     entrypoint, is_method = _find_entrypoint(code)
     if custom_entrypoint:
         entrypoint = custom_entrypoint
 
     if not entrypoint:
-        try:
-            ast.parse(code)
-        except SyntaxError as e:
-            sys.stdout.write(
-                json.dumps({
-                    "status": "Compile Error",
-                    "passed_count": 0,
-                    "total_count": len(test_cases),
-                    "runtime_ms": 0.0,
-                    "error": f"SyntaxError: {e.msg} on line {e.lineno}",
-                    "results": [],
-                })
-            )
-            return
-
         sys.stdout.write(
             json.dumps({
                 "status": "Compile Error",
@@ -102,22 +154,6 @@ def main() -> None:
                 "total_count": len(test_cases),
                 "runtime_ms": 0.0,
                 "error": "No callable function or Solution method found.",
-                "results": [],
-            })
-        )
-        return
-
-    # Pre-compile the code
-    try:
-        compiled_code = compile(code, "<user_code>", "exec")
-    except Exception as e:
-        sys.stdout.write(
-            json.dumps({
-                "status": "Compile Error",
-                "passed_count": 0,
-                "total_count": len(test_cases),
-                "runtime_ms": 0.0,
-                "error": f"Compilation error: {e}",
                 "results": [],
             })
         )

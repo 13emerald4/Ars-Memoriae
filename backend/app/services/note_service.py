@@ -11,10 +11,17 @@ from app.models import Card, Note, NoteType, User
 from app.services.rendering import slots_for
 
 
-async def default_note_type(db: AsyncSession, user: User, template_kind: str) -> NoteType:
+async def default_note_type(
+    db: AsyncSession,
+    user: User,
+    template_kind: str,
+    grading_profile: str = "short_answer",
+) -> NoteType:
     nt = await db.scalar(
         select(NoteType).where(
-            NoteType.user_id == user.id, NoteType.template_kind == template_kind
+            NoteType.user_id == user.id,
+            NoteType.template_kind == template_kind,
+            NoteType.grading_profile == grading_profile,
         )
     )
     if nt is None:
@@ -23,10 +30,12 @@ async def default_note_type(db: AsyncSession, user: User, template_kind: str) ->
             if template_kind == "cloze"
             else {"fields": ["Front", "Back"]}
         )
+        name = "Code Exercise" if grading_profile == "math_code" else template_kind.replace("_", " ").title()
         nt = NoteType(
             user_id=user.id,
-            name=template_kind.replace("_", " ").title(),
+            name=name,
             template_kind=template_kind,
+            grading_profile=grading_profile,
             fields=fields,
         )
         db.add(nt)

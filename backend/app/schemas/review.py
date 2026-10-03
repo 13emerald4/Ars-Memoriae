@@ -41,6 +41,15 @@ class QueueItem(BaseModel):
     # Where this card's answer comes from in the uploaded document. Sent with
     # the card so the reveal can show the reading without a round trip.
     references: list[dict] = Field(default_factory=list)
+    # Coding problem metadata for the LeetCode 50/50 Split IDE
+    starter_code: str | None = None
+    test_cases: list[dict] = Field(default_factory=list)
+    time_complexity: str | None = None
+    space_complexity: str | None = None
+    edge_cases: list[str] = Field(default_factory=list)
+    title: str | None = None
+    difficulty: str | None = None
+    category: str | None = None
 
 
 class SessionSummary(BaseModel):
@@ -57,6 +66,11 @@ class SessionSummary(BaseModel):
 class SubmitAnswerRequest(BaseModel):
     typed_answer: str
     latency_ms: int
+
+
+class RunReviewCodeRequest(BaseModel):
+    code: str
+    custom_test_cases: list[dict] = Field(default_factory=list)
 
 
 class SubmitAnswerResponse(BaseModel):

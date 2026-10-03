@@ -52,14 +52,14 @@ export default function App() {
   }
 
   const location = useLocation()
-  const isCodeLab = location.pathname.startsWith('/code')
+  const isWide = location.pathname.startsWith('/code') || location.pathname.startsWith('/review')
 
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-10 border-b border-ink-line bg-ink/90 backdrop-blur">
         <div
           className={
-            isCodeLab
+            isWide
               ? 'mx-auto flex w-full max-w-[1850px] items-center justify-between gap-4 px-4 py-2.5'
               : 'mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3'
           }
@@ -87,8 +87,8 @@ export default function App() {
 
       <main
         className={
-          isCodeLab
-            ? 'mx-auto w-full max-w-[1850px] px-3 py-3'
+          isWide
+            ? 'mx-auto w-full max-w-[1850px] px-4 py-4'
             : 'mx-auto max-w-6xl px-6 py-8'
         }
       >

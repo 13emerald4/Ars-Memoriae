@@ -145,6 +145,8 @@ export const api = {
     post<SocraticResponse>(`/api/review/${cardId}/guide`, { history, message }),
   submitAnswer: (cardId: string, typed_answer: string, latency_ms: number) =>
     post<SubmitAnswerResponse>(`/api/review/${cardId}/answer`, { typed_answer, latency_ms }),
+  runReviewCode: (cardId: string, body: { code: string; custom_test_cases?: any[] }) =>
+    post<RunCodeResponse>(`/api/review/${cardId}/run-code`, body),
   confirmReview: (
     cardId: string,
     final_grade: Grade,

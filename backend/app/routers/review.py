@@ -31,8 +31,10 @@ from app.schemas.review import (
     StuckAlertOut,
     SubmitAnswerRequest,
     SubmitAnswerResponse,
+    RunReviewCodeRequest,
 )
 from app.services import leech_service, lesson_service, stuck_service
+from app.services.code_runner_service import run_python_code
 from app.services.fsrs_service import GRADE_TO_RATING, FSRSService
 from app.services.grading_service import (
     GRADES,
@@ -457,3 +459,27 @@ async def confirm_review(
         ),
         automaticity_exceeded=auto_exceeded,
     )
+
+
+@router.post("/{card_id}/run-code")
+async def run_card_code(
+    card_id: str,
+    body: RunReviewCodeRequest,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Executes Python code against sample or custom testcases in an isolated sandbox for review cards."""
+    cid = parse_uuid(card_id, "card_id")
+    card = await _owned_card(db, user, cid)
+
+    # Use custom test cases if provided, or pull test cases from note field_values
+    test_cases = body.custom_test_cases
+    if not test_cases and card.note and card.note.field_values:
+        test_cases = card.note.field_values.get("test_cases") or []
+
+    res = await run_python_code(
+        code=body.code,
+        test_cases=test_cases,
+        timeout_sec=4.0,
+    )
+    return res

@@ -291,10 +291,19 @@ class AcceptCardsRequest(BaseModel):
 
 
 class JsonImportNote(BaseModel):
-    kind: str = "basic"  # "basic" | "cloze"
+    kind: str = "basic"  # "basic" | "cloze" | "code"
+    card_type: str | None = None
+    title: str | None = Field(default=None, max_length=300)
+    category: str | None = Field(default=None, max_length=100)
+    difficulty: str | None = Field(default=None, max_length=50)
     front: str | None = Field(default=None, max_length=20_000)
     back: str | None = Field(default=None, max_length=20_000)
     cloze_text: str | None = Field(default=None, max_length=20_000)
+    starter_code: str | None = Field(default=None, max_length=10_000)
+    test_cases: list[dict] = Field(default_factory=list)
+    time_complexity: str | None = Field(default=None, max_length=100)
+    space_complexity: str | None = Field(default=None, max_length=100)
+    edge_cases: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list, max_length=50)
     priority: int | None = Field(default=None, ge=0, le=100)
     # Optional Learn & Practice citation (§ Learn & Practice). There is no
@@ -316,9 +325,11 @@ class JsonImportNote(BaseModel):
         if not isinstance(data, dict):
             return data
         data = dict(data)
-        card_type = data.get("card_type")
-        if "kind" not in data and card_type:
-            data["kind"] = "cloze" if str(card_type).strip().lower() == "cloze" else "basic"
+        card_type = str(data.get("card_type") or "").strip().lower()
+        if card_type == "code" or data.get("starter_code") or data.get("test_cases"):
+            data.setdefault("kind", "code")
+        elif "kind" not in data and card_type:
+            data["kind"] = "cloze" if card_type == "cloze" else "basic"
         is_cloze = data.get("kind", "basic") == "cloze"
 
         question = data.get("question")

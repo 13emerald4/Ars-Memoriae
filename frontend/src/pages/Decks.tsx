@@ -1261,10 +1261,85 @@ or paste straight from an LLM export: { "card_type": "qa", "question": "...", "a
 
 add "quote" (+ optional "locator"/"source_title") to a note to enable Learn & Practice on it`
 
-// Paste-ready prompt for an external LLM chat — kept in sync with
-// docs/llm-flashcard-json-prompt.md. Requires "quote" on every card so the
-// import creates a citation, which is what Learn & Practice teaches from.
-const LLM_PROMPT = `You are generating flashcards for a spaced-repetition app. The user types a full answer from memory (not multiple choice), so cards must have one clear, checkable answer with essential terminology — not vague or multi-part.
+// Paste-ready prompts for external LLM chats — kept in sync with
+// docs/llm-flashcard-json-prompt.md.
+
+export const COURSE_TEXTBOOK_PROMPT = `You are an expert Computer Science educator creating high-yield study cards from textbook and course resources.
+Analyze the source material provided below and intelligently determine the best learning method for each topic:
+
+1. If the concept is best mastered by writing code (algorithms, data structure manipulation, functions, recursion, logic):
+   -> Create a CODING problem ("card_type": "code").
+2. If the concept is theoretical, architectural, definitional, or system-level:
+   -> Create a CONCEPTUAL flashcard ("card_type": "qa").
+
+Output ONLY a JSON array containing both types:
+
+--- CODING CARD FORMAT ---
+{
+  "card_type": "code",
+  "title": "<Concise problem title, e.g. 'Binary Search on Rotated Array'>",
+  "category": "<e.g. Arrays, Dynamic Programming, Trees, Concurrency, Systems>",
+  "difficulty": "Easy" | "Medium" | "Hard",
+  "front": "<Problem statement with input/output format, examples, and constraints>",
+  "starter_code": "<Python function signature and boilerplate for the student to write>",
+  "back": "<Optimal Python solution with Time & Space complexity commentary>",
+  "test_cases": [
+    {"input": {"nums": [4,5,6,7,0,1,2], "target": 0}, "expected": 4},
+    {"input": {"nums": [4,5,6,7,0,1,2], "target": 3}, "expected": -1}
+  ],
+  "time_complexity": "O(log n)",
+  "space_complexity": "O(1)",
+  "edge_cases": ["Target not found", "Single element array", "Array rotated at 0"],
+  "quote": "<1-4 sentence textbook excerpt explaining the underlying algorithm or principle>",
+  "locator": "<Chapter/Section/Page>"
+}
+
+--- CONCEPTUAL CARD FORMAT ---
+{
+  "card_type": "qa",
+  "front": "<Clear, checkable conceptual question>",
+  "back": "<Accurate, complete explanation with essential terminology>",
+  "quote": "<Verbatim excerpt from the textbook explaining this principle>",
+  "locator": "<Chapter/Section/Page>",
+  "tags": ["<topic>"]
+}
+
+Rules:
+- Intelligently classify: Use "code" for algorithms/coding logic; use "qa" for definitions/theorems/concepts.
+- "quote" is REQUIRED on every card. It powers the Pre-Answer Primer ("Review Related Content") and reference reading citations.
+- "back" on both types must be precise and comprehensive so the automated LLM grader can highlight any overlooked points.
+- Provide 2-4 realistic "test_cases" on every coding card so it can execute in the Python sandbox.
+
+Material to process:
+<PASTE YOUR TEXTBOOK CHAPTER / NOTES HERE>`
+
+export const CODING_ONLY_PROMPT = `You are generating LeetCode-style coding problems for an IDE spaced-repetition app. The user writes and executes code in an IDE sandbox.
+
+Output ONLY a JSON array where each element is an executable coding problem:
+
+{
+  "card_type": "code",
+  "title": "<Problem title>",
+  "category": "<e.g., Arrays & Hashing, Two Pointers, Trees, Dynamic Programming>",
+  "difficulty": "Easy" | "Medium" | "Hard",
+  "front": "<Problem statement with input/output format, examples, and constraints>",
+  "starter_code": "def solveProblem(...):\n    pass",
+  "back": "<Optimal Python solution with Time & Space complexity commentary>",
+  "test_cases": [
+    {"input": {...}, "expected": ...},
+    {"input": {...}, "expected": ...}
+  ],
+  "time_complexity": "O(n)",
+  "space_complexity": "O(1)",
+  "edge_cases": ["Empty input", "Negative values", "Duplicates"],
+  "quote": "<1-4 sentence excerpt explaining the core algorithmic pattern>",
+  "locator": "<section or chapter>"
+}
+
+Generate coding problems from the material below:
+<PASTE YOUR TOPIC / PROBLEM LIST HERE>`
+
+export const LLM_PROMPT = `You are generating flashcards for a spaced-repetition app. The user types a full answer from memory (not multiple choice), so cards must have one clear, checkable answer with essential terminology — not vague or multi-part.
 
 Output ONLY a JSON array, no prose before or after. Each element is one card:
 
@@ -1452,36 +1527,86 @@ function JsonImportPanel({ onImported }: { onImported: () => void }) {
 function LlmPromptPanel() {
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [promptCategory, setPromptCategory] = useState<'course' | 'code' | 'general'>('course')
+
+  const activePrompt =
+    promptCategory === 'course'
+      ? COURSE_TEXTBOOK_PROMPT
+      : promptCategory === 'code'
+      ? CODING_ONLY_PROMPT
+      : LLM_PROMPT
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(LLM_PROMPT)
+    await navigator.clipboard.writeText(activePrompt)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
   return (
     <Section
-      title="Prompt for LLM Deck Creation"
-      description="Copy this ready-to-use prompt into ChatGPT, Claude, Gemini, or DeepSeek along with your study material to create flashcards formatted for JSON import above."
+      title="Prompts for LLM Deck & Course Creation"
+      description="Copy these prompts into ChatGPT, Claude, Gemini, or DeepSeek along with your textbook or course resources to create flashcards and LeetCode-style coding problems."
       actions={
         <button
           onClick={handleCopy}
           className="btn btn-primary flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold"
-          title="Copy prompt to clipboard"
+          title="Copy selected prompt to clipboard"
         >
           <span>{copied ? '✓' : '📋'}</span>
-          <span>{copied ? 'Prompt Copied!' : 'Quick Copy Prompt'}</span>
+          <span>{copied ? 'Prompt Copied!' : 'Quick Copy Selected Prompt'}</span>
         </button>
       }
     >
       <div className="space-y-3">
+        {/* Category Tabs */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-ink-line/80 pb-2">
+          <button
+            type="button"
+            onClick={() => setPromptCategory('course')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              promptCategory === 'course'
+                ? 'border border-sky-500/50 bg-sky-500/20 text-sky-200 font-semibold'
+                : 'border border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>🎓</span>
+            <span>Textbook &amp; Course (Auto-Classifies Code vs Theory)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPromptCategory('code')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              promptCategory === 'code'
+                ? 'border border-emerald-500/50 bg-emerald-500/20 text-emerald-200 font-semibold'
+                : 'border border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>💻</span>
+            <span>LeetCode Coding Problems Only</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPromptCategory('general')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              promptCategory === 'general'
+                ? 'border border-indigo-500/50 bg-indigo-500/20 text-indigo-200 font-semibold'
+                : 'border border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>🗂️</span>
+            <span>General Flashcards Only</span>
+          </button>
+        </div>
+
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-line/80 bg-ink-soft/40 p-3 text-xs text-slate-300">
           <div className="space-y-1">
             <span className="font-semibold text-slate-200">How to use:</span>
             <ol className="list-decimal list-inside text-slate-400 space-y-0.5">
-              <li>Click <strong>Quick Copy Prompt</strong> above.</li>
+              <li>Click <strong>Quick Copy Selected Prompt</strong> above.</li>
               <li>Paste it into any LLM chat (ChatGPT, Claude, Gemini, DeepSeek, etc.).</li>
-              <li>Attach or paste your notes/reading at the bottom where indicated.</li>
+              <li>Paste your textbook chapter, slides, or course notes at the bottom.</li>
               <li>Paste the generated JSON directly into <strong>Import from JSON</strong> above.</li>
             </ol>
           </div>
@@ -1496,7 +1621,13 @@ function LlmPromptPanel() {
         {expanded && (
           <div className="relative rounded-lg border border-ink-line/80 bg-[#0d1117] p-3 text-xs font-mono text-slate-300">
             <div className="flex justify-between items-center mb-2 pb-2 border-b border-ink-line/40">
-              <span className="text-[11px] text-slate-400 font-sans">Prompt Template:</span>
+              <span className="text-[11px] text-slate-400 font-sans">
+                {promptCategory === 'course'
+                  ? '🎓 Hybrid Textbook Prompt (Auto-Classify Code vs Theory):'
+                  : promptCategory === 'code'
+                  ? '💻 Pure LeetCode Coding Problem Prompt:'
+                  : '🗂️ Standard Flashcard Prompt:'}
+              </span>
               <button
                 onClick={handleCopy}
                 className="btn btn-secondary px-2.5 py-0.5 text-[11px]"
@@ -1505,7 +1636,7 @@ function LlmPromptPanel() {
               </button>
             </div>
             <pre className="whitespace-pre-wrap leading-relaxed select-all max-h-96 overflow-y-auto pr-2">
-              {LLM_PROMPT}
+              {activePrompt}
             </pre>
           </div>
         )}

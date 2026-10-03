@@ -6,6 +6,7 @@ import type {
   Grade,
   Lesson,
   QueueItem,
+  RunCodeResponse,
   SessionSummary,
   SocraticTurn,
   StuckAlert,
@@ -13,6 +14,7 @@ import type {
 } from '../api/types'
 import { GRADES } from '../api/types'
 import { CodeEditor } from '../components/CodeEditor'
+import { CodeTestConsole } from '../components/CodeTestConsole'
 import { OcclusionCard } from '../components/Occlusion'
 import SessionTimer, { formatClock, REVIEW_EVENT } from '../components/SessionTimer'
 import { Empty, ErrorNote, RichText, Spinner } from '../components/ui'
@@ -56,6 +58,13 @@ export default function Review() {
   const [revealed, setRevealed] = useState(false)
   const [lastOutcome, setLastOutcome] = useState<string | null>(null)
   const [confidence, setConfidence] = useState<number | null>(null)
+
+  // 💻 LeetCode-Style Split IDE & Code Execution Workbench
+  const [layoutMode, setLayoutMode] = useState<'split' | 'classic'>(() => {
+    return (localStorage.getItem('memorization.reviewLayoutMode') as 'split' | 'classic') || 'split'
+  })
+  const [codeRunning, setCodeRunning] = useState(false)
+  const [codeRunResult, setCodeRunResult] = useState<RunCodeResponse | null>(null)
 
   // ⚡ Memory Athlete: Blitz Sprint Mode & Automaticity Telemetry (§Feature 4)
   const [blitzActive, setBlitzActive] = useState(false)
@@ -179,7 +188,7 @@ export default function Review() {
       const [next, summary] = await Promise.all([api.nextItem(branch), api.session(branch)])
       setItem(next)
       setSession(summary)
-      setAnswer('')
+      setAnswer(next?.starter_code || '')
       setResult(null)
       setRevealed(false)
       setConfidence(null)
@@ -193,6 +202,8 @@ export default function Review() {
       setGuideInput('')
       setGuideDegraded(null)
       setGuideOnTrack(false)
+      setCodeRunResult(null)
+      setCodeRunning(false)
       shownAt.current = Date.now()
     } catch (err) {
       setError(err)
@@ -200,6 +211,37 @@ export default function Review() {
       setLoading(false)
     }
   }, [branch])
+
+  function toggleLayoutMode() {
+    setLayoutMode((prev) => {
+      const next = prev === 'split' ? 'classic' : 'split'
+      localStorage.setItem('memorization.reviewLayoutMode', next)
+      return next
+    })
+  }
+
+  async function handleRunReviewCode(customCases?: Array<{ input: any; expected: any }>) {
+    if (!item || item.kind !== 'card') return
+    setCodeRunning(true)
+    try {
+      const res = await api.runReviewCode(item.id, {
+        code: answer,
+        custom_test_cases: customCases,
+      })
+      setCodeRunResult(res)
+    } catch (err) {
+      setCodeRunResult({
+        status: 'Runtime Error',
+        passed_count: 0,
+        total_count: item.test_cases?.length || 0,
+        runtime_ms: 0,
+        error: err instanceof Error ? err.message : String(err),
+        results: [],
+      })
+    } finally {
+      setCodeRunning(false)
+    }
+  }
 
   useEffect(() => {
     void load()
@@ -449,6 +491,33 @@ export default function Review() {
       )
     }
 
+    const isCodeCard = Boolean(
+      item &&
+      item.kind === 'card' &&
+      (item.grading_profile === 'math_code' ||
+        Boolean(item.starter_code) ||
+        Boolean(item.test_cases && item.test_cases.length > 0))
+    )
+
+    const overlookedTerms = result
+      ? [
+          ...(result.overlooked_phrases ?? []),
+          ...result.missed_points.flatMap((mp) => {
+            const quotes = mp.match(/["']([^"']{3,})["']/g)
+            return quotes ? quotes.map((q) => q.slice(1, -1)) : []
+          }),
+        ].filter(Boolean)
+      : []
+
+    const matchedTerms = result
+      ? [
+          ...result.matched_points.flatMap((mp) => {
+            const quotes = mp.match(/["']([^"']{3,})["']/g)
+            return quotes ? quotes.map((q) => q.slice(1, -1)) : []
+          }),
+        ].filter(Boolean)
+      : []
+
     return (
       <div className="space-y-6">
         <SessionHeader
@@ -494,197 +563,539 @@ export default function Review() {
           </div>
         )}
 
-        <div className="card">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="chip">{item.deck_name}</span>
-              <span className="chip">{item.state}</span>
-              {item.grading_profile && <span className="chip">{item.grading_profile}</span>}
-              <span className="chip">priority {item.priority}</span>
-              {!revealed && (
-                <button
-                  type="button"
-                  onClick={togglePrimer}
-                  className={`chip cursor-pointer transition-colors flex items-center gap-1.5 font-medium ${
-                    showPrimer
-                      ? 'border-sky-500/60 bg-sky-500/20 text-sky-200'
-                      : 'border-ink-line text-slate-300 hover:text-slate-100 hover:border-slate-500'
-                  }`}
-                  title="Review related source passages and primer before answering"
-                >
-                  <span>📖</span>
-                  <span>{showPrimer ? 'Hide Related Content' : 'Review Related Content (Primer)'}</span>
-                </button>
-              )}
-            </div>
-
-            {/* Reaction Latency & Automaticity Telemetry (§Feature 4) */}
-            {!revealed && liveElapsedMs > 0 && (
-              <span
-                className={`chip font-mono text-[11px] font-medium transition-colors ${
-                  liveElapsedMs < 1500
-                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-                    : liveElapsedMs <= (user?.automaticity_threshold_ms ?? 3000)
-                    ? 'border-sky-500/40 bg-sky-500/10 text-sky-300'
-                    : 'border-rose-500/40 bg-rose-500/10 text-rose-300 animate-pulse'
-                }`}
-                title={`Live retrieval reaction time (Automaticity threshold: ${((user?.automaticity_threshold_ms ?? 3000) / 1000).toFixed(1)}s)`}
-              >
-                ⏱ {(liveElapsedMs / 1000).toFixed(1)}s{' '}
-                {liveElapsedMs < 1500
-                  ? '⚡ Reflex'
-                  : liveElapsedMs <= (user?.automaticity_threshold_ms ?? 3000)
-                  ? 'Fluent'
-                  : 'Latent'}
-              </span>
-            )}
-          </div>
-
-          {/* Related Content Drawer / Primer */}
-          {!revealed && showPrimer && (
-            <PrimerDrawer
-              item={item}
-              lesson={primerLesson}
-              loading={primerLoading}
-              onReady={() => {
-                setShowPrimer(false)
-                shownAt.current = Date.now()
-                inputRef.current?.focus()
-              }}
-            />
-          )}
-
-          {item.occlusion ? (
-            <div className="space-y-3">
-              {item.occlusion.header && (
-                <p className="text-lg leading-relaxed text-slate-100">{item.occlusion.header}</p>
-              )}
-              <OcclusionCard payload={item.occlusion} revealed={revealed} />
-            </div>
-          ) : (
-            <RichText text={item.front ?? ''} className="text-lg leading-relaxed text-slate-100" />
-          )}
-
-          {!revealed && (
-            <div className="mt-6">
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <label className="label mb-0" htmlFor="answer">
-                  {llmEnabled ? 'Type your answer' : 'Type your answer (optional — grading is manual)'}
-                </label>
-                <div className="flex items-center gap-1 text-xs">
-                  <span className="mr-1 text-slate-500">Confidence:</span>
-                  {[
-                    { lvl: 1, label: '1: Guess', color: 'border-rose-500/40 text-rose-300' },
-                    { lvl: 2, label: '2: Unsure', color: 'border-amber-500/40 text-amber-300' },
-                    { lvl: 3, label: '3: Likely', color: 'border-sky-500/40 text-sky-300' },
-                    { lvl: 4, label: '4: Solid', color: 'border-emerald-500/40 text-emerald-300' },
-                  ].map(({ lvl, label, color }) => (
-                    <button
-                      key={lvl}
-                      type="button"
-                      onClick={() => setConfidence(confidence === lvl ? null : lvl)}
-                      className={`rounded border px-2 py-0.5 text-[11px] transition-all ${
-                        confidence === lvl
-                          ? `${color} bg-white/10 font-medium ring-1 ring-inset ring-current`
-                          : 'border-ink-line text-slate-400 hover:text-slate-200'
+        {isCodeCard && layoutMode === 'split' ? (
+          /* ════════════════════════════════════════════════════════════════════
+             LEETCODE-STYLE 50/50 SPLIT IDE WORKBENCH
+             Left: Problem specs, primer, guide, solution, LLM rubric & grades
+             Right: Python editor and interactive sandbox testcase console
+             ════════════════════════════════════════════════════════════════════ */
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
+            {/* Left Column: Problem & Review Pane */}
+            <div className="card space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="chip">{item.deck_name}</span>
+                  {item.difficulty && (
+                    <span
+                      className={`chip font-semibold ${
+                        item.difficulty === 'Easy'
+                          ? 'border-emerald-500/40 text-emerald-300'
+                          : item.difficulty === 'Medium'
+                          ? 'border-amber-500/40 text-amber-300'
+                          : 'border-rose-500/40 text-rose-300'
                       }`}
-                      title={`Metacognitive Judgment of Learning: ${label}`}
                     >
-                      {label}
+                      {item.difficulty}
+                    </span>
+                  )}
+                  {item.category && <span className="chip text-sky-300">{item.category}</span>}
+                  <span className="chip">Code Exercise</span>
+                  {!revealed && (
+                    <button
+                      type="button"
+                      onClick={togglePrimer}
+                      className={`chip cursor-pointer transition-colors flex items-center gap-1.5 font-medium ${
+                        showPrimer
+                          ? 'border-sky-500/60 bg-sky-500/20 text-sky-200'
+                          : 'border-ink-line text-slate-300 hover:text-slate-100 hover:border-slate-500'
+                      }`}
+                      title="Review related source passages and primer before answering"
+                    >
+                      <span>📖</span>
+                      <span>{showPrimer ? 'Hide Primer' : 'Primer'}</span>
                     </button>
-                  ))}
+                  )}
                 </div>
-              </div>
-              {item.grading_profile === 'math_code' ? (
-                <div className="my-2">
-                  <CodeEditor
-                    code={answer}
-                    onChange={setAnswer}
-                    language="python"
-                    height="180px"
-                    onRun={llmEnabled ? grade : reveal}
-                    onSubmit={llmEnabled ? grade : reveal}
-                  />
-                </div>
-              ) : (
-                <textarea
-                  id="answer"
-                  ref={inputRef}
-                  className="input min-h-[7rem] resize-y"
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  placeholder="Recall it from memory, then commit…"
-                />
-              )}
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                {llmEnabled ? (
+
+                <div className="flex items-center gap-2">
                   <button
-                    className="btn btn-primary"
-                    onClick={grade}
-                    disabled={grading || !answer.trim()}
+                    type="button"
+                    onClick={toggleLayoutMode}
+                    className="chip cursor-pointer border-ink-line text-slate-400 hover:text-slate-200 transition-colors"
+                    title="Switch to single card view"
                   >
-                    {grading ? 'Grading…' : 'Submit answer'}
+                    🗂️ Classic Card
                   </button>
-                ) : null}
-                <button className="btn" onClick={reveal} disabled={grading}>
-                  {llmEnabled ? 'Skip grading, just show me' : 'Show answer'}
-                </button>
-                {llmEnabled && !guideOpen && (
-                  <button className="btn" onClick={openGuide}>
-                    💬 Stuck? Ask your Guide
-                  </button>
-                )}
-                <span className="text-xs text-slate-600">⌘/Ctrl + Enter</span>
+
+                  {!revealed && liveElapsedMs > 0 && (
+                    <span
+                      className={`chip font-mono text-[11px] font-medium transition-colors ${
+                        liveElapsedMs < 1500
+                          ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                          : liveElapsedMs <= (user?.automaticity_threshold_ms ?? 3000)
+                          ? 'border-sky-500/40 bg-sky-500/10 text-sky-300'
+                          : 'border-rose-500/40 bg-rose-500/10 text-rose-300 animate-pulse'
+                      }`}
+                      title={`Live reaction time`}
+                    >
+                      ⏱ {(liveElapsedMs / 1000).toFixed(1)}s
+                    </span>
+                  )}
+                </div>
               </div>
-              {!llmEnabled && (
-                <p className="mt-3 text-xs text-slate-600">
-                  LLM grading is off. Turn it on in{' '}
-                  <button className="underline hover:text-slate-400" onClick={() => navigate('/settings')}>
-                    Settings
-                  </button>{' '}
-                  by adding a Google API key and giving consent.
-                </p>
-              )}
-              {guideOpen && (
-                <SocraticGuide
-                  history={guideHistory}
-                  input={guideInput}
-                  onInputChange={setGuideInput}
-                  loading={guideLoading}
-                  degraded={guideDegraded}
-                  onTrack={guideOnTrack}
-                  onSend={() => void askGuide(guideInput)}
-                  onClose={() => setGuideOpen(false)}
-                  onCommit={() => {
-                    setGuideOpen(false)
-                    inputRef.current?.focus()
+
+              {/* Related Content Drawer / Primer */}
+              {!revealed && showPrimer && (
+                <PrimerDrawer
+                  item={item}
+                  lesson={primerLesson}
+                  loading={primerLoading}
+                  onReady={() => {
+                    setShowPrimer(false)
+                    shownAt.current = Date.now()
                   }}
                 />
               )}
+
+              {/* Problem Title & Statement */}
+              <div>
+                {item.title && <h2 className="text-xl font-bold text-slate-100 mb-2">{item.title}</h2>}
+                <RichText text={item.front ?? ''} className="text-base leading-relaxed text-slate-200" />
+              </div>
+
+              {/* Complexity & Constraints Box */}
+              {(item.time_complexity || item.space_complexity || (item.edge_cases && item.edge_cases.length > 0)) && (
+                <div className="rounded-lg border border-ink-line/70 bg-ink-soft/40 p-3 space-y-2 text-xs">
+                  <p className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
+                    Target Complexity &amp; Constraints:
+                  </p>
+                  <div className="flex flex-wrap gap-4 text-slate-300">
+                    {item.time_complexity && (
+                      <span>
+                        <strong>Time:</strong> <code className="text-sky-300 font-mono font-bold">{item.time_complexity}</code>
+                      </span>
+                    )}
+                    {item.space_complexity && (
+                      <span>
+                        <strong>Space:</strong> <code className="text-sky-300 font-mono font-bold">{item.space_complexity}</code>
+                      </span>
+                    )}
+                  </div>
+                  {item.edge_cases && item.edge_cases.length > 0 && (
+                    <div className="pt-1 border-t border-ink-line/50">
+                      <span className="text-slate-400 font-medium">Critical Edge Cases: </span>
+                      <span className="text-amber-200/90 italic">{item.edge_cases.join(', ')}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Pre-reveal action & Socratic guide */}
+              {!revealed && (
+                <div className="space-y-3 pt-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink-line/60 pt-3">
+                    <div className="flex items-center gap-2">
+                      {llmEnabled ? (
+                        <button
+                          className="btn btn-primary"
+                          onClick={grade}
+                          disabled={grading || !answer.trim()}
+                        >
+                          {grading ? 'Evaluating…' : 'Submit for LLM Rubric'}
+                        </button>
+                      ) : null}
+                      <button className="btn" onClick={reveal} disabled={grading}>
+                        {llmEnabled ? 'Show Reference Solution' : 'Show solution'}
+                      </button>
+                    </div>
+                    <span className="text-xs text-slate-500 font-mono">⌘/Ctrl + Enter</span>
+                  </div>
+
+                  {llmEnabled && (
+                    <div>
+                      {!guideOpen ? (
+                        <button className="btn text-xs" onClick={openGuide}>
+                          💬 Stuck? Ask your Socratic Guide
+                        </button>
+                      ) : (
+                        <SocraticGuide
+                          history={guideHistory}
+                          input={guideInput}
+                          onInputChange={setGuideInput}
+                          loading={guideLoading}
+                          degraded={guideDegraded}
+                          onTrack={guideOnTrack}
+                          onSend={() => void askGuide(guideInput)}
+                          onClose={() => setGuideOpen(false)}
+                          onCommit={() => setGuideOpen(false)}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Post-reveal assessment */}
+              {revealed && (
+                <div className="space-y-4 border-t border-ink-line pt-4">
+                  <div className="rounded-lg border border-ink-line bg-ink p-4">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <p className="label mb-0">Reference Solution</p>
+                      {item.time_complexity && (
+                        <span className="text-xs font-mono text-sky-300">{item.time_complexity}</span>
+                      )}
+                    </div>
+                    <HighlightedText
+                      text={result?.reference_answer || item.back || ''}
+                      overlookedPhrases={overlookedTerms}
+                      matchedPhrases={matchedTerms}
+                      className="text-slate-200 font-mono text-xs whitespace-pre-wrap"
+                    />
+                  </div>
+
+                  {result?.latency_note && (
+                    <p className="text-xs text-slate-600" title="Informational only — never affects the grade">
+                      ⏱ {result.latency_note}
+                    </p>
+                  )}
+
+                  {result && !result.degraded_to_manual && (
+                    <OverlookedAnalysisCard result={result} />
+                  )}
+
+                  <ReferenceReadings
+                    references={item.references}
+                    overlookedPhrases={overlookedTerms}
+                    matchedPhrases={matchedTerms}
+                  />
+
+                  {result && !result.degraded_to_manual && <GradeReasoning result={result} />}
+
+                  {result?.degraded_to_manual && result.degraded_reason !== 'consent_not_given' && (
+                    <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                      Automatic grading was unavailable ({result.degraded_reason}). Grade it yourself — your
+                      scheduling is unaffected.
+                    </div>
+                  )}
+
+                  <div>
+                    <p className="label">
+                      {result && !result.degraded_to_manual
+                        ? result.needs_confirmation
+                          ? 'Confirm or correct the grade'
+                          : 'Accept the suggestion, or override'
+                        : 'How well did you recall it?'}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {GRADES.map((g, i) => {
+                        const suggested =
+                          result && !result.degraded_to_manual && result.suggested_grade === g
+                        return (
+                          <button
+                            key={g}
+                            onClick={() => confirm(g)}
+                            className={`btn ${GRADE_STYLE[g]} ${
+                              suggested ? 'ring-1 ring-inset ring-current' : ''
+                            }`}
+                          >
+                            <span className="capitalize">{g}</span>
+                            <span className="text-xs opacity-50">{GRADE_BAND[g]}</span>
+                            <span className="text-xs opacity-50">{i + 1}</span>
+                            {suggested && <span className="text-xs opacity-70">· suggested</span>}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
 
-          {revealed && (() => {
-            const overlookedTerms = result
-              ? [
-                  ...(result.overlooked_phrases ?? []),
-                  ...result.missed_points.flatMap((mp) => {
-                    const quotes = mp.match(/["']([^"']{3,})["']/g)
-                    return quotes ? quotes.map((q) => q.slice(1, -1)) : []
-                  }),
-                ].filter(Boolean)
-              : []
+            {/* Right Column: Code Editor & Test Console */}
+            <div className="space-y-4">
+              <div className="card p-0 overflow-hidden border border-ink-line">
+                <div className="flex flex-wrap items-center justify-between border-b border-ink-line bg-[#1e1e1e] px-4 py-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-300">🐍 Python 3</span>
+                    {item.starter_code && (
+                      <button
+                        type="button"
+                        onClick={() => setAnswer(item.starter_code || '')}
+                        className="text-slate-400 hover:text-slate-200 text-[11px] underline"
+                        title="Reset code editor to original starter template"
+                      >
+                        Reset starter template
+                      </button>
+                    )}
+                  </div>
 
-            const matchedTerms = result
-              ? [
-                  ...result.matched_points.flatMap((mp) => {
-                    const quotes = mp.match(/["']([^"']{3,})["']/g)
-                    return quotes ? quotes.map((q) => q.slice(1, -1)) : []
-                  }),
-                ].filter(Boolean)
-              : []
+                  <div className="flex items-center gap-3 text-xs">
+                    <div className="flex items-center gap-1">
+                      <span className="text-slate-500 text-[11px]">Confidence:</span>
+                      {[
+                        { lvl: 1, label: '1', color: 'text-rose-300' },
+                        { lvl: 2, label: '2', color: 'text-amber-300' },
+                        { lvl: 3, label: '3', color: 'text-sky-300' },
+                        { lvl: 4, label: '4', color: 'text-emerald-300' },
+                      ].map(({ lvl, label, color }) => (
+                        <button
+                          key={lvl}
+                          type="button"
+                          onClick={() => setConfidence(confidence === lvl ? null : lvl)}
+                          className={`rounded px-1.5 py-0.5 text-[11px] transition ${
+                            confidence === lvl
+                              ? `bg-white/10 ${color} font-bold ring-1 ring-inset ring-current`
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
 
-            return (
+                <CodeEditor
+                  code={answer}
+                  onChange={setAnswer}
+                  language="python"
+                  height="460px"
+                  onRun={() => void handleRunReviewCode()}
+                  onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
+                />
+              </div>
+
+              <CodeTestConsole
+                testCases={item.test_cases || []}
+                runResult={codeRunResult}
+                running={codeRunning}
+                onRun={handleRunReviewCode}
+                onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
+                submitting={grading}
+              />
+            </div>
+          </div>
+        ) : (
+          /* ════════════════════════════════════════════════════════════════════
+             CLASSIC CARD VIEW
+             ════════════════════════════════════════════════════════════════════ */
+          <div className="card max-w-4xl mx-auto">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="chip">{item.deck_name}</span>
+                <span className="chip">{item.state}</span>
+                {item.difficulty && (
+                  <span
+                    className={`chip font-semibold ${
+                      item.difficulty === 'Easy'
+                        ? 'border-emerald-500/40 text-emerald-300'
+                        : item.difficulty === 'Medium'
+                        ? 'border-amber-500/40 text-amber-300'
+                        : 'border-rose-500/40 text-rose-300'
+                    }`}
+                  >
+                    {item.difficulty}
+                  </span>
+                )}
+                {item.category && <span className="chip text-sky-300">{item.category}</span>}
+                {item.grading_profile && <span className="chip">{item.grading_profile}</span>}
+                <span className="chip">priority {item.priority}</span>
+                {isCodeCard && (
+                  <button
+                    type="button"
+                    onClick={toggleLayoutMode}
+                    className="chip cursor-pointer border-sky-500/40 text-sky-300 hover:bg-sky-500/10 transition-colors"
+                    title="Switch to LeetCode-style 50/50 Split IDE"
+                  >
+                    💻 Split IDE
+                  </button>
+                )}
+                {!revealed && (
+                  <button
+                    type="button"
+                    onClick={togglePrimer}
+                    className={`chip cursor-pointer transition-colors flex items-center gap-1.5 font-medium ${
+                      showPrimer
+                        ? 'border-sky-500/60 bg-sky-500/20 text-sky-200'
+                        : 'border-ink-line text-slate-300 hover:text-slate-100 hover:border-slate-500'
+                    }`}
+                    title="Review related source passages and primer before answering"
+                  >
+                    <span>📖</span>
+                    <span>{showPrimer ? 'Hide Related Content' : 'Review Related Content (Primer)'}</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Reaction Latency & Automaticity Telemetry (§Feature 4) */}
+              {!revealed && liveElapsedMs > 0 && (
+                <span
+                  className={`chip font-mono text-[11px] font-medium transition-colors ${
+                    liveElapsedMs < 1500
+                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                      : liveElapsedMs <= (user?.automaticity_threshold_ms ?? 3000)
+                      ? 'border-sky-500/40 bg-sky-500/10 text-sky-300'
+                      : 'border-rose-500/40 bg-rose-500/10 text-rose-300 animate-pulse'
+                  }`}
+                  title={`Live retrieval reaction time (Automaticity threshold: ${((user?.automaticity_threshold_ms ?? 3000) / 1000).toFixed(1)}s)`}
+                >
+                  ⏱ {(liveElapsedMs / 1000).toFixed(1)}s{' '}
+                  {liveElapsedMs < 1500
+                    ? '⚡ Reflex'
+                    : liveElapsedMs <= (user?.automaticity_threshold_ms ?? 3000)
+                    ? 'Fluent'
+                    : 'Latent'}
+                </span>
+              )}
+            </div>
+
+            {/* Related Content Drawer / Primer */}
+            {!revealed && showPrimer && (
+              <PrimerDrawer
+                item={item}
+                lesson={primerLesson}
+                loading={primerLoading}
+                onReady={() => {
+                  setShowPrimer(false)
+                  shownAt.current = Date.now()
+                  inputRef.current?.focus()
+                }}
+              />
+            )}
+
+            {item.title && <h2 className="text-xl font-bold text-slate-100 mb-2">{item.title}</h2>}
+
+            {item.occlusion ? (
+              <div className="space-y-3">
+                {item.occlusion.header && (
+                  <p className="text-lg leading-relaxed text-slate-100">{item.occlusion.header}</p>
+                )}
+                <OcclusionCard payload={item.occlusion} revealed={revealed} />
+              </div>
+            ) : (
+              <RichText text={item.front ?? ''} className="text-lg leading-relaxed text-slate-100" />
+            )}
+
+            {/* Complexity hints if code card in classic view */}
+            {isCodeCard && (item.time_complexity || item.space_complexity || (item.edge_cases && item.edge_cases.length > 0)) && (
+              <div className="mt-3 rounded-lg border border-ink-line/70 bg-ink-soft/40 p-3 space-y-1.5 text-xs">
+                <div className="flex flex-wrap gap-4 text-slate-300">
+                  {item.time_complexity && (
+                    <span><strong>Target Time:</strong> <code className="text-sky-300 font-mono">{item.time_complexity}</code></span>
+                  )}
+                  {item.space_complexity && (
+                    <span><strong>Target Space:</strong> <code className="text-sky-300 font-mono">{item.space_complexity}</code></span>
+                  )}
+                </div>
+                {item.edge_cases && item.edge_cases.length > 0 && (
+                  <div>
+                    <span className="text-slate-400">Edge Cases: </span>
+                    <span className="text-amber-200/90 italic">{item.edge_cases.join(', ')}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!revealed && (
+              <div className="mt-6">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <label className="label mb-0" htmlFor="answer">
+                    {llmEnabled ? 'Type your answer' : 'Type your answer (optional — grading is manual)'}
+                  </label>
+                  <div className="flex items-center gap-1 text-xs">
+                    <span className="mr-1 text-slate-500">Confidence:</span>
+                    {[
+                      { lvl: 1, label: '1: Guess', color: 'border-rose-500/40 text-rose-300' },
+                      { lvl: 2, label: '2: Unsure', color: 'border-amber-500/40 text-amber-300' },
+                      { lvl: 3, label: '3: Likely', color: 'border-sky-500/40 text-sky-300' },
+                      { lvl: 4, label: '4: Solid', color: 'border-emerald-500/40 text-emerald-300' },
+                    ].map(({ lvl, label, color }) => (
+                      <button
+                        key={lvl}
+                        type="button"
+                        onClick={() => setConfidence(confidence === lvl ? null : lvl)}
+                        className={`rounded border px-2 py-0.5 text-[11px] transition-all ${
+                          confidence === lvl
+                            ? `${color} bg-white/10 font-medium ring-1 ring-inset ring-current`
+                            : 'border-ink-line text-slate-400 hover:text-slate-200'
+                        }`}
+                        title={`Metacognitive Judgment of Learning: ${label}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {isCodeCard ? (
+                  <div className="my-2 space-y-4">
+                    <div className="rounded-lg border border-ink-line overflow-hidden">
+                      <CodeEditor
+                        code={answer}
+                        onChange={setAnswer}
+                        language="python"
+                        height="320px"
+                        onRun={() => void handleRunReviewCode()}
+                        onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
+                      />
+                    </div>
+                    <CodeTestConsole
+                      testCases={item.test_cases || []}
+                      runResult={codeRunResult}
+                      running={codeRunning}
+                      onRun={handleRunReviewCode}
+                      onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
+                      submitting={grading}
+                    />
+                  </div>
+                ) : (
+                  <textarea
+                    id="answer"
+                    ref={inputRef}
+                    className="input min-h-[7rem] resize-y"
+                    value={answer}
+                    onChange={(e) => setAnswer(e.target.value)}
+                    placeholder="Recall it from memory, then commit…"
+                  />
+                )}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {llmEnabled ? (
+                    <button
+                      className="btn btn-primary"
+                      onClick={grade}
+                      disabled={grading || !answer.trim()}
+                    >
+                      {grading ? 'Grading…' : 'Submit answer'}
+                    </button>
+                  ) : null}
+                  <button className="btn" onClick={reveal} disabled={grading}>
+                    {llmEnabled ? 'Skip grading, just show me' : 'Show answer'}
+                  </button>
+                  {llmEnabled && !guideOpen && (
+                    <button className="btn" onClick={openGuide}>
+                      💬 Stuck? Ask your Guide
+                    </button>
+                  )}
+                  <span className="text-xs text-slate-600">⌘/Ctrl + Enter</span>
+                </div>
+                {!llmEnabled && (
+                  <p className="mt-3 text-xs text-slate-600">
+                    LLM grading is off. Turn it on in{' '}
+                    <button className="underline hover:text-slate-400" onClick={() => navigate('/settings')}>
+                      Settings
+                    </button>{' '}
+                    by adding a Google API key and giving consent.
+                  </p>
+                )}
+                {guideOpen && (
+                  <SocraticGuide
+                    history={guideHistory}
+                    input={guideInput}
+                    onInputChange={setGuideInput}
+                    loading={guideLoading}
+                    degraded={guideDegraded}
+                    onTrack={guideOnTrack}
+                    onSend={() => void askGuide(guideInput)}
+                    onClose={() => setGuideOpen(false)}
+                    onCommit={() => {
+                      setGuideOpen(false)
+                      inputRef.current?.focus()
+                    }}
+                  />
+                )}
+              </div>
+            )}
+
+            {revealed && (
               <div className="mt-6 space-y-4">
                 <div className="rounded-lg border border-ink-line bg-ink p-4">
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -738,39 +1149,39 @@ export default function Review() {
                   </div>
                 )}
 
-              <div>
-                <p className="label">
-                  {result && !result.degraded_to_manual
-                    ? result.needs_confirmation
-                      ? 'Confirm or correct the grade'
-                      : 'Accept the suggestion, or override'
-                    : 'How well did you recall it?'}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {GRADES.map((g, i) => {
-                    const suggested =
-                      result && !result.degraded_to_manual && result.suggested_grade === g
-                    return (
-                      <button
-                        key={g}
-                        onClick={() => confirm(g)}
-                        className={`btn ${GRADE_STYLE[g]} ${
-                          suggested ? 'ring-1 ring-inset ring-current' : ''
-                        }`}
-                      >
-                        <span className="capitalize">{g}</span>
-                        <span className="text-xs opacity-50">{GRADE_BAND[g]}</span>
-                        <span className="text-xs opacity-50">{i + 1}</span>
-                        {suggested && <span className="text-xs opacity-70">· suggested</span>}
-                      </button>
-                    )
-                  })}
+                <div>
+                  <p className="label">
+                    {result && !result.degraded_to_manual
+                      ? result.needs_confirmation
+                        ? 'Confirm or correct the grade'
+                        : 'Accept the suggestion, or override'
+                      : 'How well did you recall it?'}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {GRADES.map((g, i) => {
+                      const suggested =
+                        result && !result.degraded_to_manual && result.suggested_grade === g
+                      return (
+                        <button
+                          key={g}
+                          onClick={() => confirm(g)}
+                          className={`btn ${GRADE_STYLE[g]} ${
+                            suggested ? 'ring-1 ring-inset ring-current' : ''
+                          }`}
+                        >
+                          <span className="capitalize">{g}</span>
+                          <span className="text-xs opacity-50">{GRADE_BAND[g]}</span>
+                          <span className="text-xs opacity-50">{i + 1}</span>
+                          {suggested && <span className="text-xs opacity-70">· suggested</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
-          )
-        })()}
-        </div>
+            )}
+          </div>
+        )}
 
         <ErrorNote error={error} />
       </div>

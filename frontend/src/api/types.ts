@@ -90,6 +90,14 @@ export interface QueueItem {
   note_id: string | null
   occlusion: OcclusionPayload | null
   references: CardReference[]
+  starter_code?: string | null
+  test_cases?: Array<{ input: any; expected: any }>
+  time_complexity?: string | null
+  space_complexity?: string | null
+  edge_cases?: string[]
+  title?: string | null
+  difficulty?: string | null
+  category?: string | null
 }
 
 export interface CitedCard {

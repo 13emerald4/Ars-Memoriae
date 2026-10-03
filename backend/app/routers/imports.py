@@ -137,6 +137,7 @@ async def import_json(
 
     for i, item in enumerate(notes):
         is_cloze = item.kind == "cloze"
+        is_code = item.kind == "code" or getattr(item, "card_type", None) == "code" or bool(item.starter_code)
         if is_cloze:
             if not (item.cloze_text or "").strip():
                 warnings.append(f"note {i}: kind is \"cloze\" but cloze_text is empty — skipped")
@@ -147,13 +148,41 @@ async def import_json(
                 warnings.append(f"note {i}: front and back are both required — skipped")
                 continue
             field_values = {"Front": item.front, "Back": item.back}
+            if is_code:
+                if item.starter_code:
+                    field_values["starter_code"] = item.starter_code
+                if item.test_cases:
+                    field_values["test_cases"] = item.test_cases
+                if item.time_complexity:
+                    field_values["time_complexity"] = item.time_complexity
+                if item.space_complexity:
+                    field_values["space_complexity"] = item.space_complexity
+                if item.edge_cases:
+                    field_values["edge_cases"] = item.edge_cases
+                if item.title:
+                    field_values["title"] = item.title
+                if item.difficulty:
+                    field_values["difficulty"] = item.difficulty
+                if item.category:
+                    field_values["category"] = item.category
 
-        nt = await default_note_type(db, user, "cloze" if is_cloze else "basic")
+        profile = "math_code" if is_code else "short_answer"
+        nt = await default_note_type(db, user, "cloze" if is_cloze else "basic", grading_profile=profile)
         note = Note(user_id=user.id, note_type_id=nt.id, field_values=field_values)
         db.add(note)
         await db.flush()
+
+        tags = list(item.tags)
+        if is_code:
+            if "code" not in tags:
+                tags.append("code")
+            if item.difficulty and item.difficulty not in tags:
+                tags.append(item.difficulty)
+            if item.category and item.category not in tags:
+                tags.append(item.category)
+
         cards = await sync_cards(
-            db, note, nt, deck_row.id, tags=item.tags, priority=item.priority, origin="manual"
+            db, note, nt, deck_row.id, tags=tags, priority=item.priority, origin="manual"
         )
         notes_created += 1
         cards_created += len(cards)

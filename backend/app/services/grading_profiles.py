@@ -59,14 +59,14 @@ CONCEPTUAL_RUBRIC = """Rubric (conceptual / long-form):
 """
 
 MATH_CODE_RUBRIC = """Rubric (math / code):
-- Treat the reference answer as ONE worked solution, not a string to match.
-- Check two things separately: (a) is the final result correct, (b) is the
-  method valid. A correct result reached by an invalid method scores 40-69.
-- Accept different-but-equivalent notation, variable names, algebraic forms,
-  and any algorithm with the same complexity and output.
-- Do not penalize omitted intermediate steps if the result is right.
-- If you cannot verify equivalence with confidence, say so in reasoning and
-  lower your confidence value rather than guessing a score.
+- Treat the reference answer as ONE worked solution or algorithmic implementation, not a strict string match.
+- Check two things separately: (a) is the logic/code correct, (b) is the method and complexity optimal. A correct brute-force solution where an optimal algorithm exists scores 50-70.
+- Accept different-but-equivalent variable names, helper data structures, language idioms, and alternative algorithms with comparable or better asymptotic complexity.
+- Specific algorithmic evaluation:
+  * Time & Space Complexity: Verify whether the user's implementation matches optimal complexity (e.g. O(n) vs O(n^2)). Note any complexity shortfalls in missed_points.
+  * Overlooked Edge Cases: Check boundary conditions (empty input, single element, negative numbers, duplicates, large bounds). State any unhandled edge cases in missed_points and overlooked_phrases.
+  * Omitted Concepts: List missing helper logic, base cases, or invariant checks in overlooked_phrases.
+- Partial credit: Award matched_points for correct core data structures, state transitions, loop invariants, and base conditions.
 """
 
 PROFILES: dict[str, str] = {

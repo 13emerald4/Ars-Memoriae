@@ -75,6 +75,14 @@ class ComposedItem:
     note_id: str | None = None
     occlusion: dict | None = None
     references: list[dict] = field(default_factory=list)
+    starter_code: str | None = None
+    test_cases: list[dict] = field(default_factory=list)
+    time_complexity: str | None = None
+    space_complexity: str | None = None
+    edge_cases: list[str] = field(default_factory=list)
+    title: str | None = None
+    difficulty: str | None = None
+    category: str | None = None
 
 
 @dataclass
@@ -372,6 +380,7 @@ def _card_item(card: Card, effective: float, seconds: float) -> ComposedItem:
     note = card.note
     kind = note.note_type.template_kind
     front, back = render(kind, note.field_values or {}, card.template_slot)
+    fv = note.field_values or {}
     return ComposedItem(
         kind="card",
         id=str(card.id),
@@ -386,9 +395,17 @@ def _card_item(card: Card, effective: float, seconds: float) -> ComposedItem:
         grading_profile=note.note_type.grading_profile,
         estimated_seconds=seconds,
         note_id=str(card.note_id),
-        occlusion=occlusion_payload(note.field_values or {}, card.template_slot)
+        occlusion=occlusion_payload(fv, card.template_slot)
         if kind == "image_occlusion"
         else None,
+        starter_code=fv.get("starter_code"),
+        test_cases=fv.get("test_cases") or [],
+        time_complexity=fv.get("time_complexity"),
+        space_complexity=fv.get("space_complexity"),
+        edge_cases=fv.get("edge_cases") or [],
+        title=fv.get("title"),
+        difficulty=fv.get("difficulty"),
+        category=fv.get("category"),
     )
 
 
