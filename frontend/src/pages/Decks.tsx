@@ -58,6 +58,7 @@ export default function Decks() {
       <DocumentDeckPanel onImported={load} />
       <ImportPanel onImported={load} />
       <JsonImportPanel onImported={load} />
+      <LlmPromptPanel />
     </div>
   )
 }
@@ -1347,9 +1348,19 @@ function JsonImportPanel({ onImported }: { onImported: () => void }) {
   if (!open) {
     return (
       <Section title="Import from JSON" description="Bulk-create notes from a JSON file — no Anki required.">
-        <button className="btn" onClick={() => setOpen(true)}>
-          Paste or upload JSON
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button className="btn" onClick={() => setOpen(true)}>
+            Paste or upload JSON
+          </button>
+          <button
+            className="btn btn-secondary flex items-center gap-1.5 text-xs"
+            onClick={copyPrompt}
+            title="Copy prompt for ChatGPT/Claude/Gemini"
+          >
+            <span>{promptCopied ? '✓' : '📋'}</span>
+            <span>{promptCopied ? 'Copied prompt!' : 'Quick copy LLM prompt'}</span>
+          </button>
+        </div>
       </Section>
     )
   }
@@ -1436,3 +1447,69 @@ function JsonImportPanel({ onImported }: { onImported: () => void }) {
     </Section>
   )
 }
+
+function LlmPromptPanel() {
+  const [copied, setCopied] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(LLM_PROMPT)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <Section
+      title="Prompt for LLM Deck Creation"
+      description="Copy this ready-to-use prompt into ChatGPT, Claude, Gemini, or DeepSeek along with your study material to create flashcards formatted for JSON import above."
+      actions={
+        <button
+          onClick={handleCopy}
+          className="btn btn-primary flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold"
+          title="Copy prompt to clipboard"
+        >
+          <span>{copied ? '✓' : '📋'}</span>
+          <span>{copied ? 'Prompt Copied!' : 'Quick Copy Prompt'}</span>
+        </button>
+      }
+    >
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-line/80 bg-ink-soft/40 p-3 text-xs text-slate-300">
+          <div className="space-y-1">
+            <span className="font-semibold text-slate-200">How to use:</span>
+            <ol className="list-decimal list-inside text-slate-400 space-y-0.5">
+              <li>Click <strong>Quick Copy Prompt</strong> above.</li>
+              <li>Paste it into any LLM chat (ChatGPT, Claude, Gemini, DeepSeek, etc.).</li>
+              <li>Attach or paste your notes/reading at the bottom where indicated.</li>
+              <li>Paste the generated JSON directly into <strong>Import from JSON</strong> above.</li>
+            </ol>
+          </div>
+          <button
+            onClick={() => setExpanded((e) => !e)}
+            className="text-xs text-sky-400 hover:text-sky-300 transition font-medium self-start sm:self-center"
+          >
+            {expanded ? '▲ Hide Prompt Preview' : '▼ View Prompt Text'}
+          </button>
+        </div>
+
+        {expanded && (
+          <div className="relative rounded-lg border border-ink-line/80 bg-[#0d1117] p-3 text-xs font-mono text-slate-300">
+            <div className="flex justify-between items-center mb-2 pb-2 border-b border-ink-line/40">
+              <span className="text-[11px] text-slate-400 font-sans">Prompt Template:</span>
+              <button
+                onClick={handleCopy}
+                className="btn btn-secondary px-2.5 py-0.5 text-[11px]"
+              >
+                {copied ? '✓ Copied' : 'Copy'}
+              </button>
+            </div>
+            <pre className="whitespace-pre-wrap leading-relaxed select-all max-h-96 overflow-y-auto pr-2">
+              {LLM_PROMPT}
+            </pre>
+          </div>
+        )}
+      </div>
+    </Section>
+  )
+}
+
