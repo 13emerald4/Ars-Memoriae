@@ -98,6 +98,8 @@ export interface QueueItem {
   title?: string | null
   difficulty?: string | null
   category?: string | null
+  active_weaknesses?: string[]
+  weakness_history?: Array<Record<string, any>>
 }
 
 export interface CitedCard {
@@ -157,6 +159,9 @@ export interface SubmitAnswerResponse {
   matched_points: string[]
   missed_points: string[]
   overlooked_phrases?: string[]
+  weaknesses?: string[]
+  improvements?: string[]
+  persistent_weaknesses?: string[]
   reasoning: string
   degraded_to_manual: boolean
   reference_answer: string
@@ -170,6 +175,12 @@ export interface SubmitAnswerResponse {
   automaticity_exceeded?: boolean
   automaticity_threshold_ms?: number | null
   automaticity_note?: string | null
+}
+
+export interface WeaknessHintResponse {
+  hint: string
+  active_weaknesses: string[]
+  has_past_weaknesses: boolean
 }
 
 export interface StuckAlert {
@@ -223,6 +234,20 @@ export interface Deck {
   new_count: number
   target_event_date?: string | null
   target_event_title?: string | null
+}
+
+export interface DeckStats {
+  id: string
+  name: string
+  total_cards: number
+  viewed_cards: number
+  new_cards: number
+  learning_cards: number
+  review_cards: number
+  due_cards: number
+  viewed_ratio: number
+  difficulty_counts: Record<string, number>
+  difficulty_proportions: Record<string, number>
 }
 
 export interface AtomicityIssue {
@@ -695,5 +720,31 @@ export interface CodeProgressionStats {
   difficulty: Record<string, DifficultyTierProgression>
   recent_activity: CodeSubmissionOut[]
 }
+
+export interface LexiconLookupRequest {
+  term: string
+  context?: string | null
+  card_id?: string | null
+}
+
+export interface LexiconEntry {
+  term: string
+  definition: string
+  context_explanation?: string | null
+  example?: string | null
+  domain?: string | null
+  related_terms: string[]
+  cached: boolean
+  model_used?: string | null
+  created_at?: string | null
+}
+
+export interface RecentLexiconItem {
+  term: string
+  definition: string
+  domain?: string | null
+  created_at: string
+}
+
 
 

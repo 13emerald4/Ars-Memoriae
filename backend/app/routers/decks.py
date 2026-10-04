@@ -16,6 +16,7 @@ from app.schemas.core import (
     CardOut,
     DeckCreate,
     DeckOut,
+    DeckStatsOut,
     DeckUpdate,
     NoteCreate,
     NoteOut,
@@ -203,6 +204,78 @@ async def update_deck(
         default_priority=deck.default_priority,
         target_event_date=deck.target_event_date,
         target_event_title=deck.target_event_title,
+    )
+
+
+@router.get("/decks/{deck_id}/stats", response_model=DeckStatsOut)
+async def deck_stats(
+    deck_id: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> DeckStatsOut:
+    """Return live review progress and difficulty distribution stats for a specific deck."""
+    deck = await _owned_deck(db, user, parse_uuid(deck_id))
+    now = datetime.now(UTC)
+
+    stmt = (
+        select(Card, Note)
+        .join(Note, Card.note_id == Note.id)
+        .where(Card.deck_id == deck.id, Card.suspended.is_(False))
+    )
+    rows = (await db.execute(stmt)).all()
+
+    total_cards = len(rows)
+    viewed_cards = sum(1 for c, _ in rows if c.state != "new")
+    new_cards = sum(1 for c, _ in rows if c.state == "new")
+    learning_cards = sum(1 for c, _ in rows if c.state in ("learning", "relearning"))
+    review_cards = sum(1 for c, _ in rows if c.state == "review")
+    due_cards = sum(
+        1 for c, _ in rows
+        if c.due and (c.due if c.due.tzinfo else c.due.replace(tzinfo=UTC)) <= now and c.state != "new"
+    )
+
+    viewed_ratio = round(viewed_cards / total_cards, 4) if total_cards > 0 else 0.0
+
+    diff_counts: dict[str, int] = {"Easy": 0, "Medium": 0, "Hard": 0, "Unrated": 0}
+
+    for card, note in rows:
+        fv = note.field_values or {}
+        raw_diff = fv.get("difficulty") or fv.get("Difficulty") or fv.get("diff")
+        if raw_diff and isinstance(raw_diff, str) and raw_diff.strip():
+            label = raw_diff.strip().capitalize()
+            if label not in diff_counts:
+                diff_counts[label] = 0
+            diff_counts[label] += 1
+        elif card.difficulty is not None:
+            if card.difficulty <= 4.0:
+                diff_counts["Easy"] += 1
+            elif card.difficulty <= 7.0:
+                diff_counts["Medium"] += 1
+            else:
+                diff_counts["Hard"] += 1
+        else:
+            diff_counts["Unrated"] += 1
+
+    cleaned_counts = {
+        k: v for k, v in diff_counts.items() if v > 0 or k in ("Easy", "Medium", "Hard")
+    }
+    diff_props = {
+        k: round(v / total_cards, 4) if total_cards > 0 else 0.0
+        for k, v in cleaned_counts.items()
+    }
+
+    return DeckStatsOut(
+        id=str(deck.id),
+        name=deck.name,
+        total_cards=total_cards,
+        viewed_cards=viewed_cards,
+        new_cards=new_cards,
+        learning_cards=learning_cards,
+        review_cards=review_cards,
+        due_cards=due_cards,
+        viewed_ratio=viewed_ratio,
+        difficulty_counts=cleaned_counts,
+        difficulty_proportions=diff_props,
     )
 
 

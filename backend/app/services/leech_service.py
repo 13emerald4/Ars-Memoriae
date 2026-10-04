@@ -63,8 +63,6 @@ async def generate_remediation(card_id: uuid.UUID) -> None:
             return
 
         api_key = decrypt_api_key(user.google_api_key_encrypted)
-        if not api_key:
-            return
 
         existing = await db.scalar(
             select(LeechSuggestion).where(

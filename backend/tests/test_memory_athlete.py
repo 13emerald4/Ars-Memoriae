@@ -98,3 +98,57 @@ async def test_memory_athlete_endpoints(auth_client):
     resp = await auth_client.get("/api/memory/event-readiness")
     assert resp.status_code == 200
     assert resp.json()["is_active"] is False
+
+
+@pytest.mark.asyncio
+async def test_latency_does_not_downgrade_grade_or_force_confirmation(auth_client, monkeypatch):
+    import app.routers.review as review_router
+
+    async def mock_grade(self, **kwargs):
+        return {
+            "score": 95,
+            "confidence": 0.95,
+            "matched_points": ["correct answer"],
+            "missed_points": [],
+            "reasoning": "Accurate answer",
+        }
+
+    monkeypatch.setattr(review_router.GradingService, "grade_with_escalation", mock_grade)
+    monkeypatch.setattr(review_router, "decrypt_api_key", lambda _: "fake-key")
+
+    await auth_client.patch(
+        "/api/me",
+        json={"llm_grading_consent": True, "automaticity_threshold_ms": 3000},
+    )
+
+    deck_resp = await auth_client.post("/api/decks", json={"name": "Purity Deck"})
+    deck_id = deck_resp.json()["id"]
+
+    note_resp = await auth_client.post(
+        "/api/notes",
+        json={
+            "deck_id": deck_id,
+            "template_kind": "basic",
+            "field_values": {"Front": "Capital of Japan?", "Back": "Tokyo"},
+        },
+    )
+    card_id = note_resp.json()["cards"][0]["id"]
+
+    # Submit with 25 seconds of latency (threshold is 3s)
+    ans_resp = await auth_client.post(
+        f"/api/review/{card_id}/answer",
+        json={"typed_answer": "Tokyo", "latency_ms": 25000},
+    )
+    assert ans_resp.status_code == 200
+    data = ans_resp.json()
+
+    # Crucial assertion: score 95 maps to "good" (or "easy"), NOT "hard"
+    assert data["score"] == 95
+    assert data["suggested_grade"] in ("good", "easy")
+    assert data["suggested_grade"] != "hard"
+    # Latency alone must not force confirmation
+    assert data["needs_confirmation"] is False
+    # Informational telemetry is still tracked
+    assert data["automaticity_exceeded"] is True
+    assert "Graded purely on correctness" in data["automaticity_note"]
+

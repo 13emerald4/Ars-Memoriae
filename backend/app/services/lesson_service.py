@@ -132,8 +132,6 @@ async def get_lesson(db: AsyncSession, user: User, card: Card) -> dict:
     if not user.llm_grading_consent:
         return source_only("consent_not_given")
     api_key = decrypt_api_key(user.google_api_key_encrypted)
-    if not api_key:
-        return source_only("no_api_key")
 
     note = card.note
     front, back = render(

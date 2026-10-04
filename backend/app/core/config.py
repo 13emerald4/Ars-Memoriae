@@ -13,10 +13,10 @@ class Settings(BaseSettings):
     secret_key: str = "dev-insecure-secret-change-me"
     api_key_encryption_key: str = ""
 
-    # §4.2 — BYOK: these name *which* model a user's own key is pointed at.
-    default_grading_model: str = "gemma-4-e4b-it"
-    escalation_grading_model: str = "gemma-4-12b-it"
-    # §4.2 escalation trigger.
+    # Local Qwen 2.5 Coder 7B engine via Ollama
+    ollama_base_url: str = "http://localhost:11434"
+    default_grading_model: str = "qwen2.5-coder:7b"
+    escalation_grading_model: str = "qwen2.5-coder:7b"
     grading_confidence_threshold: float = 0.6
 
     cors_origins: str = "http://localhost:5173"

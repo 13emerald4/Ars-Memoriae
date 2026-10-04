@@ -31,6 +31,21 @@ async def current_user(
     return user
 
 
+async def optional_user(
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    if creds is None:
+        return None
+    user_id = decode_access_token(creds.credentials)
+    if not user_id:
+        return None
+    try:
+        return await db.get(User, uuid.UUID(user_id))
+    except ValueError:
+        return None
+
+
 def parse_uuid(value: str, field: str = "id") -> uuid.UUID:
     try:
         return uuid.UUID(str(value))

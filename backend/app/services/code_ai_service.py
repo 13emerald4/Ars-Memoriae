@@ -81,7 +81,7 @@ Respond with concise, encouraging, Socratic feedback formatted in clean markdown
 
 
 class CodeAiService:
-    def __init__(self, api_key: str | None, model: str | None = None) -> None:
+    def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
         self.grading_service = GradingService(api_key=api_key, model=model)
 
     async def forge_problem(
@@ -90,7 +90,7 @@ class CodeAiService:
         difficulty: str = "Medium",
         target_language: str = "python",
     ) -> dict[str, Any]:
-        """Generates a new coding problem challenge using Gemini."""
+        """Generates a new coding problem challenge using Qwen 2.5 Coder."""
         prompt = FORGE_PROBLEM_PROMPT.format(
             topic=topic,
             difficulty=difficulty,
@@ -103,7 +103,7 @@ class CodeAiService:
                 model=self.grading_service.model,
             )
         except Exception as e:
-            log.warning("Gemini generation failed for forge_problem: %s", e)
+            log.warning("Qwen generation failed for forge_problem: %s", e)
             raise GradingUnavailable(f"AI problem generation failed: {e}") from e
 
         # Parse JSON

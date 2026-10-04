@@ -437,20 +437,20 @@ async def forge_problem(
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Uses Gemini to generate a custom code challenge from a topic."""
+    """Uses Qwen 2.5 Coder to generate a custom code challenge from a topic."""
     api_key = decrypt_api_key(user.google_api_key_encrypted)
-    if not api_key:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            "Google API key required in Settings to forge custom problems with AI.",
-        )
-
     ai_svc = CodeAiService(api_key=api_key, model=user.grading_model)
-    generated = await ai_svc.forge_problem(
-        topic=body.topic,
-        difficulty=body.difficulty,
-        target_language=body.target_language,
-    )
+    try:
+        generated = await ai_svc.forge_problem(
+            topic=body.topic,
+            difficulty=body.difficulty,
+            target_language=body.target_language,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            f"Failed to forge problem using Qwen 2.5 Coder: {e}",
+        ) from e
 
     slug = generated.get("slug") or f"custom-{uuid.uuid4().hex[:8]}"
     prob = CodeProblem(

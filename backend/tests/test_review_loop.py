@@ -214,3 +214,103 @@ async def test_unknown_card_ids_are_rejected(auth_client, bad):
 async def test_auth_is_required(client):
     client.headers.pop("Authorization", None)
     assert (await client.get("/api/decks")).status_code == 401
+
+
+async def test_weakness_hint_and_progression_loop(auth_client):
+    from app.core.security import new_answer_hash
+    from app.db import get_db
+    from app.models import Card, GradingCache
+    import uuid
+
+    deck_id = await _deck(auth_client, "Weakness Deck")
+    note = await _note(auth_client, deck_id, "What happens with zero?", "Special handling needed")
+    card_id = note["cards"][0]["id"]
+
+    # 1. First review without previous weaknesses -> hint reports no past weaknesses
+    hint_resp = await auth_client.post(f"/api/review/{card_id}/weakness-hint")
+    assert hint_resp.status_code == 200
+    assert hint_resp.json()["has_past_weaknesses"] is False
+
+    # 2. Simulate graded answer with a captured weakness in GradingCache
+    ans_text = "Just normal handling"
+    h = new_answer_hash(ans_text)
+    from app.main import app
+    from app.db import SessionLocal
+
+    async with SessionLocal() as db:
+        db.add(
+            GradingCache(
+                card_id=uuid.UUID(card_id),
+                answer_hash=h,
+                response={
+                    "score": 45,
+                    "grade": "hard",
+                    "confidence": 0.9,
+                    "matched_points": [],
+                    "missed_points": ["Special handling needed"],
+                    "weaknesses": ["Omitted zero boundary condition"],
+                    "improvements": [],
+                    "persistent_weaknesses": [],
+                    "reasoning": "Missing special condition for zero.",
+                },
+            )
+        )
+        await db.commit()
+
+    # Confirm the review
+    conf1 = await auth_client.post(
+        f"/api/review/{card_id}/confirm",
+        json={"final_grade": "hard", "overridden": False, "typed_answer": ans_text, "latency_ms": 1200},
+    )
+    assert conf1.status_code == 200
+
+    # Verify Card now has the active weakness and history entry
+    async with SessionLocal() as db:
+        card = await db.get(Card, uuid.UUID(card_id))
+        assert card.active_weaknesses == ["Omitted zero boundary condition"]
+        assert len(card.weakness_history) == 1
+        assert card.weakness_history[0]["weaknesses_identified"] == ["Omitted zero boundary condition"]
+
+    # 3. Next time card is seen: request hint -> should report past weaknesses
+    hint_resp2 = await auth_client.post(f"/api/review/{card_id}/weakness-hint")
+    assert hint_resp2.status_code == 200
+    h_data = hint_resp2.json()
+    assert h_data["has_past_weaknesses"] is True
+    assert "Omitted zero boundary condition" in h_data["active_weaknesses"]
+
+    # 4. Next review: user provides improved answer that resolves the weakness
+    ans_text_2 = "Special handling is required because zero cannot be divided"
+    h2 = new_answer_hash(ans_text_2)
+    async with SessionLocal() as db:
+        db.add(
+            GradingCache(
+                card_id=uuid.UUID(card_id),
+                answer_hash=h2,
+                response={
+                    "score": 95,
+                    "grade": "easy",
+                    "confidence": 0.95,
+                    "matched_points": ["Special handling"],
+                    "missed_points": [],
+                    "weaknesses": [],
+                    "improvements": ["Omitted zero boundary condition"],
+                    "persistent_weaknesses": [],
+                    "reasoning": "Flawless recall.",
+                },
+            )
+        )
+        await db.commit()
+
+    conf2 = await auth_client.post(
+        f"/api/review/{card_id}/confirm",
+        json={"final_grade": "easy", "overridden": False, "typed_answer": ans_text_2, "latency_ms": 1000},
+    )
+    assert conf2.status_code == 200
+
+    # Verify active weaknesses are now resolved!
+    async with SessionLocal() as db:
+        card = await db.get(Card, uuid.UUID(card_id))
+        assert card.active_weaknesses == []
+        assert len(card.weakness_history) == 2
+        assert card.weakness_history[1]["improvements"] == ["Omitted zero boundary condition"]
+

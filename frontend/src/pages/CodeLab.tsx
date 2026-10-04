@@ -14,6 +14,7 @@ import { CodeEditor } from '../components/CodeEditor'
 import { CodeSocraticTutor } from '../components/CodeSocraticTutor'
 import { CodeTestConsole } from '../components/CodeTestConsole'
 import { Empty, ErrorNote, Section, Spinner } from '../components/ui'
+import { FullscreenButton } from '../components/FullscreenContext'
 
 const BLIND75_CATEGORIES = [
   { name: 'Arrays & Hashing', icon: '🗃️', desc: 'Hash maps, frequency counters, and prefix products' },
@@ -507,6 +508,7 @@ export default function CodeLab() {
           >
             ✨ Forge
           </button>
+          <FullscreenButton size="sm" />
         </div>
       </header>
 
@@ -1172,7 +1174,7 @@ export default function CodeLab() {
           <div className="w-full max-w-md rounded-2xl border border-[#333333] bg-[#1a1a1a] p-6 shadow-2xl space-y-4">
             <h3 className="text-base font-bold text-[#eff1f6]">✨ Forge Custom Problem with AI</h3>
             <p className="text-xs text-[#8a8a8a]">
-              Generate a brand new challenge or targeted drill using Gemini.
+              Generate a brand new challenge or targeted drill using Qwen 2.5 Coder.
             </p>
 
             <div className="space-y-3 text-xs">

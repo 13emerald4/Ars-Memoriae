@@ -113,9 +113,12 @@ class FSRSService:
         ``grade`` is Again|Hard|Good|Easy, already mapped from the LLM's grading
         output (§4) or a manual button press. Called from
         POST /api/review/{card_id}/confirm (§7.1).
+
+        Per FSRS correctness decoupling: latency is not an input to the review
+        scheduling algorithm; review_duration is strictly None.
         """
         updated, _log = self.scheduler.review_card(
-            card_state, grade, reviewed_at, review_duration=duration_ms
+            card_state, grade, reviewed_at, review_duration=None
         )
         if self.fuzz:
             updated.due = self._fuzz_due(updated, reviewed_at)
@@ -213,13 +216,17 @@ def _aware(dt: datetime | None) -> datetime | None:
     return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
 
 
-def build_review_log_payload(card_id: int, grade: str, reviewed_at: datetime, duration_ms: int | None):
-    """Shape a persisted review_logs row the way the FSRS Optimizer expects."""
+def build_review_log_payload(card_id: int, grade: str, reviewed_at: datetime, duration_ms: int | None = None):
+    """Shape a persisted review_logs row the way the FSRS Optimizer expects.
+
+    Review duration is set to None so the optimizer fits parameters purely on
+    interval retrievability without latency distortion.
+    """
     from fsrs import ReviewLog as FSRSReviewLog
 
     return FSRSReviewLog(
         card_id=card_id,
         rating=GRADE_TO_RATING[grade],
         review_datetime=_aware(reviewed_at),
-        review_duration=duration_ms,
+        review_duration=None,
     )

@@ -76,7 +76,14 @@ class TestGuideEndpoint:
         assert body["degraded"] is True
         assert body["degraded_reason"] == "consent_not_given"
 
-    async def test_degrades_without_a_key(self, auth_client):
+    async def test_degrades_when_engine_unavailable(self, auth_client, monkeypatch):
+        import app.routers.review as review_router
+        from app.services.grading_service import GradingUnavailable
+
+        async def fail_ask(*args, **kwargs):
+            raise GradingUnavailable("engine offline")
+
+        monkeypatch.setattr(review_router.GradingService, "ask_socratic_question", fail_ask)
         await auth_client.patch("/api/me", json={"llm_grading_consent": True})
         deck_id = (await auth_client.post("/api/decks", json={"name": "D"})).json()["id"]
         note = (
@@ -93,7 +100,8 @@ class TestGuideEndpoint:
 
         resp = await auth_client.post(f"/api/review/{card_id}/guide", json={"history": []})
         assert resp.status_code == 200, resp.text
-        assert resp.json()["degraded_reason"] == "no_api_key"
+        assert resp.json()["degraded"] is True
+        assert "engine offline" in resp.json()["degraded_reason"]
 
     async def test_a_hint_reaches_the_response(self, auth_client, monkeypatch):
         import app.routers.review as review_router

@@ -39,14 +39,14 @@ async def collect_review_logs(db: AsyncSession, user: User) -> list:
     ).all()
 
     out = []
-    for card_id, reviewed_at, grade, latency in rows:
+    for card_id, reviewed_at, grade, _latency in rows:
         when = reviewed_at if reviewed_at.tzinfo else reviewed_at.replace(tzinfo=UTC)
         out.append(
             FSRSReviewLog(
                 card_id=int(card_id.int % (2**63)),  # optimizer keys on an int id
                 rating=GRADE_TO_RATING[grade],
                 review_datetime=when,
-                review_duration=latency,
+                review_duration=None,
             )
         )
     return out

@@ -451,7 +451,7 @@ def _replay_history(
         if fsrs_card.last_review:
             elapsed = (review.reviewed_at - fsrs_card.last_review).total_seconds() / 86400.0
         fsrs_card, new_state = fsrs.schedule(
-            fsrs_card, GRADE_TO_RATING[review.grade], review.reviewed_at, review.duration_ms
+            fsrs_card, GRADE_TO_RATING[review.grade], review.reviewed_at
         )
         db.add(
             ReviewLog(

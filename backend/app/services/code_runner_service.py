@@ -10,6 +10,7 @@ import ast
 import asyncio
 import json
 import os
+import shutil
 import sys
 import time
 from typing import Any
@@ -157,9 +158,11 @@ async def run_node_code(
     total_start = time.perf_counter()
     worker_script = os.path.join(os.path.dirname(__file__), "ts_sandbox_worker.mjs")
 
+    node_bin = shutil.which("node") or shutil.which("node.exe") or r"C:\Program Files\nodejs\node.EXE"
+
     try:
         proc = await asyncio.create_subprocess_exec(
-            "node",
+            node_bin,
             worker_script,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,

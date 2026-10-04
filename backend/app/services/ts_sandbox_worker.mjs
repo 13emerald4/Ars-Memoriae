@@ -268,7 +268,7 @@ process.stdout.write(JSON.stringify(__summary));
   try {
     fs.writeFileSync(tempRunnerFile, harnessCode, 'utf-8');
     const { execSync } = await import('node:child_process');
-    const output = execSync(`node --no-warnings "${tempRunnerFile}"`, {
+    const output = execSync(`"${process.execPath}" --no-warnings "${tempRunnerFile}"`, {
       encoding: 'utf-8',
       timeout: 5000,
       maxBuffer: 5 * 1024 * 1024

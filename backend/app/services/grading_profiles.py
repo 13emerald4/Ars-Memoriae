@@ -30,10 +30,14 @@ Use this scale as a guide:
 - 90-100: correct and complete
 
 {rubric}
-
+{previous_weaknesses_section}
 Respond with ONLY a JSON object of this shape, no prose and no code fences:
 {{"score": 0-100, "confidence": 0.0-1.0,
-  "matched_points": ["..."], "missed_points": ["..."], "overlooked_phrases": ["exact phrases from reference answer omitted"], "reasoning": "one or two sentences"}}
+  "matched_points": ["..."], "missed_points": ["..."], "overlooked_phrases": ["exact phrases from reference answer omitted"],
+  "weaknesses": ["specific conceptual, syntactic, or algorithmic flaws in this answer"],
+  "improvements": ["weaknesses from previous attempts that the user successfully resolved in this answer"],
+  "persistent_weaknesses": ["weaknesses from previous attempts that the user still struggled with or omitted in this answer"],
+  "reasoning": "one or two sentences"}}
 """
 
 SHORT_ANSWER_RUBRIC = """Rubric (short answer / vocabulary):
@@ -87,15 +91,48 @@ def build_prompt(
     back: str,
     user_answer: str,
     card_type: str,
+    previous_weaknesses: list[str] | None = None,
 ) -> str:
     rubric = PROFILES.get(profile, PROFILES[DEFAULT_PROFILE])
+    if previous_weaknesses:
+        formatted_prev = "\n".join(f"- {w}" for w in previous_weaknesses)
+        previous_weaknesses_section = (
+            f"\nPrevious recorded weaknesses the user struggled with on earlier reviews of this card:\n"
+            f"{formatted_prev}\n"
+            f"Compare this attempt with those previous weaknesses:\n"
+            f"- If the user resolved/corrected any previous weakness, list it in 'improvements'.\n"
+            f"- If the user still failed or omitted any previous weakness, list it in 'persistent_weaknesses'.\n"
+            f"- In 'weaknesses', list any flaws (new or recurring) present in this current answer.\n"
+        )
+    else:
+        previous_weaknesses_section = (
+            "\nIn 'weaknesses', list any specific conceptual, syntactic, or algorithmic flaws present in this answer (or an empty list if none).\n"
+            "Set 'improvements' to [] and 'persistent_weaknesses' to [] since there are no previous recorded weaknesses.\n"
+        )
     return BASE_PROMPT.format(
         front=front,
         back=back,
         user_answer=user_answer,
         card_type=card_type,
         rubric=rubric,
+        previous_weaknesses_section=previous_weaknesses_section,
     )
+
+
+WEAKNESS_HINT_PROMPT = """You are a cognitive coach helping a student review a flashcard they previously struggled with.
+Your goal is to offer a targeted diagnostic hint based on their past mistakes.
+You must NEVER reveal, recite, or give away the reference answer.
+
+Card question: {front}
+Reference answer (NEVER state this): {back}
+
+Student's past recorded weaknesses on this card:
+{weaknesses_text}
+
+Provide ONE concise diagnostic hint (1-2 sentences) reminding them to watch out for their specific prior pitfalls or directing their attention to the concept they previously missed.
+Respond with ONLY a JSON object, no prose and no code fences:
+{{"hint": "one or two sentence diagnostic hint without giving away the solution"}}
+"""
 
 
 CARD_GEN_PROMPT = """You are helping build spaced-repetition flashcards from a passage

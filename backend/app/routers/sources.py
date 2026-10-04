@@ -349,8 +349,6 @@ async def generate_cards(
     if not user.llm_grading_consent:
         return GenerateCardsResponse(degraded=True, reason="consent_not_given")
     api_key = decrypt_api_key(user.google_api_key_encrypted)
-    if not api_key:
-        return GenerateCardsResponse(degraded=True, reason="no_api_key")
 
     target_model = body.model or user.grading_model
     try:

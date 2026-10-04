@@ -83,6 +83,8 @@ class ComposedItem:
     title: str | None = None
     difficulty: str | None = None
     category: str | None = None
+    active_weaknesses: list[str] = field(default_factory=list)
+    weakness_history: list[dict] = field(default_factory=list)
 
 
 @dataclass
@@ -406,6 +408,8 @@ def _card_item(card: Card, effective: float, seconds: float) -> ComposedItem:
         title=fv.get("title"),
         difficulty=fv.get("difficulty"),
         category=fv.get("category"),
+        active_weaknesses=card.active_weaknesses or [],
+        weakness_history=card.weakness_history or [],
     )
 
 

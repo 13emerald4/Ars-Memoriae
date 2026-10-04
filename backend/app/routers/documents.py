@@ -206,11 +206,6 @@ async def generate_deck(
             degraded=True, reason="consent_not_given",
         )
     api_key = decrypt_api_key(user.google_api_key_encrypted)
-    if not api_key:
-        return GenerateDeckResponse(
-            source_id=str(source.id), title=source.title, sections_total=total,
-            degraded=True, reason="no_api_key",
-        )
     if not window:
         return GenerateDeckResponse(
             source_id=str(source.id), title=source.title, sections_total=total,

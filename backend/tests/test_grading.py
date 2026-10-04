@@ -150,22 +150,22 @@ class TestProfiles:
 
 
 class TestEscalation:
-    """§4.2 — the escalation path, with the transport stubbed out."""
+    """The grading evaluation path, with the transport stubbed out."""
 
     @staticmethod
     def _service(responses):
         svc = GradingService("fake-key", "small-model", "big-model")
         calls = []
 
-        async def fake_generate(prompt, model, schema=None):
-            calls.append(model)
+        async def fake_generate(prompt, model=None, schema=None, **kwargs):
+            calls.append(model or svc.model)
             return responses[min(len(calls) - 1, len(responses) - 1)]
 
         svc._generate = fake_generate
         svc.calls = calls
         return svc
 
-    async def test_confident_answer_stays_on_the_small_model(self):
+    async def test_direct_model_evaluation(self):
         svc = self._service(['{"score":85,"confidence":0.92,"reasoning":"ok"}'])
         result = await svc.grade_with_escalation("f", "b", "a", "short_answer")
         assert svc.calls == ["small-model"]
@@ -173,35 +173,11 @@ class TestEscalation:
         assert result["score"] == 85
         assert result["grade"] == "good"
 
-    async def test_low_confidence_retries_on_the_larger_model(self):
-        svc = self._service(
-            [
-                '{"score":55,"confidence":0.3,"reasoning":"unsure"}',
-                '{"score":85,"confidence":0.9,"reasoning":"clear on retry"}',
-            ]
-        )
-        result = await svc.grade_with_escalation("f", "b", "a", "short_answer")
-        assert svc.calls == ["small-model", "big-model"]
-        assert result["grade"] == "good"
-        assert result["escalated"] is True
-
-    async def test_math_code_goes_straight_to_the_larger_model(self):
+    async def test_math_code_evaluation(self):
         svc = self._service(['{"score":95,"confidence":0.95,"reasoning":"equivalent"}'])
         result = await svc.grade_with_escalation("f", "b", "a", "math_code")
-        assert svc.calls == ["big-model"]
-        assert result["escalated"] is True
-
-    async def test_disputed_card_forces_escalation(self):
-        svc = self._service(['{"score":85,"confidence":0.99,"reasoning":"ok"}'])
-        await svc.grade_with_escalation("f", "b", "a", "short_answer", force_escalate=True)
-        assert svc.calls == ["big-model"]
-
-    async def test_escalation_does_not_stick_to_the_instance(self):
-        """The §4.6 sketch mutated self.model, which would leave every later
-        card permanently escalated. It must not."""
-        svc = self._service(['{"score":95,"confidence":0.95,"reasoning":"ok"}'])
-        await svc.grade_with_escalation("f", "b", "a", "math_code")
-        assert svc.model == "small-model"
+        assert svc.calls == ["small-model"]
+        assert result["score"] == 95
 
     async def test_missing_score_is_rejected(self):
         svc = self._service(['{"confidence":0.9,"reasoning":"no score field"}'])
@@ -213,8 +189,8 @@ class TestEscalation:
         with pytest.raises(GradingUnavailable):
             await svc.grade_with_escalation("f", "b", "a", "short_answer")
 
-    async def test_missing_key_is_unavailable_not_a_crash(self):
-        svc = GradingService(None)
+    async def test_unreachable_endpoint_raises_unavailable(self):
+        svc = GradingService(base_url="http://127.0.0.1:59999")
         with pytest.raises(GradingUnavailable):
             await svc.grade("f", "b", "a")
 
@@ -444,3 +420,64 @@ class TestLatencyNote:
         assert format_latency(60_000) == "answered in 1m"
         assert format_latency(75_000) == "answered in 1m 15s"
         assert format_latency(125_000) == "answered in 2m 5s"
+
+
+class TestWeaknessMemory:
+    """Longitudinal weakness memory prompt construction, normalization, and hinting."""
+
+    def test_build_prompt_injects_previous_weaknesses(self):
+        prompt = build_prompt(
+            "short_answer",
+            front="What is TCP?",
+            back="Transmission Control Protocol",
+            user_answer="A network protocol",
+            card_type="basic",
+            previous_weaknesses=["Forgot connection-oriented property", "Omitted handshake details"],
+        )
+        assert "Previous recorded weaknesses" in prompt
+        assert "Forgot connection-oriented property" in prompt
+        assert "Omitted handshake details" in prompt
+        assert "improvements" in prompt
+        assert "persistent_weaknesses" in prompt
+
+    def test_normalize_result_extracts_weakness_fields(self):
+        from app.services.grading_service import _normalize_result
+
+        raw = {
+            "score": 75,
+            "confidence": 0.9,
+            "matched_points": ["transport layer"],
+            "missed_points": ["handshake"],
+            "overlooked_phrases": [],
+            "weaknesses": ["Missed 3-way handshake detail"],
+            "improvements": ["Now correctly identified as transport protocol"],
+            "persistent_weaknesses": ["Still missing handshake"],
+            "reasoning": "Good answer with a minor omission.",
+        }
+        res = _normalize_result(raw)
+        assert res["score"] == 75
+        assert res["weaknesses"] == ["Missed 3-way handshake detail"]
+        assert res["improvements"] == ["Now correctly identified as transport protocol"]
+        assert res["persistent_weaknesses"] == ["Still missing handshake"]
+
+    def test_normalize_result_handles_missing_weakness_fields_gracefully(self):
+        from app.services.grading_service import _normalize_result
+
+        raw = {
+            "score": 90,
+            "confidence": 0.95,
+            "reasoning": "Complete answer.",
+        }
+        res = _normalize_result(raw)
+        assert res["score"] == 90
+        assert res["weaknesses"] == []
+        assert res["improvements"] == []
+        assert res["persistent_weaknesses"] == []
+
+    @pytest.mark.asyncio
+    async def test_generate_weakness_hint_empty_weaknesses(self):
+        svc = GradingService()
+        hint_res = await svc.generate_weakness_hint("Question", "Answer", [])
+        assert hint_res["has_past_weaknesses"] is False
+        assert "No prior weaknesses" in hint_res["hint"]
+

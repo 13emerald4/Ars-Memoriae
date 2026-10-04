@@ -202,19 +202,11 @@ function SourceLibrary() {
 // ── the extract workspace ───────────────────────────────────────────────────
 
 const GENERATION_MODELS = [
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', badge: 'Recommended' },
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', badge: 'Fast & High Quota' },
-  { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', badge: 'Max Throughput' },
-  { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash', badge: 'Hybrid Preview' },
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', badge: 'Frontier Reasoning' },
+  { id: 'qwen2.5-coder:7b', name: 'Qwen 2.5 Coder (7B Instruct)', badge: 'Local Engine' },
 ]
 
 const THINKING_LEVELS = [
-  { id: 'dynamic', label: 'Dynamic (Default)', budget: undefined },
-  { id: 'off', label: 'Off (0 tokens)', budget: 0 },
-  { id: 'low', label: 'Low (1k tokens)', budget: 1024 },
-  { id: 'med', label: 'Medium (2k tokens)', budget: 2048 },
-  { id: 'high', label: 'High (8k tokens)', budget: 8192 },
+  { id: 'dynamic', label: 'Default', budget: undefined },
 ]
 
 function ExtractWorkspace({ extractId }: { extractId: string }) {
@@ -222,7 +214,7 @@ function ExtractWorkspace({ extractId }: { extractId: string }) {
   const [extract, setExtract] = useState<Extract | null>(null)
   const [decks, setDecks] = useState<Deck[]>([])
   const [deckId, setDeckId] = useState('')
-  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash')
+  const [selectedModel, setSelectedModel] = useState('qwen2.5-coder:7b')
   const [selectedThinking, setSelectedThinking] = useState('dynamic')
   const [selection, setSelection] = useState('')
   const [suggestions, setSuggestions] = useState<SuggestedCard[]>([])

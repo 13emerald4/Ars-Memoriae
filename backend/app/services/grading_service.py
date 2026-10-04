@@ -28,6 +28,9 @@ import asyncio
 import json
 import logging
 import re
+from typing import Any
+
+import httpx
 
 from app.core.config import settings
 from app.services.document_service import quote_is_grounded
@@ -38,6 +41,7 @@ from app.services.grading_profiles import (
     LEECH_PROMPT,
     LESSON_PROMPT,
     SOCRATIC_PROMPT,
+    WEAKNESS_HINT_PROMPT,
     build_prompt,
 )
 
@@ -51,6 +55,9 @@ SCORE_SCHEMA = {
         "matched_points": {"type": "ARRAY", "items": {"type": "STRING"}},
         "missed_points": {"type": "ARRAY", "items": {"type": "STRING"}},
         "overlooked_phrases": {"type": "ARRAY", "items": {"type": "STRING"}},
+        "weaknesses": {"type": "ARRAY", "items": {"type": "STRING"}},
+        "improvements": {"type": "ARRAY", "items": {"type": "STRING"}},
+        "persistent_weaknesses": {"type": "ARRAY", "items": {"type": "STRING"}},
         "reasoning": {"type": "STRING"},
     },
     "required": ["score", "confidence", "reasoning"],
@@ -81,103 +88,70 @@ class GradingUnavailable(RuntimeError):
 class GradingService:
     def __init__(
         self,
-        api_key: str | None,
+        api_key: str | None = None,
         model: str | None = None,
         escalation_model: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self.api_key = api_key
-        self.model = model or settings.default_grading_model
+        # Normalize legacy cloud models (Gemini / Gemma) to local Qwen 2.5 Coder
+        target_model = model or settings.default_grading_model
+        if target_model.startswith("gemini") or target_model.startswith("gemma"):
+            target_model = settings.default_grading_model
+        self.model = target_model
         self.escalation_model = escalation_model or settings.escalation_grading_model
-        self._client = None
+        self.base_url = (base_url or settings.ollama_base_url).rstrip("/")
 
     # ── transport ───────────────────────────────────────────────────────────
-
-    def _get_client(self):
-        if not self.api_key:
-            raise GradingUnavailable("no_api_key")
-        if self._client is None:
-            try:
-                from google import genai
-            except ImportError as exc:  # pragma: no cover - dependency guard
-                raise GradingUnavailable("google-genai not installed") from exc
-            self._client = genai.Client(api_key=self.api_key)
-        return self._client
 
     async def _generate(
         self,
         prompt: str,
-        model: str,
+        model: str | None = None,
         schema: dict | None = None,
         thinking_budget: int | None = None,
+        **kwargs: Any,
     ) -> str:
-        from google.genai import types
+        target_model = model or self.model
+        if target_model.startswith("gemini") or target_model.startswith("gemma"):
+            target_model = settings.default_grading_model
+        payload: dict[str, Any] = {
+            "model": target_model,
+            "prompt": prompt,
+            "stream": False,
+        }
+        if schema is not None or kwargs.get("response_schema") is not None:
+            payload["format"] = "json"
 
-        client = self._get_client()
+        last_exc = None
+        for attempt in range(3):
+            try:
+                async with httpx.AsyncClient(timeout=90.0) as client:
+                    resp = await client.post(
+                        f"{self.base_url}/api/generate",
+                        json=payload,
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+                    return data.get("response", "")
+            except httpx.ConnectError as exc:
+                raise GradingUnavailable(
+                    f"Could not connect to Ollama at {self.base_url}. Make sure Ollama is running (`ollama run {target_model}`)."
+                ) from exc
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 404:
+                    raise GradingUnavailable(
+                        f"Model '{target_model}' not found in Ollama. Run: ollama pull {target_model}"
+                    ) from exc
+                last_exc = exc
+                await asyncio.sleep(1.0 * (attempt + 1))
+            except Exception as exc:
+                last_exc = exc
+                await asyncio.sleep(1.0 * (attempt + 1))
 
-        async def _call(use_schema: bool, use_thinking: bool = True) -> str:
-            kwargs = {}
-            if use_schema and schema is not None:
-                kwargs["response_mime_type"] = "application/json"
-                kwargs["response_schema"] = schema
-            if use_thinking and thinking_budget is not None and thinking_budget > 0:
-                kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=thinking_budget)
-
-            config = types.GenerateContentConfig(**kwargs) if kwargs else None
-            resp = await client.aio.models.generate_content(
-                model=model, contents=prompt, config=config
-            )
-            return resp.text or ""
-
-        def _is_retryable(exc: Exception) -> bool:
-            msg = str(exc).lower()
-            return any(
-                code in msg
-                for code in (
-                    "503",
-                    "429",
-                    "service unavailable",
-                    "resource_exhausted",
-                    "quota",
-                    "overloaded",
-                    "deadline_exceeded",
-                    "timeout",
-                )
-            )
-
-        async def _call_with_retry(use_schema: bool, use_thinking: bool = True) -> str:
-            last_exc = None
-            for attempt in range(4):
-                try:
-                    return await _call(use_schema=use_schema, use_thinking=use_thinking)
-                except Exception as exc:
-                    last_exc = exc
-                    if attempt < 3 and _is_retryable(exc):
-                        delay = 1.5 * (2**attempt)
-                        log.warning(
-                            "LLM call failed with retryable error (%s); retrying in %.1fs (attempt %d/4)",
-                            exc,
-                            delay,
-                            attempt + 1,
-                        )
-                        await asyncio.sleep(delay)
-                        continue
-                    raise exc
-            if last_exc:
-                raise last_exc
-            return ""
-
-        try:
-            return await _call_with_retry(
-                use_schema=schema is not None, use_thinking=thinking_budget is not None
-            )
-        except Exception as exc:
-            if (schema is not None or thinking_budget is not None) and _is_schema_unsupported(exc):
-                log.info("model %s rejected schema or thinking_config; retrying unconstrained", model)
-                try:
-                    return await _call_with_retry(use_schema=False, use_thinking=False)
-                except Exception as exc2:
-                    raise GradingUnavailable(str(exc2)) from exc2
-            raise GradingUnavailable(str(exc)) from exc
+        if last_exc:
+            raise GradingUnavailable(f"Ollama generation failed: {last_exc}") from last_exc
+        return ""
 
     # ── grading (§4.1) ──────────────────────────────────────────────────────
 
@@ -188,6 +162,7 @@ class GradingService:
         user_answer: str,
         profile: str = "short_answer",
         card_type: str = "basic",
+        previous_weaknesses: list[str] | None = None,
         model: str | None = None,
     ) -> dict:
         prompt = build_prompt(
@@ -196,6 +171,7 @@ class GradingService:
             back=back,
             user_answer=user_answer,
             card_type=card_type,
+            previous_weaknesses=previous_weaknesses,
         )
         raw = await self._generate(prompt, model or self.model, SCORE_SCHEMA)
         return _normalize_result(parse_json(raw))
@@ -207,26 +183,22 @@ class GradingService:
         user_answer: str,
         profile: str = "short_answer",
         card_type: str = "basic",
+        previous_weaknesses: list[str] | None = None,
         force_escalate: bool = False,
     ) -> dict:
-        """§4.2 escalation path: low confidence, a disputed card, or a
-        math/code profile retries on the larger model before giving up."""
-        escalate_first = force_escalate or profile in ALWAYS_ESCALATE
-        first_model = self.escalation_model if escalate_first else self.model
-        result = await self.grade(front, back, user_answer, profile, card_type, model=first_model)
-        result["model_used"] = first_model
-        result["escalated"] = escalate_first
-
-        if not escalate_first and result["confidence"] < settings.grading_confidence_threshold:
-            try:
-                retry = await self.grade(
-                    front, back, user_answer, profile, card_type, model=self.escalation_model,
-                )
-            except GradingUnavailable:
-                return result  # keep the low-confidence answer over nothing
-            retry["model_used"] = self.escalation_model
-            retry["escalated"] = True
-            return retry
+        """Evaluates answers directly using Qwen 2.5 Coder 7B."""
+        target_model = self.model
+        result = await self.grade(
+            front,
+            back,
+            user_answer,
+            profile,
+            card_type,
+            previous_weaknesses=previous_weaknesses,
+            model=target_model,
+        )
+        result["model_used"] = target_model
+        result["escalated"] = False
         return result
 
     # ── IR card generation (§8.3) — reuses this same client ─────────────────
@@ -345,7 +317,45 @@ class GradingService:
             "key_points": [str(p).strip() for p in points if str(p).strip()][:6],
         }
 
-    # ── Socratic AI Guide ────────────────────────────────────────────────────
+    # ── Socratic AI Guide & Targeted Weakness Hint ───────────────────────────
+
+    async def generate_weakness_hint(
+        self,
+        front: str,
+        back: str,
+        active_weaknesses: list[str],
+        model: str | None = None,
+    ) -> dict:
+        """Generates a targeted diagnostic hint based on prior recorded weaknesses."""
+        if not active_weaknesses:
+            return {
+                "hint": "No prior weaknesses recorded for this card. Focus on recalling the core principles and key definitions.",
+                "has_past_weaknesses": False,
+            }
+
+        weaknesses_text = "\n".join(f"- {w}" for w in active_weaknesses[:8])
+        raw = await self._generate(
+            WEAKNESS_HINT_PROMPT.format(
+                front=front,
+                back=back,
+                weaknesses_text=weaknesses_text,
+            ),
+            model or self.model,
+            schema={"type": "OBJECT", "properties": {"hint": {"type": "STRING"}}, "required": ["hint"]},
+        )
+        data = parse_json(raw)
+        hint = str(data.get("hint", "")).strip() if isinstance(data, dict) else ""
+        if not hint:
+            hint = f"Focus on avoiding your past stumbling blocks: {', '.join(active_weaknesses[:2])}."
+
+        if leaks_reference_answer(back, hint):
+            log.warning("weakness hint leaked reference answer; substituting generic reminder")
+            hint = f"Keep in mind your previous difficulty with: {active_weaknesses[0]}."
+
+        return {
+            "hint": hint,
+            "has_past_weaknesses": True,
+        }
 
     async def ask_socratic_question(
         self,
@@ -353,6 +363,7 @@ class GradingService:
         back: str,
         history: list[tuple[str, str]],
         latest: str,
+        active_weaknesses: list[str] | None = None,
         model: str | None = None,
     ) -> dict:
         """One turn of Socratic hinting: a diagnostic question, never the answer.
@@ -363,14 +374,22 @@ class GradingService:
         the reference answer's content words, it's swapped for a generic
         nudge rather than trusted and shown.
         """
+        weakness_intro = ""
+        if active_weaknesses:
+            weakness_intro = (
+                f"[Tutor note: The student had previous difficulty on this card with: "
+                f"{'; '.join(active_weaknesses[:4])}]\n"
+            )
+
         convo = "\n".join(
             f"{'Guide' if role == 'guide' else 'Student'}: {text}" for role, text in history[-12:]
         )
+        full_convo = f"{weakness_intro}{convo}" if weakness_intro else convo
         raw = await self._generate(
             SOCRATIC_PROMPT.format(
                 front=front,
                 back=back,
-                history=convo or "(none yet)",
+                history=full_convo or "(none yet)",
                 latest=latest.strip() or "(the student hasn't replied yet — ask an opening question)",
             ),
             model or self.model,
@@ -445,23 +464,22 @@ class GradingService:
                 out.append({"front": str(c["front"]).strip(), "back": str(c["back"]).strip()})
         return out
 
+    async def verify_engine(self) -> list[str]:
+        """Confirm Ollama daemon is reachable and list downloaded models."""
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            try:
+                resp = await client.get(f"{self.base_url}/api/tags")
+                resp.raise_for_status()
+                data = resp.json()
+                models = [m.get("name", "") for m in data.get("models", []) if m.get("name")]
+                return sorted(models)
+            except Exception as exc:
+                raise GradingUnavailable(
+                    f"Could not connect to Ollama at {self.base_url} ({exc}). Is Ollama running?"
+                ) from exc
+
     async def verify_key(self) -> list[str]:
-        """Confirm a pasted key works and report the models it can reach, so
-        Settings can show real IDs rather than trusting our configured default."""
-        client = self._get_client()
-
-        def _list() -> list[str]:
-            names = []
-            for m in client.models.list():
-                actions = getattr(m, "supported_actions", None) or []
-                if not actions or "generateContent" in actions:
-                    names.append((m.name or "").removeprefix("models/"))
-            return sorted(n for n in names if n)
-
-        try:
-            return await asyncio.to_thread(_list)
-        except Exception as exc:
-            raise GradingUnavailable(str(exc)) from exc
+        return await self.verify_engine()
 
 
 # ── parsing & sanity checks ─────────────────────────────────────────────────
@@ -534,9 +552,12 @@ def _normalize_result(data: dict) -> dict:
         "score": score,
         "grade": grade_for_score(score),
         "confidence": min(max(confidence, 0.0), 1.0),
-        "matched_points": [str(x) for x in (data.get("matched_points") or [])][:12],
-        "missed_points": [str(x) for x in (data.get("missed_points") or [])][:12],
-        "overlooked_phrases": [str(x) for x in (data.get("overlooked_phrases") or [])][:12],
+        "matched_points": [str(x).strip() for x in (data.get("matched_points") or []) if str(x).strip()][:12],
+        "missed_points": [str(x).strip() for x in (data.get("missed_points") or []) if str(x).strip()][:12],
+        "overlooked_phrases": [str(x).strip() for x in (data.get("overlooked_phrases") or []) if str(x).strip()][:12],
+        "weaknesses": [str(x).strip() for x in (data.get("weaknesses") or []) if str(x).strip()][:12],
+        "improvements": [str(x).strip() for x in (data.get("improvements") or []) if str(x).strip()][:12],
+        "persistent_weaknesses": [str(x).strip() for x in (data.get("persistent_weaknesses") or []) if str(x).strip()][:12],
         "reasoning": str(data.get("reasoning", "")).strip(),
     }
 

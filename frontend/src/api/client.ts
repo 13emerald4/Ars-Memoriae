@@ -10,6 +10,7 @@ import type {
   CodeSubmissionOut,
   ConfirmReviewResponse,
   Deck,
+  DeckStats,
   DecomposeCardResponse,
   DocumentUpload,
   EventReadiness,
@@ -23,9 +24,11 @@ import type {
   JsonImportResult,
   LearningAnalytics,
   Lesson,
+  LexiconEntry,
   NoteType,
   QueueConfig,
   QueueItem,
+  RecentLexiconItem,
   RunCodeResponse,
   SequentialClozeResponse,
   SessionSummary,
@@ -41,6 +44,7 @@ import type {
   SuggestedCard,
   TreeNode,
   User,
+  WeaknessHintResponse,
 } from './types'
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
@@ -109,7 +113,17 @@ export const api = {
       { api_key },
     ),
   deleteKey: () => request<{ stored: boolean }>('/api/keys', { method: 'DELETE' }),
-  models: () => request<{ models: string[]; error?: string }>('/api/models'),
+  models: () => request<{ models: string[]; active?: string; error?: string }>('/api/models'),
+  llmStatus: () =>
+    request<{
+      connected: boolean
+      provider: string
+      base_url: string
+      model: string
+      models_installed: string[]
+      model_ready: boolean
+      error?: string | null
+    }>('/api/llm/status'),
 
   // ── queue (§9) ──────────────────────────────────────────────────────────
   // `branch` scopes the session to one knowledge-tree subtree.
@@ -143,6 +157,8 @@ export const api = {
   // Stateless: the full turn history goes up with every message.
   guide: (cardId: string, history: SocraticTurn[], message: string) =>
     post<SocraticResponse>(`/api/review/${cardId}/guide`, { history, message }),
+  weaknessHint: (cardId: string) =>
+    post<WeaknessHintResponse>(`/api/review/${cardId}/weakness-hint`, {}),
   submitAnswer: (cardId: string, typed_answer: string, latency_ms: number) =>
     post<SubmitAnswerResponse>(`/api/review/${cardId}/answer`, { typed_answer, latency_ms }),
   runReviewCode: (cardId: string, body: { code: string; custom_test_cases?: any[]; language?: string }) =>
@@ -167,6 +183,7 @@ export const api = {
 
   // ── decks / notes / cards ───────────────────────────────────────────────
   decks: () => request<Deck[]>('/api/decks'),
+  deckStats: (id: string) => request<DeckStats>(`/api/decks/${id}/stats`),
   createDeck: (body: { name: string; default_priority?: number; parent_id?: string | null }) =>
     post<Deck>('/api/decks', body),
   updateDeck: (id: string, body: Record<string, unknown>) => patch<Deck>(`/api/decks/${id}`, body),
@@ -393,4 +410,7 @@ export const api = {
       `/api/code/submissions?limit=${limit}${problemId ? `&problem_id=${problemId}` : ''}`,
     ),
   getCodeStats: () => request<CodeProgressionStats>('/api/code/stats'),
+  lookupLexicon: (term: string, context?: string | null, cardId?: string | null) =>
+    post<LexiconEntry>('/api/lexicon/lookup', { term, context, card_id: cardId }),
+  getRecentLexicon: () => request<RecentLexiconItem[]>('/api/lexicon/recent'),
 }

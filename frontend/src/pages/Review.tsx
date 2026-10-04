@@ -19,6 +19,9 @@ import { OcclusionCard } from '../components/Occlusion'
 import SessionTimer, { formatClock, REVIEW_EVENT } from '../components/SessionTimer'
 import { Empty, ErrorNote, RichText, Spinner } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
+import { useLexicon } from '../components/LexiconContext'
+import { FullscreenButton } from '../components/FullscreenContext'
+import { DeckReviewStatsBar } from '../components/DeckReviewStatsBar'
 
 const LEARN_MODE_KEY = 'memorization.learnMode'
 
@@ -58,6 +61,7 @@ export default function Review() {
   const [revealed, setRevealed] = useState(false)
   const [lastOutcome, setLastOutcome] = useState<string | null>(null)
   const [confidence, setConfidence] = useState<number | null>(null)
+  const [deckStatsTrigger, setDeckStatsTrigger] = useState(0)
 
   // 💻 LeetCode-Style Split IDE & Code Execution Workbench
   const [layoutMode, setLayoutMode] = useState<'split' | 'classic'>(() => {
@@ -117,6 +121,29 @@ export default function Review() {
   // The guide signalling "you've got it" — the cue to stop hinting and commit
   // an answer, which is the only way out of the loop that earns a grade.
   const [guideOnTrack, setGuideOnTrack] = useState(false)
+
+  // Longitudinal Weakness Memory Hint
+  const [weaknessHint, setWeaknessHint] = useState<string | null>(null)
+  const [weaknessHintLoading, setWeaknessHintLoading] = useState(false)
+  const [showWeaknessHint, setShowWeaknessHint] = useState(false)
+
+  async function handleRequestWeaknessHint() {
+    if (!item || item.kind !== 'card') return
+    setWeaknessHintLoading(true)
+    setShowWeaknessHint(true)
+    try {
+      const res = await api.weaknessHint(item.id)
+      setWeaknessHint(res.hint)
+    } catch {
+      setWeaknessHint(
+        item.active_weaknesses?.[0]
+          ? `Focus on avoiding your prior difficulty: ${item.active_weaknesses[0]}.`
+          : 'Recall the core concepts and definitions carefully.'
+      )
+    } finally {
+      setWeaknessHintLoading(false)
+    }
+  }
 
   const shownAt = useRef<number>(Date.now())
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -220,7 +247,11 @@ export default function Review() {
       setGuideOnTrack(false)
       setCodeRunResult(null)
       setCodeRunning(false)
+      setWeaknessHint(null)
+      setWeaknessHintLoading(false)
+      setShowWeaknessHint(false)
       shownAt.current = Date.now()
+      setDeckStatsTrigger((prev) => prev + 1)
     } catch (err) {
       setError(err)
     } finally {
@@ -323,7 +354,7 @@ export default function Review() {
     }
   }
 
-  const llmEnabled = Boolean(user?.llm_grading_consent && user?.has_api_key)
+  const llmEnabled = Boolean(user?.llm_grading_consent)
 
   async function grade() {
     if (!item || item.kind !== 'card') return
@@ -399,7 +430,7 @@ export default function Review() {
       setLastOutcome(
         `${finalGrade} — next in ${formatInterval(outcome.interval_days)}${
           outcome.leech_flagged ? ' · flagged as a leech' : ''
-        }${outcome.automaticity_exceeded ? ' · ⚠️ latency exceeded automaticity threshold' : ''}`,
+        }${outcome.automaticity_exceeded ? ' · ⏱️ pace notice' : ''}`,
       )
       if (outcome.stuck_alert) setStuckAlert(outcome.stuck_alert)
       // Let the session timer refresh its progress toward the card target.
@@ -580,6 +611,15 @@ export default function Review() {
           </div>
         )}
 
+        {/* Live Deck Progress & Difficulty Distribution Stats Bar */}
+        {item && item.kind === 'card' && item.deck_or_source_id && (
+          <DeckReviewStatsBar
+            deckId={item.deck_or_source_id}
+            deckName={item.deck_name}
+            lastUpdated={deckStatsTrigger}
+          />
+        )}
+
         {isCodeCard && layoutMode === 'split' ? (
           /* ════════════════════════════════════════════════════════════════════
              LEETCODE-STYLE 50/50 SPLIT IDE WORKBENCH
@@ -620,6 +660,19 @@ export default function Review() {
                     >
                       <span>📖</span>
                       <span>{showPrimer ? 'Hide Primer' : 'Primer'}</span>
+                    </button>
+                  )}
+                  {item.active_weaknesses && item.active_weaknesses.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!weaknessHint) void handleRequestWeaknessHint()
+                        else setShowWeaknessHint((v) => !v)
+                      }}
+                      className="chip cursor-pointer border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition-colors font-medium"
+                      title={item.active_weaknesses.join('; ')}
+                    >
+                      🎯 {item.active_weaknesses.length} prior {item.active_weaknesses.length === 1 ? 'mistake' : 'mistakes'}
                     </button>
                   )}
                 </div>
@@ -718,26 +771,64 @@ export default function Review() {
                     <span className="text-xs text-slate-500 font-mono">⌘/Ctrl + Enter</span>
                   </div>
 
-                  {llmEnabled && (
-                    <div>
-                      {!guideOpen ? (
-                        <button className="btn text-xs" onClick={openGuide}>
-                          💬 Stuck? Ask your Socratic Guide
+                  {/* Longitudinal Weakness Hint Box */}
+                  {showWeaknessHint && (
+                    <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-1.5 text-xs text-amber-200">
+                      <div className="flex items-center justify-between font-semibold">
+                        <span className="flex items-center gap-1.5">
+                          <span>💡</span>
+                          <span>Past Mistake Diagnostic Hint:</span>
+                        </span>
+                        <button
+                          type="button"
+                          className="text-[11px] underline text-amber-400 hover:text-amber-200"
+                          onClick={() => setShowWeaknessHint(false)}
+                        >
+                          hide
                         </button>
+                      </div>
+                      {weaknessHintLoading ? (
+                        <p className="text-amber-300/70 italic">Consulting past weakness memory…</p>
                       ) : (
-                        <SocraticGuide
-                          history={guideHistory}
-                          input={guideInput}
-                          onInputChange={setGuideInput}
-                          loading={guideLoading}
-                          degraded={guideDegraded}
-                          onTrack={guideOnTrack}
-                          onSend={() => void askGuide(guideInput)}
-                          onClose={() => setGuideOpen(false)}
-                          onCommit={() => setGuideOpen(false)}
-                        />
+                        <p className="text-amber-100 leading-relaxed">
+                          {weaknessHint || (item.active_weaknesses?.[0] ? `Recall your past struggle with: ${item.active_weaknesses[0]}` : 'Recall the core concepts and definitions.')}
+                        </p>
                       )}
                     </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {llmEnabled && !guideOpen && (
+                      <button className="btn text-xs" onClick={openGuide}>
+                        💬 Stuck? Ask your Socratic Guide
+                      </button>
+                    )}
+                    {item.active_weaknesses && item.active_weaknesses.length > 0 && (
+                      <button
+                        type="button"
+                        className="btn text-xs border-amber-500/40 text-amber-300 hover:bg-amber-500/15"
+                        onClick={() => {
+                          if (!weaknessHint) void handleRequestWeaknessHint()
+                          else setShowWeaknessHint((v) => !v)
+                        }}
+                      >
+                        💡 {showWeaknessHint ? 'Hide Past Mistake Hint' : 'Past Mistake Hint'}
+                      </button>
+                    )}
+                  </div>
+
+                  {llmEnabled && guideOpen && (
+                    <SocraticGuide
+                      history={guideHistory}
+                      input={guideInput}
+                      onInputChange={setGuideInput}
+                      loading={guideLoading}
+                      degraded={guideDegraded}
+                      onTrack={guideOnTrack}
+                      onSend={() => void askGuide(guideInput)}
+                      onClose={() => setGuideOpen(false)}
+                      onCommit={() => setGuideOpen(false)}
+                    />
                   )}
                 </div>
               )}
@@ -871,6 +962,7 @@ export default function Review() {
                         </button>
                       ))}
                     </div>
+                    <FullscreenButton size="sm" showLabel={false} />
                   </div>
                 </div>
 
@@ -942,6 +1034,19 @@ export default function Review() {
                   >
                     <span>📖</span>
                     <span>{showPrimer ? 'Hide Related Content' : 'Review Related Content (Primer)'}</span>
+                  </button>
+                )}
+                {item.active_weaknesses && item.active_weaknesses.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!weaknessHint) void handleRequestWeaknessHint()
+                      else setShowWeaknessHint((v) => !v)
+                    }}
+                    className="chip cursor-pointer border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition-colors font-medium"
+                    title={item.active_weaknesses.join('; ')}
+                  >
+                    🎯 {item.active_weaknesses.length} prior {item.active_weaknesses.length === 1 ? 'mistake' : 'mistakes'}
                   </button>
                 )}
               </div>
@@ -1119,8 +1224,46 @@ export default function Review() {
                       💬 Stuck? Ask your Guide
                     </button>
                   )}
+                  {item.active_weaknesses && item.active_weaknesses.length > 0 && (
+                    <button
+                      type="button"
+                      className="btn border-amber-500/40 text-amber-300 hover:bg-amber-500/15"
+                      onClick={() => {
+                        if (!weaknessHint) void handleRequestWeaknessHint()
+                        else setShowWeaknessHint((v) => !v)
+                      }}
+                    >
+                      💡 {showWeaknessHint ? 'Hide Past Mistake Hint' : 'Past Mistake Hint'}
+                    </button>
+                  )}
                   <span className="text-xs text-slate-600">⌘/Ctrl + Enter</span>
                 </div>
+
+                {/* Longitudinal Weakness Hint Box */}
+                {showWeaknessHint && (
+                  <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-1.5 text-xs text-amber-200">
+                    <div className="flex items-center justify-between font-semibold">
+                      <span className="flex items-center gap-1.5">
+                        <span>💡</span>
+                        <span>Past Mistake Diagnostic Hint:</span>
+                      </span>
+                      <button
+                        type="button"
+                        className="text-[11px] underline text-amber-400 hover:text-amber-200"
+                        onClick={() => setShowWeaknessHint(false)}
+                      >
+                        hide
+                      </button>
+                    </div>
+                    {weaknessHintLoading ? (
+                      <p className="text-amber-300/70 italic">Consulting past weakness memory…</p>
+                    ) : (
+                      <p className="text-amber-100 leading-relaxed">
+                        {weaknessHint || (item.active_weaknesses?.[0] ? `Recall your past struggle with: ${item.active_weaknesses[0]}` : 'Recall the core concepts and definitions.')}
+                      </p>
+                    )}
+                  </div>
+                )}
                 {!llmEnabled && (
                   <p className="mt-3 text-xs text-slate-600">
                     LLM grading is off. Turn it on in{' '}
@@ -1439,11 +1582,24 @@ function LessonGate({
   onContinue: () => void
   onOpenSettings: () => void
 }) {
+  const { openLexicon } = useLexicon()
+
   return (
     <div className="card">
-      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-        {deckName && <span className="chip">{deckName}</span>}
-        <span className="chip text-sky-300">learn &amp; practice</span>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center gap-2">
+          {deckName && <span className="chip">{deckName}</span>}
+          <span className="chip text-sky-300">learn &amp; practice</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => openLexicon('binary approximations', lesson?.body)}
+          className="flex items-center gap-1.5 rounded-full border border-sky-400/40 bg-sky-950/70 px-2.5 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-900/80 hover:border-sky-300 transition-all shadow-sm"
+          title="Open Concordance &amp; Lexicon definition lookup"
+        >
+          <span>📖</span>
+          <span>Lexicon / Concordance</span>
+        </button>
       </div>
 
       {loading || !lesson ? (
@@ -1480,6 +1636,23 @@ function LessonGate({
             text={lesson.body}
             className="text-[15px] leading-7 text-slate-200"
           />
+
+          {/* Concordance interactive guidance tip */}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300 bg-slate-900/70 rounded-lg px-3 py-2 border border-sky-500/20">
+            <span className="flex items-center gap-1.5">
+              <span className="text-sky-300 font-semibold">💡 Lexicon Tip:</span>
+              <span>
+                Highlight any word or phrase (or <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-mono border border-slate-700 text-sky-200">Alt</kbd>+click) to view its concordance definition.
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => openLexicon('binary approximations', lesson.body)}
+              className="text-sky-300 hover:text-sky-200 underline font-medium text-xs ml-auto"
+            >
+              Look up "binary approximations"
+            </button>
+          </div>
 
           {lesson.key_points.length > 0 && (
             <div>
@@ -1823,6 +1996,69 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
           </ul>
         </div>
       )}
+
+      {/* Longitudinal Weakness Memory: Improvements & Resolved Pitfalls */}
+      {result.improvements && result.improvements.length > 0 && (
+        <div className="rounded-lg border border-emerald-500/50 bg-emerald-500/15 p-3.5">
+          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200">
+            <span className="text-sm">🎉</span>
+            <span>Overcame Past Mistake!</span>
+          </div>
+          <p className="mt-1 text-[11px] text-emerald-300/80">
+            You successfully addressed weaknesses that you struggled with in previous reviews:
+          </p>
+          <ul className="mt-2 space-y-1 text-xs text-emerald-100">
+            {result.improvements.map((imp, i) => (
+              <li key={i} className="flex items-start gap-1.5">
+                <span className="text-emerald-400 font-bold">✓</span>
+                <span>{imp}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Longitudinal Weakness Memory: Persistent Recurring Blind Spots */}
+      {result.persistent_weaknesses && result.persistent_weaknesses.length > 0 && (
+        <div className="rounded-lg border border-rose-500/40 bg-rose-500/15 p-3.5">
+          <div className="flex items-center gap-2 text-xs font-semibold text-rose-200">
+            <span className="text-sm">🔁</span>
+            <span>Recurring Blind Spot (Persistent Weakness)</span>
+          </div>
+          <p className="mt-1 text-[11px] text-rose-300/80">
+            This weakness was flagged in prior reviews and still was not resolved in this attempt:
+          </p>
+          <ul className="mt-2 space-y-1 text-xs text-rose-100">
+            {result.persistent_weaknesses.map((pw, i) => (
+              <li key={i} className="flex items-start gap-1.5">
+                <span className="text-rose-400 font-bold">•</span>
+                <span>{pw}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Longitudinal Weakness Memory: Newly Logged Flaws Stored for Next Time */}
+      {result.weaknesses && result.weaknesses.length > 0 && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
+          <div className="flex items-center gap-1.5 font-semibold text-amber-200">
+            <span>🧠</span>
+            <span>Saved to Memory for Future Reviews:</span>
+          </div>
+          <p className="mt-1 text-[11px] text-amber-300/70">
+            The grader noted these weaknesses and stored them — you can request targeted hints on them next time:
+          </p>
+          <ul className="mt-1.5 space-y-1 text-xs text-amber-100">
+            {result.weaknesses.map((w, i) => (
+              <li key={i} className="flex items-start gap-1.5">
+                <span className="text-amber-400 font-bold">•</span>
+                <span>{w}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
@@ -2096,6 +2332,7 @@ function SessionHeader({
             📖 Learn &amp; Practice {learnMode ? 'on' : 'off'}
           </button>
         )}
+        <FullscreenButton size="sm" className="ml-1" />
       </div>
 
       {outcome && <p className="text-xs text-slate-500">Last: {outcome}</p>}

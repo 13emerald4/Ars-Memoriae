@@ -56,7 +56,7 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     google_api_key_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
     desired_retention: Mapped[float] = mapped_column(Float, nullable=False, default=0.90)
-    grading_model: Mapped[str] = mapped_column(Text, nullable=False, default="gemma-4-e4b-it")
+    grading_model: Mapped[str] = mapped_column(Text, nullable=False, default="qwen2.5-coder:7b")
     queue_time_budget_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
     leech_remediation_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # §3.1 review-load guardrails
@@ -314,6 +314,8 @@ class Card(Base):
     leech_flag: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     suspended: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     tags: Mapped[list[str]] = mapped_column(StringArray, nullable=False, default=list)
+    active_weaknesses: Mapped[list[str]] = mapped_column(JSONType, nullable=False, default=list)
+    weakness_history: Mapped[list[dict]] = mapped_column(JSONType, nullable=False, default=list)
 
     __table_args__ = (
         CheckConstraint(
@@ -487,6 +489,10 @@ class ReviewLog(Base):
     user_confidence: Mapped[int | None] = mapped_column(SmallInteger)
     # Memory Champion: Flag indicating if review was performed during a timed Blitz Sprint.
     is_blitz: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Longitudinal Weakness Memory: specific flaws identified, resolved, or persisting across reviews
+    weaknesses: Mapped[list[str]] = mapped_column(JSONType, nullable=False, default=list)
+    improvements: Mapped[list[str]] = mapped_column(JSONType, nullable=False, default=list)
+    persistent_weaknesses: Mapped[list[str]] = mapped_column(JSONType, nullable=False, default=list)
 
     __table_args__ = (
         CheckConstraint(
@@ -667,6 +673,29 @@ class CodeSubmission(Base):
     )
 
 
+class LexiconCache(Base):
+    """Cached technical definitions and concordance entries."""
+
+    __tablename__ = "lexicon_cache"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=_uuid)
+    term_normalized: Mapped[str] = mapped_column(Text, index=True, nullable=False)
+    term_display: Mapped[str] = mapped_column(Text, nullable=False)
+    definition: Mapped[str] = mapped_column(Text, nullable=False)
+    context_explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    example: Mapped[str | None] = mapped_column(Text, nullable=True)
+    domain: Mapped[str | None] = mapped_column(Text, nullable=True, default="Computer Science")
+    related_terms: Mapped[list] = mapped_column(JSONType, nullable=False, default=list)
+    model_used: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+    __table_args__ = (
+        Index("idx_lexicon_term_normalized", "term_normalized"),
+    )
+
+
 __all__ = [
     "Base",
     "Card",
@@ -680,6 +709,7 @@ __all__ = [
     "Import",
     "KnowledgeNode",
     "LeechSuggestion",
+    "LexiconCache",
     "MediaAsset",
     "Note",
     "NoteType",

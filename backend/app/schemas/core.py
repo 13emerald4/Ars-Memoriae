@@ -123,6 +123,21 @@ class DeckOut(BaseModel):
     target_event_title: str | None = None
 
 
+class DeckStatsOut(BaseModel):
+    id: str
+    name: str
+    total_cards: int
+    viewed_cards: int
+    new_cards: int
+    learning_cards: int
+    review_cards: int
+    due_cards: int
+    viewed_ratio: float
+    difficulty_counts: dict[str, int]
+    difficulty_proportions: dict[str, float]
+
+
+
 class NoteTypeCreate(BaseModel):
     name: str
     template_kind: str = "basic"

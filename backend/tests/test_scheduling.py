@@ -132,3 +132,18 @@ def test_optimizer_availability_reflects_torch_not_just_the_import():
 
         with pytest.raises(ImportError):
             Optimizer([])
+
+
+def test_schedule_is_invariant_to_response_duration():
+    """FSRS schedule must not use response latency/duration as an input."""
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    svc = FSRSService(fuzz=False)
+
+    card1, state1 = svc.schedule(_fresh(), Rating.Good, now, duration_ms=200)
+    card2, state2 = svc.schedule(_fresh(), Rating.Good, now, duration_ms=45000)
+    card3, state3 = svc.schedule(_fresh(), Rating.Good, now, duration_ms=None)
+
+    assert card1.due == card2.due == card3.due
+    assert card1.stability == card2.stability == card3.stability
+    assert card1.difficulty == card2.difficulty == card3.difficulty
+    assert state1 == state2 == state3

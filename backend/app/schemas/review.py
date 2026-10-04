@@ -50,6 +50,9 @@ class QueueItem(BaseModel):
     title: str | None = None
     difficulty: str | None = None
     category: str | None = None
+    # Longitudinal Weakness Memory
+    active_weaknesses: list[str] = Field(default_factory=list)
+    weakness_history: list[dict] = Field(default_factory=list)
 
 
 class SessionSummary(BaseModel):
@@ -83,6 +86,10 @@ class SubmitAnswerResponse(BaseModel):
     matched_points: list[str] = Field(default_factory=list)
     missed_points: list[str] = Field(default_factory=list)
     overlooked_phrases: list[str] = Field(default_factory=list)
+    # Longitudinal Weakness Tracking
+    weaknesses: list[str] = Field(default_factory=list)
+    improvements: list[str] = Field(default_factory=list)
+    persistent_weaknesses: list[str] = Field(default_factory=list)
     reasoning: str
     degraded_to_manual: bool = False  # true when §4.3 fallback triggered
     # §4.3 extras
@@ -98,6 +105,12 @@ class SubmitAnswerResponse(BaseModel):
     automaticity_exceeded: bool = False
     automaticity_threshold_ms: int | None = None
     automaticity_note: str | None = None
+
+
+class WeaknessHintResponse(BaseModel):
+    hint: str
+    active_weaknesses: list[str] = Field(default_factory=list)
+    has_past_weaknesses: bool = False
 
 
 class LessonOut(BaseModel):

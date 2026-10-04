@@ -31,6 +31,7 @@ from app.schemas.review import (
     StuckAlertOut,
     SubmitAnswerRequest,
     SubmitAnswerResponse,
+    WeaknessHintResponse,
     RunReviewCodeRequest,
 )
 from app.services import leech_service, lesson_service, stuck_service
@@ -153,15 +154,6 @@ async def submit_answer(
         )
 
     api_key = decrypt_api_key(user.google_api_key_encrypted)
-    if not api_key:
-        return _manual(
-            back,
-            "no_api_key",
-            latency_note,
-            auto_exceeded,
-            user.automaticity_threshold_ms,
-            auto_note,
-        )
 
     # §4.3 cache: identical resubmits must not burn API calls.
     answer_hash = new_answer_hash(body.typed_answer)
@@ -189,6 +181,7 @@ async def submit_answer(
             user_answer=body.typed_answer,
             profile=profile,
             card_type=note.note_type.template_kind,
+            previous_weaknesses=card.active_weaknesses or [],
             force_escalate=await _disputed_recently(db, card.id),
         )
     except GradingUnavailable as exc:
@@ -240,18 +233,15 @@ def _build_response(
     if user.automaticity_threshold_ms and latency_ms and latency_ms > user.automaticity_threshold_ms:
         automaticity_exceeded = True
         automaticity_note = (
-            f"Latency ({round(latency_ms / 1000.0, 1)}s) exceeded automaticity threshold "
-            f"({round(user.automaticity_threshold_ms / 1000.0, 1)}s) — graded as Hard for automaticity."
+            f"Latency ({round(latency_ms / 1000.0, 1)}s) exceeded target automaticity threshold "
+            f"({round(user.automaticity_threshold_ms / 1000.0, 1)}s). Graded purely on correctness."
         )
-        if grade in ("good", "easy"):
-            grade = "hard"
 
     # §4.3 sanity check: the model and the cheap heuristic disagreeing, or the
     # model being unsure, means asking the user instead of auto-accepting.
     needs_confirmation = (
         disagrees_with_heuristic(grade, overlap)
         or result["confidence"] < 0.5
-        or automaticity_exceeded
     )
     return SubmitAnswerResponse(
         suggested_grade=Grade(grade),
@@ -260,6 +250,9 @@ def _build_response(
         matched_points=result.get("matched_points", []),
         missed_points=result.get("missed_points", []),
         overlooked_phrases=result.get("overlooked_phrases", []),
+        weaknesses=result.get("weaknesses", []),
+        improvements=result.get("improvements", []),
+        persistent_weaknesses=result.get("persistent_weaknesses", []),
         reasoning=result.get("reasoning", ""),
         reference_answer=reference,
         needs_confirmation=needs_confirmation,
@@ -309,8 +302,6 @@ async def socratic_guide(
     if not user.llm_grading_consent:
         return SocraticResponse(message="", degraded=True, degraded_reason="consent_not_given")
     api_key = decrypt_api_key(user.google_api_key_encrypted)
-    if not api_key:
-        return SocraticResponse(message="", degraded=True, degraded_reason="no_api_key")
 
     service = GradingService(api_key, user.grading_model)
     try:
@@ -319,6 +310,7 @@ async def socratic_guide(
             back=back,
             history=[(t.role, t.text) for t in body.history],
             latest=body.message,
+            active_weaknesses=card.active_weaknesses or [],
         )
     except GradingUnavailable as exc:
         return SocraticResponse(message="", degraded=True, degraded_reason=str(exc))
@@ -326,6 +318,55 @@ async def socratic_guide(
     return SocraticResponse(
         message=result["message"], on_track=result["on_track"], model_used=user.grading_model
     )
+
+
+@router.post("/{card_id}/weakness-hint", response_model=WeaknessHintResponse)
+async def card_weakness_hint(
+    card_id: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> WeaknessHintResponse:
+    """Targeted hint addressing previous weaknesses on this card without spoiling the solution."""
+    card = await _owned_card(db, user, parse_uuid(card_id))
+    note = card.note
+    front, back = render(
+        note.note_type.template_kind, note.field_values or {}, card.template_slot
+    )
+
+    if not card.active_weaknesses:
+        return WeaknessHintResponse(
+            hint="No prior weaknesses recorded for this card. Focus on recalling the core definitions and logic.",
+            active_weaknesses=[],
+            has_past_weaknesses=False,
+        )
+
+    if not user.llm_grading_consent:
+        # Fallback without LLM generation
+        return WeaknessHintResponse(
+            hint=f"Focus on your previous stumbling block: {card.active_weaknesses[0]}.",
+            active_weaknesses=card.active_weaknesses,
+            has_past_weaknesses=True,
+        )
+
+    api_key = decrypt_api_key(user.google_api_key_encrypted)
+    service = GradingService(api_key, user.grading_model)
+    try:
+        result = await service.generate_weakness_hint(
+            front=front,
+            back=back,
+            active_weaknesses=card.active_weaknesses,
+        )
+        return WeaknessHintResponse(
+            hint=result["hint"],
+            active_weaknesses=card.active_weaknesses,
+            has_past_weaknesses=result.get("has_past_weaknesses", True),
+        )
+    except GradingUnavailable as exc:
+        return WeaknessHintResponse(
+            hint=f"Watch out for previous difficulty: {card.active_weaknesses[0]}.",
+            active_weaknesses=card.active_weaknesses,
+            has_past_weaknesses=True,
+        )
 
 
 @router.post("/{card_id}/confirm", response_model=ConfirmReviewResponse)
@@ -364,7 +405,7 @@ async def confirm_review(
         last_review=card.last_review,
     )
     _, new_state = fsrs.schedule(
-        fsrs_card, GRADE_TO_RATING[body.final_grade.value], now, body.latency_ms
+        fsrs_card, GRADE_TO_RATING[body.final_grade.value], now
     )
 
     # Event Horizon interval compression: ensure scheduled card due date
@@ -385,12 +426,45 @@ async def confirm_review(
     # Recover the LLM's own verdict for the log, if the answer was graded.
     llm_grade = llm_reasoning = None
     llm_confidence = None
+    identified_weaknesses: list[str] = []
+    improvements: list[str] = []
+    persistent_weaknesses: list[str] = []
     if body.typed_answer:
         cached = await db.get(GradingCache, (card.id, new_answer_hash(body.typed_answer)))
         if cached:
             llm_grade = cached.response.get("grade")
             llm_reasoning = cached.response.get("reasoning")
             llm_confidence = cached.response.get("confidence")
+            identified_weaknesses = cached.response.get("weaknesses") or []
+            improvements = cached.response.get("improvements") or []
+            persistent_weaknesses = cached.response.get("persistent_weaknesses") or []
+
+    # Update Card longitudinal weakness state:
+    # 1. Any weakness listed in 'improvements' is resolved.
+    # 2. Any weakness in 'persistent_weaknesses' or 'identified_weaknesses' is active.
+    current_active = set(card.active_weaknesses or [])
+    current_active.difference_update(improvements)
+    current_active.update(persistent_weaknesses)
+    current_active.update(identified_weaknesses)
+
+    # If final grade is 'easy' or 'good' and no weaknesses/persistent weaknesses were flagged, resolve active weaknesses
+    if body.final_grade in (Grade.good, Grade.easy) and not identified_weaknesses and not persistent_weaknesses:
+        current_active.clear()
+
+    updated_active = sorted(list(current_active))
+    card.active_weaknesses = updated_active
+
+    history_entry = {
+        "reviewed_at": now.isoformat(),
+        "final_grade": body.final_grade.value,
+        "weaknesses_identified": identified_weaknesses,
+        "improvements": improvements,
+        "persistent_weaknesses": persistent_weaknesses,
+        "active_remaining": updated_active,
+    }
+    history = list(card.weakness_history or [])
+    history.append(history_entry)
+    card.weakness_history = history[-50:]
 
     # Computed against history only — called before this review's own row
     # exists, so the query never has to exclude its own result.
@@ -414,6 +488,9 @@ async def confirm_review(
             graduated_to_review=state_before != "review" and new_state.get("state") == "review",
             user_confidence=body.confidence,
             is_blitz=body.is_blitz,
+            weaknesses=identified_weaknesses,
+            improvements=improvements,
+            persistent_weaknesses=persistent_weaknesses,
         )
     )
 

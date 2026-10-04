@@ -67,26 +67,17 @@ export default function Decks() {
  *  they came from -> you approve -> the citations are kept and shown during
  *  review, after you answer. Nothing is written until you accept. */
 const GENERATION_MODELS = [
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', badge: 'Recommended (Fast)' },
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', badge: 'Fast & High Quota' },
-  { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', badge: 'Max Throughput' },
-  { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash', badge: 'Hybrid Preview' },
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', badge: 'Frontier Reasoning' },
-  { id: 'gemini-2.0-pro-exp-02-05', name: 'Gemini 2.0 Pro Exp', badge: 'Deep Reasoning' },
+  { id: 'qwen2.5-coder:7b', name: 'Qwen 2.5 Coder (7B Instruct)', badge: 'Local Engine' },
 ]
 
 const THINKING_LEVELS = [
-  { id: 'dynamic', label: 'Dynamic (Default)', budget: undefined, hint: 'Model decides' },
-  { id: 'off', label: 'Off (0 tokens)', budget: 0, hint: 'Fastest output' },
-  { id: 'low', label: 'Low (1k tokens)', budget: 1024, hint: 'Quick checks' },
-  { id: 'med', label: 'Medium (2k tokens)', budget: 2048, hint: 'Balanced' },
-  { id: 'high', label: 'High (8k tokens)', budget: 8192, hint: 'Complex STEM/proofs' },
+  { id: 'dynamic', label: 'Default', budget: undefined, hint: 'Standard inference' },
 ]
 
 function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
   const [doc, setDoc] = useState<DocumentUpload | null>(null)
   const [deckName, setDeckName] = useState('')
-  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash')
+  const [selectedModel, setSelectedModel] = useState('qwen2.5-coder:7b')
   const [selectedThinking, setSelectedThinking] = useState('dynamic')
   const [generated, setGenerated] = useState<GenerateDeckResponse | null>(null)
   const [chosen, setChosen] = useState<Set<number>>(new Set())
