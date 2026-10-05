@@ -19,6 +19,7 @@ Registered on the ``queue_composer`` seam (§12).
 from __future__ import annotations
 
 import math
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Literal
@@ -76,6 +77,7 @@ class ComposedItem:
     occlusion: dict | None = None
     references: list[dict] = field(default_factory=list)
     starter_code: str | None = None
+    starter_tests: str | None = None
     test_cases: list[dict] = field(default_factory=list)
     time_complexity: str | None = None
     space_complexity: str | None = None
@@ -401,6 +403,7 @@ def _card_item(card: Card, effective: float, seconds: float) -> ComposedItem:
         if kind == "image_occlusion"
         else None,
         starter_code=fv.get("starter_code"),
+        starter_tests=fv.get("starter_tests"),
         test_cases=fv.get("test_cases") or [],
         time_complexity=fv.get("time_complexity"),
         space_complexity=fv.get("space_complexity"),
@@ -750,3 +753,35 @@ async def compose_due_date_only(
 
 
 registry.register("queue_composer", "due_date_only", compose_due_date_only)
+
+
+async def compose_deck_persist_queue(
+    db: AsyncSession,
+    user: User,
+    deck_id: uuid.UUID,
+) -> list[ComposedItem]:
+    """Load all active (non-suspended) cards in a deck formatted as ComposedItems for persist mode."""
+    deck = await db.get(Deck, deck_id)
+    if deck is None or deck.user_id != user.id:
+        return []
+
+    stmt = (
+        select(Card)
+        .join(Deck, Deck.id == Card.deck_id)
+        .where(
+            Card.deck_id == deck.id,
+            Card.suspended.is_(False),
+        )
+        .order_by(
+            Card.due.is_(None),
+            Card.due.asc(),
+            _effective_priority_sql().desc(),
+            Card.id.asc(),
+        )
+    )
+    rows = await db.execute(stmt)
+    cards = list(rows.scalars())
+    items = [_card_item(c, float(c.effective_priority), 12.0) for c in cards]
+    await attach_references(db, items)
+    return items
+

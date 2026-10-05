@@ -106,9 +106,15 @@ async def import_json(
     if isinstance(body, list):
         deck_name = (deck or "").strip()
         if not deck_name:
+            for n in body:
+                d = getattr(n, "deck", None)
+                if d and d.strip():
+                    deck_name = d.strip()
+                    break
+        if not deck_name:
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST,
-                "a bare array of notes needs a deck name — pass ?deck=<name>",
+                "a bare array of notes needs a deck name — pass ?deck=<name> or include 'deck' in note objects",
             )
         notes, deck_priority = body, None
     else:
@@ -137,7 +143,12 @@ async def import_json(
 
     for i, item in enumerate(notes):
         is_cloze = item.kind == "cloze"
-        is_code = item.kind == "code" or getattr(item, "card_type", None) == "code" or bool(item.starter_code)
+        is_code = (
+            item.kind == "code"
+            or getattr(item, "card_type", None) == "code"
+            or bool(item.starter_code)
+            or bool(item.starter_tests)
+        )
         if is_cloze:
             if not (item.cloze_text or "").strip():
                 warnings.append(f"note {i}: kind is \"cloze\" but cloze_text is empty — skipped")
@@ -151,6 +162,8 @@ async def import_json(
             if is_code:
                 if item.starter_code:
                     field_values["starter_code"] = item.starter_code
+                if item.starter_tests:
+                    field_values["starter_tests"] = item.starter_tests
                 if item.test_cases:
                     field_values["test_cases"] = item.test_cases
                 if item.time_complexity:

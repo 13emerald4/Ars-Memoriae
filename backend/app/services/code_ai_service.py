@@ -14,8 +14,8 @@ from app.services.grading_service import GradingService, GradingUnavailable
 
 log = logging.getLogger(__name__)
 
-FORGE_PROBLEM_PROMPT = """You are a senior algorithmic problem designer for competitive programming and technical interviews.
-Generate a structured, complete algorithmic challenge based on the requested topic.
+FORGE_PROBLEM_PROMPT = """You are a senior algorithmic problem designer for software engineering, university software construction courses (e.g. CPSC 210), and technical interviews.
+Generate a structured, complete coding challenge based on the requested topic.
 
 Topic/Concept: {topic}
 Difficulty: {difficulty}
@@ -24,31 +24,42 @@ Target Primary Language: {target_language}
 Requirements:
 1. Clear problem statement with formatted markdown, mathematical notation ($O(N)$), and constraints.
 2. 2-3 comprehensive examples with Input, Output, and Explanation.
-3. Realistic constraints (e.g. array length, integer bounds).
-4. Idiomatic starter code with function/class definition and docstring.
-5. Optimal reference solution with comments.
-6. In-depth editorial explaining pattern intuition, step-by-step walkthrough, and time/space complexity proof.
-7. 4-6 diverse test cases (including edge cases like empty, single element, negative numbers, duplicates).
-8. 3 progressive hints (Conceptual -> Directional -> Edge Case).
+3. Realistic constraints (e.g. array length, integer bounds, valid types).
+4. Idiomatic starter code with function/class definition and docstring:
+   - For TypeScript: if modeling Result or fallible operations, use the standard CPSC 210 Result type with 'error':
+     type Result<T, E = string> = {{ ok: true; value: T }} | {{ ok: false; error: E }};
+   - For async operations, use modern async/await and Promise signatures.
+5. Unit Testing Suite (`starter_tests`) using CPSC 210 conventions:
+   - Use `test('description', checkExpect(() => actual, expected))` where checkExpect takes the actual call thunk first, expected second.
+   - For error testing on functions that throw: `test('description', checkError(() => actualFunctionCall(), 'expected error message'))`.
+   - For unwrapping / checking Result types: use `assertOk(r)` (returns value) and `assertErr(r)` (returns error).
+   - For async tests: use `checkExpect(async () => await asyncFn(...), expected)`.
+   - Include normal cases, boundary threshold limits, and error/Result edge cases.
+6. Optimal reference solution with comments.
+7. In-depth editorial explaining pattern intuition, step-by-step walkthrough, and time/space complexity proof.
+8. 4-6 diverse test cases (including edge cases like empty, single element, threshold bounds, duplicates).
+9. 3 progressive hints (Conceptual -> Directional -> Edge Case).
 
 Respond with ONLY a JSON object conforming to this schema:
 {{
   "title": "Problem Title",
   "slug": "problem-slug",
   "difficulty": "{difficulty}",
-  "category": "Algorithmic Category (e.g. Sliding Window, Dynamic Programming, Trees)",
-  "tags": ["Array", "Hash Table"],
+  "category": "Algorithmic Category (e.g. Control Flow, Recursion, Result Types, Async, Testing)",
+  "tags": ["Array", "Result", "Testing"],
   "description": "Full problem description in markdown",
   "examples": [
-    {{"input": "nums = [1, 2, 3], k = 2", "output": "3", "explanation": "..."}}
+    {{"input": "...", "output": "...", "explanation": "..."}}
   ],
   "constraints": ["1 <= nums.length <= 10^5", "-10^9 <= nums[i] <= 10^9"],
   "starter_codes": {{
     "python": "class Solution:\\n    def solve(self, nums: list[int]) -> int:\\n        pass\\n",
     "typescript": "function solve(nums: number[]): number {{\\n    return 0;\\n}}\\n"
   }},
+  "starter_tests": "// 🧪 CPSC 210 Unit Testing Suite\\ntest('sample case', checkExpect(() => solve([1, 2, 3]), 3));\\n\\ntest('boundary threshold', checkExpect(() => solve([]), 0));\\n",
   "solutions": {{
-    "python": "class Solution:\\n    def solve(self, nums: list[int]) -> int:\\n        return len(nums)\\n"
+    "python": "class Solution:\\n    def solve(self, nums: list[int]) -> int:\\n        return len(nums)\\n",
+    "typescript": "function solve(nums: number[]): number {{\\n    return nums.length;\\n}}\\n"
   }},
   "editorial": "### Intuition\\n...\\n### Complexity\\n- Time: $O(N)$\\n- Space: $O(1)$",
   "test_cases": [

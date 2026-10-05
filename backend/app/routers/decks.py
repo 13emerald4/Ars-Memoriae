@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import Card, Deck, Extract, KnowledgeNode, Note, NoteType, Source, User
+from app.models import Card, Deck, Extract, KnowledgeNode, Note, NoteType, ReviewLog, Source, User
 from app.routers.deps import current_user, parse_uuid
 from app.schemas.core import (
     CardOut,
@@ -25,6 +25,7 @@ from app.schemas.core import (
     NoteUpdate,
     PriorityUpdate,
 )
+from app.schemas.review import QueueItem
 from app.services import tree_service
 from app.services.note_service import default_note_type, sync_cards
 from app.services.rendering import occlusion_payload, render
@@ -264,6 +265,42 @@ async def deck_stats(
         for k, v in cleaned_counts.items()
     }
 
+    # Recall rating distribution: latest final_grade per card in this deck
+    log_stmt = (
+        select(ReviewLog.card_id, ReviewLog.final_grade)
+        .join(Card, ReviewLog.card_id == Card.id)
+        .where(Card.deck_id == deck.id)
+        .order_by(ReviewLog.reviewed_at.asc())
+    )
+    log_rows = (await db.execute(log_stmt)).all()
+    total_reviews = len(log_rows)
+
+    latest_rating_by_card: dict[uuid.UUID, str] = {}
+    for c_id, f_grade in log_rows:
+        latest_rating_by_card[c_id] = f_grade
+
+    rating_counts: dict[str, int] = {"Again": 0, "Hard": 0, "Good": 0, "Easy": 0, "Unrated": 0}
+    for card, _ in rows:
+        grade = latest_rating_by_card.get(card.id)
+        if grade == "again":
+            rating_counts["Again"] += 1
+        elif grade == "hard":
+            rating_counts["Hard"] += 1
+        elif grade == "good":
+            rating_counts["Good"] += 1
+        elif grade == "easy":
+            rating_counts["Easy"] += 1
+        else:
+            rating_counts["Unrated"] += 1
+
+    cleaned_rating_counts = {
+        k: v for k, v in rating_counts.items() if v > 0 or k in ("Again", "Hard", "Good", "Easy")
+    }
+    rating_props = {
+        k: round(v / total_cards, 4) if total_cards > 0 else 0.0
+        for k, v in cleaned_rating_counts.items()
+    }
+
     return DeckStatsOut(
         id=str(deck.id),
         name=deck.name,
@@ -276,7 +313,25 @@ async def deck_stats(
         viewed_ratio=viewed_ratio,
         difficulty_counts=cleaned_counts,
         difficulty_proportions=diff_props,
+        rating_counts=cleaned_rating_counts,
+        rating_proportions=rating_props,
+        total_reviews=total_reviews,
     )
+
+
+@router.get("/decks/{deck_id}/persist-items", response_model=list[QueueItem])
+async def deck_persist_items(
+    deck_id: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[QueueItem]:
+    """Return all active cards in a deck formatted as QueueItems for persist review mode."""
+    deck = await _owned_deck(db, user, parse_uuid(deck_id))
+    from app.routers.queue import to_schema
+    from app.services.queue_service import compose_deck_persist_queue
+
+    items = await compose_deck_persist_queue(db, user, deck.id)
+    return [to_schema(i) for i in items]
 
 
 @router.delete("/decks", status_code=204)

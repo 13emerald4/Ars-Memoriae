@@ -183,3 +183,82 @@ async def test_code_practice_api_endpoints(auth_client):
     assert len(stats_data["categories"]) >= 18
     assert "difficulty" in stats_data
     assert stats_data["difficulty"]["easy"]["total"] > 0
+
+
+@pytest.mark.asyncio
+async def test_tdd_student_unit_tests_typescript():
+    from app.services.code_runner_service import run_code
+
+    code = """
+function clamp(val: number, min: number, max: number): number {
+    return Math.max(min, Math.min(val, max));
+}
+"""
+    test_code = """
+test('clamps below range', () => {
+    assertEquals(clamp(-5, 0, 10), 0);
+});
+
+test('clamps above range', () => {
+    assertEquals(clamp(15, 0, 10), 10);
+});
+
+test('within range unchanged', () => {
+    assertTrue(clamp(5, 0, 10) === 5);
+});
+"""
+    res = await run_code(code, [], language="typescript", test_code=test_code)
+    assert res["status"] == "Accepted"
+    assert res["student_passed_count"] == 3
+    assert res["student_total_count"] == 3
+    assert len(res["student_tests"]) == 3
+    assert all(t["passed"] for t in res["student_tests"])
+
+
+@pytest.mark.asyncio
+async def test_tdd_student_unit_tests_failing_assertion():
+    from app.services.code_runner_service import run_code
+
+    code = """
+function clamp(val: number, min: number, max: number): number {
+    return val; // buggy: does not clamp!
+}
+"""
+    test_code = """
+test('clamps below range', () => {
+    assertEquals(0, clamp(-5, 0, 10));
+});
+"""
+    res = await run_code(code, [], language="typescript", test_code=test_code)
+    assert res["status"] == "Wrong Answer"
+    assert res["student_passed_count"] == 0
+    assert res["student_total_count"] == 1
+    assert res["student_tests"][0]["passed"] is False
+    assert "Expected 0, but got -5" in res["student_tests"][0]["error"]
+
+
+@pytest.mark.asyncio
+async def test_tdd_student_unit_tests_python():
+    from app.services.code_runner_service import run_code
+
+    code = """
+def clamp(val: int, low: int, high: int) -> int:
+    return max(low, min(val, high))
+"""
+    test_code = """
+import unittest
+
+class TestClamp(unittest.TestCase):
+    def test_lower_bound(self):
+        self.assertEqual(clamp(-5, 0, 10), 0)
+
+    def test_upper_bound(self):
+        self.assertEqual(clamp(15, 0, 10), 10)
+"""
+    res = await run_code(code, [], language="python", test_code=test_code)
+    assert res["status"] == "Accepted"
+    assert res["student_passed_count"] == 2
+    assert res["student_total_count"] == 2
+    assert len(res["student_tests"]) == 2
+    assert all(t["passed"] for t in res["student_tests"])
+

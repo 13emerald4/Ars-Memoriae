@@ -43,6 +43,7 @@ class QueueItem(BaseModel):
     references: list[dict] = Field(default_factory=list)
     # Coding problem metadata for the LeetCode 50/50 Split IDE
     starter_code: str | None = None
+    starter_tests: str | None = None
     test_cases: list[dict] = Field(default_factory=list)
     time_complexity: str | None = None
     space_complexity: str | None = None
@@ -68,11 +69,13 @@ class SessionSummary(BaseModel):
 
 class SubmitAnswerRequest(BaseModel):
     typed_answer: str
+    test_code: str | None = None
     latency_ms: int
 
 
 class RunReviewCodeRequest(BaseModel):
     code: str
+    test_code: str | None = None
     custom_test_cases: list[dict] = Field(default_factory=list)
     language: str = "python"
 

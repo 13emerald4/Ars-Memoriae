@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type {
   CardReference,
+  Deck,
   Grade,
   Lesson,
   QueueItem,
@@ -22,6 +23,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useLexicon } from '../components/LexiconContext'
 import { FullscreenButton } from '../components/FullscreenContext'
 import { DeckReviewStatsBar } from '../components/DeckReviewStatsBar'
+import { CopyLearningSummaryButton } from '../components/CopyLearningSummaryButton'
+import { copyLearningSummaryToClipboard } from '../utils/learningSummaryExport'
 
 const LEARN_MODE_KEY = 'memorization.learnMode'
 
@@ -39,6 +42,59 @@ const GRADE_STYLE: Record<Grade, string> = {
   hard: 'border-amber-500/40 text-amber-300 hover:bg-amber-500/15',
   good: 'border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/15',
   easy: 'border-sky-500/40 text-sky-300 hover:bg-sky-500/15',
+}
+
+function buildStarterTestCode(item: QueueItem | null): string {
+  if (!item) return ''
+  if (item.starter_tests) return item.starter_tests
+
+  const isCode = Boolean(item.starter_code || (item.test_cases && item.test_cases.length > 0))
+  if (!isCode) return ''
+
+  const isPython = Boolean(item.starter_code?.includes('def ') || item.starter_code?.includes('class Solution:'))
+  if (isPython) {
+    return `# 🧪 Unit Testing Suite (Python)
+import unittest
+
+class TestSolution(unittest.TestCase):
+    def test_sample(self):
+        # TODO: Add assertions
+        pass
+
+    def test_boundary(self):
+        # TODO: Test boundary limits
+        pass
+`
+  }
+
+  // TypeScript / JavaScript
+  const fnMatch = item.starter_code?.match(/function\s+([a-zA-Z0-9_$]+)/)
+  const fnName = fnMatch ? fnMatch[1] : 'solution'
+
+  const sampleCase = item.test_cases && item.test_cases.length > 0 ? item.test_cases[0] : null
+  let sampleTest = ''
+  if (sampleCase && sampleCase.input && typeof sampleCase.input === 'object') {
+    const args = Object.values(sampleCase.input)
+      .map((v) => JSON.stringify(v))
+      .join(', ')
+    sampleTest = `test('sample case', checkExpect(() => ${fnName}(${args}), ${JSON.stringify(sampleCase.expected)}));`
+  } else {
+    sampleTest = `test('sample case', checkExpect(() => ${fnName}(...), expected));`
+  }
+
+  return `// 🧪 CPSC 210 Unit Testing Suite
+// Use checkExpect(() => actual, expected), checkError(() => ...), assertOk(r), assertErr(r)
+
+${sampleTest}
+
+test('boundary threshold case', checkExpect(() => {
+  // TODO: test boundary limit values
+}, expected));
+
+test('edge or error case', () => {
+  // TODO: test with checkError(() => ...) or assertOk / assertErr
+});
+`
 }
 
 /** The unified session view (§9): one endpoint hands back cards *and* extracts,
@@ -63,6 +119,23 @@ export default function Review() {
   const [confidence, setConfidence] = useState<number | null>(null)
   const [deckStatsTrigger, setDeckStatsTrigger] = useState(0)
 
+  // ⚡ Persist Mode: Drill a deck continuously until all cards in review are rated Easy
+  const deckParam = params.get('deck')
+  const persistParam = params.get('persist') === '1' || params.get('persist') === 'true'
+  const [persistActive, setPersistActive] = useState<boolean>(false)
+  const [persistDeckId, setPersistDeckId] = useState<string | null>(null)
+  const activeDeckRef = useRef<string | null>(null)
+  const [persistDeckName, setPersistDeckName] = useState<string>('')
+  const [persistCards, setPersistCards] = useState<QueueItem[]>([])
+  const [persistGraspedIds, setPersistGraspedIds] = useState<Set<string>>(new Set())
+  const [persistPendingQueue, setPersistPendingQueue] = useState<string[]>([])
+  const [persistCardAttempts, setPersistCardAttempts] = useState<Record<string, number>>({})
+  const [persistRound, setPersistRound] = useState(1)
+  const [persistTotalReviews, setPersistTotalReviews] = useState(0)
+  const [persistCompleted, setPersistCompleted] = useState(false)
+  const [allDecks, setAllDecks] = useState<Deck[]>([])
+  const [selectedPersistDeckId, setSelectedPersistDeckId] = useState<string>('')
+
   // 💻 LeetCode-Style Split IDE & Code Execution Workbench
   const [layoutMode, setLayoutMode] = useState<'split' | 'classic'>(() => {
     return (localStorage.getItem('memorization.reviewLayoutMode') as 'split' | 'classic') || 'split'
@@ -72,6 +145,8 @@ export default function Review() {
   })
   const [codeRunning, setCodeRunning] = useState(false)
   const [codeRunResult, setCodeRunResult] = useState<RunCodeResponse | null>(null)
+  const [testCode, setTestCode] = useState('')
+  const [activeEditorTab, setActiveEditorTab] = useState<'solution' | 'tests'>('solution')
 
   // ⚡ Memory Athlete: Blitz Sprint Mode & Automaticity Telemetry (§Feature 4)
   const [blitzActive, setBlitzActive] = useState(false)
@@ -211,6 +286,45 @@ export default function Review() {
     setBlitzActive(false)
   }
 
+  const initCardState = useCallback((next: QueueItem | null) => {
+    setAnswer(next?.starter_code || '')
+    setTestCode(buildStarterTestCode(next))
+    setActiveEditorTab('solution')
+    if (next?.starter_code) {
+      if (next.starter_code.includes('def ') || next.starter_code.includes('class Solution:')) {
+        setCodeLanguage('python')
+      } else if (
+        next.starter_code.includes('function') ||
+        next.starter_code.includes('interface ') ||
+        next.starter_code.includes(': number') ||
+        next.starter_code.includes('const ') ||
+        next.starter_code.includes('let ')
+      ) {
+        setCodeLanguage('typescript')
+      }
+    }
+    setResult(null)
+    setRevealed(false)
+    setConfidence(null)
+    setLesson(null)
+    setTaught(false)
+    setShowPrimer(false)
+    setPrimerLesson(null)
+    setPrimerLoading(false)
+    setGuideOpen(false)
+    setGuideHistory([])
+    setGuideInput('')
+    setGuideDegraded(null)
+    setGuideOnTrack(false)
+    setCodeRunResult(null)
+    setCodeRunning(false)
+    setWeaknessHint(null)
+    setWeaknessHintLoading(false)
+    setShowWeaknessHint(false)
+    shownAt.current = Date.now()
+    setDeckStatsTrigger((prev) => prev + 1)
+  }, [])
+
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -218,46 +332,107 @@ export default function Review() {
       const [next, summary] = await Promise.all([api.nextItem(branch), api.session(branch)])
       setItem(next)
       setSession(summary)
-      setAnswer(next?.starter_code || '')
-      if (next?.starter_code) {
-        if (next.starter_code.includes('def ') || next.starter_code.includes('class Solution:')) {
-          setCodeLanguage('python')
-        } else if (
-          next.starter_code.includes('function') ||
-          next.starter_code.includes('interface ') ||
-          next.starter_code.includes(': number') ||
-          next.starter_code.includes('const ') ||
-          next.starter_code.includes('let ')
-        ) {
-          setCodeLanguage('typescript')
-        }
-      }
-      setResult(null)
-      setRevealed(false)
-      setConfidence(null)
-      setLesson(null)
-      setTaught(false)
-      setShowPrimer(false)
-      setPrimerLesson(null)
-      setPrimerLoading(false)
-      setGuideOpen(false)
-      setGuideHistory([])
-      setGuideInput('')
-      setGuideDegraded(null)
-      setGuideOnTrack(false)
-      setCodeRunResult(null)
-      setCodeRunning(false)
-      setWeaknessHint(null)
-      setWeaknessHintLoading(false)
-      setShowWeaknessHint(false)
-      shownAt.current = Date.now()
-      setDeckStatsTrigger((prev) => prev + 1)
+      initCardState(next)
     } catch (err) {
       setError(err)
     } finally {
       setLoading(false)
     }
-  }, [branch])
+  }, [branch, initCardState])
+
+  const startPersistMode = useCallback(
+    async (deckId: string, deckName?: string) => {
+      setLoading(true)
+      setError(null)
+      setPersistActive(true)
+      setPersistDeckId(deckId)
+      setPersistCompleted(false)
+      setPersistRound(1)
+      setPersistTotalReviews(0)
+      setPersistGraspedIds(new Set())
+      setPersistCardAttempts({})
+
+      setParams((p) => {
+        if (p.get('deck') === deckId && p.get('persist') === '1') return p
+        const next = new URLSearchParams(p)
+        next.set('deck', deckId)
+        next.set('persist', '1')
+        return next
+      })
+
+      try {
+        const cards = await api.deckPersistItems(deckId)
+        setPersistCards(cards)
+        const dName =
+          cards[0]?.deck_name ||
+          deckName ||
+          allDecks.find((d) => d.id === deckId)?.name ||
+          'Selected Deck'
+        setPersistDeckName(dName)
+
+        if (cards.length === 0) {
+          setPersistPendingQueue([])
+          setItem(null)
+        } else {
+          const queue = cards.map((c) => c.id)
+          setPersistPendingQueue(queue)
+          setItem(cards[0])
+          initCardState(cards[0])
+        }
+      } catch (err) {
+        setError(err)
+        setPersistActive(false)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [allDecks, initCardState, setParams],
+  )
+
+  const exitPersistMode = useCallback(() => {
+    activeDeckRef.current = null
+    setPersistActive(false)
+    setPersistDeckId(null)
+    setPersistCards([])
+    setPersistGraspedIds(new Set())
+    setPersistPendingQueue([])
+    setPersistCompleted(false)
+    setPersistCardAttempts({})
+    setParams((p) => {
+      const next = new URLSearchParams(p)
+      next.delete('deck')
+      next.delete('persist')
+      return next
+    })
+    void load()
+  }, [load, setParams])
+
+  const handleContinuePersisting = useCallback(() => {
+    if (persistCards.length === 0) return
+    setPersistGraspedIds(new Set())
+    const allIds = persistCards.map((c) => c.id)
+    setPersistPendingQueue(allIds)
+    setPersistRound((prev) => prev + 1)
+    setPersistCompleted(false)
+    const first = persistCards[0]
+    setItem(first)
+    initCardState(first)
+    setLastOutcome(
+      `Round ${persistRound + 1} started — persisting until all cards are Easy again!`,
+    )
+  }, [initCardState, persistCards, persistRound])
+
+  const handleRestartPersistRound = useCallback(() => {
+    if (persistCards.length === 0) return
+    setPersistGraspedIds(new Set())
+    const allIds = persistCards.map((c) => c.id)
+    setPersistPendingQueue(allIds)
+    setPersistCompleted(false)
+    const first = persistCards[0]
+    setItem(first)
+    initCardState(first)
+    setLastOutcome('Persist round restarted — all cards back in rotation.')
+  }, [initCardState, persistCards])
 
   function toggleLayoutMode() {
     setLayoutMode((prev) => {
@@ -273,6 +448,7 @@ export default function Review() {
     try {
       const res = await api.runReviewCode(item.id, {
         code: answer,
+        test_code: testCode,
         custom_test_cases: customCases,
         language: codeLanguage,
       })
@@ -292,8 +468,20 @@ export default function Review() {
   }
 
   useEffect(() => {
-    void load()
-  }, [load])
+    api.decks().then(setAllDecks).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (persistParam && deckParam) {
+      if (activeDeckRef.current !== deckParam || !persistActive || persistDeckId !== deckParam) {
+        activeDeckRef.current = deckParam
+        void startPersistMode(deckParam)
+      }
+    } else {
+      activeDeckRef.current = null
+      void load()
+    }
+  }, [deckParam, persistParam, load, startPersistMode, persistActive, persistDeckId])
 
   useEffect(() => {
     if (item?.kind === 'card' && !revealed) inputRef.current?.focus()
@@ -362,7 +550,7 @@ export default function Review() {
     setGrading(true)
     setError(null)
     try {
-      const graded = await api.submitAnswer(item.id, answer, latency)
+      const graded = await api.submitAnswer(item.id, answer, latency, testCode)
       setResult(graded)
       setRevealed(true)
     } catch (err) {
@@ -427,15 +615,61 @@ export default function Review() {
         confidence || undefined,
         blitzActive,
       )
-      setLastOutcome(
-        `${finalGrade} — next in ${formatInterval(outcome.interval_days)}${
-          outcome.leech_flagged ? ' · flagged as a leech' : ''
-        }${outcome.automaticity_exceeded ? ' · ⏱️ pace notice' : ''}`,
-      )
       if (outcome.stuck_alert) setStuckAlert(outcome.stuck_alert)
       // Let the session timer refresh its progress toward the card target.
       window.dispatchEvent(new Event(REVIEW_EVENT))
-      await load()
+
+      if (persistActive) {
+        setPersistTotalReviews((prev) => prev + 1)
+        setPersistCardAttempts((prev) => ({
+          ...prev,
+          [item.id]: (prev[item.id] || 0) + 1,
+        }))
+
+        if (finalGrade === 'easy') {
+          const nextGrasped = new Set(persistGraspedIds)
+          nextGrasped.add(item.id)
+          setPersistGraspedIds(nextGrasped)
+
+          const nextQueue = persistPendingQueue.filter((id) => id !== item.id)
+          setPersistPendingQueue(nextQueue)
+
+          if (nextQueue.length === 0) {
+            setPersistCompleted(true)
+            setItem(null)
+            setLastOutcome(
+              `🏆 Easy — card grasped! All ${persistCards.length} cards in this deck are now rated Easy!`,
+            )
+          } else {
+            const nextCard = persistCards.find((c) => c.id === nextQueue[0]) || null
+            setItem(nextCard)
+            initCardState(nextCard)
+            setLastOutcome(`✓ Easy — card grasped! ${nextQueue.length} remaining in rotation.`)
+          }
+        } else {
+          // 'again', 'hard', 'good': not yet easy, keep in rotation
+          if (persistPendingQueue.length > 1) {
+            const rest = persistPendingQueue.filter((id) => id !== item.id)
+            const nextQueue = [...rest, item.id]
+            setPersistPendingQueue(nextQueue)
+            const nextCard = persistCards.find((c) => c.id === nextQueue[0]) || null
+            setItem(nextCard)
+            initCardState(nextCard)
+          } else {
+            initCardState(item)
+          }
+          setLastOutcome(
+            `${finalGrade} — kept in persist rotation (all cards must be rated Easy to grasp).`,
+          )
+        }
+      } else {
+        setLastOutcome(
+          `${finalGrade} — next in ${formatInterval(outcome.interval_days)}${
+            outcome.leech_flagged ? ' · flagged as a leech' : ''
+          }${outcome.automaticity_exceeded ? ' · ⏱️ pace notice' : ''}`,
+        )
+        await load()
+      }
     } catch (err) {
       setError(err)
     }
@@ -456,6 +690,21 @@ export default function Review() {
       if (revealed && e.key >= '1' && e.key <= '4') {
         e.preventDefault()
         void confirm(GRADES[Number(e.key) - 1])
+      }
+      if (revealed && (e.key === 'c' || e.key === 'C') && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+        e.preventDefault()
+        void copyLearningSummaryToClipboard({
+          item,
+          answer,
+          testCode,
+          result,
+          codeLanguage,
+          codeRunResult,
+        })
+      }
+      if ((e.key === 't' || e.key === 'T') && e.altKey) {
+        e.preventDefault()
+        setActiveEditorTab((prev) => (prev === 'solution' ? 'tests' : 'solution'))
       }
       if (!revealed && (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) {
         e.preventDefault()
@@ -484,10 +733,116 @@ export default function Review() {
     if (loading) return <Spinner label="Composing your session…" />
     if (error && !item) return <ErrorNote error={error} />
 
+    if (persistCompleted) {
+      return (
+        <div className="space-y-6">
+          <SessionHeader
+            session={session}
+            outcome={lastOutcome}
+            persistActive={persistActive}
+            persistDeckName={persistDeckName}
+            onExitPersist={exitPersistMode}
+            persistProgress={{
+              grasped: persistGraspedIds.size,
+              total: persistCards.length,
+              round: persistRound,
+            }}
+            learnMode={learnMode}
+            onToggleLearnMode={toggleLearnMode}
+          />
+          <div className="rounded-3xl border border-emerald-500/40 bg-gradient-to-b from-[#0b1b18] via-[#080d16] to-[#0b1424] p-8 sm:p-10 text-center max-w-xl mx-auto space-y-6 shadow-2xl backdrop-blur">
+            <div className="inline-flex h-20 w-20 items-center justify-center rounded-3xl bg-emerald-500/15 border border-emerald-500/30 text-4xl shadow-inner animate-bounce">
+              🏆
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-emerald-300">
+                Deck Fully Grasped!
+              </h2>
+              <p className="text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+                You've successfully mastered all <strong className="text-white">{persistCards.length}</strong> cards in <strong className="text-white">{persistDeckName}</strong> — every single card has been rated <span className="font-semibold text-emerald-400">Easy</span>!
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 py-3 border-y border-emerald-500/20 bg-emerald-950/20 rounded-xl px-4 text-xs font-mono">
+              <div className="space-y-0.5">
+                <span className="text-slate-400 text-[10px] uppercase">Cards</span>
+                <p className="text-white font-bold text-base">{persistCards.length}</p>
+              </div>
+              <div className="space-y-0.5 border-x border-emerald-500/20">
+                <span className="text-slate-400 text-[10px] uppercase">Total Reviews</span>
+                <p className="text-emerald-300 font-bold text-base">{persistTotalReviews}</p>
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-slate-400 text-[10px] uppercase">Rounds</span>
+                <p className="text-white font-bold text-base">{persistRound}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <p className="text-xs text-slate-400">
+                Would you like to continue persisting in this deck, or return to your review queue?
+              </p>
+              <div className="flex flex-col sm:flex-row justify-center gap-3">
+                <button
+                  type="button"
+                  className="btn btn-primary bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center justify-center gap-2 py-2.5 px-5 shadow-lg shadow-emerald-900/40"
+                  onClick={handleContinuePersisting}
+                >
+                  <span>🔁</span>
+                  <span>Continue Persisting in this Deck</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn border border-ink-line hover:bg-ink-soft text-slate-300 py-2.5 px-4"
+                  onClick={exitPersistMode}
+                >
+                  Exit to Normal Queue
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    if (persistActive && !item && persistCards.length === 0) {
+      return (
+        <div className="space-y-6">
+          <SessionHeader
+            session={session}
+            persistActive={persistActive}
+            persistDeckName={persistDeckName}
+            onExitPersist={exitPersistMode}
+            learnMode={learnMode}
+            onToggleLearnMode={toggleLearnMode}
+          />
+          <Empty title={`No cards in ${persistDeckName || 'this deck'}.`}>
+            <p>This deck doesn't have any cards to review yet. Add cards or import notes to this deck.</p>
+            <div className="mt-4 flex justify-center gap-2">
+              <button className="btn" onClick={() => navigate('/decks')}>
+                Add cards
+              </button>
+              <button className="btn border border-ink-line" onClick={exitPersistMode}>
+                Exit Persist Mode
+              </button>
+            </div>
+          </Empty>
+        </div>
+      )
+    }
+
     if (!item) {
       return (
         <div className="space-y-6">
-          <SessionHeader session={session} branchActive={Boolean(branch)} onClearBranch={clearBranch} learnMode={learnMode} onToggleLearnMode={toggleLearnMode} />
+          <SessionHeader
+            session={session}
+            branchActive={Boolean(branch)}
+            onClearBranch={clearBranch}
+            learnMode={learnMode}
+            onToggleLearnMode={toggleLearnMode}
+            allDecks={allDecks}
+            onStartPersist={startPersistMode}
+          />
           <Empty title={branch ? 'Nothing due in this branch.' : 'Nothing due right now.'}>
             <p>
               {branch
@@ -508,6 +863,71 @@ export default function Review() {
                     Add reading
                   </button>
                 </>
+              )}
+            </div>
+
+            {/* ⚡ Persist Mode Deck Launcher */}
+            <div className="mt-8 rounded-2xl border border-sky-500/30 bg-gradient-to-b from-sky-950/20 to-ink-soft/30 p-5 max-w-lg mx-auto text-left shadow-lg">
+              <div className="flex items-center gap-2.5 mb-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/20 text-sky-300 font-bold text-sm">
+                  ⚡
+                </span>
+                <div>
+                  <h3 className="font-semibold text-slate-100 text-sm">Persist Review a Deck</h3>
+                  <p className="text-xs text-slate-400">
+                    Review a deck continuously until all cards are rated <strong className="text-emerald-300 font-semibold">Easy</strong>.
+                  </p>
+                </div>
+              </div>
+
+              {allDecks.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <select
+                      className="input flex-1 text-xs py-1.5"
+                      value={selectedPersistDeckId}
+                      onChange={(e) => setSelectedPersistDeckId(e.target.value)}
+                    >
+                      <option value="">-- Choose a deck to persist --</option>
+                      {allDecks.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name} ({d.card_count} {d.card_count === 1 ? 'card' : 'cards'})
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={!selectedPersistDeckId}
+                      onClick={() => selectedPersistDeckId && startPersistMode(selectedPersistDeckId)}
+                      className="btn btn-primary text-xs whitespace-nowrap disabled:opacity-50"
+                    >
+                      ⚡ Start Persist Review
+                    </button>
+                  </div>
+
+                  {allDecks.filter((d) => d.card_count > 0).length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-[11px] text-slate-500">Quick pick:</span>
+                      {allDecks
+                        .filter((d) => d.card_count > 0)
+                        .slice(0, 4)
+                        .map((d) => (
+                          <button
+                            key={d.id}
+                            type="button"
+                            onClick={() => startPersistMode(d.id, d.name)}
+                            className="chip border-sky-500/30 hover:border-sky-400 hover:text-sky-200 text-xs transition"
+                          >
+                            ⚡ {d.name} ({d.card_count})
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-slate-500">
+                  No decks available yet. Create or import a deck to start persist review!
+                </p>
               )}
             </div>
           </Empty>
@@ -577,6 +997,16 @@ export default function Review() {
           onToggleLearnMode={toggleLearnMode}
           blitzActive={blitzActive}
           onStartBlitz={startBlitz}
+          persistActive={persistActive}
+          persistDeckName={persistDeckName}
+          onExitPersist={exitPersistMode}
+          persistProgress={{
+            grasped: persistGraspedIds.size,
+            total: persistCards.length,
+            round: persistRound,
+          }}
+          allDecks={allDecks}
+          onStartPersist={startPersistMode}
         />
 
         {blitzActive && (
@@ -611,12 +1041,97 @@ export default function Review() {
           </div>
         )}
 
+        {persistActive && (
+          <div className="rounded-xl border border-sky-500/40 bg-gradient-to-r from-sky-950/40 via-indigo-950/30 to-purple-950/20 p-4 shadow-lg backdrop-blur space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/20 text-base">
+                  ⚡
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-100 text-sm">
+                      Persist Review Mode: {persistDeckName || item?.deck_name || 'Active Deck'}
+                    </span>
+                    <span className="rounded-full bg-sky-500/20 border border-sky-500/40 px-2 py-0.5 text-[10px] font-mono text-sky-200">
+                      Round {persistRound}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Drilling until <strong>all cards are rated Easy</strong>. Other ratings (Again, Hard, Good) keep the card in rotation.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleRestartPersistRound}
+                  className="rounded-md border border-slate-700 bg-slate-800/80 px-2.5 py-1 text-xs text-slate-300 hover:bg-slate-700 hover:text-white transition"
+                  title="Reset current round progress and drill all cards again"
+                >
+                  🔁 Restart Round
+                </button>
+                <button
+                  type="button"
+                  onClick={exitPersistMode}
+                  className="rounded-md border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs text-rose-300 hover:bg-rose-500/20 transition"
+                  title="Exit persist review mode and return to standard queue"
+                >
+                  ✕ Exit Persist
+                </button>
+              </div>
+            </div>
+
+            {/* Live Persist Progress Bar */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-300 flex items-center gap-2">
+                  <span>🎯 Grasped Cards:</span>
+                  <strong className="text-emerald-400 font-mono">
+                    {persistGraspedIds.size} / {persistCards.length}
+                  </strong>
+                  <span className="text-slate-500 text-[11px]">
+                    ({persistPendingQueue.length} pending in current cycle)
+                  </span>
+                </span>
+                <span className="font-mono font-bold text-emerald-400">
+                  {Math.round((persistGraspedIds.size / Math.max(1, persistCards.length)) * 100)}%
+                </span>
+              </div>
+              <div className="relative h-2 w-full overflow-hidden rounded-full bg-slate-800/80">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 to-sky-400 transition-all duration-300 ease-out"
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      Math.max(0, (persistGraspedIds.size / Math.max(1, persistCards.length)) * 100)
+                    )}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Re-attempt Indicator for current card */}
+            {item && (persistCardAttempts[item.id] || 0) > 0 && (
+              <div className="flex items-center gap-2 pt-0.5 text-xs text-amber-300/90 bg-amber-500/10 rounded-lg px-2.5 py-1 border border-amber-500/20">
+                <span>🔁</span>
+                <span>
+                  <strong>Re-attempt #{persistCardAttempts[item.id] + 1}:</strong> This card remains in the persist queue until rated <strong>Easy</strong>.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Live Deck Progress & Difficulty Distribution Stats Bar */}
         {item && item.kind === 'card' && item.deck_or_source_id && (
           <DeckReviewStatsBar
             deckId={item.deck_or_source_id}
             deckName={item.deck_name}
             lastUpdated={deckStatsTrigger}
+            onStartPersist={(id) => startPersistMode(id, item.deck_name || undefined)}
+            isPersistActive={persistActive}
           />
         )}
 
@@ -836,6 +1351,16 @@ export default function Review() {
               {/* Post-reveal assessment */}
               {revealed && (
                 <div className="space-y-4 border-t border-ink-line pt-4">
+                  <CopyLearningSummaryButton
+                    item={item}
+                    answer={answer}
+                    testCode={testCode}
+                    result={result}
+                    codeLanguage={codeLanguage}
+                    codeRunResult={codeRunResult}
+                    variant="prominent"
+                    className="w-full"
+                  />
                   <div className="rounded-lg border border-ink-line bg-ink p-4">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                       <p className="label mb-0">Reference Solution</p>
@@ -900,6 +1425,17 @@ export default function Review() {
                             <span className="text-xs opacity-50">{GRADE_BAND[g]}</span>
                             <span className="text-xs opacity-50">{i + 1}</span>
                             {suggested && <span className="text-xs opacity-70">· suggested</span>}
+                            {persistActive && (
+                              <span
+                                className={`text-[10px] ml-1 px-1.5 py-0.5 rounded font-semibold ${
+                                  g === 'easy'
+                                    ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-500/50'
+                                    : 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
+                                }`}
+                              >
+                                {g === 'easy' ? '✓ Grasps' : '↻ Re-queues'}
+                              </span>
+                            )}
                           </button>
                         )
                       })}
@@ -914,6 +1450,38 @@ export default function Review() {
               <div className="card p-0 overflow-hidden border border-ink-line">
                 <div className="flex flex-wrap items-center justify-between border-b border-ink-line bg-[#1e1e1e] px-4 py-2 text-xs">
                   <div className="flex items-center gap-2">
+                    <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line">
+                      <button
+                        type="button"
+                        onClick={() => setActiveEditorTab('solution')}
+                        className={`px-2.5 py-1 text-xs font-medium rounded transition flex items-center gap-1.5 ${
+                          activeEditorTab === 'solution'
+                            ? 'bg-sky-600/30 text-sky-200 border border-sky-500/50 shadow-sm'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title="Edit implementation logic (Alt+T to toggle)"
+                      >
+                        <span>💻</span>
+                        <span>Solution</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveEditorTab('tests')}
+                        className={`px-2.5 py-1 text-xs font-medium rounded transition flex items-center gap-1.5 ${
+                          activeEditorTab === 'tests'
+                            ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/50 shadow-sm'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title="Write unit tests with JUnit/Jest assertions (Alt+T to toggle)"
+                      >
+                        <span>🧪</span>
+                        <span>Unit Tests</span>
+                        {testCode.trim() && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                        )}
+                      </button>
+                    </div>
+
                     <select
                       value={codeLanguage}
                       onChange={(e) => {
@@ -927,14 +1495,25 @@ export default function Review() {
                       <option value="javascript">💛 JavaScript</option>
                       <option value="python">🐍 Python 3</option>
                     </select>
-                    {item.starter_code && (
+
+                    {activeEditorTab === 'solution' && item.starter_code && (
                       <button
                         type="button"
                         onClick={() => setAnswer(item.starter_code || '')}
                         className="text-slate-400 hover:text-slate-200 text-[11px] underline"
                         title="Reset code editor to original starter template"
                       >
-                        Reset starter template
+                        Reset solution
+                      </button>
+                    )}
+                    {activeEditorTab === 'tests' && (
+                      <button
+                        type="button"
+                        onClick={() => setTestCode(buildStarterTestCode(item))}
+                        className="text-slate-400 hover:text-slate-200 text-[11px] underline"
+                        title="Reset unit tests to starter assertions"
+                      >
+                        Reset tests
                       </button>
                     )}
                   </div>
@@ -962,13 +1541,24 @@ export default function Review() {
                         </button>
                       ))}
                     </div>
+                    {revealed && (
+                      <CopyLearningSummaryButton
+                        item={item}
+                        answer={answer}
+                        testCode={testCode}
+                        result={result}
+                        codeLanguage={codeLanguage}
+                        codeRunResult={codeRunResult}
+                        variant="compact"
+                      />
+                    )}
                     <FullscreenButton size="sm" showLabel={false} />
                   </div>
                 </div>
 
                 <CodeEditor
-                  code={answer}
-                  onChange={setAnswer}
+                  code={activeEditorTab === 'solution' ? answer : testCode}
+                  onChange={activeEditorTab === 'solution' ? setAnswer : setTestCode}
                   language={codeLanguage}
                   height="460px"
                   onRun={() => void handleRunReviewCode()}
@@ -1153,34 +1743,79 @@ export default function Review() {
                 {isCodeCard ? (
                   <div className="my-2 space-y-4">
                     <div className="rounded-lg border border-ink-line overflow-hidden">
-                      <div className="flex items-center justify-between border-b border-ink-line bg-[#1e1e1e] px-3 py-1.5 text-xs">
-                        <select
-                          value={codeLanguage}
-                          onChange={(e) => {
-                            const nextLang = e.target.value
-                            setCodeLanguage(nextLang)
-                            localStorage.setItem('memorization.reviewCodeLanguage', nextLang)
-                          }}
-                          className="rounded border border-ink-line bg-[#282828] px-2 py-0.5 text-xs font-semibold text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer"
-                        >
-                          <option value="typescript">📘 TypeScript</option>
-                          <option value="javascript">💛 JavaScript</option>
-                          <option value="python">🐍 Python 3</option>
-                        </select>
-                        {item.starter_code && (
-                          <button
-                            type="button"
-                            onClick={() => setAnswer(item.starter_code || '')}
-                            className="text-slate-400 hover:text-slate-200 text-[11px] underline"
-                            title="Reset code editor to original starter template"
+                      <div className="flex flex-wrap items-center justify-between border-b border-ink-line bg-[#1e1e1e] px-3 py-1.5 text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line">
+                            <button
+                              type="button"
+                              onClick={() => setActiveEditorTab('solution')}
+                              className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1.5 ${
+                                activeEditorTab === 'solution'
+                                  ? 'bg-sky-600/30 text-sky-200 border border-sky-500/50 shadow-sm'
+                                  : 'text-slate-400 hover:text-slate-200'
+                              }`}
+                              title="Edit implementation logic (Alt+T to toggle)"
+                            >
+                              <span>💻</span>
+                              <span>Solution</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setActiveEditorTab('tests')}
+                              className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1.5 ${
+                                activeEditorTab === 'tests'
+                                  ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/50 shadow-sm'
+                                  : 'text-slate-400 hover:text-slate-200'
+                              }`}
+                              title="Write unit tests with JUnit/Jest assertions (Alt+T to toggle)"
+                            >
+                              <span>🧪</span>
+                              <span>Unit Tests</span>
+                              {testCode.trim() && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                              )}
+                            </button>
+                          </div>
+
+                          <select
+                            value={codeLanguage}
+                            onChange={(e) => {
+                              const nextLang = e.target.value
+                              setCodeLanguage(nextLang)
+                              localStorage.setItem('memorization.reviewCodeLanguage', nextLang)
+                            }}
+                            className="rounded border border-ink-line bg-[#282828] px-2 py-0.5 text-xs font-semibold text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer"
                           >
-                            Reset starter template
-                          </button>
-                        )}
+                            <option value="typescript">📘 TypeScript</option>
+                            <option value="javascript">💛 JavaScript</option>
+                            <option value="python">🐍 Python 3</option>
+                          </select>
+
+                          {activeEditorTab === 'solution' && item.starter_code && (
+                            <button
+                              type="button"
+                              onClick={() => setAnswer(item.starter_code || '')}
+                              className="text-slate-400 hover:text-slate-200 text-[11px] underline"
+                              title="Reset code editor to original starter template"
+                            >
+                              Reset solution
+                            </button>
+                          )}
+                          {activeEditorTab === 'tests' && (
+                            <button
+                              type="button"
+                              onClick={() => setTestCode(buildStarterTestCode(item))}
+                              className="text-slate-400 hover:text-slate-200 text-[11px] underline"
+                              title="Reset unit tests to starter assertions"
+                            >
+                              Reset tests
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <CodeEditor
-                        code={answer}
-                        onChange={setAnswer}
+                        code={activeEditorTab === 'solution' ? answer : testCode}
+                        onChange={activeEditorTab === 'solution' ? setAnswer : setTestCode}
                         language={codeLanguage}
                         height="320px"
                         onRun={() => void handleRunReviewCode()}
@@ -1294,6 +1929,16 @@ export default function Review() {
 
             {revealed && (
               <div className="mt-6 space-y-4">
+                <CopyLearningSummaryButton
+                  item={item}
+                  answer={answer}
+                  testCode={testCode}
+                  result={result}
+                  codeLanguage={codeLanguage}
+                  codeRunResult={codeRunResult}
+                  variant="prominent"
+                  className="w-full"
+                />
                 <div className="rounded-lg border border-ink-line bg-ink p-4">
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <p className="label mb-0">Reference answer</p>
@@ -1370,6 +2015,17 @@ export default function Review() {
                           <span className="text-xs opacity-50">{GRADE_BAND[g]}</span>
                           <span className="text-xs opacity-50">{i + 1}</span>
                           {suggested && <span className="text-xs opacity-70">· suggested</span>}
+                          {persistActive && (
+                            <span
+                              className={`text-[10px] ml-1 px-1.5 py-0.5 rounded font-semibold ${
+                                g === 'easy'
+                                  ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-500/50'
+                                  : 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
+                              }`}
+                            >
+                              {g === 'easy' ? '✓ Grasps' : '↻ Re-queues'}
+                            </span>
+                          )}
                         </button>
                       )
                     })}
@@ -2259,6 +2915,12 @@ function SessionHeader({
   onToggleLearnMode,
   blitzActive,
   onStartBlitz,
+  persistActive,
+  persistDeckName,
+  onExitPersist,
+  persistProgress,
+  allDecks,
+  onStartPersist,
 }: {
   session: SessionSummary | null
   outcome?: string | null
@@ -2268,14 +2930,42 @@ function SessionHeader({
   onToggleLearnMode?: () => void
   blitzActive?: boolean
   onStartBlitz?: (sec: number) => void
+  persistActive?: boolean
+  persistDeckName?: string
+  onExitPersist?: () => void
+  persistProgress?: { grasped: number; total: number; round: number }
+  allDecks?: Deck[]
+  onStartPersist?: (deckId: string, deckName?: string) => void
 }) {
-  if (!session) return null
-  const { counts, caps } = session
-  const planned = (counts.review ?? 0) + (counts.new ?? 0) + (counts.ir ?? 0)
+  if (!session && !persistActive) return null
+  const counts = session?.counts
+  const caps = session?.caps
+  const planned = ((counts?.review ?? 0) + (counts?.new ?? 0) + (counts?.ir ?? 0))
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-xs">
+        {persistActive && (
+          <span className="chip border-amber-500/50 bg-amber-500/15 text-amber-200 font-semibold flex items-center gap-1.5 shadow-sm">
+            <span>⚡ Persist: {persistDeckName || 'Current Deck'}</span>
+            {persistProgress && (
+              <span className="text-[10px] text-amber-300/90 font-mono">
+                ({persistProgress.grasped}/{persistProgress.total} Easy · R{persistProgress.round})
+              </span>
+            )}
+            {onExitPersist && (
+              <button
+                type="button"
+                className="ml-1 text-slate-400 hover:text-white underline"
+                onClick={onExitPersist}
+                title="Exit persist mode"
+              >
+                exit
+              </button>
+            )}
+          </span>
+        )}
+
         {branchActive && (
           <span className="chip border-sky-500/40 text-sky-300">
             branch-scoped
@@ -2284,14 +2974,48 @@ function SessionHeader({
             </button>
           </span>
         )}
-        <span className="chip">{counts.review ?? 0} reviews</span>
-        <span className="chip">{counts.new ?? 0} new</span>
-        <span className="chip">{counts.ir ?? 0} reading</span>
-        <span className="chip">~{Math.round(session.budget_seconds / 60)} min budget</span>
-        {caps.reviews_done_today > 0 && (
-          <span className="chip">{caps.reviews_done_today} done today</span>
+
+        {session && (
+          <>
+            <span className="chip">{counts?.review ?? 0} reviews</span>
+            <span className="chip">{counts?.new ?? 0} new</span>
+            <span className="chip">{counts?.ir ?? 0} reading</span>
+            <span className="chip">~{Math.round(session.budget_seconds / 60)} min budget</span>
+            {caps && caps.reviews_done_today > 0 && (
+              <span className="chip">{caps.reviews_done_today} done today</span>
+            )}
+            {planned === 0 && <span className="chip">queue clear</span>}
+          </>
         )}
-        {planned === 0 && <span className="chip">queue clear</span>}
+
+        {/* ⚡ Quick Persist Deck Selector (when not in persist mode) */}
+        {!persistActive && allDecks && allDecks.filter((d) => d.card_count > 0).length > 0 && onStartPersist && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-amber-400 font-medium">⚡ Persist Deck:</span>
+            <select
+              className="rounded border border-amber-500/30 bg-ink-soft/90 px-2 py-0.5 text-[11px] text-amber-200 hover:border-amber-400 focus:outline-none cursor-pointer"
+              defaultValue=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  const d = allDecks.find((deck) => deck.id === e.target.value)
+                  onStartPersist(e.target.value, d?.name)
+                  e.target.value = ''
+                }
+              }}
+            >
+              <option value="" disabled>
+                Select deck to drill…
+              </option>
+              {allDecks
+                .filter((d) => d.card_count > 0)
+                .map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name} ({d.card_count} cards)
+                  </option>
+                ))}
+            </select>
+          </div>
+        )}
 
         {/* ⚡ Blitz Mode Sprint Triggers */}
         {onStartBlitz && !blitzActive && (
@@ -2338,7 +3062,7 @@ function SessionHeader({
       {outcome && <p className="text-xs text-slate-500">Last: {outcome}</p>}
 
       {/* §3.1: guardrails must be visible, or a smoothed backlog looks like a bug. */}
-      {session.notes.map((note, i) => (
+      {session?.notes?.map((note, i) => (
         <p
           key={i}
           className="rounded-lg border border-sky-500/25 bg-sky-500/5 px-3 py-2 text-xs text-sky-200/90"

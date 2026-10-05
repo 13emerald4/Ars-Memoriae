@@ -62,7 +62,7 @@ CONCEPTUAL_RUBRIC = """Rubric (conceptual / long-form):
   but a material part is missing or muddled.
 """
 
-MATH_CODE_RUBRIC = """Rubric (math / code):
+MATH_CODE_RUBRIC = """Rubric (math / code / TDD):
 - Treat the reference answer as ONE worked solution or algorithmic implementation, not a strict string match.
 - Check two things separately: (a) is the logic/code correct, (b) is the method and complexity optimal. A correct brute-force solution where an optimal algorithm exists scores 50-70.
 - Accept different-but-equivalent variable names, helper data structures, language idioms, and alternative algorithms with comparable or better asymptotic complexity.
@@ -70,7 +70,11 @@ MATH_CODE_RUBRIC = """Rubric (math / code):
   * Time & Space Complexity: Verify whether the user's implementation matches optimal complexity (e.g. O(n) vs O(n^2)). Note any complexity shortfalls in missed_points.
   * Overlooked Edge Cases: Check boundary conditions (empty input, single element, negative numbers, duplicates, large bounds). State any unhandled edge cases in missed_points and overlooked_phrases.
   * Omitted Concepts: List missing helper logic, base cases, or invariant checks in overlooked_phrases.
-- Partial credit: Award matched_points for correct core data structures, state transitions, loop invariants, and base conditions.
+- Unit Testing / TDD Evaluation:
+  * When a user provides unit tests alongside their implementation, evaluate both parts:
+    - Implementation (50%): Correct logic and edge case handling.
+    - Test Suite (50%): Boundary value coverage (testing right at threshold boundaries), partition coverage, and independent assertions. Award matched_points for thorough tests and list missing boundary tests in missed_points.
+- Partial credit: Award matched_points for correct core data structures, state transitions, loop invariants, base conditions, and well-designed test cases.
 """
 
 PROFILES: dict[str, str] = {
@@ -91,9 +95,14 @@ def build_prompt(
     back: str,
     user_answer: str,
     card_type: str,
+    test_code: str | None = None,
     previous_weaknesses: list[str] | None = None,
 ) -> str:
     rubric = PROFILES.get(profile, PROFILES[DEFAULT_PROFILE])
+    submission = user_answer
+    if test_code and test_code.strip():
+        submission = f"Implementation Code:\n{user_answer}\n\nAuthored Unit Test Suite:\n{test_code}"
+
     if previous_weaknesses:
         formatted_prev = "\n".join(f"- {w}" for w in previous_weaknesses)
         previous_weaknesses_section = (
@@ -112,7 +121,7 @@ def build_prompt(
     return BASE_PROMPT.format(
         front=front,
         back=back,
-        user_answer=user_answer,
+        user_answer=submission,
         card_type=card_type,
         rubric=rubric,
         previous_weaknesses_section=previous_weaknesses_section,
@@ -136,32 +145,52 @@ Respond with ONLY a JSON object, no prose and no code fences:
 
 
 CARD_GEN_PROMPT = """You are helping build spaced-repetition flashcards from a passage
-the user is reading. Produce at most {max_cards} cards that test the most
-important, self-contained facts in the passage. Prefer cloze deletions for
-definitions and enumerations, Q&A for causal or conceptual material.
+the user is reading. Produce at most {max_cards} cards testing the most
+important, self-contained facts, mechanisms, and specifications in the passage.
 
-For Q&A cards, formulate "back" with clear, precise terminology and the core conceptual components, so an automated grader can accurately evaluate which key concepts the student recalled versus overlooked.
+Card Type Guidelines:
+1. Prefer cloze deletions for definitions, core syntax, and enumerations.
+2. Use Q&A for causal mechanisms, conceptual principles, or test-suite design:
+   - For software testing / specs: Ask the user to identify equivalence classes, boundary thresholds, or test assertions.
+   - Formulate "back" with clear, precise terminology and core conceptual components so an automated grader can accurately detect recalled versus overlooked points.
+3. For programming challenges or function specifications, emit "kind": "code":
+   - "title": Short problem title
+   - "front": Function specification and test requirements
+   - "starter_code": Type and function signature. For Result, use CPSC 210 convention: type Result<T, E = string> = {{ ok: true; value: T }} | {{ ok: false; error: E }};
+   - "starter_tests": Starter unit test suite template using CPSC 210 conventions:
+     * test("description", checkExpect(() => actual, expected))
+     * test("description", checkError(() => ...))
+     * assertOk(r) and assertErr(r)
+     * For async: checkExpect(async () => await f(...), expected)
+   - "back": Complete reference solution
+   - "test_cases": [ {{"input": {{ ... }}, "expected": ...}} ]
 
 Passage:
 \"\"\"{passage}\"\"\"
 
 Respond with ONLY a JSON object, no prose and no code fences:
-{{"cards": [{{"kind": "cloze|qa", "front": "...", "back": "...",
-  "cloze_text": "text with {{{{c1::deletions}}}} — only when kind is cloze"}}]}}
+{{"cards": [{{"kind": "cloze|qa|code", "title": "...", "front": "...", "back": "...",
+  "cloze_text": "text with {{{{c1::deletions}}}} — only when kind is cloze",
+  "starter_code": "optional starter code — only when kind is code",
+  "starter_tests": "optional unit tests — only when kind is code",
+  "test_cases": [{{"input": {{}}, "expected": "..."}}]}}]}}
 """
 
 DOC_CARD_GEN_PROMPT = """You are building spaced-repetition flashcards from one passage of a
 document the user is studying. Produce at most {max_cards} cards testing the most
-important, self-contained facts in THIS passage. Prefer cloze deletions for
-definitions and enumerations, Q&A for causal or conceptual material.
+important, self-contained facts, mechanisms, and specifications in THIS passage.
 
-Every card must also carry a "quote": the shortest span of the passage that
+Card Type Guidelines:
+1. Prefer cloze deletions for definitions and enumerations, Q&A for conceptual material and test boundary analysis.
+2. For programming challenges, emit "kind": "code" with:
+   - "starter_code" (use type Result<T, E = string> = {{ ok: true; value: T }} | {{ ok: false; error: E }} for Result)
+   - "starter_tests" (using test("...", checkExpect(() => actual, expected)), test("...", checkError(() => ...)), assertOk, assertErr)
+   - "test_cases"
+3. Every card must also carry a "quote": the shortest span of the passage that
 contains the answer, COPIED VERBATIM from the text below. Do not paraphrase,
 summarise, correct, or join separated sentences in the quote — it is checked
 against the passage character by character and silently dropped if it does not
 appear there. If no span of the passage supports a card, do not emit that card.
-
-For Q&A cards, formulate "back" with clear, precise terminology and core conceptual components, so an automated grader can accurately detect recalled versus overlooked points.
 
 Use only what this passage states. Do not add outside knowledge.
 
@@ -169,8 +198,11 @@ Passage (from {locator}):
 \"\"\"{passage}\"\"\"
 
 Respond with ONLY a JSON object, no prose and no code fences:
-{{"cards": [{{"kind": "cloze|qa", "front": "...", "back": "...",
+{{"cards": [{{"kind": "cloze|qa|code", "title": "...", "front": "...", "back": "...",
   "cloze_text": "text with {{{{c1::deletions}}}} — only when kind is cloze",
+  "starter_code": "optional starter code — only when kind is code",
+  "starter_tests": "optional unit tests — only when kind is code",
+  "test_cases": [{{"input": {{}}, "expected": "..."}}],
   "quote": "verbatim span from the passage"}}]}}
 """
 

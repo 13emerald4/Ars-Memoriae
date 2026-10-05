@@ -64,3 +64,7 @@ async def test_deck_stats_empty_and_populated(auth_client: AsyncClient):
     assert round(stats["difficulty_proportions"]["Easy"], 2) == 0.33
     assert round(stats["difficulty_proportions"]["Medium"], 2) == 0.33
     assert round(stats["difficulty_proportions"]["Hard"], 2) == 0.33
+    assert "rating_counts" in stats
+    assert "rating_proportions" in stats
+    assert stats["total_reviews"] == 0
+    assert stats["rating_counts"]["Unrated"] == 3

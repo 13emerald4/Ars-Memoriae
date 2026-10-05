@@ -181,6 +181,7 @@ async def submit_answer(
             user_answer=body.typed_answer,
             profile=profile,
             card_type=note.note_type.template_kind,
+            test_code=body.test_code,
             previous_weaknesses=card.active_weaknesses or [],
             force_escalate=await _disputed_recently(db, card.id),
         )
@@ -558,6 +559,7 @@ async def run_card_code(
         code=body.code,
         test_cases=test_cases,
         language=body.language,
+        test_code=body.test_code,
         timeout_sec=4.0,
     )
     return res

@@ -47,7 +47,8 @@ import type {
   WeaknessHintResponse,
 } from './types'
 
-const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+// When VITE_API_BASE_URL is not provided, use relative path '' so requests route through current origin / proxy
+const BASE = import.meta.env.VITE_API_BASE_URL ?? ''
 const TOKEN_KEY = 'memorization.token'
 
 export const token = {
@@ -159,9 +160,12 @@ export const api = {
     post<SocraticResponse>(`/api/review/${cardId}/guide`, { history, message }),
   weaknessHint: (cardId: string) =>
     post<WeaknessHintResponse>(`/api/review/${cardId}/weakness-hint`, {}),
-  submitAnswer: (cardId: string, typed_answer: string, latency_ms: number) =>
-    post<SubmitAnswerResponse>(`/api/review/${cardId}/answer`, { typed_answer, latency_ms }),
-  runReviewCode: (cardId: string, body: { code: string; custom_test_cases?: any[]; language?: string }) =>
+  submitAnswer: (cardId: string, typed_answer: string, latency_ms: number, test_code?: string) =>
+    post<SubmitAnswerResponse>(`/api/review/${cardId}/answer`, { typed_answer, latency_ms, test_code }),
+  runReviewCode: (
+    cardId: string,
+    body: { code: string; test_code?: string; custom_test_cases?: any[]; language?: string },
+  ) =>
     post<RunCodeResponse>(`/api/review/${cardId}/run-code`, body),
   confirmReview: (
     cardId: string,
@@ -184,6 +188,7 @@ export const api = {
   // ── decks / notes / cards ───────────────────────────────────────────────
   decks: () => request<Deck[]>('/api/decks'),
   deckStats: (id: string) => request<DeckStats>(`/api/decks/${id}/stats`),
+  deckPersistItems: (deckId: string) => request<QueueItem[]>(`/api/decks/${deckId}/persist-items`),
   createDeck: (body: { name: string; default_priority?: number; parent_id?: string | null }) =>
     post<Deck>('/api/decks', body),
   updateDeck: (id: string, body: Record<string, unknown>) => patch<Deck>(`/api/decks/${id}`, body),

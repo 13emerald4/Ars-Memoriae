@@ -60,12 +60,14 @@ def _deep_equal(a: Any, b: Any) -> bool:
 async def run_python_code(
     code: str,
     test_cases: list[dict],
+    test_code: str | None = None,
     custom_entrypoint: str | None = None,
     timeout_sec: float = 3.0,
 ) -> dict[str, Any]:
     """Executes Python code against a list of test cases in an isolated child subprocess."""
     payload = json.dumps({
         "code": code,
+        "test_code": test_code,
         "test_cases": test_cases,
         "custom_entrypoint": custom_entrypoint,
     }).encode("utf-8")
@@ -145,12 +147,14 @@ async def run_python_code(
 async def run_node_code(
     code: str,
     test_cases: list[dict],
+    test_code: str | None = None,
     custom_entrypoint: str | None = None,
     timeout_sec: float = 4.0,
 ) -> dict[str, Any]:
     """Executes TypeScript / JavaScript code against test cases using isolated Node.js worker."""
     payload = json.dumps({
         "code": code,
+        "test_code": test_code,
         "test_cases": test_cases,
         "custom_entrypoint": custom_entrypoint,
     }).encode("utf-8")
@@ -233,6 +237,7 @@ async def run_code(
     code: str,
     test_cases: list[dict],
     language: str = "python",
+    test_code: str | None = None,
     custom_entrypoint: str | None = None,
     timeout_sec: float = 4.0,
 ) -> dict[str, Any]:
@@ -242,12 +247,14 @@ async def run_code(
         return await run_node_code(
             code=code,
             test_cases=test_cases,
+            test_code=test_code,
             custom_entrypoint=custom_entrypoint,
             timeout_sec=timeout_sec,
         )
     return await run_python_code(
         code=code,
         test_cases=test_cases,
+        test_code=test_code,
         custom_entrypoint=custom_entrypoint,
         timeout_sec=timeout_sec,
     )

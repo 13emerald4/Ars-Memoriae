@@ -135,6 +135,9 @@ class DeckStatsOut(BaseModel):
     viewed_ratio: float
     difficulty_counts: dict[str, int]
     difficulty_proportions: dict[str, float]
+    rating_counts: dict[str, int] = Field(default_factory=dict)
+    rating_proportions: dict[str, float] = Field(default_factory=dict)
+    total_reviews: int = 0
 
 
 
@@ -308,6 +311,7 @@ class AcceptCardsRequest(BaseModel):
 class JsonImportNote(BaseModel):
     kind: str = "basic"  # "basic" | "cloze" | "code"
     card_type: str | None = None
+    deck: str | None = Field(default=None, max_length=200)
     title: str | None = Field(default=None, max_length=300)
     category: str | None = Field(default=None, max_length=100)
     difficulty: str | None = Field(default=None, max_length=50)
@@ -315,6 +319,7 @@ class JsonImportNote(BaseModel):
     back: str | None = Field(default=None, max_length=20_000)
     cloze_text: str | None = Field(default=None, max_length=20_000)
     starter_code: str | None = Field(default=None, max_length=10_000)
+    starter_tests: str | None = Field(default=None, max_length=20_000)
     test_cases: list[dict] = Field(default_factory=list)
     time_complexity: str | None = Field(default=None, max_length=100)
     space_complexity: str | None = Field(default=None, max_length=100)
@@ -341,16 +346,21 @@ class JsonImportNote(BaseModel):
             return data
         data = dict(data)
         card_type = str(data.get("card_type") or "").strip().lower()
-        if card_type == "code" or data.get("starter_code") or data.get("test_cases"):
+        if (
+            card_type == "code"
+            or data.get("starter_code")
+            or data.get("test_cases")
+            or data.get("starter_tests")
+        ):
             data.setdefault("kind", "code")
         elif "kind" not in data and card_type:
             data["kind"] = "cloze" if card_type == "cloze" else "basic"
         is_cloze = data.get("kind", "basic") == "cloze"
 
-        question = data.get("question")
+        question = data.get("question") or data.get("prompt")
         if question is not None:
             data.setdefault("cloze_text" if is_cloze else "front", question)
-        answer = data.get("answer")
+        answer = data.get("answer") or data.get("solution")
         if answer is not None:
             data.setdefault("back", answer)
         return data

@@ -292,3 +292,69 @@ async def test_json_import_is_tenant_isolated(client):
     client.headers["Authorization"] = f"Bearer {bob}"
     decks = (await client.get("/api/decks")).json()
     assert not any(d["name"] == "Alice's deck" for d in decks)
+
+
+async def test_code_card_with_starter_tests_and_priority(auth_client):
+    """Importing a code card with starter_tests saves starter_tests and sets math_code profile."""
+    resp = await auth_client.post(
+        "/api/import/json",
+        json={
+            "deck": "CPSC 210 Practice",
+            "notes": [
+                {
+                    "title": "Unwrap Result with assertOk",
+                    "front": "Write unwrapResult function and test it",
+                    "back": "export function unwrapResult(r) { return assertOk(r); }",
+                    "starter_code": "export function unwrapResult(r) {\n  // TODO\n}",
+                    "starter_tests": "test('sample', () => { assertOk({ ok: true, value: 42 }); });",
+                    "test_cases": [{"input": {"r": {"ok": True, "value": 42}}, "expected": 42}],
+                    "priority": 85,
+                    "difficulty": "Medium",
+                    "category": "Testing",
+                    "tags": ["Result", "cpsc210"],
+                }
+            ],
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["notes_created"] == 1
+    assert body["cards_created"] == 1
+
+    deck_id = body["deck_id"]
+    cards = (await auth_client.get(f"/api/cards?deck_id={deck_id}")).json()
+    assert len(cards) == 1
+    card = cards[0]
+    assert card["priority"] == 85
+    assert "code" in card["tags"]
+    assert "Medium" in card["tags"]
+    assert "Result" in card["tags"]
+
+    # Verify that the card's note holds starter_tests in field_values
+    note_resp = await auth_client.get(f"/api/notes/{card['note_id']}")
+    assert note_resp.status_code == 200
+    fv = note_resp.json()["field_values"]
+    assert fv["starter_code"] == "export function unwrapResult(r) {\n  // TODO\n}"
+    assert fv["starter_tests"] == "test('sample', () => { assertOk({ ok: true, value: 42 }); });"
+    assert fv["difficulty"] == "Medium"
+    assert fv["category"] == "Testing"
+
+
+async def test_import_cpsc210_mt2_supplemental_deck(auth_client):
+    import json
+    from pathlib import Path
+    deck_path = Path(r"C:\Users\micha\OneDrive\Documents\UBC BCS ICS\CPSC 210\Midterm 2\Cards\cpsc210_mt2_supplemental.json")
+    if not deck_path.exists():
+        return
+
+    with open(deck_path, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+
+    resp = await auth_client.post("/api/import/json", json=payload)
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["notes_created"] == 22
+    assert body["cards_created"] == 22
+    assert body["warnings"] == []
+
+

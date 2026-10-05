@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../api/client'
 import type {
   AcceptDeckResponse,
@@ -420,6 +421,7 @@ function DeckList({
   onSelect: (id: string) => void
   onChange: () => void
 }) {
+  const navigate = useNavigate()
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -514,6 +516,20 @@ function DeckList({
               </button>
 
               <div className="flex flex-wrap items-center gap-3">
+                {d.card_count > 0 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/review?deck=${d.id}&persist=1`)
+                    }}
+                    className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-500/20 hover:border-amber-400 transition shadow-sm"
+                    title={`Persist reviewing ${d.name} until all cards are rated Easy`}
+                  >
+                    <span>⚡ Persist Review</span>
+                  </button>
+                )}
+
                 <label className="flex items-center gap-2 text-xs text-slate-500">
                   priority
                   <input

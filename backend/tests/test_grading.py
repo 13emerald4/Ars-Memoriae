@@ -481,3 +481,68 @@ class TestWeaknessMemory:
         assert hint_res["has_past_weaknesses"] is False
         assert "No prior weaknesses" in hint_res["hint"]
 
+    def test_build_prompt_with_tdd_test_code(self):
+        from app.services.grading_profiles import build_prompt
+
+        prompt = build_prompt(
+            "math_code",
+            front="Implement clamp function",
+            back="Math.max(min, Math.min(val, max))",
+            user_answer="function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }",
+            card_type="code",
+            test_code="assertEquals(0, clamp(-5, 0, 10));\nassertEquals(10, clamp(15, 0, 10));",
+        )
+        assert "Authored Unit Test Suite:" in prompt
+        assert "assertEquals(0, clamp(-5, 0, 10))" in prompt
+        assert "Unit Testing / TDD Evaluation" in prompt
+
+    @pytest.mark.asyncio
+    async def test_tdd_review_answer_forwards_test_code(self, auth_client, monkeypatch):
+        import app.routers.review as review_router
+
+        captured = {}
+
+        async def fake_grade(self, **kwargs):
+            captured.update(kwargs)
+            return {
+                "score": 95,
+                "grade": "easy",
+                "confidence": 0.95,
+                "matched_points": ["correct solution", "comprehensive test suite"],
+                "missed_points": [],
+                "reasoning": "Solid implementation and boundary tests.",
+                "model_used": "qwen2.5-coder:7b",
+                "escalated": False,
+            }
+
+        monkeypatch.setattr(
+            review_router.GradingService, "grade_with_escalation", fake_grade, raising=True
+        )
+        monkeypatch.setattr(review_router, "decrypt_api_key", lambda _: "fake-key")
+
+        await auth_client.patch("/api/me", json={"llm_grading_consent": True})
+        deck_id = (await auth_client.post("/api/decks", json={"name": "TDD Deck"})).json()["id"]
+        note = (
+            await auth_client.post(
+                "/api/notes",
+                json={
+                    "deck_id": deck_id,
+                    "template_kind": "basic",
+                    "field_values": {"Front": "Write clamp", "Back": "return max(min, ...)"},
+                },
+            )
+        ).json()
+        card_id = note["cards"][0]["id"]
+
+        resp = await auth_client.post(
+            f"/api/review/{card_id}/answer",
+            json={
+                "typed_answer": "function clamp() {}",
+                "test_code": "assertEquals(0, clamp(-1, 0, 5));",
+                "latency_ms": 1500,
+            },
+        )
+        assert resp.status_code == 200
+        assert captured.get("test_code") == "assertEquals(0, clamp(-1, 0, 5));"
+
+

@@ -524,16 +524,36 @@ async def export_problem_to_card(
     if not nt:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "No valid note type found.")
 
-    sol = p.solutions.get("python") or ""
+    lang = (
+        "typescript"
+        if "typescript" in (p.starter_codes or {})
+        else ("python" if "python" in (p.starter_codes or {}) else (list(p.starter_codes.keys())[0] if p.starter_codes else "python"))
+    )
+    sol = (p.solutions or {}).get(lang) or (list(p.solutions.values())[0] if p.solutions else "")
+    starter = (p.starter_codes or {}).get(lang) or ""
+    starter_tests = (
+        (p.starter_codes or {}).get("starter_tests")
+        or (p.starter_codes or {}).get(f"{lang}_tests")
+        or (p.starter_codes or {}).get("tests")
+    )
+
+    fv = {
+        "Front": f"### {p.title}\n\n{p.description}\n\n**Constraints:**\n" + "\n".join(f"- {c}" for c in p.constraints),
+        "Back": sol,
+        "title": p.title,
+        "starter_code": starter,
+        "test_cases": p.test_cases or [],
+        "difficulty": p.difficulty,
+        "category": p.category,
+    }
+    if starter_tests:
+        fv["starter_tests"] = starter_tests
+
     note = Note(
         id=uuid.uuid4(),
         user_id=user.id,
         note_type_id=nt.id,
-        field_values={
-            "Front": f"### {p.title}\n\n{p.description}\n\n**Constraints:**\n" + "\n".join(f"- {c}" for c in p.constraints),
-            "Back": f"```python\n{sol}\n```\n\n{p.editorial or ''}",
-            "title": p.title,
-        },
+        field_values=fv,
     )
     db.add(note)
     await db.flush()

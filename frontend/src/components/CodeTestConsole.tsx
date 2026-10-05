@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { RunCodeResponse, SubmitCodeResponse, TestCaseResult } from '../api/types'
+import type { RunCodeResponse, StudentTestResult, SubmitCodeResponse, TestCaseResult } from '../api/types'
 
 export interface CodeTestConsoleProps {
   testCases: Array<{ input: any; expected: any }>
@@ -194,9 +194,59 @@ export function CodeTestConsole({
                   </div>
                 )}
 
-                {/* Case Selector */}
+                {/* Student Authored Unit Tests Results */}
+                {runResult.student_tests && runResult.student_tests.length > 0 && (
+                  <div className="space-y-2 rounded-lg border border-sky-500/20 bg-sky-950/10 p-3">
+                    <div className="flex items-center justify-between text-xs font-semibold text-sky-200">
+                      <span className="flex items-center gap-1.5">
+                        <span>🧪</span>
+                        <span>My Unit Tests</span>
+                      </span>
+                      <span className="text-[11px] font-mono text-sky-400">
+                        {runResult.student_passed_count ?? 0} / {runResult.student_total_count ?? 0} passed
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 pt-1">
+                      {runResult.student_tests.map((st: StudentTestResult, i: number) => (
+                        <div
+                          key={i}
+                          className={`flex flex-col rounded-md border p-2 text-xs transition ${
+                            st.passed
+                              ? 'border-emerald-500/30 bg-emerald-950/20 text-emerald-200'
+                              : 'border-rose-500/40 bg-rose-950/30 text-rose-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-2 font-medium">
+                              <span
+                                className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold ${
+                                  st.passed ? 'bg-emerald-500/30 text-emerald-300' : 'bg-rose-500/30 text-rose-300'
+                                }`}
+                              >
+                                {st.passed ? '✓' : '✗'}
+                              </span>
+                              <span>{st.test_name}</span>
+                            </span>
+                            <span className="text-[10px] font-mono opacity-60">{st.runtime_ms} ms</span>
+                          </div>
+                          {st.error && (
+                            <pre className="mt-1.5 rounded bg-black/40 p-1.5 font-mono text-[11px] text-rose-300 whitespace-pre-wrap">
+                              {st.error}
+                            </pre>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Hidden Test Suite Selector */}
                 {runResult.results.length > 0 && (
                   <div className="space-y-3">
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                      Hidden Test Cases:
+                    </p>
                     <div className="flex flex-wrap items-center gap-2">
                       {runResult.results.map((res, idx) => (
                         <button

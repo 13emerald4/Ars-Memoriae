@@ -44,6 +44,7 @@ def to_schema(item: ComposedItem) -> QueueItem:
         occlusion=item.occlusion,
         references=item.references,
         starter_code=item.starter_code,
+        starter_tests=item.starter_tests,
         test_cases=item.test_cases,
         time_complexity=item.time_complexity,
         space_complexity=item.space_complexity,

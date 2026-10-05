@@ -8,6 +8,8 @@ interface DeckReviewStatsBarProps {
   /** Optional trigger to force refetch when a card is submitted */
   lastUpdated?: number
   className?: string
+  onStartPersist?: (deckId: string) => void
+  isPersistActive?: boolean
 }
 
 const DIFFICULTY_CONFIG: Record<
@@ -48,11 +50,59 @@ const DIFFICULTY_CONFIG: Record<
   },
 }
 
+const RATING_CONFIG: Record<
+  string,
+  { label: string; color: string; bg: string; border: string; text: string; dot: string }
+> = {
+  Again: {
+    label: 'Again',
+    color: 'bg-rose-500',
+    bg: 'bg-rose-500/10',
+    border: 'border-rose-500/30',
+    text: 'text-rose-300',
+    dot: 'bg-rose-400',
+  },
+  Hard: {
+    label: 'Hard',
+    color: 'bg-amber-500',
+    bg: 'bg-amber-500/10',
+    border: 'border-amber-500/30',
+    text: 'text-amber-300',
+    dot: 'bg-amber-400',
+  },
+  Good: {
+    label: 'Good',
+    color: 'bg-emerald-500',
+    bg: 'bg-emerald-500/10',
+    border: 'border-emerald-500/30',
+    text: 'text-emerald-300',
+    dot: 'bg-emerald-400',
+  },
+  Easy: {
+    label: 'Easy',
+    color: 'bg-sky-500',
+    bg: 'bg-sky-500/10',
+    border: 'border-sky-500/30',
+    text: 'text-sky-300',
+    dot: 'bg-sky-400',
+  },
+  Unrated: {
+    label: 'Unreviewed',
+    color: 'bg-slate-600',
+    bg: 'bg-slate-600/10',
+    border: 'border-slate-600/30',
+    text: 'text-slate-400',
+    dot: 'bg-slate-400',
+  },
+}
+
 export function DeckReviewStatsBar({
   deckId,
   deckName,
   lastUpdated,
   className = '',
+  onStartPersist,
+  isPersistActive,
 }: DeckReviewStatsBarProps) {
   const [stats, setStats] = useState<DeckStats | null>(null)
   const [loading, setLoading] = useState(false)
@@ -118,6 +168,19 @@ export function DeckReviewStatsBar({
     return a.localeCompare(b)
   })
 
+  // Sort user recall ratings in standard review order: Again, Hard, Good, Easy, Unrated
+  const sortedRatingKeys = stats.rating_counts
+    ? Object.keys(stats.rating_counts).sort((a, b) => {
+        const order = ['Again', 'Hard', 'Good', 'Easy', 'Unrated']
+        const idxA = order.indexOf(a)
+        const idxB = order.indexOf(b)
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB
+        if (idxA !== -1) return -1
+        if (idxB !== -1) return 1
+        return a.localeCompare(b)
+      })
+    : []
+
   return (
     <div
       className={`rounded-2xl border border-sky-500/25 bg-[#0b101b]/95 p-3.5 shadow-lg backdrop-blur text-xs transition-all duration-200 ${className}`}
@@ -161,6 +224,17 @@ export function DeckReviewStatsBar({
             >
               ⏱ {stats.due_cards} due
             </span>
+          )}
+
+          {onStartPersist && deckId && !isPersistActive && (
+            <button
+              type="button"
+              onClick={() => onStartPersist(deckId)}
+              className="flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/25 transition shadow-sm"
+              title="Persist reviewing this deck until all cards are rated Easy"
+            >
+              <span>⚡ Persist Deck</span>
+            </button>
           )}
 
           <button
@@ -269,6 +343,74 @@ export function DeckReviewStatsBar({
               })}
             </div>
           </div>
+
+          {/* 3. USER RECALL RATINGS DISTRIBUTION BAR */}
+          {stats.rating_counts && Object.keys(stats.rating_counts).length > 0 && (
+            <div className="space-y-1.5 pt-2 border-t border-ink-line/40">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-300 font-medium flex items-center gap-1.5">
+                  <span>🧠</span>
+                  <span>My Recall Ratings Distribution:</span>
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">
+                  {stats.total_reviews ? `${stats.total_reviews} reviews logged` : 'Latest card ratings'}
+                </span>
+              </div>
+
+              {/* Segmented Recall Bar */}
+              <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-800/90 shadow-inner">
+                {sortedRatingKeys.map((ratingKey) => {
+                  const count = stats.rating_counts?.[ratingKey] || 0
+                  if (count === 0) return null
+                  const prop = stats.rating_proportions?.[ratingKey] || 0
+                  const widthPct = Math.round(prop * 1000) / 10
+                  const cfg = RATING_CONFIG[ratingKey] || {
+                    color: 'bg-indigo-500',
+                    label: ratingKey,
+                  }
+
+                  return (
+                    <div
+                      key={ratingKey}
+                      style={{ width: `${widthPct}%` }}
+                      className={`${cfg.color} h-full transition-all duration-300 hover:brightness-110`}
+                      title={`${ratingKey}: ${count} cards (${widthPct}%)`}
+                    />
+                  )
+                })}
+              </div>
+
+              {/* Rating Legend / Proportion Chips */}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {sortedRatingKeys.map((ratingKey) => {
+                  const count = stats.rating_counts?.[ratingKey] || 0
+                  if (count === 0 && ratingKey === 'Unrated') return null
+                  const prop = stats.rating_proportions?.[ratingKey] || 0
+                  const pct = (prop * 100).toFixed(1)
+                  const cfg = RATING_CONFIG[ratingKey] || {
+                    label: ratingKey,
+                    bg: 'bg-indigo-500/10',
+                    border: 'border-indigo-500/30',
+                    text: 'text-indigo-300',
+                    dot: 'bg-indigo-400',
+                  }
+
+                  return (
+                    <div
+                      key={ratingKey}
+                      className={`flex items-center gap-1.5 rounded-lg border ${cfg.border} ${cfg.bg} px-2 py-0.5 text-[11px] font-medium transition hover:scale-105`}
+                      title={`${count} of ${stats.total_cards} cards rated ${ratingKey}`}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+                      <span className="text-slate-300">{cfg.label}:</span>
+                      <span className={`font-bold font-mono ${cfg.text}`}>{count}</span>
+                      <span className="text-[10px] text-slate-500 font-mono">({pct}%)</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -162,6 +162,7 @@ class GradingService:
         user_answer: str,
         profile: str = "short_answer",
         card_type: str = "basic",
+        test_code: str | None = None,
         previous_weaknesses: list[str] | None = None,
         model: str | None = None,
     ) -> dict:
@@ -171,6 +172,7 @@ class GradingService:
             back=back,
             user_answer=user_answer,
             card_type=card_type,
+            test_code=test_code,
             previous_weaknesses=previous_weaknesses,
         )
         raw = await self._generate(prompt, model or self.model, SCORE_SCHEMA)
@@ -183,6 +185,7 @@ class GradingService:
         user_answer: str,
         profile: str = "short_answer",
         card_type: str = "basic",
+        test_code: str | None = None,
         previous_weaknesses: list[str] | None = None,
         force_escalate: bool = False,
     ) -> dict:
@@ -194,6 +197,7 @@ class GradingService:
             user_answer,
             profile,
             card_type,
+            test_code=test_code,
             previous_weaknesses=previous_weaknesses,
             model=target_model,
         )
@@ -223,15 +227,21 @@ class GradingService:
         for c in cards[:max_cards]:
             if not isinstance(c, dict):
                 continue
-            kind = "cloze" if c.get("kind") == "cloze" and c.get("cloze_text") else "qa"
-            out.append(
-                {
-                    "kind": kind,
-                    "front": str(c.get("front", "")).strip(),
-                    "back": str(c.get("back", "")).strip(),
-                    "cloze_text": str(c.get("cloze_text", "")).strip() or None,
-                }
-            )
+            is_cloze = c.get("kind") == "cloze" and bool(c.get("cloze_text"))
+            is_code = c.get("kind") == "code" or bool(c.get("starter_code")) or bool(c.get("starter_tests"))
+            kind = "cloze" if is_cloze else ("code" if is_code else "qa")
+            item = {
+                "kind": kind,
+                "front": str(c.get("front", "")).strip(),
+                "back": str(c.get("back", "")).strip(),
+                "cloze_text": str(c.get("cloze_text", "")).strip() or None,
+            }
+            if is_code:
+                item["title"] = c.get("title")
+                item["starter_code"] = c.get("starter_code")
+                item["starter_tests"] = c.get("starter_tests")
+                item["test_cases"] = c.get("test_cases") or []
+            out.append(item)
         return [c for c in out if c["front"] or c["cloze_text"]]
 
     async def generate_cards_with_citations(
@@ -265,19 +275,25 @@ class GradingService:
         for c in cards[:max_cards]:
             if not isinstance(c, dict):
                 continue
-            kind = "cloze" if c.get("kind") == "cloze" and c.get("cloze_text") else "qa"
+            is_cloze = c.get("kind") == "cloze" and bool(c.get("cloze_text"))
+            is_code = c.get("kind") == "code" or bool(c.get("starter_code")) or bool(c.get("starter_tests"))
+            kind = "cloze" if is_cloze else ("code" if is_code else "qa")
             quote = str(c.get("quote", "")).strip()
-            out.append(
-                {
-                    "kind": kind,
-                    "front": str(c.get("front", "")).strip(),
-                    "back": str(c.get("back", "")).strip(),
-                    "cloze_text": str(c.get("cloze_text", "")).strip() or None,
-                    "quote": quote,
-                    "quote_verified": quote_is_grounded(quote, passage),
-                    "locator": locator,
-                }
-            )
+            item = {
+                "kind": kind,
+                "front": str(c.get("front", "")).strip(),
+                "back": str(c.get("back", "")).strip(),
+                "cloze_text": str(c.get("cloze_text", "")).strip() or None,
+                "quote": quote,
+                "quote_verified": quote_is_grounded(quote, passage),
+                "locator": locator,
+            }
+            if is_code:
+                item["title"] = c.get("title")
+                item["starter_code"] = c.get("starter_code")
+                item["starter_tests"] = c.get("starter_tests")
+                item["test_cases"] = c.get("test_cases") or []
+            out.append(item)
         return [c for c in out if c["front"] or c["cloze_text"]]
 
     # ── Learn & Practice lessons ────────────────────────────────────────────

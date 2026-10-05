@@ -91,6 +91,7 @@ export interface QueueItem {
   occlusion: OcclusionPayload | null
   references: CardReference[]
   starter_code?: string | null
+  starter_tests?: string | null
   test_cases?: Array<{ input: any; expected: any }>
   time_complexity?: string | null
   space_complexity?: string | null
@@ -248,6 +249,9 @@ export interface DeckStats {
   viewed_ratio: number
   difficulty_counts: Record<string, number>
   difficulty_proportions: Record<string, number>
+  rating_counts?: Record<string, number>
+  rating_proportions?: Record<string, number>
+  total_reviews?: number
 }
 
 export interface AtomicityIssue {
@@ -645,6 +649,13 @@ export interface TestCaseResult {
   runtime_ms: number
 }
 
+export interface StudentTestResult {
+  test_name: string
+  passed: boolean
+  error: string | null
+  runtime_ms: number
+}
+
 export interface RunCodeResponse {
   status: string
   passed_count: number
@@ -652,6 +663,9 @@ export interface RunCodeResponse {
   runtime_ms: number
   error: string | null
   results: TestCaseResult[]
+  student_tests?: StudentTestResult[]
+  student_passed_count?: number
+  student_total_count?: number
 }
 
 export interface SubmitCodeResponse {
@@ -662,6 +676,9 @@ export interface SubmitCodeResponse {
   runtime_ms: number
   error?: string | null
   results: TestCaseResult[]
+  student_tests?: StudentTestResult[]
+  student_passed_count?: number
+  student_total_count?: number
   fsrs_scheduled: boolean
   fsrs_next_review: string | null
 }

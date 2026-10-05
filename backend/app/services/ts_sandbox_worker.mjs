@@ -48,6 +48,7 @@ async function main() {
   }
 
   const code = payload.code || '';
+  const testCode = payload.test_code || '';
   const testCases = payload.test_cases || [];
   const customEntrypoint = payload.custom_entrypoint;
 
@@ -76,8 +77,8 @@ async function main() {
     console.info = originalInfo;
   };
 
-  // If no test cases are provided, execute code directly and return stdout/errors
-  if (!testCases || testCases.length === 0) {
+  // If no test cases AND no custom test code are provided, execute code directly and return stdout/errors
+  if ((!testCases || testCases.length === 0) && !testCode) {
     const start = performance.now();
     hookConsole();
     let runtimeErr = null;
@@ -120,10 +121,11 @@ async function main() {
   // We have test cases. We write a runner wrapper script to execute in Node with TS type stripping.
   const tempRunnerFile = `temp_runner_${Date.now()}_${Math.random().toString(36).slice(2)}.ts`;
   
-  // Script structure:
-  // 1. User code
-  // 2. Export / extract entrypoint
-  // 3. Loop over testcases, evaluate, capture output
+// Extract candidate function names from user code ahead of time
+  const candidateFunctionNames = [...code.matchAll(/(?:function|const|let|var)\s+([a-zA-Z0-9_$]+)/g)]
+    .map(m => m[1])
+    .filter(name => !['Solution', '__deepEqual', 'describe', 'test', 'it', 'checkExpect', 'checkError', 'checkExpectExact', 'checkErrorExact', 'assertOk', 'assertErr', 'assertEquals', 'assertNotEquals', 'assertTrue', 'assertFalse', 'assertNull', 'assertNotNull', 'assertThrows', 'fail', 'expect'].includes(name));
+
   const harnessCode = `
 import { deepStrictEqual } from 'node:assert';
 
@@ -140,6 +142,272 @@ function __deepEqual(a, b) {
   } catch {
     return false;
   }
+}
+
+// --- CPSC 210 / JUnit / Jest Test Framework Harness ---
+const __studentResults = [];
+const __testPromises = [];
+let __currentGroup = '';
+
+function describe(groupName, fn) {
+  const prevGroup = __currentGroup;
+  __currentGroup = groupName;
+  try {
+    const res = fn();
+    if (res && typeof res.then === 'function') {
+      return res.finally(() => { __currentGroup = prevGroup; });
+    }
+  } finally {
+    __currentGroup = prevGroup;
+  }
+}
+
+function test(testName, fn) {
+  const fullName = __currentGroup ? (__currentGroup + ' > ' + testName) : testName;
+  const p = (async () => {
+    const t0 = performance.now();
+    try {
+      if (typeof fn === 'function') {
+        await fn();
+      }
+      const t1 = performance.now();
+      __studentResults.push({
+        test_name: fullName,
+        passed: true,
+        error: null,
+        runtime_ms: Math.round((t1 - t0) * 100) / 100
+      });
+    } catch (err) {
+      const t1 = performance.now();
+      const msg = err instanceof Error ? err.message : String(err);
+      __studentResults.push({
+        test_name: fullName,
+        passed: false,
+        error: msg,
+        runtime_ms: Math.round((t1 - t0) * 100) / 100
+      });
+    }
+  })();
+  __testPromises.push(p);
+  return p;
+}
+const it = test;
+
+function assertEquals(expected, actual, message) {
+  if (!__deepEqual(actual, expected)) {
+    const prefix = message ? (message + ': ') : '';
+    throw new Error(prefix + 'Expected ' + JSON.stringify(expected) + ', but got ' + JSON.stringify(actual));
+  }
+}
+
+function assertNotEquals(unexpected, actual, message) {
+  if (__deepEqual(actual, unexpected)) {
+    const prefix = message ? (message + ': ') : '';
+    throw new Error(prefix + 'Expected value NOT to equal ' + JSON.stringify(unexpected));
+  }
+}
+
+function assertTrue(condition, message) {
+  if (!condition) {
+    throw new Error(message || 'Expected true, but got false');
+  }
+}
+
+function assertFalse(condition, message) {
+  if (condition) {
+    throw new Error(message || 'Expected false, but got true');
+  }
+}
+
+function assertNull(value, message) {
+  if (value !== null) {
+    throw new Error(message || ('Expected null, but got ' + JSON.stringify(value)));
+  }
+}
+
+function assertNotNull(value, message) {
+  if (value === null) {
+    throw new Error(message || 'Expected non-null value, but got null');
+  }
+}
+
+function checkExpect(actualThunk, expected) {
+  return async () => {
+    let actual;
+    if (typeof actualThunk === 'function') {
+      actual = await Promise.resolve(actualThunk());
+    } else {
+      actual = actualThunk;
+    }
+
+    // CPSC 210 rule: treats any { ok: false } as matching an expected error Result, without comparing error/message
+    if (
+      expected &&
+      typeof expected === 'object' &&
+      expected.ok === false &&
+      actual &&
+      typeof actual === 'object' &&
+      actual.ok === false
+    ) {
+      return;
+    }
+
+    if (!__deepEqual(actual, expected)) {
+      throw new Error(
+        'checkExpect failed: expected ' + JSON.stringify(expected) + ', but got ' + JSON.stringify(actual)
+      );
+    }
+  };
+}
+
+function checkExpectExact(actualThunk, expected) {
+  return async () => {
+    let actual;
+    if (typeof actualThunk === 'function') {
+      actual = await Promise.resolve(actualThunk());
+    } else {
+      actual = actualThunk;
+    }
+    if (!__deepEqual(actual, expected)) {
+      throw new Error(
+        'checkExpectExact failed: expected ' + JSON.stringify(expected) + ', but got ' + JSON.stringify(actual)
+      );
+    }
+  };
+}
+
+function checkError(thunk) {
+  return async () => {
+    let threw = false;
+    try {
+      if (typeof thunk === 'function') {
+        await Promise.resolve(thunk());
+      }
+    } catch {
+      threw = true;
+    }
+    if (!threw) {
+      throw new Error('checkError failed: expected function to throw an error, but it returned normally');
+    }
+  };
+}
+
+function checkErrorExact(thunk, expectedError) {
+  return async () => {
+    let threw = false;
+    let thrownErr = null;
+    try {
+      if (typeof thunk === 'function') {
+        await Promise.resolve(thunk());
+      }
+    } catch (e) {
+      threw = true;
+      thrownErr = e;
+    }
+    if (!threw) {
+      throw new Error('checkErrorExact failed: expected function to throw an error, but it returned normally');
+    }
+    if (expectedError) {
+      const msg = thrownErr instanceof Error ? thrownErr.message : String(thrownErr);
+      if (typeof expectedError === 'string' && !msg.includes(expectedError)) {
+        throw new Error('checkErrorExact failed: expected error containing "' + expectedError + '", but got "' + msg + '"');
+      }
+    }
+  };
+}
+
+function assertOk(result, message) {
+  if (!result || typeof result !== 'object' || result.ok !== true) {
+    const prefix = message ? (message + ': ') : '';
+    throw new Error(prefix + 'Expected Result to be Ok ({ ok: true, value: ... }), but got ' + JSON.stringify(result));
+  }
+  return result.value !== undefined ? result.value : result;
+}
+
+function assertErr(result, message) {
+  if (!result || typeof result !== 'object' || result.ok !== false) {
+    const prefix = message ? (message + ': ') : '';
+    throw new Error(prefix + 'Expected Result to be Err ({ ok: false, error: ... }), but got ' + JSON.stringify(result));
+  }
+  return result.error !== undefined ? result.error : (result.message !== undefined ? result.message : result);
+}
+
+function assertThrows(fn, expectedError, message) {
+  let threw = false;
+  let thrownError = null;
+  try {
+    if (typeof fn === 'function') {
+      const res = fn();
+      if (res && typeof res.then === 'function') {
+        return res.then(
+          () => { throw new Error(message || 'Expected async function to throw, but it resolved normally'); },
+          (e) => {
+            if (expectedError) {
+              const errText = e instanceof Error ? e.message : String(e);
+              if (typeof expectedError === 'string' && !errText.includes(expectedError)) {
+                throw new Error(message || ('Expected error containing "' + expectedError + '", but got "' + errText + '"'));
+              }
+            }
+          }
+        );
+      }
+    }
+  } catch (e) {
+    threw = true;
+    thrownError = e;
+  }
+  if (!threw) {
+    throw new Error(message || 'Expected function to throw an exception, but it returned normally');
+  }
+  if (expectedError) {
+    const errText = thrownError instanceof Error ? thrownError.message : String(thrownError);
+    if (typeof expectedError === 'string' && !errText.includes(expectedError)) {
+      throw new Error(message || ('Expected error containing "' + expectedError + '", but got "' + errText + '"'));
+    }
+  }
+}
+
+function fail(message) {
+  throw new Error(message || 'Test failed explicitly via fail()');
+}
+
+function expect(actual) {
+  return {
+    toBe(expected) {
+      if (actual !== expected) {
+        throw new Error('Expected ' + JSON.stringify(expected) + ', but got ' + JSON.stringify(actual));
+      }
+    },
+    toEqual(expected) {
+      if (!__deepEqual(actual, expected)) {
+        throw new Error('Expected deep equal ' + JSON.stringify(expected) + ', but got ' + JSON.stringify(actual));
+      }
+    },
+    toBeTruthy() {
+      if (!actual) throw new Error('Expected truthy, but got ' + JSON.stringify(actual));
+    },
+    toBeFalsy() {
+      if (actual) throw new Error('Expected falsy, but got ' + JSON.stringify(actual));
+    },
+    toBeOk() {
+      assertOk(actual);
+    },
+    toBeErr() {
+      assertErr(actual);
+    },
+    toThrow(expectedMsg) {
+      if (typeof actual !== 'function') throw new Error('expect(fn).toThrow requires a function');
+      assertThrows(actual, expectedMsg);
+    },
+    not: {
+      toBe(expected) {
+        if (actual === expected) throw new Error('Expected not ' + JSON.stringify(expected));
+      },
+      toEqual(expected) {
+        if (__deepEqual(actual, expected)) throw new Error('Expected not to equal ' + JSON.stringify(expected));
+      }
+    }
+  };
 }
 
 // Find callable entrypoint
@@ -163,13 +431,9 @@ if (typeof Solution === 'function') {
 }
 
 if (!__fn) {
-  // Check common algorithmic function names or global declarations
-  const globalKeys = Object.keys(globalThis);
-  // Match functions declared in user code
-  const declaredMatches = [...\`${code.replace(/`/g, '\\`').replace(/\\/g, '\\\\')}\`.matchAll(/(?:function|const|let|var)\\s+([a-zA-Z0-9_$]+)/g)];
-  for (const m of declaredMatches) {
-    const name = m[1];
-    if (name !== 'Solution' && name !== '__deepEqual' && typeof eval('typeof ' + name) !== 'undefined') {
+  const __candidateNames = ${JSON.stringify(candidateFunctionNames)};
+  for (const name of __candidateNames) {
+    if (typeof eval('typeof ' + name) !== 'undefined') {
       try {
         const candidate = eval(name);
         if (typeof candidate === 'function') {
@@ -208,18 +472,20 @@ for (let __i = 0; __i < __testCases.length; __i++) {
       throw new Error('No callable function or Solution method found in code.');
     }
 
+    let __res;
     if (typeof __input === 'object' && __input !== null && !Array.isArray(__input)) {
       const vals = Object.values(__input);
       if (__fn.length === 1 && Object.keys(__input).length > 1) {
-        __actual = __fn(__input);
+        __res = __fn(__input);
       } else {
-        __actual = __fn(...vals);
+        __res = __fn(...vals);
       }
     } else if (Array.isArray(__input)) {
-      __actual = __fn(...__input);
+      __res = __fn(...__input);
     } else {
-      __actual = __fn(__input);
+      __res = __fn(__input);
     }
+    __actual = await Promise.resolve(__res);
   } catch (e) {
     __err = e instanceof Error ? e.message : String(e);
   } finally {
@@ -253,13 +519,53 @@ for (let __i = 0; __i < __testCases.length; __i++) {
   });
 }
 
+// Execute student-authored test suite if provided
+${testCode ? `
+try {
+  const __initialCount = __studentResults.length;
+  ${testCode}
+  await Promise.all(__testPromises);
+  if (__studentResults.length === __initialCount) {
+    __studentResults.push({
+      test_name: 'Top-Level Assertions',
+      passed: true,
+      error: null,
+      runtime_ms: 1.0
+    });
+  }
+} catch (err) {
+  const msg = err instanceof Error ? err.message : String(err);
+  __studentResults.push({
+    test_name: 'Test Suite Execution',
+    passed: false,
+    error: msg,
+    runtime_ms: 1.0
+  });
+}
+` : ''}
+
+const __studentPassed = __studentResults.filter(r => r.passed).length;
+const __studentTotal = __studentResults.length;
+
+if (__testCases.length === 0 && __studentTotal > 0) {
+  __passedCount = __studentPassed;
+  __overallStatus = __studentPassed === __studentTotal ? 'Accepted' : 'Wrong Answer';
+} else if (__studentTotal > 0 && __studentPassed < __studentTotal) {
+  if (__overallStatus === 'Accepted') {
+    __overallStatus = 'Wrong Answer';
+  }
+}
+
 const __summary = {
   status: __overallStatus,
   passed_count: __passedCount,
-  total_count: __testCases.length,
-  runtime_ms: Math.round(__results.reduce((acc, r) => acc + r.runtime_ms, 0) * 100) / 100,
+  total_count: __testCases.length > 0 ? __testCases.length : __studentTotal,
+  runtime_ms: Math.round((__results.reduce((acc, r) => acc + r.runtime_ms, 0) + __studentResults.reduce((acc, r) => acc + r.runtime_ms, 0)) * 100) / 100,
   error: __overallStatus === 'Runtime Error' ? (__results.find(r => r.error)?.error || null) : null,
-  results: __results
+  results: __results,
+  student_tests: __studentResults,
+  student_passed_count: __studentPassed,
+  student_total_count: __studentTotal
 };
 
 process.stdout.write(JSON.stringify(__summary));
