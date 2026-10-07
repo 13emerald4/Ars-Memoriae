@@ -73,6 +73,22 @@ export interface SocraticResponse {
   model_used: string | null
 }
 
+export interface SocraticLineHintRequest {
+  code: string
+  line_number: number
+  language?: string
+  test_code?: string | null
+}
+
+export interface SocraticLineHintResponse {
+  hint: string
+  target_concept?: string | null
+  line_number: number
+  current_line_text: string
+  degraded: boolean
+  degraded_reason?: string | null
+}
+
 export interface QueueItem {
   kind: 'card' | 'extract'
   id: string

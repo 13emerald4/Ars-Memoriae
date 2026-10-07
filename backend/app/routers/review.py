@@ -28,6 +28,8 @@ from app.schemas.review import (
     LessonOut,
     SocraticRequest,
     SocraticResponse,
+    SocraticLineHintRequest,
+    SocraticLineHintResponse,
     StuckAlertOut,
     SubmitAnswerRequest,
     SubmitAnswerResponse,
@@ -367,6 +369,74 @@ async def card_weakness_hint(
             hint=f"Watch out for previous difficulty: {card.active_weaknesses[0]}.",
             active_weaknesses=card.active_weaknesses,
             has_past_weaknesses=True,
+        )
+
+
+@router.post("/{card_id}/line-hint", response_model=SocraticLineHintResponse)
+async def socratic_line_hint(
+    card_id: str,
+    body: SocraticLineHintRequest,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SocraticLineHintResponse:
+    """Generate a targeted Socratic hint for the line of code currently active in the IDE.
+
+    Grounded in the reference solution for that line and the student's previous code,
+    without spoiling the solution or echoing code verbatim.
+    """
+    card = await _owned_card(db, user, parse_uuid(card_id))
+    note = card.note
+    front, back = render(
+        note.note_type.template_kind, note.field_values or {}, card.template_slot
+    )
+
+    lines = body.code.split("\n")
+    clamped_line = max(1, min(body.line_number, max(1, len(lines))))
+    current_line_text = lines[clamped_line - 1] if clamped_line <= len(lines) else ""
+
+    if not user.llm_grading_consent:
+        return SocraticLineHintResponse(
+            hint="Please enable LLM grading and add an API key in Settings to receive Socratic line hints.",
+            line_number=clamped_line,
+            current_line_text=current_line_text,
+            degraded=True,
+            degraded_reason="consent_not_given",
+        )
+
+    api_key = decrypt_api_key(user.google_api_key_encrypted)
+    service = GradingService(api_key, user.grading_model)
+    try:
+        result = await service.ask_socratic_line_hint(
+            front=front,
+            back=back,
+            code=body.code,
+            line_number=clamped_line,
+            language=body.language,
+        )
+        return SocraticLineHintResponse(
+            hint=result["hint"],
+            target_concept=result.get("target_concept"),
+            line_number=result["line_number"],
+            current_line_text=result["current_line_text"],
+        )
+    except GradingUnavailable as exc:
+        return SocraticLineHintResponse(
+            hint=f"Focus on line {clamped_line}: consider what operation or state change connects your previous setup to the expected return type.",
+            target_concept="Algorithmic Step",
+            line_number=clamped_line,
+            current_line_text=current_line_text,
+            degraded=True,
+            degraded_reason=str(exc),
+        )
+    except Exception as exc:
+        log.warning("socratic line hint failed: %s", exc)
+        return SocraticLineHintResponse(
+            hint=f"Focus on line {clamped_line}: consider what operation or state change connects your previous setup to the expected return type.",
+            target_concept="Algorithmic Step",
+            line_number=clamped_line,
+            current_line_text=current_line_text,
+            degraded=True,
+            degraded_reason=str(exc),
         )
 
 

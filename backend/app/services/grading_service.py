@@ -40,6 +40,7 @@ from app.services.grading_profiles import (
     DOC_CARD_GEN_PROMPT,
     LEECH_PROMPT,
     LESSON_PROMPT,
+    SOCRATIC_LINE_HINT_PROMPT,
     SOCRATIC_PROMPT,
     WEAKNESS_HINT_PROMPT,
     build_prompt,
@@ -420,6 +421,70 @@ class GradingService:
             message = "Let's hold off on the full answer — what part of it are you already sure of?"
 
         return {"message": message, "on_track": bool(isinstance(data, dict) and data.get("on_track"))}
+
+    async def ask_socratic_line_hint(
+        self,
+        front: str,
+        back: str,
+        code: str,
+        line_number: int,
+        language: str = "typescript",
+        model: str | None = None,
+    ) -> dict:
+        """Generates a targeted Socratic hint for a specific line of code in the IDE.
+
+        Grounded in the canonical reference solution (``back``) and the student's
+        preceding code, without ever leaking the actual line or solution verbatim.
+        """
+        lines = code.split("\n")
+        total_lines = len(lines)
+        clamped_line = max(1, min(line_number, max(1, total_lines)))
+
+        current_line_text = lines[clamped_line - 1] if clamped_line <= total_lines else ""
+        code_before = "\n".join(lines[: clamped_line - 1]) or "(no preceding code)"
+
+        code_with_lines = "\n".join(
+            f"{'--> ' if i + 1 == clamped_line else '    '}{i + 1}: {line}"
+            for i, line in enumerate(lines)
+        )
+
+        raw = await self._generate(
+            SOCRATIC_LINE_HINT_PROMPT.format(
+                front=front,
+                back=back,
+                code_with_lines=code_with_lines,
+                line_number=clamped_line,
+                current_line_text=current_line_text or "(empty / cursor here)",
+                code_before=code_before,
+            ),
+            model or self.model,
+        )
+        data = parse_json(raw)
+        hint = str(data.get("hint", "")).strip() if isinstance(data, dict) else ""
+        target_concept = str(data.get("target_concept", "")).strip() if isinstance(data, dict) else None
+
+        if not hint:
+            raise GradingUnavailable("Guide returned no hint for this line")
+
+        def _leaks_code_line(reference_solution: str, text: str) -> bool:
+            if leaks_reference_answer(reference_solution, text):
+                return True
+            for ref_line in reference_solution.split("\n"):
+                stripped_line = ref_line.strip()
+                if len(stripped_line) >= 6 and stripped_line in text:
+                    return True
+            return False
+
+        if _leaks_code_line(back, hint):
+            log.warning("Socratic line hint echoed reference answer code; substituting a pedagogical nudge")
+            hint = f"Focus on line {clamped_line}: consider what operation or state change connects your previous setup to the expected return type."
+
+        return {
+            "hint": hint,
+            "target_concept": target_concept,
+            "line_number": clamped_line,
+            "current_line_text": current_line_text,
+        }
 
     # ── leech remediation (§3.2) ────────────────────────────────────────────
 

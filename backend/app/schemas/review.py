@@ -155,6 +155,22 @@ class SocraticResponse(BaseModel):
     model_used: str | None = None
 
 
+class SocraticLineHintRequest(BaseModel):
+    code: str
+    line_number: int
+    language: str = "typescript"
+    test_code: str | None = None
+
+
+class SocraticLineHintResponse(BaseModel):
+    hint: str
+    target_concept: str | None = None
+    line_number: int
+    current_line_text: str
+    degraded: bool = False
+    degraded_reason: str | None = None
+
+
 class ConfirmReviewRequest(BaseModel):
     final_grade: Grade
     overridden: bool = False

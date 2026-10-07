@@ -157,3 +157,67 @@ class TestGuideEndpoint:
             f"/api/review/{card_id}/guide", json={"history": []}, headers=headers
         )
         assert resp.status_code == 404, resp.text
+
+
+class TestSocraticLineHint:
+    @staticmethod
+    def _service(raw_response: str) -> GradingService:
+        svc = GradingService("fake-key", "small-model")
+
+        async def fake_generate(prompt, model, schema=None):
+            return raw_response
+
+        svc._generate = fake_generate
+        return svc
+
+    async def test_line_hint_passes_through(self):
+        svc = self._service('{"hint": "Think about what initial value current should have.", "target_concept": "State Initialization"}')
+        result = await svc.ask_socratic_line_hint(
+            front="Longest Muggy Streak",
+            back="let current = 0;\nreturn current;",
+            code="function streak() {\nlet current =\nreturn 0;\n}",
+            line_number=2,
+            language="typescript",
+        )
+        assert result["hint"] == "Think about what initial value current should have."
+        assert result["target_concept"] == "State Initialization"
+        assert result["line_number"] == 2
+        assert result["current_line_text"] == "let current ="
+
+    async def test_line_hint_leak_guard_replaces_verbatim_echo(self):
+        svc = self._service('{"hint": "Just write let current = 0; exactly as shown.", "target_concept": "Variable"}')
+        result = await svc.ask_socratic_line_hint(
+            front="Longest Muggy Streak",
+            back="let current = 0;\nreturn current;",
+            code="function streak() {\nlet current =\nreturn 0;\n}",
+            line_number=2,
+            language="typescript",
+        )
+        assert "exactly as shown" not in result["hint"]
+        assert "Focus on line 2" in result["hint"]
+
+    async def test_endpoint_degrades_without_consent(self, auth_client):
+        deck_id = (await auth_client.post("/api/decks", json={"name": "D"})).json()["id"]
+        note = (
+            await auth_client.post(
+                "/api/notes",
+                json={
+                    "deck_id": deck_id,
+                    "template_kind": "basic",
+                    "field_values": {"Front": "Question", "Back": "Answer"},
+                },
+            )
+        ).json()
+        card_id = note["cards"][0]["id"]
+
+        resp = await auth_client.post(
+            f"/api/review/{card_id}/line-hint",
+            json={"code": "line1\nline2", "line_number": 2, "language": "python"},
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["degraded"] is True
+        assert body["degraded_reason"] == "consent_not_given"
+        assert body["line_number"] == 2
+        assert body["current_line_text"] == "line2"
+

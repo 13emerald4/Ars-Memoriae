@@ -272,3 +272,18 @@ class TestOwnershipStillHolds:
         headers = {"Authorization": f"Bearer {stranger.json()['access_token']}"}
         dump = (await client.get("/api/export", headers=headers)).json()
         assert all(s["id"] != session["id"] for s in dump["study_sessions"])
+
+
+class TestPostponeCard:
+    async def test_postpone_card_bumps_due(self, auth_client):
+        deck_id = await _deck(auth_client, "PostponeDeck")
+        card_id = await _card(auth_client, deck_id, "defer me", "deferred answer")
+
+        resp = await auth_client.post(f"/api/cards/{card_id}/postpone?hours=6")
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["card_id"] == card_id
+        assert data["postponed_hours"] == 6
+        due_dt = datetime.fromisoformat(data["due"])
+        assert due_dt > datetime.now(UTC) + timedelta(hours=5)
+

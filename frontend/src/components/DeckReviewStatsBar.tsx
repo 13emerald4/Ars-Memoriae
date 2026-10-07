@@ -10,6 +10,7 @@ interface DeckReviewStatsBarProps {
   className?: string
   onStartPersist?: (deckId: string) => void
   isPersistActive?: boolean
+  onOpenDeckViewer?: () => void
 }
 
 const DIFFICULTY_CONFIG: Record<
@@ -103,6 +104,7 @@ export function DeckReviewStatsBar({
   className = '',
   onStartPersist,
   isPersistActive,
+  onOpenDeckViewer,
 }: DeckReviewStatsBarProps) {
   const [stats, setStats] = useState<DeckStats | null>(null)
   const [loading, setLoading] = useState(false)
@@ -149,7 +151,21 @@ export function DeckReviewStatsBar({
           <span>📚</span>
           <span className="font-semibold text-slate-200">Deck: {deckName}</span>
         </div>
-        {loading && <span className="text-[11px] text-slate-500 animate-pulse">Loading stats…</span>}
+        <div className="flex items-center gap-2">
+          {onOpenDeckViewer && (
+            <button
+              type="button"
+              onClick={onOpenDeckViewer}
+              className="flex items-center gap-1.5 rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/25 transition shadow-sm cursor-pointer"
+              title="Browse all cards in this deck (Alt+D)"
+            >
+              <span>🗂️</span>
+              <span>View All Cards</span>
+              <kbd className="rounded bg-sky-950/80 px-1 py-0.2 text-[9px] font-mono text-sky-300 border border-sky-500/30">Alt+D</kbd>
+            </button>
+          )}
+          {loading && <span className="text-[11px] text-slate-500 animate-pulse">Loading stats…</span>}
+        </div>
       </div>
     )
   }
@@ -224,6 +240,19 @@ export function DeckReviewStatsBar({
             >
               ⏱ {stats.due_cards} due
             </span>
+          )}
+
+          {onOpenDeckViewer && (
+            <button
+              type="button"
+              onClick={onOpenDeckViewer}
+              className="flex items-center gap-1.5 rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/25 transition shadow-sm cursor-pointer"
+              title="Browse all cards in this deck (Alt+D)"
+            >
+              <span>🗂️</span>
+              <span>View All Cards</span>
+              <kbd className="rounded bg-sky-950/80 px-1 py-0.2 text-[9px] font-mono text-sky-300 border border-sky-500/30">Alt+D</kbd>
+            </button>
           )}
 
           {onStartPersist && deckId && !isPersistActive && (

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -547,6 +547,21 @@ async def toggle_suspend(
     await db.commit()
     await db.refresh(card)
     return card_out(card)
+
+
+@router.post("/cards/{card_id}/postpone")
+async def postpone_card(
+    card_id: str,
+    hours: int = Query(default=4, ge=1, le=168),
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Postpone a card's due timestamp so it does not reappear immediately in the session queue."""
+    card = await _owned_card(db, user, parse_uuid(card_id))
+    now = datetime.now(UTC)
+    card.due = now + timedelta(hours=hours)
+    await db.commit()
+    return {"card_id": str(card.id), "due": card.due.isoformat(), "postponed_hours": hours}
 
 
 @router.patch("/priority")

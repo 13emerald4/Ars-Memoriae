@@ -34,6 +34,8 @@ import type {
   SessionSummary,
   SisterPair,
   SocraticCodeResponse,
+  SocraticLineHintRequest,
+  SocraticLineHintResponse,
   SocraticResponse,
   SocraticTurn,
   Source,
@@ -160,6 +162,8 @@ export const api = {
     post<SocraticResponse>(`/api/review/${cardId}/guide`, { history, message }),
   weaknessHint: (cardId: string) =>
     post<WeaknessHintResponse>(`/api/review/${cardId}/weakness-hint`, {}),
+  socraticLineHint: (cardId: string, body: SocraticLineHintRequest) =>
+    post<SocraticLineHintResponse>(`/api/review/${cardId}/line-hint`, body),
   submitAnswer: (cardId: string, typed_answer: string, latency_ms: number, test_code?: string) =>
     post<SubmitAnswerResponse>(`/api/review/${cardId}/answer`, { typed_answer, latency_ms, test_code }),
   runReviewCode: (
@@ -219,6 +223,8 @@ export const api = {
   },
   suspendCard: (id: string, suspended: boolean) =>
     post<Card>(`/api/cards/${id}/suspend?suspended=${suspended}`),
+  postponeCard: (id: string, hours: number = 4) =>
+    post<{ card_id: string; due: string; postponed_hours: number }>(`/api/cards/${id}/postpone?hours=${hours}`),
   setPriority: (target: 'deck' | 'card' | 'source' | 'extract', id: string, priority: number) =>
     patch<{ priority: number }>('/api/priority', { target, id, priority }),
 

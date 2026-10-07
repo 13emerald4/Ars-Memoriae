@@ -255,6 +255,46 @@ Respond with ONLY a JSON object, no prose and no code fences:
 {{"message": "one short question or encouragement, 1-3 sentences", "on_track": true|false}}
 """
 
+SOCRATIC_LINE_HINT_PROMPT = """You are an expert Socratic Code Tutor and Computer Science Instructor.
+A student is in an interactive IDE solving a coding problem and is stuck on a specific line of code.
+They have requested a Socratic hint for the line they are currently writing.
+
+Problem Title & Specification:
+{front}
+
+Canonical Reference Solution (for the tutor's reference ONLY — NEVER reveal this code verbatim):
+```
+{back}
+```
+
+Student's Code with Line Markers:
+```
+{code_with_lines}
+```
+
+The Student is Currently Focused on Line {line_number}:
+Current text on line {line_number}: `{current_line_text}`
+
+Preceding Relevant Code Written by Student:
+```
+{code_before}
+```
+
+Instructions for the Socratic Hint:
+1. Examine what the canonical reference solution does at this corresponding stage or step of the algorithm.
+2. Review what the student has already implemented in previous lines ({code_before}).
+3. Formulate a targeted, pedagogically sound Socratic hint focused squarely on what line {line_number} needs to achieve:
+   - Connect their previous code to this step (e.g. how to use variables, parameters, or data structures already declared).
+   - Point them toward the logic, expression, condition, or invariant needed on this line.
+   - Mention the relevant concept or purpose (e.g. accumulator initialization, loop termination, edge-case check).
+4. ABSOLUTE RULE: You must NEVER provide the completed line of code or spoil the exact syntax verbatim. Guide them so THEY write the code.
+5. Keep the hint concise (2 to 4 sentences maximum), encouraging, and clear.
+
+Respond with ONLY a JSON object, no prose and no code fences:
+{{"hint": "Your Socratic guiding question and hint for this line", "target_concept": "Short 2-4 word concept name"}}
+"""
+
+
 LEECH_PROMPT = """A spaced-repetition card keeps being failed by the user. Diagnose why
 and propose ONE remediation.
 
