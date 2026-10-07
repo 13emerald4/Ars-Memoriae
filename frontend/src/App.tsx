@@ -85,7 +85,7 @@ function AppLayout() {
               : 'mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3'
           }
         >
-          <span className="text-sm font-semibold tracking-tight text-slate-100">Memorization</span>
+          <span className="text-sm font-semibold tracking-tight text-slate-100">Ars Memoria</span>
           <div className="flex items-center gap-2.5">
             <nav className="flex flex-wrap gap-1">
               {NAV.map((item) => (

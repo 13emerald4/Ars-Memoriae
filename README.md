@@ -1,4 +1,4 @@
-# Memorization
+# Ars Memoria
 
 A spaced-repetition web app that takes the scheduling rigor of SuperMemo, the card/deck
 ergonomics of Anki, and the review-quality signals of Mnemosyne — with two structural changes:
