@@ -50,6 +50,147 @@ import {
   FullscreenHud,
   useFullscreen,
 } from './components/FullscreenContext'
+import {
+  ThemeProvider,
+  useTheme,
+  THEME_REGISTRY,
+  CognitiveTheme,
+} from './components/ThemeContext'
+
+function ThemeNavButton() {
+  const { themeMode, setThemeMode, fixedTheme, setFixedTheme, activeThemeMeta } = useTheme()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title={`Cognitive Palette: ${activeThemeMeta.label} (${themeMode === 'dynamic' ? 'Context-Adaptive' : 'Fixed Lock'})`}
+        className="flex items-center gap-1.5 rounded-lg border border-ink-line bg-ink-soft px-2 py-1 text-xs font-semibold text-slate-300 hover:border-slate-500 hover:text-slate-100 transition-colors cursor-pointer"
+      >
+        <span>{themeMode === 'dynamic' ? '🔀' : activeThemeMeta.icon}</span>
+        <span className="hidden lg:inline text-[11px]">
+          {themeMode === 'dynamic' ? 'Adaptive' : activeThemeMeta.label.split(' ')[0]}
+        </span>
+        <span
+          className="w-2 h-2 rounded-full border border-white/20 shrink-0"
+          style={{ backgroundColor: activeThemeMeta.primaryColor }}
+        />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-2 w-80 z-50 rounded-xl border border-ink-line bg-ink-soft p-3 shadow-2xl backdrop-blur">
+            <div className="flex items-center justify-between pb-2 border-b border-ink-line text-xs">
+              <span className="font-bold text-slate-200 flex items-center gap-1.5">
+                <span>🎨</span>
+                <span>Cognitive Theme</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="text-slate-400 hover:text-slate-200 text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Mode Switcher */}
+            <div className="grid grid-cols-2 gap-1.5 my-2.5 p-1 rounded-lg bg-ink border border-ink-line text-xs font-medium">
+              <button
+                type="button"
+                onClick={() => setThemeMode('dynamic')}
+                className={`py-1 px-2 rounded flex items-center justify-center gap-1 transition cursor-pointer ${
+                  themeMode === 'dynamic'
+                    ? 'bg-sky-600/40 text-sky-200 border border-sky-500/60 font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Automatically adapt colors based on cognitive state"
+              >
+                <span>🔀</span>
+                <span>Adaptive</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setThemeMode('fixed')}
+                className={`py-1 px-2 rounded flex items-center justify-center gap-1 transition cursor-pointer ${
+                  themeMode === 'fixed'
+                    ? 'bg-sky-600/40 text-sky-200 border border-sky-500/60 font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Lock into a fixed palette across all views"
+              >
+                <span>🔒</span>
+                <span>Fixed Lock</span>
+              </button>
+            </div>
+
+            {/* Palette Options */}
+            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1 font-semibold">
+              {themeMode === 'dynamic' ? 'Current Palette (or click to lock):' : 'Select Fixed Palette:'}
+            </p>
+            <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
+              {(Object.keys(THEME_REGISTRY) as CognitiveTheme[]).map((id) => {
+                const meta = THEME_REGISTRY[id]
+                const isSelected = themeMode === 'fixed' ? fixedTheme === id : activeThemeMeta.id === id
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => {
+                      if (themeMode === 'dynamic') {
+                        setThemeMode('fixed')
+                      }
+                      setFixedTheme(id)
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition border cursor-pointer ${
+                      isSelected
+                        ? 'border-sky-500/50 bg-sky-500/15 text-white font-medium shadow-sm'
+                        : 'border-transparent hover:bg-slate-800/60 text-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate pr-2">
+                      <span>{meta.icon}</span>
+                      <div className="truncate">
+                        <span className="block truncate font-medium">{meta.label}</span>
+                        <span className="block truncate text-[10px] text-slate-400">{meta.subtitle}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span
+                        className="w-3 h-3 rounded-full border border-white/20 shadow-sm"
+                        style={{ backgroundColor: meta.primaryColor }}
+                        title={`Primary: ${meta.primaryColor}`}
+                      />
+                      <span
+                        className="w-3 h-3 rounded-full border border-white/20 shadow-sm"
+                        style={{ backgroundColor: meta.secondaryColor }}
+                        title={`Secondary: ${meta.secondaryColor}`}
+                      />
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="mt-2.5 pt-2 border-t border-ink-line text-[11px] text-slate-400 flex justify-between items-center">
+              <span>{activeThemeMeta.subtitle}</span>
+              <NavLink
+                to="/settings"
+                onClick={() => setOpen(false)}
+                className="text-sky-400 hover:text-sky-300 underline font-medium"
+              >
+                Settings →
+              </NavLink>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 function AppLayout() {
   const location = useLocation()
@@ -104,6 +245,7 @@ function AppLayout() {
                 </NavLink>
               ))}
             </nav>
+            <ThemeNavButton />
             <LexiconNavButton />
             <FullscreenButton />
           </div>
@@ -173,10 +315,12 @@ export default function App() {
   }
 
   return (
-    <FullscreenProvider>
-      <LexiconProvider>
-        <AppLayout />
-      </LexiconProvider>
-    </FullscreenProvider>
+    <ThemeProvider>
+      <FullscreenProvider>
+        <LexiconProvider>
+          <AppLayout />
+        </LexiconProvider>
+      </FullscreenProvider>
+    </ThemeProvider>
   )
 }

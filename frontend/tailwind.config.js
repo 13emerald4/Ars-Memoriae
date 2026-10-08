@@ -4,7 +4,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: { DEFAULT: '#0f1117', soft: '#171a23', line: '#252938' },
+        ink: {
+          DEFAULT: 'var(--theme-bg-canvas, #0f1117)',
+          soft: 'var(--theme-bg-card, #171a23)',
+          line: 'var(--theme-border, #252938)',
+        },
       },
     },
   },

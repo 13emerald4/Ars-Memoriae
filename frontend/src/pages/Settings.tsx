@@ -7,6 +7,8 @@ import { FullscreenButton, useFullscreen } from '../components/FullscreenContext
 
 
 
+import { useTheme, THEME_REGISTRY, type CognitiveTheme } from '../components/ThemeContext'
+
 export default function Settings() {
   const { user, refresh, signOut } = useAuth()
   const [queueCfg, setQueueCfg] = useState<QueueConfig | null>(null)
@@ -31,6 +33,7 @@ export default function Settings() {
       <ErrorNote error={error} />
       <QwenCoderPanel user={user} onChange={refresh} />
       <MemoryChampionPanel user={user} onChange={refresh} />
+      <CognitiveThemePanel />
       <DisplayFocusPanel />
       <SchedulingPanel user={user} onChange={refresh} />
       <QueuePanel cfg={queueCfg} onChange={load} />
@@ -630,4 +633,196 @@ function DisplayFocusPanel() {
     </Section>
   )
 }
+
+function CognitiveThemePanel() {
+  const {
+    themeMode,
+    setThemeMode,
+    fixedTheme,
+    setFixedTheme,
+    activeThemeMeta,
+    setCognitiveContext,
+    enableNightAutoShift,
+    setEnableNightAutoShift,
+  } = useTheme()
+
+  return (
+    <Section
+      title="🎨 Cognitive State & Ergonomic Theming"
+      description="Choose how the interface adapts to your mental state: automatically transition color harmonies based on active learning, recall, and debugging phases, or lock into a fixed palette."
+    >
+      <div className="space-y-6">
+        {/* Mode Selector Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Option A: Dynamic Context-Adaptive */}
+          <div
+            onClick={() => setThemeMode('dynamic')}
+            className={`rounded-2xl border p-4 cursor-pointer transition-all relative ${
+              themeMode === 'dynamic'
+                ? 'border-sky-500 bg-sky-950/20 shadow-lg ring-1 ring-sky-500/50'
+                : 'border-ink-line bg-ink/60 hover:border-slate-600 hover:bg-ink'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🔀</span>
+                <span className="font-bold text-slate-100 text-sm">Dynamic Context-Adaptive</span>
+              </div>
+              <span className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+                Recommended
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mb-3 leading-relaxed">
+              The interface smoothly shifts its color harmony to match your real-time cognitive task:
+              calming Azure/Emerald for new learning, high-alert Indigo/Amber for recall questions,
+              diagnostic Cyan/Coral when tests fail, and obsidian for code flow.
+            </p>
+            {themeMode === 'dynamic' && (
+              <div className="rounded-xl border border-sky-500/30 bg-sky-950/40 p-2.5 text-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Current Active State:</span>
+                  <span className="font-semibold text-sky-200 flex items-center gap-1.5">
+                    <span>{activeThemeMeta.icon}</span>
+                    <span>{activeThemeMeta.label}</span>
+                  </span>
+                </div>
+                <div className="pt-2 border-t border-sky-500/20">
+                  <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={enableNightAutoShift}
+                      onChange={(e) => setEnableNightAutoShift(e.target.checked)}
+                      className="rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500 cursor-pointer"
+                    />
+                    <span className="text-[11px]">
+                      🌙 Automatically shift to <strong>Circadian Candlelight</strong> after 8:00 PM
+                    </span>
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Option B: Fixed Palette Lock */}
+          <div
+            onClick={() => setThemeMode('fixed')}
+            className={`rounded-2xl border p-4 cursor-pointer transition-all relative ${
+              themeMode === 'fixed'
+                ? 'border-sky-500 bg-sky-950/20 shadow-lg ring-1 ring-sky-500/50'
+                : 'border-ink-line bg-ink/60 hover:border-slate-600 hover:bg-ink'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🔒</span>
+                <span className="font-bold text-slate-100 text-sm">Fixed Palette Lock</span>
+              </div>
+              <span className="rounded-full bg-slate-800 border border-slate-700 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
+                User Choice
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mb-3 leading-relaxed">
+              Lock in one uniform color scheme across the entire application. Your chosen substrate and
+              accent pairing stays consistent across Flashcards, Code Lab, Reading, and Tree views.
+            </p>
+            {themeMode === 'fixed' && (
+              <div className="rounded-xl border border-sky-500/30 bg-sky-950/40 p-2.5 text-xs flex items-center justify-between">
+                <span className="text-slate-400">Locked Palette:</span>
+                <span className="font-semibold text-sky-200 flex items-center gap-1.5">
+                  <span>{activeThemeMeta.icon}</span>
+                  <span>{activeThemeMeta.label}</span>
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Palettes Grid */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              {themeMode === 'fixed' ? 'Choose Your Fixed Palette:' : 'Interactive Cognitive State Previews:'}
+            </h4>
+            {themeMode === 'dynamic' && (
+              <span className="text-[11px] text-slate-500 italic">
+                (Click any state to preview its color scheme)
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {(Object.keys(THEME_REGISTRY) as CognitiveTheme[]).map((themeKey) => {
+              const meta = THEME_REGISTRY[themeKey]
+              const isSelected =
+                themeMode === 'fixed' ? fixedTheme === themeKey : activeThemeMeta.id === themeKey
+
+              return (
+                <div
+                  key={themeKey}
+                  onClick={() => {
+                    if (themeMode === 'dynamic') {
+                      setCognitiveContext(themeKey === 'classic' ? null : themeKey)
+                    } else {
+                      setFixedTheme(themeKey)
+                    }
+                  }}
+                  className={`rounded-xl border p-3.5 transition-all cursor-pointer flex flex-col justify-between ${
+                    isSelected
+                      ? 'border-sky-500/70 bg-sky-950/30 shadow-md ring-1 ring-sky-500/40'
+                      : 'border-ink-line/80 bg-ink-soft/40 hover:border-slate-600 hover:bg-ink-soft'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{meta.icon}</span>
+                        <span className="font-semibold text-slate-200 text-xs">{meta.label}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-white/30 shadow-sm"
+                          style={{ backgroundColor: meta.primaryColor }}
+                          title={`Primary Accent: ${meta.primaryColor}`}
+                        />
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-white/30 shadow-sm"
+                          style={{ backgroundColor: meta.secondaryColor }}
+                          title={`Secondary Accent: ${meta.secondaryColor}`}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[11px] font-mono text-slate-400 mb-2">{meta.subtitle}</p>
+                    <p className="text-[11px] text-slate-300 leading-snug mb-2 font-medium">
+                      🎯 <span className="text-slate-400">{meta.bestFor}</span>
+                    </p>
+                    <p className="text-[10px] text-slate-500 leading-normal italic">
+                      🧠 {meta.psychology}
+                    </p>
+                  </div>
+
+                  <div className="mt-3 pt-2 border-t border-ink-line/50 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500 font-mono text-[10px]">
+                      {meta.primaryColor} / {meta.secondaryColor}
+                    </span>
+                    <button
+                      type="button"
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
+                        isSelected
+                          ? 'bg-sky-500/30 text-sky-200 border border-sky-500/50'
+                          : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {isSelected ? '✓ Active' : themeMode === 'fixed' ? 'Select' : 'Preview'}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </Section>
+  )
+}
+
 

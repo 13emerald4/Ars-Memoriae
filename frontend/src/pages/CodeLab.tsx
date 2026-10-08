@@ -15,6 +15,7 @@ import { CodeSocraticTutor } from '../components/CodeSocraticTutor'
 import { CodeTestConsole } from '../components/CodeTestConsole'
 import { Empty, ErrorNote, Section, Spinner } from '../components/ui'
 import { FullscreenButton } from '../components/FullscreenContext'
+import { useTheme } from '../components/ThemeContext'
 
 const BLIND75_CATEGORIES = [
   { name: 'Arrays & Hashing', icon: '🗃️', desc: 'Hash maps, frequency counters, and prefix products' },
@@ -59,6 +60,22 @@ export default function CodeLab() {
   const [runResult, setRunResult] = useState<RunCodeResponse | SubmitCodeResponse | null>(null)
   const [error, setError] = useState<unknown>(null)
   const [exportMsg, setExportMsg] = useState<string | null>(null)
+
+  const { setCognitiveContext } = useTheme()
+
+  useEffect(() => {
+    if (
+      runResult &&
+      (runResult.passed_count < runResult.total_count ||
+        runResult.status === 'Runtime Error' ||
+        runResult.status === 'Test Failure')
+    ) {
+      setCognitiveContext('diagnostic')
+    } else {
+      setCognitiveContext('flow')
+    }
+    return () => setCognitiveContext(null)
+  }, [runResult, setCognitiveContext])
 
   // Filters & Search
   const [categoryFilter, setCategoryFilter] = useState<string>('All')

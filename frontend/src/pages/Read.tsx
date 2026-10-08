@@ -3,11 +3,19 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Deck, Extract, Source, SuggestedCard } from '../api/types'
 import { Empty, ErrorNote, Section, Spinner } from '../components/ui'
+import { useTheme } from '../components/ThemeContext'
 
 /** Incremental Reading (§8): import material, resurface it on a schedule, and
  *  carve cards out of it as understanding builds. */
 export default function Read() {
   const { extractId } = useParams()
+  const { setCognitiveContext } = useTheme()
+
+  useEffect(() => {
+    setCognitiveContext('acquisition')
+    return () => setCognitiveContext(null)
+  }, [setCognitiveContext])
+
   return extractId ? <ExtractWorkspace extractId={extractId} /> : <SourceLibrary />
 }
 

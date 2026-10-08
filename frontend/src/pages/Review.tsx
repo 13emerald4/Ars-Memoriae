@@ -22,6 +22,7 @@ import SessionTimer, { formatClock, REVIEW_EVENT } from '../components/SessionTi
 import { Empty, ErrorNote, RichText, Spinner } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
 import { useLexicon } from '../components/LexiconContext'
+import { useTheme } from '../components/ThemeContext'
 import { FullscreenButton } from '../components/FullscreenContext'
 import { DeckReviewStatsBar } from '../components/DeckReviewStatsBar'
 import { CopyLearningSummaryButton } from '../components/CopyLearningSummaryButton'
@@ -217,6 +218,8 @@ export default function Review() {
   const [confidence, setConfidence] = useState<number | null>(null)
   const [deckStatsTrigger, setDeckStatsTrigger] = useState(0)
 
+  const { setCognitiveContext } = useTheme()
+
   // ⚡ Persist Mode: Drill a deck continuously until all cards in review are rated Easy
   const deckParam = params.get('deck')
   const persistParam = params.get('persist') === '1' || params.get('persist') === 'true'
@@ -385,6 +388,38 @@ export default function Review() {
     window.addEventListener('savedCardDraftsChanged', handleDraftsChange)
     return () => window.removeEventListener('savedCardDraftsChanged', handleDraftsChange)
   }, [])
+
+  useEffect(() => {
+    if (!item) {
+      if (session) {
+        setCognitiveContext('mastery')
+      } else {
+        setCognitiveContext(null)
+      }
+      return
+    }
+
+    if (
+      codeRunResult &&
+      (codeRunResult.passed_count < codeRunResult.total_count ||
+        codeRunResult.status === 'Runtime Error')
+    ) {
+      setCognitiveContext('diagnostic')
+      return
+    }
+
+    if (item.state === 'new' || item.kind === 'extract' || learnMode) {
+      setCognitiveContext('acquisition')
+      return
+    }
+
+    if (!revealed) {
+      setCognitiveContext('recall')
+      return
+    }
+
+    setCognitiveContext('acquisition')
+  }, [item, session, revealed, codeRunResult, learnMode, setCognitiveContext])
 
   async function handleRequestWeaknessHint() {
     if (!item || item.kind !== 'card') return

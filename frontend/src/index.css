@@ -2,6 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --theme-bg-canvas: #0f1117;
+  --theme-bg-card: #171a23;
+  --theme-border: #252938;
+  --theme-accent: #0ea5e9;
+  --theme-accent-secondary: #10b981;
+}
+
+/* 1. Acquisition & Learning (Azure & Emerald) */
+html[data-theme='acquisition'] {
+  --theme-bg-canvas: #0b1320;
+  --theme-bg-card: #111d30;
+  --theme-border: #1e3a5f;
+  --theme-accent: #0ea5e9;
+  --theme-accent-secondary: #10b981;
+}
+
+/* 2. Active Recall & Testing (Deep Indigo & Golden Ochre) */
+html[data-theme='recall'] {
+  --theme-bg-canvas: #0e0d1a;
+  --theme-bg-card: #161429;
+  --theme-border: #2c2752;
+  --theme-accent: #6366f1;
+  --theme-accent-secondary: #f59e0b;
+}
+
+/* 3. Diagnostic Lab (Analytical Cyan & Soft Coral) */
+html[data-theme='diagnostic'] {
+  --theme-bg-canvas: #0a151d;
+  --theme-bg-card: #112330;
+  --theme-border: #193e50;
+  --theme-accent: #06b6d4;
+  --theme-accent-secondary: #f43f5e;
+}
+
+/* 4. Deep Flow & Code Immersion (Obsidian & Electric Cyan) */
+html[data-theme='flow'] {
+  --theme-bg-canvas: #08090d;
+  --theme-bg-card: #0f1118;
+  --theme-border: #1c202d;
+  --theme-accent: #38bdf8;
+  --theme-accent-secondary: #64748b;
+}
+
+/* 5. Mastery & Peak Synthesis (Royal Violet & Radiant Gold) */
+html[data-theme='mastery'] {
+  --theme-bg-canvas: #100b1c;
+  --theme-bg-card: #19122b;
+  --theme-border: #352354;
+  --theme-accent: #8b5cf6;
+  --theme-accent-secondary: #eab308;
+}
+
+/* 6. Circadian Nocturnal (Warm Amber & Candlelight) */
+html[data-theme='circadian'] {
+  --theme-bg-canvas: #130f0a;
+  --theme-bg-card: #1c160f;
+  --theme-border: #332415;
+  --theme-accent: #f59e0b;
+  --theme-accent-secondary: #fde68a;
+}
+
 @layer base {
   html {
     color-scheme: dark;
@@ -9,6 +71,8 @@
   body {
     @apply bg-ink text-slate-200 antialiased;
     font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background-color: var(--theme-bg-canvas, #0f1117);
+    transition: background-color 0.35s ease, border-color 0.35s ease;
   }
   ::selection {
     @apply bg-sky-500/30;
@@ -18,6 +82,7 @@
 @layer components {
   .card {
     @apply rounded-xl border border-ink-line bg-ink-soft p-5;
+    transition: background-color 0.35s ease, border-color 0.35s ease;
   }
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-lg border border-ink-line
