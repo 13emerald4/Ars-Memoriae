@@ -75,13 +75,13 @@ export function TiledEditorPane({
   return (
     <div className="flex flex-col min-w-0 h-full">
       {/* ── Sub-Column Header & Tab Switcher ── */}
-      <div className="flex items-center justify-between border-b border-ink-line/80 bg-[#1e1e1e]/90 px-3 py-1.5 text-xs">
-        <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line">
+      <div className="flex items-center justify-between border-b border-ink-line/80 bg-[#1e1e1e]/90 px-2.5 py-1 text-xs min-w-0 gap-2">
+        <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar">
+          <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line shrink-0">
             <button
               type="button"
               onClick={() => onTabChange('solution')}
-              className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 shrink-0 whitespace-nowrap cursor-pointer ${
                 currentTab === 'solution'
                   ? 'bg-sky-600/30 text-sky-200 border border-sky-500/50 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
@@ -95,7 +95,7 @@ export function TiledEditorPane({
             <button
               type="button"
               onClick={() => onTabChange('tests')}
-              className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 shrink-0 whitespace-nowrap cursor-pointer ${
                 currentTab === 'tests'
                   ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/50 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
@@ -103,7 +103,7 @@ export function TiledEditorPane({
               title={`Write unit tests with assertions (${paneId} pane)`}
             >
               <span>🧪</span>
-              <span>Unit Tests</span>
+              <span>Tests</span>
               {testCode.trim() && (
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
               )}
@@ -112,7 +112,7 @@ export function TiledEditorPane({
             <button
               type="button"
               onClick={() => onTabChange('reference')}
-              className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 shrink-0 whitespace-nowrap cursor-pointer ${
                 currentTab === 'reference'
                   ? 'bg-emerald-600/30 text-emerald-200 border border-emerald-500/50 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
@@ -120,14 +120,14 @@ export function TiledEditorPane({
               title={`View reference solution (${paneId} pane)`}
             >
               <span>📖</span>
-              <span>Ref Solution</span>
+              <span>Ref</span>
             </button>
 
             {Boolean(cleanRefTestsCode.trim()) && (
               <button
                 type="button"
                 onClick={() => onTabChange('ref_tests')}
-                className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 shrink-0 whitespace-nowrap cursor-pointer ${
                   currentTab === 'ref_tests'
                     ? 'bg-purple-600/30 text-purple-200 border border-purple-500/50 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
@@ -143,7 +143,7 @@ export function TiledEditorPane({
               <button
                 type="button"
                 onClick={() => onTabChange('starter_tests')}
-                className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 shrink-0 whitespace-nowrap cursor-pointer ${
                   currentTab === 'starter_tests'
                     ? 'bg-amber-600/30 text-amber-200 border border-amber-500/50 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
@@ -151,14 +151,14 @@ export function TiledEditorPane({
                 title={`View original starter test suite (${paneId} pane)`}
               >
                 <span>📋</span>
-                <span>Starter Tests</span>
+                <span>Starter</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* ── Header Extras (Reset / Copy / Complexity / Lock) ── */}
-        <div className="flex items-center gap-2">
+        {/* ── Header Extras (Reset / Copy / Complexity / Actions) ── */}
+        <div className="flex items-center gap-1.5 shrink-0">
           {currentTab === 'solution' && onRequestLineHint && (
             <button
               type="button"
@@ -168,7 +168,7 @@ export function TiledEditorPane({
                 onRequestLineHint(cursorLine, lineText)
               }}
               disabled={lineHintLoading}
-              className={`flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition cursor-pointer ${
+              className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium transition cursor-pointer shrink-0 whitespace-nowrap ${
                 lineHintLoading
                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
                   : activeLineHint
@@ -178,8 +178,8 @@ export function TiledEditorPane({
               title={`Request Socratic Hint for line ${cursorLine} (Alt+H)`}
             >
               <span>💡</span>
-              <span>{lineHintLoading ? 'Thinking…' : `Line ${cursorLine} Hint`}</span>
-              <span className="text-[10px] text-amber-400/60 font-mono hidden md:inline">(Alt+H)</span>
+              <span>{lineHintLoading ? 'Thinking…' : 'Hint'}</span>
+              <span className="text-[10px] text-amber-400/60 font-mono hidden xl:inline">(Alt+H)</span>
             </button>
           )}
 
@@ -188,7 +188,7 @@ export function TiledEditorPane({
               type="button"
               onClick={onGradeSolution}
               disabled={grading || !answer.trim()}
-              className={`flex items-center gap-1 rounded px-2.5 py-0.5 text-[11px] font-semibold transition cursor-pointer ${
+              className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs font-semibold transition cursor-pointer shrink-0 whitespace-nowrap ${
                 grading
                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse'
                   : 'bg-emerald-600/25 hover:bg-emerald-600/40 text-emerald-200 border border-emerald-500/50 shadow-sm'
@@ -196,8 +196,8 @@ export function TiledEditorPane({
               title="Grade your solution with local Qwen 2.5 Coder 7B (Alt+G)"
             >
               <span>⚡</span>
-              <span>{grading ? 'Grading…' : 'Grade My Solution'}</span>
-              <span className="text-[10px] text-emerald-300/70 font-mono hidden md:inline">(Alt+G)</span>
+              <span>{grading ? 'Grading…' : 'Grade'}</span>
+              <span className="text-[10px] text-emerald-300/70 font-mono hidden xl:inline">(Alt+G)</span>
             </button>
           )}
 
@@ -205,7 +205,7 @@ export function TiledEditorPane({
             <button
               type="button"
               onClick={() => onAnswerChange(item.starter_code || '')}
-              className="text-slate-400 hover:text-slate-200 text-[11px] underline cursor-pointer"
+              className="text-slate-400 hover:text-slate-200 text-xs underline cursor-pointer shrink-0 whitespace-nowrap px-1"
               title="Reset solution to original starter template"
             >
               Reset
@@ -216,7 +216,7 @@ export function TiledEditorPane({
             <button
               type="button"
               onClick={() => onTestCodeChange(starterTestsCode)}
-              className="text-slate-400 hover:text-slate-200 text-[11px] underline cursor-pointer"
+              className="text-slate-400 hover:text-slate-200 text-xs underline cursor-pointer shrink-0 whitespace-nowrap px-1"
               title="Reset unit tests to starter assertions"
             >
               Reset
@@ -226,7 +226,7 @@ export function TiledEditorPane({
           {currentTab === 'reference' && (
             <>
               {item?.time_complexity && (
-                <span className="rounded bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-mono text-sky-300 border border-sky-500/30">
+                <span className="rounded bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-mono text-sky-300 border border-sky-500/30 shrink-0 whitespace-nowrap">
                   {item.time_complexity}
                 </span>
               )}
@@ -234,13 +234,13 @@ export function TiledEditorPane({
                 <button
                   type="button"
                   onClick={() => onCopyRef(cleanRefCode)}
-                  className="flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-slate-200 transition px-2 py-0.5 rounded hover:bg-[#2c2c2c] cursor-pointer"
+                  className="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-200 transition px-2 py-0.5 rounded hover:bg-[#2c2c2c] cursor-pointer shrink-0 whitespace-nowrap"
                   title="Copy reference solution to clipboard"
                 >
                   <span>{copiedRef ? '✓ Copied' : '📋 Copy'}</span>
                 </button>
               ) : (
-                <span className="text-[11px] text-amber-400/80 font-mono">🔒 Locked</span>
+                <span className="text-xs text-amber-400/80 font-mono shrink-0 whitespace-nowrap">🔒 Locked</span>
               )}
             </>
           )}
@@ -252,7 +252,7 @@ export function TiledEditorPane({
                   <button
                     type="button"
                     onClick={() => onCopyRefTests?.(cleanRefTestsCode || '')}
-                    className="flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-slate-200 transition px-2 py-0.5 rounded hover:bg-[#2c2c2c] cursor-pointer"
+                    className="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-200 transition px-2 py-0.5 rounded hover:bg-[#2c2c2c] cursor-pointer shrink-0 whitespace-nowrap"
                     title="Copy completed reference tests to clipboard"
                   >
                     <span>{copiedRefTests ? '✓ Copied' : '📋 Copy'}</span>
@@ -260,14 +260,14 @@ export function TiledEditorPane({
                   <button
                     type="button"
                     onClick={() => onTestCodeChange(cleanRefTestsCode || '')}
-                    className="text-purple-300 hover:text-purple-200 hover:underline text-[11px] cursor-pointer"
+                    className="text-purple-300 hover:text-purple-200 hover:underline text-xs cursor-pointer shrink-0 whitespace-nowrap"
                     title="Load completed reference tests into editable unit tests"
                   >
                     Load to tests
                   </button>
                 </>
               ) : (
-                <span className="text-[11px] text-purple-400/80 font-mono">🔒 Locked</span>
+                <span className="text-xs text-purple-400/80 font-mono shrink-0 whitespace-nowrap">🔒 Locked</span>
               )}
             </>
           )}
@@ -277,7 +277,7 @@ export function TiledEditorPane({
               <button
                 type="button"
                 onClick={() => onCopyStarterTests(starterTestsCode)}
-                className="flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-slate-200 transition px-2 py-0.5 rounded hover:bg-[#2c2c2c] cursor-pointer"
+                className="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-200 transition px-2 py-0.5 rounded hover:bg-[#2c2c2c] cursor-pointer shrink-0 whitespace-nowrap"
                 title="Copy starter tests to clipboard"
               >
                 <span>{copiedStarterTests ? '✓ Copied' : '📋 Copy'}</span>
@@ -285,7 +285,7 @@ export function TiledEditorPane({
               <button
                 type="button"
                 onClick={() => onTestCodeChange(starterTestsCode)}
-                className="text-slate-400 hover:text-slate-200 text-[11px] underline cursor-pointer"
+                className="text-slate-400 hover:text-slate-200 text-xs underline cursor-pointer shrink-0 whitespace-nowrap"
                 title="Load starter tests into editable unit tests"
               >
                 Load to tests

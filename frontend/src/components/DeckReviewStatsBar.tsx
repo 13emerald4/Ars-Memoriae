@@ -217,17 +217,17 @@ export function DeckReviewStatsBar({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-[11px]">
+        <div className="flex flex-wrap items-center gap-2 text-[11px]">
           {/* Quick Metrics Chips */}
           <span
-            className="chip border-emerald-500/40 bg-emerald-950/30 text-emerald-300 font-semibold"
+            className="chip border-emerald-500/40 bg-emerald-950/30 text-emerald-300 font-semibold shrink-0"
             title="Cards studied at least once in this deck"
           >
             ✓ {stats.viewed_cards} viewed ({viewedPct}%)
           </span>
           {stats.new_cards > 0 && (
             <span
-              className="chip border-sky-500/40 bg-sky-950/30 text-sky-300 font-semibold"
+              className="chip border-sky-500/40 bg-sky-950/30 text-sky-300 font-semibold shrink-0"
               title="Brand new cards never yet studied"
             >
               ★ {stats.new_cards} new
@@ -235,7 +235,7 @@ export function DeckReviewStatsBar({
           )}
           {stats.due_cards > 0 && (
             <span
-              className="chip border-amber-500/40 bg-amber-950/30 text-amber-300 font-semibold"
+              className="chip border-amber-500/40 bg-amber-950/30 text-amber-300 font-semibold shrink-0"
               title="Cards currently due for review"
             >
               ⏱ {stats.due_cards} due
@@ -246,7 +246,7 @@ export function DeckReviewStatsBar({
             <button
               type="button"
               onClick={onOpenDeckViewer}
-              className="flex items-center gap-1.5 rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/25 transition shadow-sm cursor-pointer"
+              className="flex items-center gap-1.5 rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/25 transition shadow-sm cursor-pointer shrink-0"
               title="Browse all cards in this deck (Alt+D)"
             >
               <span>🗂️</span>
@@ -259,7 +259,7 @@ export function DeckReviewStatsBar({
             <button
               type="button"
               onClick={() => onStartPersist(deckId)}
-              className="flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/25 transition shadow-sm"
+              className="flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/25 transition shadow-sm shrink-0"
               title="Persist reviewing this deck until all cards are rated Easy"
             >
               <span>⚡ Persist Deck</span>
@@ -269,7 +269,7 @@ export function DeckReviewStatsBar({
           <button
             type="button"
             onClick={toggleExpanded}
-            className="rounded px-2 py-0.5 text-[11px] font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+            className="rounded px-2 py-0.5 text-[11px] font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition shrink-0"
             title={isExpanded ? 'Collapse deck stats' : 'Expand deck stats'}
           >
             {isExpanded ? 'Hide Details ▲' : 'Deck Stats ▼'}
@@ -360,7 +360,7 @@ export function DeckReviewStatsBar({
                 return (
                   <div
                     key={diffKey}
-                    className={`flex items-center gap-1.5 rounded-lg border ${cfg.border} ${cfg.bg} px-2 py-0.5 text-[11px] font-medium transition hover:scale-105`}
+                    className={`flex items-center gap-1.5 rounded-lg border ${cfg.border} ${cfg.bg} px-2 py-0.5 text-[11px] font-medium transition hover:scale-105 shrink-0 whitespace-nowrap`}
                     title={`${count} of ${stats.total_cards} cards have ${diffKey} difficulty`}
                   >
                     <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
@@ -427,7 +427,7 @@ export function DeckReviewStatsBar({
                   return (
                     <div
                       key={ratingKey}
-                      className={`flex items-center gap-1.5 rounded-lg border ${cfg.border} ${cfg.bg} px-2 py-0.5 text-[11px] font-medium transition hover:scale-105`}
+                      className={`flex items-center gap-1.5 rounded-lg border ${cfg.border} ${cfg.bg} px-2 py-0.5 text-[11px] font-medium transition hover:scale-105 shrink-0 whitespace-nowrap`}
                       title={`${count} of ${stats.total_cards} cards rated ${ratingKey}`}
                     >
                       <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />

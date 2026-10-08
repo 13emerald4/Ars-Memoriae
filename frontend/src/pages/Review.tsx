@@ -1896,14 +1896,14 @@ export default function Review() {
             {/* Right Column: Code Editor & Test Console */}
             <div className={`space-y-4 ${tiledTabs ? 'xl:col-span-8' : ''}`}>
               <div className="card p-0 overflow-hidden border border-ink-line">
-                <div className="flex flex-wrap items-center justify-between border-b border-ink-line bg-[#1e1e1e] px-4 py-2 text-xs">
+                <div className="flex flex-wrap items-center justify-between border-b border-ink-line bg-[#1e1e1e] px-4 py-2 text-xs gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     {/* View mode / Tabs selector */}
                     {tiledTabs ? (
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line">
+                        <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line shrink-0">
                           <span
-                            className="px-2 py-0.5 text-xs font-semibold rounded bg-sky-600/30 text-sky-200 border border-sky-500/50 shadow-sm flex items-center gap-1.5 cursor-default select-none"
+                            className="px-2 py-0.5 text-xs font-semibold rounded bg-sky-600/30 text-sky-200 border border-sky-500/50 shadow-sm flex items-center gap-1.5 cursor-default select-none shrink-0"
                             title="Tiled side-by-side workbench active (Alt+S to untile)"
                           >
                             <span>⧉</span>
@@ -1912,7 +1912,7 @@ export default function Review() {
                           <button
                             type="button"
                             onClick={toggleTiledTabs}
-                            className="px-2 py-0.5 text-xs font-medium rounded text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition cursor-pointer"
+                            className="px-2 py-0.5 text-xs font-medium rounded text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition cursor-pointer shrink-0"
                             title="Switch to single tab mode (Alt+S)"
                           >
                             <span>⊟</span>
@@ -1920,22 +1920,22 @@ export default function Review() {
                           </button>
                         </div>
 
-                        <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line items-center">
-                          <span className="text-[10px] text-slate-500 px-1.5 font-medium uppercase tracking-wider">Presets:</span>
+                        <div className="inline-flex items-center rounded-md bg-[#161616] p-0.5 border border-ink-line shrink-0 overflow-x-auto no-scrollbar">
+                          <span className="text-[10px] text-slate-500 px-1.5 font-medium uppercase tracking-wider shrink-0 select-none">Presets:</span>
                           <button
                             type="button"
                             onClick={() => {
                               setTileLeftTab('solution')
                               setTileRightTab('tests')
                             }}
-                            className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                            className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
                               tileLeftTab === 'solution' && tileRightTab === 'tests'
                                 ? 'bg-sky-600/40 text-sky-100 border border-sky-500/60 shadow-sm font-semibold'
                                 : 'text-slate-400 hover:text-slate-200'
                             }`}
                             title="Classic TDD: Solution on left, Unit Tests on right"
                           >
-                            <span>💻 Solution</span>
+                            <span>💻 Sol</span>
                             <span className="text-slate-500">↔</span>
                             <span>🧪 Tests</span>
                           </button>
@@ -1945,7 +1945,7 @@ export default function Review() {
                               setTileLeftTab('reference')
                               setTileRightTab('solution')
                             }}
-                            className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                            className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
                               tileLeftTab === 'reference' && tileRightTab === 'solution'
                                 ? 'bg-sky-600/40 text-sky-100 border border-sky-500/60 shadow-sm font-semibold'
                                 : 'text-slate-400 hover:text-slate-200'
@@ -1954,7 +1954,7 @@ export default function Review() {
                           >
                             <span>📖 Ref</span>
                             <span className="text-slate-500">↔</span>
-                            <span>💻 Solution</span>
+                            <span>💻 Sol</span>
                           </button>
                           <button
                             type="button"
@@ -1962,7 +1962,7 @@ export default function Review() {
                               setTileLeftTab('reference')
                               setTileRightTab('tests')
                             }}
-                            className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                            className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
                               tileLeftTab === 'reference' && tileRightTab === 'tests'
                                 ? 'bg-sky-600/40 text-sky-100 border border-sky-500/60 shadow-sm font-semibold'
                                 : 'text-slate-400 hover:text-slate-200'
@@ -1979,7 +1979,7 @@ export default function Review() {
                               setTileLeftTab('tests')
                               setTileRightTab('ref_tests')
                             }}
-                            className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                            className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
                               tileLeftTab === 'tests' && tileRightTab === 'ref_tests'
                                 ? 'bg-purple-600/40 text-purple-100 border border-purple-500/60 shadow-sm font-semibold'
                                 : 'text-slate-400 hover:text-slate-200'
@@ -1988,7 +1988,7 @@ export default function Review() {
                           >
                             <span>🧪 Tests</span>
                             <span className="text-slate-500">↔</span>
-                            <span>🧪 Ref Tests</span>
+                            <span>🧪 Ref</span>
                           </button>
                           <button
                             type="button"
@@ -1998,7 +1998,7 @@ export default function Review() {
                               setTileLeftTab(prevRight)
                               setTileRightTab(prevLeft)
                             }}
-                            className="px-1.5 py-0.5 text-xs font-medium rounded text-slate-400 hover:text-slate-200 hover:bg-[#282828] transition cursor-pointer border-l border-ink-line/60 ml-0.5"
+                            className="px-1.5 py-0.5 text-xs font-medium rounded text-slate-400 hover:text-slate-200 hover:bg-[#282828] transition cursor-pointer border-l border-ink-line/60 ml-0.5 shrink-0 whitespace-nowrap"
                             title="Swap Left and Right panes"
                           >
                             <span>⇄ Swap</span>
@@ -2083,7 +2083,7 @@ export default function Review() {
                         setCodeLanguage(nextLang)
                         localStorage.setItem('memorization.reviewCodeLanguage', nextLang)
                       }}
-                      className="rounded border border-ink-line bg-[#282828] px-2 py-0.5 text-xs font-semibold text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer"
+                      className="rounded border border-ink-line bg-[#282828] px-2 py-0.5 text-xs font-semibold text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer shrink-0"
                     >
                       <option value="typescript">📘 TypeScript</option>
                       <option value="javascript">💛 JavaScript</option>
@@ -2135,9 +2135,9 @@ export default function Review() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-3 text-xs">
-                    <div className="flex items-center gap-1">
-                      <span className="text-slate-500 text-[11px]">Confidence:</span>
+                  <div className="flex items-center gap-3 text-xs shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-slate-500 text-[11px] shrink-0">Confidence:</span>
                       {[
                         { lvl: 1, label: '1', color: 'text-rose-300' },
                         { lvl: 2, label: '2', color: 'text-amber-300' },
@@ -2522,13 +2522,13 @@ export default function Review() {
                 {isCodeCard ? (
                   <div className="my-2 space-y-4">
                     <div className="rounded-lg border border-ink-line overflow-hidden">
-                      <div className="flex flex-wrap items-center justify-between border-b border-ink-line bg-[#1e1e1e] px-3 py-1.5 text-xs">
+                      <div className="flex flex-wrap items-center justify-between border-b border-ink-line bg-[#1e1e1e] px-3 py-1.5 text-xs gap-2">
                         <div className="flex flex-wrap items-center gap-2">
                           {tiledTabs ? (
                             <div className="flex flex-wrap items-center gap-2">
-                              <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line">
+                              <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line shrink-0">
                                 <span
-                                  className="px-2 py-0.5 text-xs font-semibold rounded bg-sky-600/30 text-sky-200 border border-sky-500/50 shadow-sm flex items-center gap-1.5 cursor-default select-none"
+                                  className="px-2 py-0.5 text-xs font-semibold rounded bg-sky-600/30 text-sky-200 border border-sky-500/50 shadow-sm flex items-center gap-1.5 cursor-default select-none shrink-0"
                                   title="Tiled side-by-side workbench active (Alt+S to untile)"
                                 >
                                   <span>⧉</span>
@@ -2537,7 +2537,7 @@ export default function Review() {
                                 <button
                                   type="button"
                                   onClick={toggleTiledTabs}
-                                  className="px-2 py-0.5 text-xs font-medium rounded text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition cursor-pointer"
+                                  className="px-2 py-0.5 text-xs font-medium rounded text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition cursor-pointer shrink-0"
                                   title="Switch to single tab mode (Alt+S)"
                                 >
                                   <span>⊟</span>
@@ -2545,22 +2545,22 @@ export default function Review() {
                                 </button>
                               </div>
 
-                              <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line items-center">
-                                <span className="text-[10px] text-slate-500 px-1.5 font-medium uppercase tracking-wider">Presets:</span>
+                              <div className="inline-flex items-center rounded-md bg-[#161616] p-0.5 border border-ink-line shrink-0 overflow-x-auto no-scrollbar">
+                                <span className="text-[10px] text-slate-500 px-1.5 font-medium uppercase tracking-wider shrink-0 select-none">Presets:</span>
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setTileLeftTab('solution')
                                     setTileRightTab('tests')
                                   }}
-                                  className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                                  className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
                                     tileLeftTab === 'solution' && tileRightTab === 'tests'
                                       ? 'bg-sky-600/40 text-sky-100 border border-sky-500/60 shadow-sm font-semibold'
                                       : 'text-slate-400 hover:text-slate-200'
                                   }`}
                                   title="Classic TDD: Solution on left, Unit Tests on right"
                                 >
-                                  <span>💻 Solution</span>
+                                  <span>💻 Sol</span>
                                   <span className="text-slate-500">↔</span>
                                   <span>🧪 Tests</span>
                                 </button>
@@ -2570,7 +2570,7 @@ export default function Review() {
                                     setTileLeftTab('reference')
                                     setTileRightTab('solution')
                                   }}
-                                  className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                                  className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
                                     tileLeftTab === 'reference' && tileRightTab === 'solution'
                                       ? 'bg-sky-600/40 text-sky-100 border border-sky-500/60 shadow-sm font-semibold'
                                       : 'text-slate-400 hover:text-slate-200'
@@ -2579,7 +2579,7 @@ export default function Review() {
                                 >
                                   <span>📖 Ref</span>
                                   <span className="text-slate-500">↔</span>
-                                  <span>💻 Solution</span>
+                                  <span>💻 Sol</span>
                                 </button>
                                 <button
                                   type="button"
@@ -2587,7 +2587,7 @@ export default function Review() {
                                     setTileLeftTab('reference')
                                     setTileRightTab('tests')
                                   }}
-                                  className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                                  className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
                                     tileLeftTab === 'reference' && tileRightTab === 'tests'
                                       ? 'bg-sky-600/40 text-sky-100 border border-sky-500/60 shadow-sm font-semibold'
                                       : 'text-slate-400 hover:text-slate-200'
@@ -2604,7 +2604,7 @@ export default function Review() {
                                     setTileLeftTab('tests')
                                     setTileRightTab('ref_tests')
                                   }}
-                                  className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                                  className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
                                     tileLeftTab === 'tests' && tileRightTab === 'ref_tests'
                                       ? 'bg-purple-600/40 text-purple-100 border border-purple-500/60 shadow-sm font-semibold'
                                       : 'text-slate-400 hover:text-slate-200'
@@ -2613,7 +2613,7 @@ export default function Review() {
                                 >
                                   <span>🧪 Tests</span>
                                   <span className="text-slate-500">↔</span>
-                                  <span>🧪 Ref Tests</span>
+                                  <span>🧪 Ref</span>
                                 </button>
                                 <button
                                   type="button"
@@ -2623,7 +2623,7 @@ export default function Review() {
                                     setTileLeftTab(prevRight)
                                     setTileRightTab(prevLeft)
                                   }}
-                                  className="px-1.5 py-0.5 text-xs font-medium rounded text-slate-400 hover:text-slate-200 hover:bg-[#282828] transition cursor-pointer border-l border-ink-line/60 ml-0.5"
+                                  className="px-1.5 py-0.5 text-xs font-medium rounded text-slate-400 hover:text-slate-200 hover:bg-[#282828] transition cursor-pointer border-l border-ink-line/60 ml-0.5 shrink-0 whitespace-nowrap"
                                   title="Swap Left and Right panes"
                                 >
                                   <span>⇄ Swap</span>
@@ -2708,7 +2708,7 @@ export default function Review() {
                               setCodeLanguage(nextLang)
                               localStorage.setItem('memorization.reviewCodeLanguage', nextLang)
                             }}
-                            className="rounded border border-ink-line bg-[#282828] px-2 py-0.5 text-xs font-semibold text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer"
+                            className="rounded border border-ink-line bg-[#282828] px-2 py-0.5 text-xs font-semibold text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer shrink-0"
                           >
                             <option value="typescript">📘 TypeScript</option>
                             <option value="javascript">💛 JavaScript</option>

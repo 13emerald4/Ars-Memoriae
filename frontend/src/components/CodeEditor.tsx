@@ -508,13 +508,13 @@ export function CodeEditor({
               <span className="text-xs text-[#8a8a8a] font-mono select-none">• Auto</span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 shrink-0">
               {onRequestLineHint && !readOnly && (
                 <button
                   type="button"
                   onClick={() => triggerLineHint()}
                   disabled={lineHintLoading}
-                  className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
+                  className={`flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition cursor-pointer shrink-0 whitespace-nowrap ${
                     lineHintLoading
                       ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
                       : activeLineHint
@@ -524,7 +524,7 @@ export function CodeEditor({
                   title={`Request Socratic Hint for line ${cursorLine} (Alt+H)`}
                 >
                   <span>💡</span>
-                  <span>{lineHintLoading ? 'Thinking…' : `Line ${cursorLine} Hint`}</span>
+                  <span>{lineHintLoading ? 'Thinking…' : 'Hint'}</span>
                   <span className="text-[10px] text-amber-400/60 font-mono hidden md:inline">(Alt+H)</span>
                 </button>
               )}
@@ -533,7 +533,7 @@ export function CodeEditor({
                   type="button"
                   onClick={onGradeSolution}
                   disabled={grading || submitting || !code.trim()}
-                  className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
+                  className={`flex items-center gap-1 rounded px-2.5 py-1 text-xs font-semibold transition cursor-pointer shrink-0 whitespace-nowrap ${
                     grading || submitting
                       ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse'
                       : 'bg-emerald-600/25 hover:bg-emerald-600/40 text-emerald-200 border border-emerald-500/50 shadow-sm'
@@ -541,7 +541,7 @@ export function CodeEditor({
                   title="Grade your solution with local Qwen 2.5 Coder 7B (Alt+G)"
                 >
                   <span>⚡</span>
-                  <span>{grading || submitting ? 'Grading…' : 'Grade My Solution'}</span>
+                  <span>{grading || submitting ? 'Grading…' : 'Grade'}</span>
                   <span className="text-[10px] text-emerald-300/70 font-mono hidden md:inline">(Alt+G)</span>
                 </button>
               )}
@@ -725,25 +725,24 @@ export function CodeEditor({
 
       {/* Footer Info */}
       {!hideFooter && (
-        <div className="flex items-center justify-between border-t border-[#282828] bg-[#1e1e1e] px-4 py-1 text-[11px] text-[#8a8a8a] font-mono">
-          <div className="flex items-center gap-3">
-            <span>{lineCount} lines</span>
-            <span>{code.length} chars</span>
-            <span className="text-[#eff1f6]">Ln {cursorLine}, Col {cursorCol}</span>
+        <div className="flex items-center justify-between border-t border-[#282828] bg-[#1e1e1e] px-3 py-1 text-[11px] text-[#8a8a8a] font-mono min-w-0 gap-2 overflow-hidden">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[#eff1f6] font-semibold">Ln {cursorLine}, Col {cursorCol}</span>
+            <span className="text-[#666666] hidden sm:inline">• {lineCount}L / {code.length}C</span>
           </div>
-          <div className="flex items-center gap-3 text-[10px] text-[#8a8a8a]">
+          <div className="flex items-center gap-2 text-[10px] text-[#8a8a8a] shrink-0 overflow-hidden">
             {onRequestLineHint && !readOnly && (
-              <span className="text-amber-400/90">
-                <kbd className="rounded bg-[#282828] px-1 py-0.5 text-amber-300 border border-amber-500/30">Alt+H</kbd> Line Hint
+              <span className="text-amber-400/90 shrink-0">
+                <kbd className="rounded bg-[#282828] px-1 py-0.5 text-amber-300 border border-amber-500/30">Alt+H</kbd> Hint
               </span>
             )}
             {onGradeSolution && !readOnly && (
-              <span className="text-emerald-400/90">
+              <span className="text-emerald-400/90 shrink-0">
                 <kbd className="rounded bg-[#282828] px-1 py-0.5 text-emerald-300 border border-emerald-500/30">Alt+G</kbd> Grade
               </span>
             )}
-            <span><kbd className="rounded bg-[#282828] px-1 py-0.5 text-[#eff1f6]">Ctrl+Enter</kbd> Run</span>
-            <span><kbd className="rounded bg-[#282828] px-1 py-0.5 text-[#eff1f6]">Ctrl+Shift+Enter</kbd> Submit</span>
+            <span className="shrink-0"><kbd className="rounded bg-[#282828] px-1 py-0.5 text-[#eff1f6]">Ctrl+↵</kbd> Run</span>
+            <span className="shrink-0 hidden xl:inline"><kbd className="rounded bg-[#282828] px-1 py-0.5 text-[#eff1f6]">Ctrl+⇧+↵</kbd> Submit</span>
           </div>
         </div>
       )}
