@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 echo "==================================================================="
-echo "   🏛️  Ars Memoria — Zero-Docker Self-Hosted Launcher"
+echo "   🏛️  Ars Memoriae — Zero-Docker Self-Hosted Launcher"
 echo "==================================================================="
 echo ""
 
@@ -53,8 +53,8 @@ fi
 echo "[4/5] Checking database schema..."
 (cd backend && ./.venv/bin/alembic upgrade head)
 
-# 5. Launch Ars Memoria & Browser
-echo "[5/5] Launching Ars Memoria..."
+# 5. Launch Ars Memoriae & Browser
+echo "[5/5] Launching Ars Memoriae..."
 echo ""
 echo "==================================================================="
 echo "  Application running at: http://localhost:8000"

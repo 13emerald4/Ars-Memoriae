@@ -1,4 +1,4 @@
-"""Release Packaging Utility for Ars Memoria.
+"""Release Packaging Utility for Ars Memoriae.
 
 Builds the frontend for production, collects all required runtime assets,
 and generates a clean, lightweight zip archive ready to distribute to friends
@@ -40,7 +40,7 @@ def create_release_zip() -> Path:
     print("[2/3] Preparing release archive...")
     output_dir = REPO_ROOT / "release"
     output_dir.mkdir(parents=True, exist_ok=True)
-    zip_path = output_dir / "Ars-Memoria-Release.zip"
+    zip_path = output_dir / "Ars-Memoriae-Release.zip"
 
     # Exclude patterns
     exclude_dirs = {
@@ -92,8 +92,8 @@ def create_release_zip() -> Path:
                 abs_file = root_path / file
                 rel_file = abs_file.relative_to(REPO_ROOT)
 
-                # Store inside top-level Ars-Memoria/ directory inside zip
-                archive_name = Path("Ars-Memoria") / rel_file
+                # Store inside top-level Ars-Memoriae/ directory inside zip
+                archive_name = Path("Ars-Memoriae") / rel_file
                 zf.write(abs_file, str(archive_name))
                 file_count += 1
 

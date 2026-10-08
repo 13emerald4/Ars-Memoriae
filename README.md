@@ -1,4 +1,4 @@
-# Ars Memoria
+# Ars Memoriae
 
 A spaced-repetition web app that takes the scheduling rigor of SuperMemo, the card/deck
 ergonomics of Anki, and the review-quality signals of Mnemosyne — with two structural changes:
@@ -18,7 +18,7 @@ on demand.
 
 ### 1-Click Native Launcher (Recommended — Zero Docker)
 
-Ars Memoria runs 100% locally with zero cloud dependencies and zero container overhead using an embedded SQLite database and pre-compiled frontend.
+Ars Memoriae runs 100% locally with zero cloud dependencies and zero container overhead using an embedded SQLite database and pre-compiled frontend.
 
 - **Windows**: Double-click `start_windows.bat`
 - **macOS / Linux**: Run `./start_mac.sh`

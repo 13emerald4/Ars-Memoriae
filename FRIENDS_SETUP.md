@@ -1,8 +1,8 @@
-# Ars Memoria — Friend Quickstart Guide 🏛️
+# Ars Memoriae — Friend Quickstart Guide 🏛️
 
-Welcome to **Ars Memoria**! This guide will get you up and running on your own computer in under 3 minutes.
+Welcome to **Ars Memoriae**! This guide will get you up and running on your own computer in under 3 minutes.
 
-> **Zero Cloud Fees & 100% Private**: Ars Memoria runs entirely on your machine. Your flashcards, coding progress, and study data are stored locally in an encrypted SQLite database on your own computer.
+> **Zero Cloud Fees & 100% Private**: Ars Memoriae runs entirely on your machine. Your flashcards, coding progress, and study data are stored locally in an encrypted SQLite database on your own computer.
 
 ---
 
@@ -22,14 +22,14 @@ You only need **one** requirement:
 Choose whichever method you prefer:
 
 ### Option A: Download the ZIP (Simplest)
-1. Download **`Ars-Memoria-Release.zip`** from GitHub.
+1. Download **`Ars-Memoriae-Release.zip`** from GitHub.
 2. Right-click and extract the `.zip` file anywhere (e.g. your Documents or Desktop).
 
 ### Option B: Clone via Git (Recommended for Auto-Updates)
 Open Terminal / PowerShell and run:
 ```bash
-git clone https://github.com/13emerald4/Ars-Memoria.git
-cd Ars-Memoria
+git clone https://github.com/13emerald4/Ars-Memoriae.git
+cd Ars-Memoriae
 ```
 
 ---
@@ -37,7 +37,7 @@ cd Ars-Memoria
 ## 3. Launching (1-Click)
 
 ### 🪟 Windows
-Double-click **`start_windows.bat`** in the `Ars-Memoria` folder.
+Double-click **`start_windows.bat`** in the `Ars-Memoriae` folder.
 
 ### 🍎 macOS / 🐧 Linux
 Open your Terminal, navigate to the folder, and run:
@@ -50,19 +50,19 @@ chmod +x start_mac.sh
 - On first launch, the script automatically installs dependencies and sets up your local database (~1 minute).
 - Your default web browser will automatically open to:
   👉 **`http://localhost:8000`**
-- To stop Ars Memoria, simply close the launcher window or press `Ctrl + C`.
+- To stop Ars Memoriae, simply close the launcher window or press `Ctrl + C`.
 
 ---
 
 ## 4. Setting Up AI (Hints, Grading & Code Tutor)
 
-Ars Memoria features local code grading and Socratic tutoring. You can power the AI in two ways:
+Ars Memoriae features local code grading and Socratic tutoring. You can power the AI in two ways:
 
 ### Choice 1: Free Google Gemini API Key *(Recommended for casual laptops)*
 *Works on any laptop with zero RAM or GPU requirements.*
 1. Go to [Google AI Studio](https://aistudio.google.com/) and sign in with your Google account.
 2. Click **"Get API Key"** -> **"Create API Key"** (100% free, no credit card required).
-3. Open Ars Memoria in your browser, click **Settings (⚙️)** in the top navigation bar, and paste your API key.
+3. Open Ars Memoriae in your browser, click **Settings (⚙️)** in the top navigation bar, and paste your API key.
 4. Click **Save**. You're done!
 
 ### Choice 2: 100% Local Ollama *(Recommended for Apple Silicon M1/M2/M3 or Gaming GPUs)*
@@ -72,7 +72,7 @@ Ars Memoria features local code grading and Socratic tutoring. You can power the
    ```bash
    ollama run qwen2.5-coder:7b
    ```
-3. Ars Memoria will automatically detect Ollama running on `http://localhost:11434`.
+3. Ars Memoriae will automatically detect Ollama running on `http://localhost:11434`.
 
 ---
 

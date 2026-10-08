@@ -140,7 +140,7 @@ async def serve_root():
         return FileResponse(index_file)
     return {
         "status": "ok",
-        "message": "Ars Memoria API is running. Build frontend with 'npm run build' to view the web UI.",
+        "message": "Ars Memoriae API is running. Build frontend with 'npm run build' to view the web UI.",
     }
 
 

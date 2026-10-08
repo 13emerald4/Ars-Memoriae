@@ -1,10 +1,10 @@
 @echo off
 setlocal enabledelayedexpansion
 
-title Ars Memoria - Self-Hosted Launcher
+title Ars Memoriae - Self-Hosted Launcher
 
 echo ===================================================================
-echo    Ars Memoria - Zero-Docker Self-Hosted Launcher
+echo    Ars Memoriae - Zero-Docker Self-Hosted Launcher
 echo ===================================================================
 echo.
 
@@ -87,8 +87,8 @@ cd backend
 .\.venv\Scripts\python.exe -m alembic upgrade head
 cd ..
 
-:: 5. Launch Ars Memoria & Browser
-echo [5/5] Launching Ars Memoria...
+:: 5. Launch Ars Memoriae & Browser
+echo [5/5] Launching Ars Memoriae...
 echo.
 echo ===================================================================
 echo   Application running at: http://localhost:8000
