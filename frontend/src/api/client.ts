@@ -49,8 +49,8 @@ import type {
   WeaknessHintResponse,
 } from './types'
 
-// When VITE_API_BASE_URL is not provided, use relative path '' so requests route through current origin / proxy
-const BASE = import.meta.env.VITE_API_BASE_URL ?? ''
+// In production (served by FastAPI), use relative path '' so requests match current origin
+const BASE = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_BASE_URL ?? '')
 const TOKEN_KEY = 'memorization.token'
 
 export const token = {

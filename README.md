@@ -16,7 +16,22 @@ on demand.
 
 ## Quick start
 
-### Docker (recommended)
+### 1-Click Native Launcher (Recommended — Zero Docker)
+
+Ars Memoria runs 100% locally with zero cloud dependencies and zero container overhead using an embedded SQLite database and pre-compiled frontend.
+
+- **Windows**: Double-click `start_windows.bat`
+- **macOS / Linux**: Run `./start_mac.sh`
+
+The script automatically sets up the local Python virtual environment, applies database migrations, auto-updates from GitHub, and opens your browser at **<http://localhost:8000>**.
+
+> 💡 **Sharing with Friends?** See the step-by-step **[FRIENDS_SETUP.md](FRIENDS_SETUP.md)** guide.
+
+---
+
+### Docker Compose (Optional)
+
+For containerized environments or production deployments:
 
 ```bash
 cp .env.example .env

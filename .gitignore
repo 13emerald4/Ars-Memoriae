@@ -18,6 +18,7 @@ backend/media/
 # node
 node_modules/
 dist/
+release/
 .vite/
 *.tsbuildinfo
 

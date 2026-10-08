@@ -4,9 +4,10 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import FileResponse
 
 from app.core import security
 from app.core.config import settings
@@ -124,3 +125,38 @@ async def health() -> dict:
         "fsrs_optimizer_installed": FSRSService.optimizer_available(),
         "default_grading_model": settings.default_grading_model,
     }
+
+
+# ─── Frontend Static SPA Serving ──────────────────────────────────────────────
+_frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+if _frontend_dist.is_dir() and (_frontend_dist / "assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=str(_frontend_dist / "assets")), name="frontend_assets")
+
+
+@app.get("/", include_in_schema=False)
+async def serve_root():
+    index_file = _frontend_dist / "index.html"
+    if index_file.is_file():
+        return FileResponse(index_file)
+    return {
+        "status": "ok",
+        "message": "Ars Memoria API is running. Build frontend with 'npm run build' to view the web UI.",
+    }
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def serve_spa_route(full_path: str):
+    # Do not intercept API, docs, openapi, or media routes
+    if full_path.startswith(("api", "media", "health", "docs", "openapi.json", "redoc")):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    target = _frontend_dist / full_path
+    if full_path and target.is_file():
+        return FileResponse(target)
+
+    index_file = _frontend_dist / "index.html"
+    if index_file.is_file():
+        return FileResponse(index_file)
+
+    raise HTTPException(status_code=404, detail="Frontend build index.html not found")
+
