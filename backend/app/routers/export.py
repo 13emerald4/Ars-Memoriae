@@ -106,7 +106,6 @@ async def export_all(
             "grading_bias": user.grading_bias,
             "fsrs_parameters": user.fsrs_parameters,
             "fsrs_optimized_at": _iso(user.fsrs_optimized_at),
-            # The stored Google API key is deliberately NOT exported.
         },
         "queue_config": {
             "review_weight": cfg.review_weight,

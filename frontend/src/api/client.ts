@@ -18,7 +18,7 @@ import type {
   GenerateCardsResponse,
   GenerateDeckResponse,
   Grade,
-  ImportResult,
+  ImportRecord,
   JsonImportNote,
   JsonImportRequest,
   JsonImportResult,
@@ -109,13 +109,7 @@ export const api = {
   me: () => request<User>('/api/me'),
   updateMe: (body: Partial<User>) => patch<User>('/api/me', body),
 
-  // ── keys (§4.2 BYOK) ────────────────────────────────────────────────────
-  storeKey: (api_key: string) =>
-    post<{ stored: boolean; masked: string; available_models: string[]; warning: string | null }>(
-      '/api/keys',
-      { api_key },
-    ),
-  deleteKey: () => request<{ stored: boolean }>('/api/keys', { method: 'DELETE' }),
+  // ── local LLM engine (Ollama) ───────────────────────────────────────────
   models: () => request<{ models: string[]; active?: string; error?: string }>('/api/models'),
   llmStatus: () =>
     request<{
@@ -316,12 +310,7 @@ export const api = {
   dismissPair: (id: string) => post<SisterPair>(`/api/interference/${id}/dismiss`),
 
   // ── import / export / stats (§7, §10, §11) ──────────────────────────────
-  importApkg: (file: File) => {
-    const form = new FormData()
-    form.append('file', file)
-    return request<ImportResult>('/api/import/apkg', { method: 'POST', body: form })
-  },
-  importHistory: () => request<ImportResult[]>('/api/import/history'),
+  importHistory: () => request<ImportRecord[]>('/api/import/history'),
   // A bare array of notes is accepted too — the deck name then travels as a
   // query param instead of living inside the body.
   importJson: (body: JsonImportRequest | JsonImportNote[], deckForArray?: string) =>

@@ -9,13 +9,7 @@ import uuid
 import pytest
 
 from app.core.config import settings
-from app.core.security import (
-    decrypt_api_key,
-    encrypt_api_key,
-    hash_password,
-    mask_api_key,
-    verify_password,
-)
+from app.core.security import hash_password, verify_password
 from app.services.ir_service import FetchError, assert_fetchable
 
 # ── SSRF (§8.1 fetches a URL the *user* chooses) ────────────────────────────
@@ -344,40 +338,6 @@ class TestCredentials:
         for stored in ("", "garbage", "scrypt$bad", "md5$1$2$3$4$5"):
             assert verify_password("x", stored) is False
 
-    def test_api_key_round_trips_through_encryption(self):
-        key = "AIzaSyExample-Key-Value-123456"
-        blob = encrypt_api_key(key)
-        assert key.encode() not in blob, "key must not sit in plaintext in the column"
-        assert decrypt_api_key(blob) == key
-
-    def test_undecryptable_ciphertext_returns_none(self):
-        assert decrypt_api_key(b"not-a-fernet-token") is None
-        assert decrypt_api_key(None) is None
-
-    def test_masking_hides_the_middle(self):
-        masked = mask_api_key("AIzaSyExample-Key-Value-123456")
-        assert masked.startswith("AIza")
-        assert masked.endswith("3456")
-        assert "Example" not in masked
-
-
-async def test_api_key_is_never_returned_or_exported(auth_client):
-    secret = "AIzaSy-super-secret-key-value"
-    from sqlalchemy import select
-
-    from app.core.security import encrypt_api_key as enc
-    from app.db import SessionLocal
-    from app.models import User
-
-    async with SessionLocal() as db:
-        me = (await db.execute(select(User).order_by(User.created_at.desc()).limit(1))).scalar_one()
-        me.google_api_key_encrypted = enc(secret)
-        await db.commit()
-
-    for path in ("/api/me", "/api/keys", "/api/export"):
-        body = (await auth_client.get(path)).text
-        assert secret not in body, f"{path} leaked the raw API key"
-
 
 async def test_expired_or_forged_tokens_are_rejected(client):
     import jwt
@@ -395,3 +355,36 @@ async def test_upload_size_and_type_limits(auth_client):
         files={"file": ("x.php", io.BytesIO(b"<?php system($_GET[0]); ?>"), "application/x-php")},
     )
     assert resp.status_code == 415
+
+
+# ── SPA fallback route: no escaping the frontend build directory ────────────
+
+
+@pytest.fixture
+def fake_dist(tmp_path, monkeypatch):
+    import app.main
+
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "index.html").write_text("<html>spa</html>")
+    (dist / "robots.txt").write_text("User-agent: *")
+    (tmp_path / "secret.env").write_text("SECRET_KEY=leaked")
+    monkeypatch.setattr(app.main, "_frontend_dist", dist)
+    return dist
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["/..%2fsecret.env", "/%2e%2e%2fsecret.env", "/robots.txt%2f..%2f..%2fsecret.env"],
+)
+async def test_spa_route_does_not_serve_files_outside_the_build(client, fake_dist, path):
+    resp = await client.get(path)
+    assert "leaked" not in resp.text
+    # Falls through to the SPA shell like any other unknown route.
+    assert resp.text == "<html>spa</html>"
+
+
+async def test_spa_route_still_serves_real_build_files(client, fake_dist):
+    resp = await client.get("/robots.txt")
+    assert resp.status_code == 200
+    assert resp.text == "User-agent: *"

@@ -4,13 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import (
-    create_access_token,
-    decrypt_api_key,
-    hash_password,
-    mask_api_key,
-    verify_password,
-)
+from app.core.security import create_access_token, hash_password, verify_password
 from app.db import get_db
 from app.models import Deck, NoteType, QueueConfig, User
 from app.routers.deps import current_user
@@ -36,7 +30,6 @@ STARTER_NOTE_TYPES = [
 
 
 def user_out(user: User) -> UserOut:
-    plaintext = decrypt_api_key(user.google_api_key_encrypted)
     return UserOut(
         id=str(user.id),
         email=user.email,
@@ -49,8 +42,6 @@ def user_out(user: User) -> UserOut:
         backlog_spread_days=user.backlog_spread_days,
         leech_threshold=user.leech_threshold,
         llm_grading_consent=user.llm_grading_consent,
-        has_api_key=user.google_api_key_encrypted is not None,
-        api_key_masked=mask_api_key(plaintext) if plaintext else None,
         fsrs_optimized_at=user.fsrs_optimized_at,
         grading_bias=user.grading_bias,
         automaticity_threshold_ms=user.automaticity_threshold_ms,

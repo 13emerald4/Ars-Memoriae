@@ -115,7 +115,6 @@ class TestSourceFallback:
             return {"lesson": "Written lesson.", "key_points": ["a point"]}
 
         monkeypatch.setattr(svc.GradingService, "generate_lesson", fake_lesson)
-        monkeypatch.setattr(svc, "decrypt_api_key", lambda _: "fake-key")
         await auth_client.patch("/api/me", json={"llm_grading_consent": True})
 
         second = (await auth_client.get(f"/api/review/{card_id}/lesson")).json()
@@ -139,7 +138,6 @@ class TestGeneration:
             }
 
         monkeypatch.setattr(svc.GradingService, "generate_lesson", fake_lesson)
-        monkeypatch.setattr(svc, "decrypt_api_key", lambda _: "fake-key")
         await auth_client.patch("/api/me", json={"llm_grading_consent": True})
 
         card_id, _ = await _card_with_citation(auth_client)
@@ -168,7 +166,6 @@ class TestGeneration:
             raise GradingUnavailable("429 quota exceeded")
 
         monkeypatch.setattr(svc.GradingService, "generate_lesson", boom)
-        monkeypatch.setattr(svc, "decrypt_api_key", lambda _: "fake-key")
         await auth_client.patch("/api/me", json={"llm_grading_consent": True})
 
         card_id, _ = await _card_with_citation(auth_client)
@@ -199,7 +196,7 @@ class TestLessonPrompt:
         from app.services.grading_service import GradingService, GradingUnavailable
 
         with pytest.raises(GradingUnavailable, match="no source passages"):
-            await GradingService("fake-key").generate_lesson("q", "a", [])
+            await GradingService().generate_lesson("q", "a", [])
 
 
 class TestTenantIsolation:

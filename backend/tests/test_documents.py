@@ -31,9 +31,9 @@ maximization to debt minimization, and monetary policy loses traction.
 def _minimal_pdf(pages: list[str]) -> bytes:
     """A hand-rolled PDF with one text line per page.
 
-    Synthesised here rather than shipped as a binary fixture, the same way
-    test_apkg_import.py builds Anki collections — page numbers are the whole
-    point of PDF citations, so they need a real multi-page file to assert on.
+    Synthesised here rather than shipped as a binary fixture — page numbers
+    are the whole point of PDF citations, so they need a real multi-page file
+    to assert on.
     """
     font_num = 3 + 2 * len(pages)
     objects: dict[int, bytes] = {

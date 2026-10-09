@@ -22,7 +22,7 @@ interface Milestone {
 }
 
 interface Ctx {
-  hasApiKey: boolean
+  llmEnabled: boolean
   cardCount: number
   sourcesActive: number
   reviewsLogged: number
@@ -34,16 +34,16 @@ interface Ctx {
 
 const MILESTONES: Milestone[] = [
   {
-    title: 'Add your Google API key',
-    body: 'Optional, but unlocks LLM-assisted grading with reasoning, Learn & Practice lessons, and the Socratic Guide. Without it, the app still functions completely via manual grading.',
+    title: 'Turn on local AI grading',
+    body: 'Optional. Start Ollama (ollama run qwen2.5-coder:7b), then turn on LLM grading in Settings. It unlocks grading with reasoning, Learn & Practice lessons, and the Socratic Guide. Without it, the app still functions completely via manual grading.',
     route: '/settings',
     routeLabel: 'Go to Settings',
-    done: (c) => c.hasApiKey,
+    done: (c) => c.llmEnabled,
     optional: true,
   },
   {
     title: 'Create or import your first cards',
-    body: 'Add a deck and write notes by hand, import an Anki .apkg (review logs replay through FSRS so your memory stability is preserved), or bulk-import JSON notes.',
+    body: 'Add a deck and write notes by hand, or bulk-import JSON notes.',
     route: '/decks',
     routeLabel: 'Go to Decks',
     done: (c) => c.cardCount > 0,
@@ -188,7 +188,7 @@ export default function Tutorial() {
   if (loading || !user) return <Spinner label="Checking your progress…" />
 
   const ctx: Ctx = {
-    hasApiKey: user.has_api_key,
+    llmEnabled: user.llm_grading_consent,
     cardCount: stats?.totals.cards ?? 0,
     sourcesActive: stats?.ir_throughput.sources_active ?? 0,
     reviewsLogged: stats?.totals.reviews_logged ?? 0,

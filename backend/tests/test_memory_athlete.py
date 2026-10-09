@@ -114,7 +114,6 @@ async def test_latency_does_not_downgrade_grade_or_force_confirmation(auth_clien
         }
 
     monkeypatch.setattr(review_router.GradingService, "grade_with_escalation", mock_grade)
-    monkeypatch.setattr(review_router, "decrypt_api_key", lambda _: "fake-key")
 
     await auth_client.patch(
         "/api/me",

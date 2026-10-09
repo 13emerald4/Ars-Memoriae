@@ -36,8 +36,6 @@ class UserOut(BaseModel):
     backlog_spread_days: int
     leech_threshold: int
     llm_grading_consent: bool
-    has_api_key: bool
-    api_key_masked: str | None = None
     fsrs_optimized_at: datetime | None = None
     grading_bias: float = 0.0
     automaticity_threshold_ms: int | None = 3000
@@ -60,17 +58,6 @@ class UserUpdate(BaseModel):
     target_event_date: datetime | None = None
     target_event_title: str | None = None
     peak_retention_target: float | None = Field(default=None, ge=0.7, le=0.99)
-
-
-class ApiKeyRequest(BaseModel):
-    api_key: str = Field(min_length=10)
-
-
-class ApiKeyResponse(BaseModel):
-    stored: bool
-    masked: str | None = None
-    available_models: list[str] = Field(default_factory=list)
-    warning: str | None = None
 
 
 class QueueConfigOut(BaseModel):
@@ -381,18 +368,6 @@ class JsonImportResult(BaseModel):
     cards_created: int
     citations_created: int = 0
     warnings: list[str] = Field(default_factory=list)
-
-
-class ImportResult(BaseModel):
-    id: str
-    filename: str
-    notes_mapped: int
-    cards_mapped: int
-    review_logs_mapped: int = 0
-    media_copied: int = 0
-    decks_created: int = 0
-    warnings: list[str] = Field(default_factory=list)
-    fsrs_optimized: bool = False
 
 
 # ── stats (§7) ──────────────────────────────────────────────────────────────

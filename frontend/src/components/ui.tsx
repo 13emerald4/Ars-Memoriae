@@ -53,7 +53,7 @@ export function Section({
   )
 }
 
-/** Renders plain text plus the `![](url)` image refs the .apkg importer emits. */
+/** Renders plain text plus `![](url)` image and `[audio](url)` refs. */
 export function RichText({ text, className = '' }: { text: string; className?: string }) {
   const parts = text.split(/(!\[\]\([^)]+\)|\[audio\]\([^)]+\))/g)
   return (

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A spaced-repetition web app combining FSRS scheduling with LLM-graded typed answers and incremental reading. Users type their answers rather than self-grading; a small LLM (Gemma/Gemini on the user's API key) grades it with reasoning shown. A priority queue (not a due-date list) ranks reviews, new cards, and reading extracts to fill a daily time budget.
+A spaced-repetition web app combining FSRS scheduling with LLM-graded typed answers and incremental reading. Users type their answers rather than self-grading; a small local LLM (Qwen 2.5 Coder via Ollama) grades it with reasoning shown. A priority queue (not a due-date list) ranks reviews, new cards, and reading extracts to fill a daily time budget.
 
 **Stack:** FastAPI backend with SQLAlchemy/AsyncPG (Postgres) or SQLite, React+TypeScript frontend with Vite, Docker Compose for deployment.
 
@@ -45,8 +45,7 @@ npm run typecheck   # Type-check only (no build)
 ```bash
 # First time: generate secrets
 python -c "import secrets; print('SECRET_KEY=' + secrets.token_urlsafe(48))"
-python -c "from cryptography.fernet import Fernet; print('API_KEY_ENCRYPTION_KEY=' + Fernet.generate_key().decode())"
-# Add both to .env along with POSTGRES_PASSWORD
+# Add it to .env along with POSTGRES_PASSWORD
 
 docker compose up --build
 ```
@@ -80,7 +79,7 @@ First-party implementations register themselves in `app/services/rendering.py` a
 
 1. **Auth**: JWT tokens (14-day expiry), validated via `app/routers/deps.py:current_user()`
 2. **Routing**: `app/main.py` includes routers from `app/routers/` (auth, decks, queue, review, sources, imports, etc.)
-3. **Services**: Business logic in `app/services/` (fsrs_service, grading_service, queue_service, ir_service, apkg_import)
+3. **Services**: Business logic in `app/services/` (fsrs_service, grading_service, queue_service, ir_service)
 4. **Models**: SQLAlchemy ORM in `app/models/`, 1:1 with database schema
 5. **Schemas**: Pydantic request/response contracts in `app/schemas/`
 
@@ -101,7 +100,7 @@ When writing migrations, use the frozen type aliases at the top of each migratio
 Wraps `py-fsrs` 6.x. Cards carry Difficulty/Stability/Retrievability. Intervals are fuzzed (±5%), backlogs are smoothed over `spread_days`, and `new` state is app-level (FSRS only has `Learning`/`Review`/`Relearning`).
 
 **`app/services/grading_service.py`**
-Calls Google Gemini API with structured output (falls back to prompt-instructed JSON for Gemma). Implements:
+Calls the local Ollama daemon (`OLLAMA_BASE_URL`, default model `qwen2.5-coder:7b`); no API key. Requests JSON output and parses it tolerantly. Implements:
 - Rubric profiles (short_answer, conceptual, math_code)
 - Escalation to larger model (low confidence, repeated overrides, math/code cards)
 - Heuristic cross-check (keyword overlap vs. LLM grade)
@@ -118,9 +117,6 @@ Composes the priority queue:
 
 **Performance note:** Never load the entire collection to return one card. Always use bounded queries and covering indexes (migration 0003).
 
-**`app/services/apkg_import.py`**
-Parses `.apkg` (both Anki collection schemas). Review history is **replayed through FSRS** to recover D/S/R rather than converting SM-2 ease/interval. Returns a warnings list for anything that didn't map cleanly (HTML stripped, unsupported note types, missing history).
-
 ### Frontend Structure
 
 **`frontend/src/api/client.ts`**
@@ -134,7 +130,7 @@ Image occlusion editor (drag masks) and masked card renderer (all regions stay m
 
 ### Plugins (§12)
 
-Plugins are **trusted local code** that run with the backend's full privileges (database, filesystem, API keys). They are NOT sandboxed. Only enable via `PLUGIN_DIR` on instances you solely operate.
+Plugins are **trusted local code** that run with the backend's full privileges (database, filesystem, secrets). They are NOT sandboxed. Only enable via `PLUGIN_DIR` on instances you solely operate.
 
 A plugin is a `.py` file exporting `setup(api)`:
 
@@ -153,14 +149,14 @@ Loaded plugins report at `GET /api/plugins` (including failures with tracebacks)
 
 - **SSRF containment**: User-submitted URLs (`POST /api/sources`) are validated per redirect hop. Private IPs (169.254.x.x, 127.x.x.x, RFC1918) are blocked unless `URL_FETCH_ALLOW_PRIVATE=1`.
 - **Tenant isolation**: Object-scoped routes check ownership before access (parametrized tests across 14 endpoints).
-- **Secrets**: Passwords are scrypt-hashed. Google API keys are Fernet-encrypted under `API_KEY_ENCRYPTION_KEY` (separate from session `SECRET_KEY`). Keys are excluded from exports.
+- **Secrets**: Passwords are scrypt-hashed. Code-practice workers run with a scrubbed environment so user code can't read `SECRET_KEY` or `DATABASE_URL`.
 - **Uploads**: Server-generated random filenames, content-type allowlist, 20 MB cap.
 
 **Known limitation:** Media URLs (`/media/<user-id>/<random>.png`) are capability URLs served without auth. ~96 bits of entropy makes them unguessable but not access-controlled.
 
 ## Testing Philosophy
 
-Coverage spans the entire review cycle, FSRS fuzzing/backlog smoothing, grading rubrics/escalation/caching/fallback, queue composition, Anki import, interference detection, image occlusion, plugin loading, security properties (SSRF, cross-tenant access), and bounded-work guarantees.
+Coverage spans the entire review cycle, FSRS fuzzing/backlog smoothing, grading rubrics/escalation/caching/fallback, queue composition, JSON import, interference detection, image occlusion, plugin loading, security properties (SSRF, cross-tenant access), and bounded-work guarantees.
 
 **When adding features:**
 - Add tests for the happy path, edge cases, and failure modes
@@ -173,16 +169,15 @@ Coverage spans the entire review cycle, FSRS fuzzing/backlog smoothing, grading 
 2. **py-fsrs sleeps 1ms per Card construction** if you don't pass `card_id`. Always pass one (even a constant) to avoid accidental delays.
 3. **Postgres vs SQLite types:** Use the aliases (JSONType, StringArray, TS) in migrations, not raw JSONB/ARRAY.
 4. **FSRS has no `new` state.** Map it on the way in/out; internally use `Learning`.
-5. **Structured output fails on Gemma models.** Always try schema-based first, fall back to prompt-instructed JSON with tolerant parsing.
+5. **Models wrap JSON in prose or code fences.** Always parse LLM output with the tolerant `parse_json`, never `json.loads` directly.
 6. **Don't mutate the grading model instance.** Pass the escalated model per call, not by reassigning `self.model`.
-7. **Review history replay ≠ optimizer.** Replaying recovers per-card D/S; the optimizer fits global parameters. Use replay at import time (no torch required).
 
 ## Environment Variables
 
 Key settings (see `.env.example` for full list):
 
 - **`SECRET_KEY`**: JWT signing (generate with `secrets.token_urlsafe(48)`)
-- **`API_KEY_ENCRYPTION_KEY`**: Fernet key for user API keys (generate with `Fernet.generate_key()`)
+- **`OLLAMA_BASE_URL`**: Where the Ollama daemon listens (default `http://localhost:11434`)
 - **`DATABASE_URL`**: Postgres or SQLite (`sqlite+aiosqlite:///./db.sqlite3` for dev)
 - **`PLUGIN_DIR`**: Path to plugin directory (empty = disabled, the safe default)
 - **`ENABLE_BACKGROUND_JOBS`**: Set to 0 to disable nightly FSRS refit and cache eviction
@@ -196,8 +191,8 @@ Key endpoints:
 - `POST /api/auth/register`, `POST /api/auth/login`
 - `GET /api/queue/next` → `{kind: "card" | "extract", ...}`
 - `POST /api/review/submit` → FSRS update + optional LLM grading
-- `POST /api/imports/anki` → `.apkg` upload
-- `GET /api/export` → full JSON dump (excludes API key)
+- `POST /api/import/json` → bulk note import
+- `GET /api/export` → full JSON dump
 - `GET /api/plugins` → loaded plugins and failures
 
 ## File Locations

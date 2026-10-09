@@ -17,7 +17,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decrypt_api_key, new_answer_hash
+from app.core.security import new_answer_hash
 from app.db import get_db
 from app.models import Card, Deck, GradingCache, ReviewLog, User
 from app.routers.deps import current_user, parse_uuid
@@ -155,8 +155,6 @@ async def submit_answer(
             auto_note,
         )
 
-    api_key = decrypt_api_key(user.google_api_key_encrypted)
-
     # §4.3 cache: identical resubmits must not burn API calls.
     answer_hash = new_answer_hash(body.typed_answer)
     cached = await db.get(GradingCache, (card.id, answer_hash))
@@ -175,7 +173,7 @@ async def submit_answer(
         )
 
     profile = select_grading_profile(note.note_type.grading_profile, note.note_type.template_kind)
-    service = GradingService(api_key, user.grading_model)
+    service = GradingService(model=user.grading_model)
     try:
         result = await service.grade_with_escalation(
             front=front,
@@ -304,9 +302,7 @@ async def socratic_guide(
 
     if not user.llm_grading_consent:
         return SocraticResponse(message="", degraded=True, degraded_reason="consent_not_given")
-    api_key = decrypt_api_key(user.google_api_key_encrypted)
-
-    service = GradingService(api_key, user.grading_model)
+    service = GradingService(model=user.grading_model)
     try:
         result = await service.ask_socratic_question(
             front=front,
@@ -351,8 +347,7 @@ async def card_weakness_hint(
             has_past_weaknesses=True,
         )
 
-    api_key = decrypt_api_key(user.google_api_key_encrypted)
-    service = GradingService(api_key, user.grading_model)
+    service = GradingService(model=user.grading_model)
     try:
         result = await service.generate_weakness_hint(
             front=front,
@@ -396,15 +391,14 @@ async def socratic_line_hint(
 
     if not user.llm_grading_consent:
         return SocraticLineHintResponse(
-            hint="Please enable LLM grading and add an API key in Settings to receive Socratic line hints.",
+            hint="Please enable LLM grading in Settings to receive Socratic line hints.",
             line_number=clamped_line,
             current_line_text=current_line_text,
             degraded=True,
             degraded_reason="consent_not_given",
         )
 
-    api_key = decrypt_api_key(user.google_api_key_encrypted)
-    service = GradingService(api_key, user.grading_model)
+    service = GradingService(model=user.grading_model)
     try:
         result = await service.ask_socratic_line_hint(
             front=front,

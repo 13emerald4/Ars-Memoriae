@@ -200,9 +200,8 @@ class FSRSService:
     def optimize(review_logs: list[dict]) -> list[float]:
         """Refit the 21 weights from a user's full review history.
 
-        Runs nightly per user (app/jobs/optimize_fsrs.py) and synchronously
-        right after an ``.apkg`` import (§11). Requires the ``optimizer`` extra;
-        callers should check ``optimizer_available()`` first.
+        Runs nightly per user (app/jobs/optimize_fsrs.py). Requires the
+        ``optimizer`` extra; callers should check ``optimizer_available()`` first.
         """
         from fsrs import Optimizer  # imported lazily: torch is optional
 

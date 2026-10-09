@@ -75,7 +75,7 @@ async def test_full_review_cycle_advances_fsrs_state(auth_client):
     note = await _note(auth_client, deck_id, "2 + 2?", "4")
     card_id = note["cards"][0]["id"]
 
-    # No API key/consent -> the §4.3 manual fallback, not an error.
+    # No consent -> the §4.3 manual fallback, not an error.
     answer = await auth_client.post(
         f"/api/review/{card_id}/answer", json={"typed_answer": "4", "latency_ms": 900}
     )
@@ -142,7 +142,7 @@ async def test_queue_returns_items_and_respects_new_limit(auth_client):
 
 async def test_queue_item_carries_the_reference_answer(auth_client):
     """The whole point of §4.3's "leaving LLM grading off is a full path, not
-    a degraded one" promise: with no consent/API key, "show answer" has
+    a degraded one" promise: with no consent, "show answer" has
     nothing to fetch it from except the queue item itself."""
     deck_id = await _deck(auth_client, "Reveal deck")
     await _note(auth_client, deck_id, "2 + 2?", "4")
@@ -186,8 +186,6 @@ async def test_export_round_trips_everything(auth_client):
     assert any(d["name"] == "Export deck" for d in data["decks"])
     assert any(n["field_values"]["Front"] == "exported?" for n in data["notes"])
     assert len(data["review_logs"]) >= 1
-    # The BYOK key must never leave the box.
-    assert "google_api_key" not in str(data["user"])
 
 
 async def test_priority_patch_endpoint(auth_client):

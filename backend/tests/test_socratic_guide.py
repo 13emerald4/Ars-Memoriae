@@ -15,7 +15,7 @@ class TestLeakGuard:
 
     @staticmethod
     def _service(raw_response: str) -> GradingService:
-        svc = GradingService("fake-key", "small-model")
+        svc = GradingService("small-model")
 
         async def fake_generate(prompt, model, schema=None):
             return raw_response
@@ -110,7 +110,6 @@ class TestGuideEndpoint:
             return {"message": "What continent has Paris?", "on_track": False}
 
         monkeypatch.setattr(review_router.GradingService, "ask_socratic_question", fake_ask)
-        monkeypatch.setattr(review_router, "decrypt_api_key", lambda _: "fake-key")
         await auth_client.patch("/api/me", json={"llm_grading_consent": True})
 
         deck_id = (await auth_client.post("/api/decks", json={"name": "D"})).json()["id"]
@@ -162,7 +161,7 @@ class TestGuideEndpoint:
 class TestSocraticLineHint:
     @staticmethod
     def _service(raw_response: str) -> GradingService:
-        svc = GradingService("fake-key", "small-model")
+        svc = GradingService("small-model")
 
         async def fake_generate(prompt, model, schema=None):
             return raw_response

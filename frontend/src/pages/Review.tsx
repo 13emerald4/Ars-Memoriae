@@ -3036,7 +3036,7 @@ export default function Review() {
                     <button className="underline hover:text-slate-400" onClick={() => navigate('/settings')}>
                       Settings
                     </button>{' '}
-                    by adding a Google API key and giving consent.
+                    by giving consent.
                   </p>
                 )}
                 {guideOpen && (
@@ -3294,7 +3294,7 @@ function SocraticGuide({
 
       {degraded ? (
         <p className="text-xs text-slate-600">
-          Guide unavailable ({degraded === 'no_api_key' ? 'no API key set' : degraded}).
+          Guide unavailable ({degraded}).
         </p>
       ) : (
         <>
@@ -3405,7 +3405,7 @@ function LessonGate({
         <div className="space-y-4">
           {!lesson.generated && (
             <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-              {lesson.reason === 'consent_not_given' || lesson.reason === 'no_api_key' ? (
+              {lesson.reason === 'consent_not_given' ? (
                 <>
                   Showing the raw source passage — turn on LLM grading in{' '}
                   <button className="underline" onClick={onOpenSettings}>

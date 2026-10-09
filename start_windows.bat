@@ -33,10 +33,10 @@ if "%PYTHON_CMD%"=="" (
     exit /b 1
 )
 
-:: Verify Python version is 3.10+
-%PYTHON_CMD% -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" >nul 2>&1
+:: Verify Python version is 3.11+ (backend/pyproject.toml requires it)
+%PYTHON_CMD% -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Python 3.10+ is required. Please update your Python installation.
+    echo [ERROR] Python 3.11+ is required. Please update your Python installation.
     pause
     exit /b 1
 )
@@ -71,14 +71,13 @@ if not exist "backend\.venv\Scripts\python.exe" (
         pause
         exit /b 1
     )
-    echo   Installing backend dependencies (this only happens on first run)...
-    backend\.venv\Scripts\python.exe -m pip install --upgrade pip >nul 2>&1
-    backend\.venv\Scripts\python.exe -m pip install -e backend
-    if errorlevel 1 (
-        echo [ERROR] Failed to install backend dependencies.
-        pause
-        exit /b 1
-    )
+)
+:: Re-runs pip whenever backend\pyproject.toml changed, e.g. after the git pull above.
+backend\.venv\Scripts\python.exe scripts\sync_backend_deps.py
+if errorlevel 1 (
+    echo [ERROR] Failed to install backend dependencies.
+    pause
+    exit /b 1
 )
 
 :: 4. Database Schema Migrations

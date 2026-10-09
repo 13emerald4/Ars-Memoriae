@@ -20,7 +20,7 @@ from app.services.grading_service import (
 
 
 class TestParsing:
-    """Gemma via the Gemini API can't be schema-constrained, so the parser has
+    """Models aren't schema-constrained, so the parser has
     to survive whatever prose the model wraps its JSON in (§4.6)."""
 
     def test_plain_json(self):
@@ -154,7 +154,7 @@ class TestEscalation:
 
     @staticmethod
     def _service(responses):
-        svc = GradingService("fake-key", "small-model", "big-model")
+        svc = GradingService("small-model", "big-model")
         calls = []
 
         async def fake_generate(prompt, model=None, schema=None, **kwargs):
@@ -212,7 +212,7 @@ class TestScoring:
 
     @staticmethod
     def _service(response: str):
-        svc = GradingService("fake-key")
+        svc = GradingService()
 
         async def fake_generate(prompt, model, schema=None):
             return response
@@ -280,7 +280,6 @@ class TestReviewIntegration:
         monkeypatch.setattr(
             review_router.GradingService, "grade_with_escalation", fake_grade, raising=True
         )
-        monkeypatch.setattr(review_router, "decrypt_api_key", lambda _: "fake-key")
 
         await auth_client.patch("/api/me", json={"llm_grading_consent": True})
         deck_id = (await auth_client.post("/api/decks", json={"name": "Graded"})).json()["id"]
@@ -350,7 +349,6 @@ class TestReviewIntegration:
             raise GradingUnavailable("429 quota exceeded")
 
         monkeypatch.setattr(review_router.GradingService, "grade_with_escalation", boom)
-        monkeypatch.setattr(review_router, "decrypt_api_key", lambda _: "fake-key")
 
         await auth_client.patch("/api/me", json={"llm_grading_consent": True})
         deck_id = (await auth_client.post("/api/decks", json={"name": "Quota"})).json()["id"]
@@ -518,7 +516,6 @@ class TestWeaknessMemory:
         monkeypatch.setattr(
             review_router.GradingService, "grade_with_escalation", fake_grade, raising=True
         )
-        monkeypatch.setattr(review_router, "decrypt_api_key", lambda _: "fake-key")
 
         await auth_client.patch("/api/me", json={"llm_grading_consent": True})
         deck_id = (await auth_client.post("/api/decks", json={"name": "TDD Deck"})).json()["id"]

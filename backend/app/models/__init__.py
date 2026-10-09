@@ -25,7 +25,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
-    LargeBinary,
     SmallInteger,
     Text,
     UniqueConstraint,
@@ -54,7 +53,6 @@ class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=_uuid)
     email: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    google_api_key_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
     desired_retention: Mapped[float] = mapped_column(Float, nullable=False, default=0.90)
     grading_model: Mapped[str] = mapped_column(Text, nullable=False, default="qwen2.5-coder:7b")
     queue_time_budget_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=20)

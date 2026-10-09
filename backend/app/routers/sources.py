@@ -9,7 +9,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decrypt_api_key
 from app.db import get_db
 from app.models import Card, Deck, Extract, KnowledgeNode, Note, Source, User
 from app.routers.deps import current_user, parse_uuid
@@ -348,11 +347,10 @@ async def generate_cards(
 
     if not user.llm_grading_consent:
         return GenerateCardsResponse(degraded=True, reason="consent_not_given")
-    api_key = decrypt_api_key(user.google_api_key_encrypted)
 
     target_model = body.model or user.grading_model
     try:
-        raw = await GradingService(api_key, target_model).generate_cards(
+        raw = await GradingService(model=target_model).generate_cards(
             passage, body.max_cards, model=target_model, thinking_budget=body.thinking_budget
         )
     except GradingUnavailable as exc:

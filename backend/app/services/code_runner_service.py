@@ -12,7 +12,9 @@ import json
 import os
 import shutil
 import sys
+import tempfile
 import time
+from pathlib import Path
 from typing import Any
 
 
@@ -57,14 +59,50 @@ def _deep_equal(a: Any, b: Any) -> bool:
     return a == b
 
 
-async def run_python_code(
+# Just enough environment to start an interpreter. User code runs with the
+# backend's OS privileges, so it must not also inherit the backend's secrets
+# (SECRET_KEY, DATABASE_URL, ...) for free.
+_WORKER_ENV_KEYS = frozenset({
+    "PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "COMSPEC",
+    "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "NODE_OPTIONS",
+})
+
+_PYTHON_WORKER = Path(__file__).with_name("code_sandbox_worker.py")
+_NODE_WORKER = Path(__file__).with_name("ts_sandbox_worker.mjs")
+
+
+def _worker_env() -> dict[str, str]:
+    return {k: v for k, v in os.environ.items() if k.upper() in _WORKER_ENV_KEYS}
+
+
+def _failure(status: str, error: str, test_cases: list[dict], runtime_ms: float) -> dict[str, Any]:
+    return {
+        "status": status,
+        "passed_count": 0,
+        "total_count": len(test_cases),
+        "runtime_ms": runtime_ms,
+        "error": error,
+        "results": [],
+    }
+
+
+async def _run_worker(
+    cmd: list[str],
     code: str,
     test_cases: list[dict],
-    test_code: str | None = None,
-    custom_entrypoint: str | None = None,
-    timeout_sec: float = 3.0,
+    test_code: str | None,
+    custom_entrypoint: str | None,
+    timeout_sec: float,
+    spawn_error: str,
+    invalid_output_error: str,
 ) -> dict[str, Any]:
-    """Executes Python code against a list of test cases in an isolated child subprocess."""
+    """Runs one worker process over a JSON payload on stdin.
+
+    The worker gets a scrubbed environment and an empty scratch directory as
+    its cwd, so neither ``os.environ`` nor a relative path like ``.env`` or
+    ``dev.db`` reaches backend secrets. This is NOT a sandbox: the code still
+    runs as the backend's OS user and can read any file that user can.
+    """
     payload = json.dumps({
         "code": code,
         "test_code": test_code,
@@ -74,74 +112,83 @@ async def run_python_code(
 
     total_start = time.perf_counter()
 
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            sys.executable,
-            "-m",
-            "app.services.code_sandbox_worker",
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-    except Exception as e:
-        return {
-            "status": "Runtime Error",
-            "passed_count": 0,
-            "total_count": len(test_cases),
-            "runtime_ms": 0.0,
-            "error": f"Failed to spawn execution worker: {e}",
-            "results": [],
-        }
-
-    try:
-        stdout_bytes, stderr_bytes = await asyncio.wait_for(
-            proc.communicate(input=payload),
-            timeout=timeout_sec,
-        )
-    except TimeoutError:
+    with tempfile.TemporaryDirectory(prefix="code-run-", ignore_cleanup_errors=True) as workdir:
         try:
-            proc.kill()
-            await proc.wait()
-        except Exception:
-            pass
-        return {
-            "status": "Time Limit Exceeded",
-            "passed_count": 0,
-            "total_count": len(test_cases),
-            "runtime_ms": round(timeout_sec * 1000.0, 2),
-            "error": f"Time Limit Exceeded (> {timeout_sec}s)",
-            "results": [
-                {
-                    "test_index": idx + 1,
-                    "passed": False,
-                    "input": tc.get("input", {}),
-                    "expected": tc.get("expected"),
-                    "actual": None,
-                    "stdout": "",
-                    "error": f"Time Limit Exceeded (> {timeout_sec}s)",
-                    "runtime_ms": round(timeout_sec * 1000.0, 2),
-                }
-                for idx, tc in enumerate(test_cases)
-            ],
-        }
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=workdir,
+                env=_worker_env(),
+            )
+        except Exception as e:
+            return _failure("Runtime Error", f"{spawn_error}: {e}", test_cases, 0.0)
+
+        try:
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                proc.communicate(input=payload),
+                timeout=timeout_sec,
+            )
+        except TimeoutError:
+            try:
+                proc.kill()
+                await proc.wait()
+            except Exception:
+                pass
+            return {
+                "status": "Time Limit Exceeded",
+                "passed_count": 0,
+                "total_count": len(test_cases),
+                "runtime_ms": round(timeout_sec * 1000.0, 2),
+                "error": f"Time Limit Exceeded (> {timeout_sec}s)",
+                "results": [
+                    {
+                        "test_index": idx + 1,
+                        "passed": False,
+                        "input": tc.get("input", {}),
+                        "expected": tc.get("expected"),
+                        "actual": None,
+                        "stdout": "",
+                        "error": f"Time Limit Exceeded (> {timeout_sec}s)",
+                        "runtime_ms": round(timeout_sec * 1000.0, 2),
+                    }
+                    for idx, tc in enumerate(test_cases)
+                ],
+            }
 
     try:
-        data = json.loads(stdout_bytes.decode("utf-8"))
+        return json.loads(stdout_bytes.decode("utf-8"))
     except Exception:
-        err_msg = (
-            stderr_bytes.decode("utf-8", errors="replace").strip()
-            or "Execution worker returned invalid output."
+        err_msg = stderr_bytes.decode("utf-8", errors="replace").strip() or invalid_output_error
+        return _failure(
+            "Runtime Error",
+            err_msg,
+            test_cases,
+            round((time.perf_counter() - total_start) * 1000.0, 2),
         )
-        return {
-            "status": "Runtime Error",
-            "passed_count": 0,
-            "total_count": len(test_cases),
-            "runtime_ms": round((time.perf_counter() - total_start) * 1000.0, 2),
-            "error": err_msg,
-            "results": [],
-        }
 
-    return data
+
+async def run_python_code(
+    code: str,
+    test_cases: list[dict],
+    test_code: str | None = None,
+    custom_entrypoint: str | None = None,
+    timeout_sec: float = 3.0,
+) -> dict[str, Any]:
+    """Executes Python code against a list of test cases in an isolated child subprocess."""
+    # -I: ignore PYTHON* variables and keep the cwd/user site off sys.path. The
+    # worker is stdlib-only, so it runs by path rather than as `-m app...`.
+    return await _run_worker(
+        [sys.executable, "-I", str(_PYTHON_WORKER)],
+        code,
+        test_cases,
+        test_code,
+        custom_entrypoint,
+        timeout_sec,
+        spawn_error="Failed to spawn execution worker",
+        invalid_output_error="Execution worker returned invalid output.",
+    )
 
 
 async def run_node_code(
@@ -152,85 +199,17 @@ async def run_node_code(
     timeout_sec: float = 4.0,
 ) -> dict[str, Any]:
     """Executes TypeScript / JavaScript code against test cases using isolated Node.js worker."""
-    payload = json.dumps({
-        "code": code,
-        "test_code": test_code,
-        "test_cases": test_cases,
-        "custom_entrypoint": custom_entrypoint,
-    }).encode("utf-8")
-
-    total_start = time.perf_counter()
-    worker_script = os.path.join(os.path.dirname(__file__), "ts_sandbox_worker.mjs")
-
     node_bin = shutil.which("node") or shutil.which("node.exe") or r"C:\Program Files\nodejs\node.EXE"
-
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            node_bin,
-            worker_script,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-    except Exception as e:
-        return {
-            "status": "Runtime Error",
-            "passed_count": 0,
-            "total_count": len(test_cases),
-            "runtime_ms": 0.0,
-            "error": f"Failed to spawn Node execution worker (is Node.js installed?): {e}",
-            "results": [],
-        }
-
-    try:
-        stdout_bytes, stderr_bytes = await asyncio.wait_for(
-            proc.communicate(input=payload),
-            timeout=timeout_sec,
-        )
-    except TimeoutError:
-        try:
-            proc.kill()
-            await proc.wait()
-        except Exception:
-            pass
-        return {
-            "status": "Time Limit Exceeded",
-            "passed_count": 0,
-            "total_count": len(test_cases),
-            "runtime_ms": round(timeout_sec * 1000.0, 2),
-            "error": f"Time Limit Exceeded (> {timeout_sec}s)",
-            "results": [
-                {
-                    "test_index": idx + 1,
-                    "passed": False,
-                    "input": tc.get("input", {}),
-                    "expected": tc.get("expected"),
-                    "actual": None,
-                    "stdout": "",
-                    "error": f"Time Limit Exceeded (> {timeout_sec}s)",
-                    "runtime_ms": round(timeout_sec * 1000.0, 2),
-                }
-                for idx, tc in enumerate(test_cases)
-            ],
-        }
-
-    try:
-        data = json.loads(stdout_bytes.decode("utf-8"))
-    except Exception:
-        err_msg = (
-            stderr_bytes.decode("utf-8", errors="replace").strip()
-            or "Node execution worker returned invalid output."
-        )
-        return {
-            "status": "Runtime Error",
-            "passed_count": 0,
-            "total_count": len(test_cases),
-            "runtime_ms": round((time.perf_counter() - total_start) * 1000.0, 2),
-            "error": err_msg,
-            "results": [],
-        }
-
-    return data
+    return await _run_worker(
+        [node_bin, str(_NODE_WORKER)],
+        code,
+        test_cases,
+        test_code,
+        custom_entrypoint,
+        timeout_sec,
+        spawn_error="Failed to spawn Node execution worker (is Node.js installed?)",
+        invalid_output_error="Node execution worker returned invalid output.",
+    )
 
 
 async def run_code(

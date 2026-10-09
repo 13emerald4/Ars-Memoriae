@@ -11,7 +11,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decrypt_api_key
 from app.db import get_db
 from app.models import Card, CodeProblem, CodeSubmission, Deck, Note, NoteType, StudySession, User
 from app.routers.deps import current_user, parse_uuid
@@ -419,8 +418,7 @@ async def socratic_hint(
 ):
     """Generates Socratic AI guidance without giving away the direct answer."""
     p = await _get_problem(db, id_or_slug, user)
-    api_key = decrypt_api_key(user.google_api_key_encrypted)
-    ai_svc = CodeAiService(api_key=api_key, model=user.grading_model)
+    ai_svc = CodeAiService(model=user.grading_model)
     hint_text = await ai_svc.socratic_hint(
         title=p.title,
         description=p.description,
@@ -438,8 +436,7 @@ async def forge_problem(
     db: AsyncSession = Depends(get_db),
 ):
     """Uses Qwen 2.5 Coder to generate a custom code challenge from a topic."""
-    api_key = decrypt_api_key(user.google_api_key_encrypted)
-    ai_svc = CodeAiService(api_key=api_key, model=user.grading_model)
+    ai_svc = CodeAiService(model=user.grading_model)
     try:
         generated = await ai_svc.forge_problem(
             topic=body.topic,

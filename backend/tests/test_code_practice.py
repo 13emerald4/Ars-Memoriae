@@ -96,6 +96,36 @@ function twoSum(nums: number[], target: number): number[] {
 
 
 @pytest.mark.asyncio
+async def test_python_runner_does_not_leak_backend_secrets(monkeypatch, tmp_path):
+    monkeypatch.setenv("SECRET_KEY", "must-not-leak")
+    monkeypatch.setenv("DATABASE_URL", "must-not-leak-either")
+    # A .env in the backend's cwd must not be reachable by a relative path.
+    (tmp_path / ".env").write_text("SECRET_KEY=must-not-leak")
+    monkeypatch.chdir(tmp_path)
+
+    code = """import os
+print(os.environ.get("SECRET_KEY"), os.environ.get("DATABASE_URL"))
+print(os.path.exists(".env"))
+"""
+    res = await run_python_code(code, [])
+    assert res["status"] == "Accepted", res
+    out = res["results"][0]["stdout"]
+    assert "must-not-leak" not in out
+    assert out.split() == ["None", "None", "False"]
+
+
+@pytest.mark.asyncio
+async def test_node_runner_does_not_leak_backend_secrets(monkeypatch):
+    from app.services.code_runner_service import run_code
+
+    monkeypatch.setenv("SECRET_KEY", "must-not-leak")
+    code = "console.log(String(process.env.SECRET_KEY));"
+    res = await run_code(code, [], language="javascript")
+    assert res["status"] == "Accepted", res
+    assert res["results"][0]["stdout"].strip() == "undefined"
+
+
+@pytest.mark.asyncio
 async def test_code_practice_api_endpoints(auth_client):
     # 1. List problems (catalogs seeded automatically)
     resp = await auth_client.get("/api/code/problems")

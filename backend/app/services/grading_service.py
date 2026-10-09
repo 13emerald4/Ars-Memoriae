@@ -1,21 +1,16 @@
-"""LLM grading subsystem (§4) — BYOK Gemini/Gemma.
+"""LLM grading subsystem (§4) — a local Ollama model.
 
-Four deviations from the §4.6 sketch, all forced by how the API — or FSRS —
-actually behaves rather than by preference:
+Every call goes to the Ollama daemon at OLLAMA_BASE_URL; no API key is
+involved and nothing leaves the machine.
 
-1. Gemma models served through the Gemini API do not accept
-   ``response_schema``/``response_mime_type`` (that is a Gemini-model feature)
-   and reject ``system_instruction``. So structured output is *attempted* and
-   falls back to prompt-instructed JSON + tolerant parsing. The rubric
-   templates in grading_profiles.py already end with an explicit JSON contract
-   so the fallback path is not a downgrade in practice.
-2. ``grade_with_escalation`` does not mutate ``self.model`` — the sketch's
-   version would leave the instance permanently escalated for every later card.
-   The escalation model is passed per call instead.
-3. Every outbound call is wrapped so a missing key, a quota error, or a
-   malformed response raises ``GradingUnavailable``, which the router turns
-   into ``degraded_to_manual`` (§4.3) rather than a 500.
-4. The model scores correctness 0-100 rather than picking a grade directly —
+1. JSON output is requested (Ollama's ``format: "json"``) but still parsed
+   tolerantly, since models wrap JSON in prose or code fences. The rubric
+   templates in grading_profiles.py end with an explicit JSON contract, so a
+   loosely formatted reply still parses.
+2. Every outbound call is wrapped so an unreachable daemon, a model that
+   isn't pulled, or a malformed response raises ``GradingUnavailable``, which
+   the router turns into ``degraded_to_manual`` (§4.3) rather than a 500.
+3. The model scores correctness 0-100 rather than picking a grade directly —
    that's the actual feedback the user sees and the LLM reasons about. The
    4-point grade FSRS schedules on is derived from the score
    (``grade_for_score``); it can't be scored away, since py-fsrs's
@@ -89,17 +84,11 @@ class GradingUnavailable(RuntimeError):
 class GradingService:
     def __init__(
         self,
-        api_key: str | None = None,
         model: str | None = None,
         escalation_model: str | None = None,
         base_url: str | None = None,
     ) -> None:
-        self.api_key = api_key
-        # Normalize legacy cloud models (Gemini / Gemma) to local Qwen 2.5 Coder
-        target_model = model or settings.default_grading_model
-        if target_model.startswith("gemini") or target_model.startswith("gemma"):
-            target_model = settings.default_grading_model
-        self.model = target_model
+        self.model = model or settings.default_grading_model
         self.escalation_model = escalation_model or settings.escalation_grading_model
         self.base_url = (base_url or settings.ollama_base_url).rstrip("/")
 
@@ -114,8 +103,6 @@ class GradingService:
         **kwargs: Any,
     ) -> str:
         target_model = model or self.model
-        if target_model.startswith("gemini") or target_model.startswith("gemma"):
-            target_model = settings.default_grading_model
         payload: dict[str, Any] = {
             "model": target_model,
             "prompt": prompt,
@@ -559,9 +546,6 @@ class GradingService:
                     f"Could not connect to Ollama at {self.base_url} ({exc}). Is Ollama running?"
                 ) from exc
 
-    async def verify_key(self) -> list[str]:
-        return await self.verify_engine()
-
 
 # ── parsing & sanity checks ─────────────────────────────────────────────────
 
@@ -641,15 +625,6 @@ def _normalize_result(data: dict) -> dict:
         "persistent_weaknesses": [str(x).strip() for x in (data.get("persistent_weaknesses") or []) if str(x).strip()][:12],
         "reasoning": str(data.get("reasoning", "")).strip(),
     }
-
-
-def _is_schema_unsupported(exc: Exception) -> bool:
-    msg = str(exc).lower()
-    return any(
-        s in msg
-        for s in ("response_schema", "responseschema", "response_mime_type", "json mode",
-                  "not supported", "unsupported", "system_instruction")
-    )
 
 
 def _tokens(text: str) -> set[str]:

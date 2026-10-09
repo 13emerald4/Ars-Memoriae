@@ -1,14 +1,10 @@
-"""Auth + at-rest encryption of the user's BYOK Google API key (§4.2).
+"""Auth: password hashing and session tokens.
 
 Password hashing uses stdlib scrypt so the container needs no bcrypt build step.
-The API key is encrypted with Fernet (AES-128-CBC + HMAC) under
-API_KEY_ENCRYPTION_KEY, which is deliberately a *separate* secret from
-SECRET_KEY so rotating session signing does not invalidate stored keys.
 """
 
 from __future__ import annotations
 
-import base64
 import hashlib
 import hmac
 import os
@@ -16,7 +12,6 @@ import secrets
 import time
 
 import jwt
-from cryptography.fernet import Fernet, InvalidToken
 
 from app.core.config import settings
 
@@ -72,43 +67,7 @@ def insecure_defaults() -> list[str]:
     problems = []
     if settings.secret_key == "dev-insecure-secret-change-me":
         problems.append("SECRET_KEY is the built-in dev default — sessions are forgeable.")
-    if not settings.api_key_encryption_key:
-        problems.append(
-            "API_KEY_ENCRYPTION_KEY is unset — stored Google API keys fall back to a key "
-            "derived from SECRET_KEY."
-        )
     return problems
-
-
-def _fernet() -> Fernet:
-    key = settings.api_key_encryption_key
-    if not key:
-        # Deterministic dev fallback so a fresh checkout runs; production
-        # deployments must set API_KEY_ENCRYPTION_KEY (see .env.example).
-        key = base64.urlsafe_b64encode(
-            hashlib.sha256(b"dev-fallback:" + settings.secret_key.encode()).digest()
-        ).decode()
-    return Fernet(key.encode() if isinstance(key, str) else key)
-
-
-def encrypt_api_key(plaintext: str) -> bytes:
-    return _fernet().encrypt(plaintext.encode())
-
-
-def decrypt_api_key(ciphertext: bytes | None) -> str | None:
-    if not ciphertext:
-        return None
-    try:
-        return _fernet().decrypt(bytes(ciphertext)).decode()
-    except InvalidToken:
-        return None
-
-
-def mask_api_key(plaintext: str) -> str:
-    """Shown in Settings so a user can confirm *which* key is stored."""
-    if len(plaintext) <= 8:
-        return "•" * len(plaintext)
-    return f"{plaintext[:4]}{'•' * 8}{plaintext[-4:]}"
 
 
 def new_answer_hash(answer: str) -> str:

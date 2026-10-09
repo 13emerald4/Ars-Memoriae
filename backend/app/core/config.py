@@ -11,7 +11,6 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./dev.db"
 
     secret_key: str = "dev-insecure-secret-change-me"
-    api_key_encryption_key: str = ""
 
     # Local Qwen 2.5 Coder 7B engine via Ollama
     ollama_base_url: str = "http://localhost:11434"

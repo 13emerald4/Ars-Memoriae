@@ -282,8 +282,8 @@ function ExtractWorkspace({ extractId }: { extractId: string }) {
       })
       if (resp.degraded) {
         setNotice(
-          resp.reason === 'consent_not_given' || resp.reason === 'no_api_key'
-            ? 'Card generation needs a Google API key and consent — see Settings. You can still make cards by hand below.'
+          resp.reason === 'consent_not_given'
+            ? 'Card generation needs LLM consent — see Settings. You can still make cards by hand below.'
             : `Card generation unavailable (${resp.reason}). Make them by hand below.`,
         )
       } else {

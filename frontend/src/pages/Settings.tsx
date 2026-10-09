@@ -37,7 +37,7 @@ export default function Settings() {
       <DisplayFocusPanel />
       <SchedulingPanel user={user} onChange={refresh} />
       <QueuePanel cfg={queueCfg} onChange={load} />
-      <DataPanel user={user} />
+      <DataPanel />
 
       <Section title="Account" description={user.email}>
         <button className="btn btn-danger" onClick={signOut}>
@@ -524,7 +524,7 @@ function QueuePanel({ cfg, onChange }: { cfg: QueueConfig; onChange: () => Promi
   )
 }
 
-function DataPanel({ user }: { user: User }) {
+function DataPanel() {
   const [busy, setBusy] = useState(false)
   return (
     <Section
@@ -563,8 +563,7 @@ function DataPanel({ user }: { user: User }) {
       </div>
       <p className="mt-3 text-xs text-slate-600">
         The export contains decks, notes, cards with live FSRS state, every review log, and your
-        reading sources. Your API key is deliberately excluded.
-        {user.has_api_key ? '' : ''}
+        reading sources.
       </p>
     </Section>
   )

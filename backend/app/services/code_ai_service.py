@@ -1,6 +1,6 @@
 """AI Code Generator, Socratic Code Tutor & Multilingual Code Evaluator.
 
-Powered by Google Gemini BYOK.
+Runs on the local Ollama model, through the same client as grading.
 """
 
 from __future__ import annotations
@@ -92,8 +92,8 @@ Respond with concise, encouraging, Socratic feedback formatted in clean markdown
 
 
 class CodeAiService:
-    def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
-        self.grading_service = GradingService(api_key=api_key, model=model)
+    def __init__(self, model: str | None = None) -> None:
+        self.grading_service = GradingService(model=model)
 
     async def forge_problem(
         self,

@@ -14,8 +14,8 @@ user is reading a lesson precisely because they don't yet know the material,
 which is exactly the position from which a confident fabrication does the most
 damage.
 
-**No key is a full path, not an error.** Without consent or an API key the
-cited passage itself is shown, labelled as the raw source. That's a genuinely
+**No model is a full path, not an error.** Without consent, or with Ollama
+unreachable, the cited passage itself is shown, labelled as the raw source. That's a genuinely
 useful "read this first" step, and it matches how grading degrades (§4.3).
 """
 
@@ -26,7 +26,6 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decrypt_api_key
 from app.models import Card, CardLesson, CardReference, Extract, User
 from app.services.grading_service import GradingService, GradingUnavailable
 from app.services.rendering import render
@@ -127,11 +126,10 @@ async def get_lesson(db: AsyncSession, user: User, card: Card) -> dict:
         }
 
     # Deliberately not cached: a fallback is a stand-in for a lesson that
-    # couldn't be written yet, so adding a key later should produce the real
+    # couldn't be written yet, so starting Ollama later should produce the real
     # thing rather than replay a stale substitute forever.
     if not user.llm_grading_consent:
         return source_only("consent_not_given")
-    api_key = decrypt_api_key(user.google_api_key_encrypted)
 
     note = card.note
     front, back = render(
@@ -139,7 +137,7 @@ async def get_lesson(db: AsyncSession, user: User, card: Card) -> dict:
     )
     model = user.grading_model
     try:
-        result = await GradingService(api_key, model).generate_lesson(
+        result = await GradingService(model=model).generate_lesson(
             front=front,
             back=back,
             passages=_teaching_text(citations),

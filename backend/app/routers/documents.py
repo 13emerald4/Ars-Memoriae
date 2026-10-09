@@ -22,7 +22,6 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decrypt_api_key
 from app.db import get_db
 from app.models import CardReference, Deck, Extract, KnowledgeNode, Note, Source, User
 from app.routers.deps import current_user, parse_uuid
@@ -42,8 +41,8 @@ from app.services.note_service import default_note_type, sync_cards
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
-# Sections are generated concurrently, but capped to 2 to prevent free-tier
-# Gemini rate spikes (503/429) on large document chunks.
+# Sections are generated concurrently, but capped to 2 so a local model isn't
+# swamped by large document chunks.
 GENERATION_CONCURRENCY = 2
 
 
@@ -205,14 +204,13 @@ async def generate_deck(
             source_id=str(source.id), title=source.title, sections_total=total,
             degraded=True, reason="consent_not_given",
         )
-    api_key = decrypt_api_key(user.google_api_key_encrypted)
     if not window:
         return GenerateDeckResponse(
             source_id=str(source.id), title=source.title, sections_total=total,
             degraded=True, reason="no_sections_in_range",
         )
 
-    service = GradingService(api_key, body.model or user.grading_model)
+    service = GradingService(model=body.model or user.grading_model)
     semaphore = asyncio.Semaphore(GENERATION_CONCURRENCY)
 
     async def one(extract: Extract, idx: int) -> tuple[Extract, list[dict] | str]:

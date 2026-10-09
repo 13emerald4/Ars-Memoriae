@@ -3,7 +3,7 @@
 Trigger is Anki's transparent lapse counter rather than SuperMemo's opaque
 forgetting index, since FSRS already exposes lapse count per card. A flagged
 leech is pulled from the active queue, never deleted; if the user opted in, the
-same Gemma/Gemini connection used for grading proposes a fix.
+same local model used for grading proposes a fix.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decrypt_api_key
 from app.db import SessionLocal
 from app.models import Card, Deck, LeechSuggestion, ReviewLog, User
 from app.services.grading_service import GradingService, GradingUnavailable
@@ -62,8 +61,6 @@ async def generate_remediation(card_id: uuid.UUID) -> None:
         if user is None or not user.leech_remediation_opt_in or not user.llm_grading_consent:
             return
 
-        api_key = decrypt_api_key(user.google_api_key_encrypted)
-
         existing = await db.scalar(
             select(LeechSuggestion).where(
                 LeechSuggestion.card_id == card_id, LeechSuggestion.status == "pending"
@@ -76,7 +73,7 @@ async def generate_remediation(card_id: uuid.UUID) -> None:
             card.note.note_type.template_kind, card.note.field_values or {}, card.template_slot
         )
         failed = await recent_failed_answers(db, card_id)
-        service = GradingService(api_key, user.grading_model)
+        service = GradingService(model=user.grading_model)
         try:
             result = await service.suggest_leech_remediation(front, back, card.lapse_count, failed)
         except GradingUnavailable as exc:

@@ -3,14 +3,13 @@
 A spaced-repetition web app that takes the scheduling rigor of SuperMemo, the card/deck
 ergonomics of Anki, and the review-quality signals of Mnemosyne — with two structural changes:
 
-- **You type your answer.** A small LLM (Gemma/Gemini, on *your* API key) grades it and shows its
+- **You type your answer.** A small LLM running locally in Ollama grades it and shows its
   reasoning. You accept or override; the grade you confirm is what FSRS consumes, and every
   override is logged and fed back as a calibration bias.
 - **A priority queue, not a due-date list.** Due reviews, new cards, and Incremental Reading
   extracts are ranked by priority and filled into a daily time budget, then interleaved.
 
-Self-hostable via Docker Compose, imports your existing Anki collection, and exports everything
-on demand.
+Self-hostable via Docker Compose, imports notes from JSON, and exports everything on demand.
 
 ---
 
@@ -37,8 +36,7 @@ For containerized environments or production deployments:
 cp .env.example .env
 # generate real secrets:
 python -c "import secrets; print('SECRET_KEY=' + secrets.token_urlsafe(48))"
-python -c "from cryptography.fernet import Fernet; print('API_KEY_ENCRYPTION_KEY=' + Fernet.generate_key().decode())"
-# paste both into .env, and set POSTGRES_PASSWORD (matching it inside DATABASE_URL)
+# paste it into .env, and set POSTGRES_PASSWORD (matching it inside DATABASE_URL)
 
 docker compose up --build
 ```
@@ -81,14 +79,13 @@ report clearly that the extra is missing instead of failing silently.
 ## First run
 
 1. Create an account (first registration seeds a Default deck and four note types).
-2. **Settings → Google API key.** Paste a key from [aistudio.google.com](https://aistudio.google.com).
-   The key is verified on save and the models it can actually reach are listed — click one to use
-   it for grading. It's stored encrypted at rest and never leaves in an export.
+2. **Start Ollama** and pull the grading model: `ollama run qwen2.5-coder:7b`. Settings shows
+   whether the daemon is reachable and which models are installed.
 3. **Settings → LLM grading → consent.** Off by default. Your typed answers and any reading
-   passages you run "LLM assist" on are sent to Google under your own key, so this is an explicit
-   opt-in. **Leaving it off is a full path, not a degraded one** — you get the same four
+   passages you run "LLM assist" on go to the local Ollama model, so this is an explicit opt-in.
+   **Leaving it off is a full path, not a degraded one** — you get the same four
    Again/Hard/Good/Easy buttons Anki has.
-4. **Decks → Import from Anki** to bring in a `.apkg`, or add notes by hand.
+4. **Decks → Import from JSON** to bulk-load notes, or add notes by hand.
 5. **Review.**
 
 ---
@@ -112,7 +109,7 @@ is what usually drives people to go algorithm-shopping:
 | Time budget | You set minutes/day; the composer fills that rather than showing an unbounded list. |
 | New-card throttle | Standard new-cards/day cap. |
 
-### Grading — BYOK Gemma/Gemini
+### Grading — local Ollama model
 
 Flow: card front → you type → latency captured → LLM returns `{grade, confidence, matched_points,
 missed_points, reasoning}` → UI shows the reference answer, the suggested grade, and the reasoning
@@ -129,7 +126,7 @@ Reliability measures, all of which have tests:
   grade is flagged for your confirmation instead of auto-accepting.
 - **Caching** — keyed on `(card_id, answer_hash)`, so resubmitting the same answer costs nothing.
 - **Calibration** — a running average of your overrides nudges future grades. No fine-tuning.
-- **Fallback** — no key, no consent, quota exhausted, or a malformed response all return
+- **Fallback** — no consent, Ollama unreachable, model not pulled, or a malformed response all return
   `degraded_to_manual: true` with the reference answer, never an error.
 
 ### The queue
@@ -150,21 +147,6 @@ extracts, with only the first scheduled so a long article trickles in. While rea
 a passage into its own extract, make a cloze from a selection, or ask the model to propose cards —
 which, like grading, you approve before anything is created. Extracts shed priority as they're
 worked and retire when nothing is left.
-
-### Anki import
-
-`.apkg` files in both collection schemas. Note types, decks (including `Parent::Child`), notes,
-cards, media, and review history all map across; suspended state and lapse counts survive.
-
-**On FSRS state:** Anki's SM-2 ease/interval don't map onto D/S, so this doesn't try to convert
-them. Instead each card's **real review history is replayed through FSRS**, recovering
-stability/difficulty from what you actually did. That needs no torch, so it works on the default
-image.
-
-Anything that didn't map cleanly comes back as a warnings list shown prominently in the import
-panel — flattened HTML, note types with more templates or fields than our model holds, missing
-review history. Newer Anki exports using the compressed collection format are rejected with an
-actionable message (re-export with "Support older Anki versions").
 
 ### Sister-card interference
 
@@ -241,7 +223,7 @@ plugin can't stop the others or the server, and `GET /api/plugins` reports what 
 failures with their tracebacks summarised.
 
 **The security boundary, stated plainly:** plugins are *trusted local code*, not sandboxed
-uploads. They run with the backend's full privileges — database, filesystem, stored API keys.
+uploads. They run with the backend's full privileges — database, filesystem, secrets.
 Loading is off unless `PLUGIN_DIR` is set, and it should stay off on any instance you don't
 solely operate. §12 leaves the choice open between a Python entry-point system and a webhook
 model; this picks Python because self-hosting is the first-class target (§10), where sandboxing
@@ -253,11 +235,10 @@ call site. That's what building the seams first bought.
 
 `GET /api/export` returns a full-fidelity JSON dump — decks, note types, notes, cards with live
 FSRS state, every review log, sources and extracts. `GET /api/export/review-logs.csv` gives the raw
-logs for analysis in a notebook. Both work on a hosted instance too. Your API key is deliberately
-excluded from both.
+logs for analysis in a notebook. Both work on a hosted instance too.
 
 **Self-hosting trade-off, stated plainly:** running this yourself adds no new external dependency
-(grading is BYOK either way), but nobody else is operating it. Backups of the Postgres volume and
+(grading runs on your own Ollama either way), but nobody else is operating it. Backups of the Postgres volume and
 upgrades are your job.
 
 ---
@@ -271,8 +252,8 @@ cd frontend && npm run build          # tsc + vite build
 
 Coverage spans the FSRS wrapper and fuzzing, backlog smoothing arithmetic, grading (parsing,
 rubrics, escalation, heuristic checks, calibration, caching, fallback), the full review cycle,
-queue composition and interleaving, IR chunking/splitting/readability, `.apkg` import against
-synthetic collections built in the test suite, interference scoring and classification against
+queue composition and interleaving, IR chunking/splitting/readability, JSON import,
+interference scoring and classification against
 labelled confusable/unrelated pairs, session spacing, image-occlusion slot generation, coordinate
 clamping and upload hardening, plugin loading including the failure paths, and the security
 properties above — SSRF blocking per redirect hop, cross-tenant access attempts, and secret
@@ -332,10 +313,8 @@ What's enforced, and tested:
   test drives one account's token against another's decks, notes, cards, sources and extracts
   across 14 endpoints and asserts 404 on each, plus the listing and export endpoints, planting a
   note in someone else's deck, and borrowing their note type.
-- **Secrets.** Passwords are salted scrypt (stdlib, no bcrypt build step). The BYOK Google key is
-  Fernet-encrypted under a key separate from the session-signing secret, is never returned by any
-  endpoint, and is excluded from the export. Startup logs a warning if either secret is still a
-  dev default.
+- **Secrets.** Passwords are salted scrypt (stdlib, no bcrypt build step). Startup logs a warning
+  if `SECRET_KEY` is still the dev default.
 - **Uploads.** Server-generated random filenames (an uploaded `../../../etc/passwd.png` cannot
   escape the media directory), a content-type allowlist, and a 20 MB cap.
 
@@ -349,8 +328,7 @@ Known limitations, stated rather than hidden:
   client resolves it again when connecting, leaving a small TOCTOU window. Closing it fully means
   pinning the connection to the validated IP, which conflicts with TLS SNI/cert validation.
 - **Tokens can't be revoked.** JWTs are valid for 14 days; signing out clears the client's copy.
-  Rotating `SECRET_KEY` invalidates every session at once (and leaves stored API keys intact,
-  which is why they use a separate key).
+  Rotating `SECRET_KEY` invalidates every session at once.
 - **Plugins are trusted code**, not sandboxed — see above.
 
 ## Notable deviations from the spec
@@ -363,20 +341,15 @@ Everything here was driven by how a library or API actually behaves, not prefere
 2. **`optimizer_available()` probes for torch.** `from fsrs import Optimizer` *always* succeeds:
    without the extra, the library substitutes a stub that raises at construction. Checking the
    import alone would report the optimizer as installed when it isn't.
-3. **Structured output is attempted, not assumed.** Gemma models served through the Gemini API
-   reject `response_schema`/`response_mime_type`. The service tries the schema path and falls back
-   to prompt-instructed JSON with tolerant parsing, so the same code works on Gemma and Gemini.
+3. **JSON output is requested, not trusted.** The service asks Ollama for JSON and still parses
+   tolerantly, since models wrap JSON in prose or code fences.
 4. **`grade_with_escalation` doesn't mutate `self.model`.** The spec sketch reassigned it, which
    would leave the instance permanently escalated for every later card. The model is passed per
    call instead.
-5. **Import replays history rather than running the optimizer.** The spec called for running the
-   optimizer at import time to back-fill D/S/R — but the optimizer fits *parameters*, not per-card
-   state. Replaying each card's own history is what actually recovers D/S, and it doesn't require
-   the optional extra. The parameter refit still runs afterwards when torch is present.
-6. **Model IDs are configurable and verified.** `gemma-4-e4b-it` / `gemma-4-12b-it` are wired as
-   the spec'd defaults, but the app lists what your key can actually reach and warns if the
-   configured model isn't among them, rather than failing mid-review on an unavailable ID.
-7. **`TEXT[]` → JSON on SQLite.** Postgres keeps the spec's native `JSONB`/`TEXT[]`; SQLite (dev
+5. **Model IDs are configurable and verified.** `qwen2.5-coder:7b` is the default, but Settings
+   lists the models Ollama actually has installed and flags it if the configured one is missing,
+   rather than failing mid-review on an unavailable ID.
+6. **`TEXT[]` → JSON on SQLite.** Postgres keeps the spec's native `JSONB`/`TEXT[]`; SQLite (dev
    and tests) gets JSON variants. Tag filtering therefore happens in Python so it behaves
    identically on both.
 
@@ -394,7 +367,7 @@ memorization-app/
 │       ├── schemas/       request/response contracts
 │       ├── routers/       auth keys decks queue review sources imports stats
 │       │                  export optimize media interference
-│       ├── services/      fsrs grading queue ir apkg leech note rendering
+│       ├── services/      fsrs grading queue ir leech note rendering
 │       │                  registry interference plugins
 │   └── plugins.example/    a working plugin for the grading-profile seam
 │       └── jobs/          nightly FSRS refit, cache eviction, IR release
@@ -415,6 +388,4 @@ Grading is text-only: an occlusion region is graded on its text label, not on th
 there's no audio/pronunciation grading. Only one of the three seams (grading-profile selection) is
 externally pluggable so far — rendering and queue composition are registered through the same
 registry but haven't been exercised by a real plugin, and there's no plugin registry/marketplace,
-which §12 puts out of scope until there's something to register against. Occlusion notes imported
-from Anki keep their captions but not their masks: Anki stores those in a format we don't parse, so
-they render as text-only cards and say so.
+which §12 puts out of scope until there's something to register against.

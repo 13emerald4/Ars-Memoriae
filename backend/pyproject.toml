@@ -6,7 +6,9 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
-    "sqlalchemy>=2.0.30",
+    # [asyncio] pulls in greenlet, which SQLAlchemy 2.1 no longer installs by
+    # default; without it the app fails on import.
+    "sqlalchemy[asyncio]>=2.0.30",
     "asyncpg>=0.29",
     "aiosqlite>=0.20",
     "alembic>=1.13",
@@ -14,9 +16,7 @@ dependencies = [
     "pydantic-settings>=2.3",
     "python-multipart>=0.0.9",
     "pyjwt>=2.8",
-    "cryptography>=42.0",
     "fsrs>=6.0,<7",
-    "google-genai>=1.0",
     "httpx>=0.27",
     "beautifulsoup4>=4.12",
     "apscheduler>=3.10",

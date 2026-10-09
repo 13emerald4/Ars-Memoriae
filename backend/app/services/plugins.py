@@ -8,7 +8,7 @@ directly. This is the first one that outside code can actually plug into.
 and a webhook model, deliberately not locking it in early. This picks the
 Python one, for a narrow reason: the app's first-class deployment target is
 self-hosting (§10), where "sandboxed" would be security theatre — the operator
-already controls the container, the database, and the API key. So plugins here
+already controls the container, the database, and the secrets. So plugins here
 are **trusted local code**, not untrusted uploads:
 
   * loading is OFF unless PLUGIN_DIR is set,

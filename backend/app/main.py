@@ -20,8 +20,8 @@ from app.routers import (
     export,
     imports,
     interference,
-    keys,
     lexicon,
+    llm,
     media,
     memory_athlete,
     optimize,
@@ -76,7 +76,7 @@ app.add_middleware(
 
 for router in (
     auth.router,
-    keys.router,
+    llm.router,
     code_practice.router,
     decks.router,
     tree.router,
@@ -150,9 +150,14 @@ async def serve_spa_route(full_path: str):
     if full_path.startswith(("api", "media", "health", "docs", "openapi.json", "redoc")):
         raise HTTPException(status_code=404, detail="Not Found")
 
-    target = _frontend_dist / full_path
-    if full_path and target.is_file():
-        return FileResponse(target)
+    # The path arrives percent-decoded, so `..%2f` becomes a real `../`. Resolve
+    # before serving and refuse anything that lands outside the build directory,
+    # or this route hands out backend/.env and the database to anyone who asks.
+    if full_path:
+        dist_root = _frontend_dist.resolve()
+        target = (dist_root / full_path).resolve()
+        if target.is_relative_to(dist_root) and target.is_file():
+            return FileResponse(target)
 
     index_file = _frontend_dist / "index.html"
     if index_file.is_file():

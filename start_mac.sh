@@ -25,8 +25,8 @@ if [ -z "$PYTHON_CMD" ]; then
     exit 1
 fi
 
-$PYTHON_CMD -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" || {
-    echo "[ERROR] Python 3.10+ is required. Please update your Python installation."
+$PYTHON_CMD -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" || {
+    echo "[ERROR] Python 3.11+ is required. Please update your Python installation."
     exit 1
 }
 echo "  Found Python: $($PYTHON_CMD --version)"
@@ -45,9 +45,9 @@ echo "[3/5] Checking Python virtual environment..."
 if [ ! -f "backend/.venv/bin/python" ]; then
     echo "  Creating local virtual environment in backend/.venv..."
     $PYTHON_CMD -m venv backend/.venv
-    backend/.venv/bin/pip install --upgrade pip >/dev/null 2>&1
-    backend/.venv/bin/pip install -e backend
 fi
+# Re-runs pip whenever backend/pyproject.toml changed, e.g. after the git pull above.
+backend/.venv/bin/python scripts/sync_backend_deps.py
 
 # 4. Database Schema Migrations
 echo "[4/5] Checking database schema..."

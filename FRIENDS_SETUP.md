@@ -56,23 +56,17 @@ chmod +x start_mac.sh
 
 ## 4. Setting Up AI (Hints, Grading & Code Tutor)
 
-Ars Memoriae features local code grading and Socratic tutoring. You can power the AI in two ways:
+Ars Memoriae's AI features (grading, hints, code tutor) run on **Ollama**, a free program that runs the model on your own computer. Nothing is sent online, and no API key is needed.
 
-### Choice 1: Free Google Gemini API Key *(Recommended for casual laptops)*
-*Works on any laptop with zero RAM or GPU requirements.*
-1. Go to [Google AI Studio](https://aistudio.google.com/) and sign in with your Google account.
-2. Click **"Get API Key"** -> **"Create API Key"** (100% free, no credit card required).
-3. Open Ars Memoriae in your browser, click **Settings (⚙️)** in the top navigation bar, and paste your API key.
-4. Click **Save**. You're done!
+*Best on Apple Silicon (M1/M2/M3) or a PC with a gaming GPU. On a slower laptop it still works, just slowly. Without Ollama, the app still works fully with manual grading.*
 
-### Choice 2: 100% Local Ollama *(Recommended for Apple Silicon M1/M2/M3 or Gaming GPUs)*
-*Works completely offline with zero internet needed.*
 1. Download and install [Ollama](https://ollama.com).
 2. Open a terminal and run:
    ```bash
    ollama run qwen2.5-coder:7b
    ```
 3. Ars Memoriae will automatically detect Ollama running on `http://localhost:11434`.
+4. In Ars Memoriae, open **Settings (⚙️)** and turn on **LLM grading**.
 
 ---
 

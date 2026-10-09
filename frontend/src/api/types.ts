@@ -230,8 +230,6 @@ export interface User {
   backlog_spread_days: number
   leech_threshold: number
   llm_grading_consent: boolean
-  has_api_key: boolean
-  api_key_masked: string | null
   fsrs_optimized_at: string | null
   grading_bias: number
   automaticity_threshold_ms?: number | null
@@ -465,16 +463,14 @@ export interface JsonImportResult {
   warnings: string[]
 }
 
-export interface ImportResult {
+/** One row of GET /api/import/history. */
+export interface ImportRecord {
   id: string
   filename: string
+  imported_at: string
   notes_mapped: number
   cards_mapped: number
-  review_logs_mapped: number
-  media_copied: number
-  decks_created: number
   warnings: string[]
-  fsrs_optimized: boolean
 }
 
 /** One timed study block. Finishing its card target early banks the unspent

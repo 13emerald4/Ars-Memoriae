@@ -9,7 +9,6 @@ import type {
   DecomposedCardItem,
   DocumentUpload,
   GenerateDeckResponse,
-  ImportResult,
   JsonImportResult,
   NoteType,
   OcclusionShape,
@@ -57,7 +56,6 @@ export default function Decks() {
         </>
       )}
       <DocumentDeckPanel onImported={load} />
-      <ImportPanel onImported={load} />
       <JsonImportPanel onImported={load} />
       <LlmPromptPanel />
     </div>
@@ -250,9 +248,7 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
             <p>
               {generated.reason === 'consent_not_given'
                 ? 'LLM card generation needs your consent — turn it on in Settings.'
-                : generated.reason === 'no_api_key'
-                  ? 'Add a Google API key in Settings to generate cards.'
-                  : `Card generation was temporarily unavailable (${generated.reason}).`}
+                : `Card generation was temporarily unavailable (${generated.reason}).`}
             </p>
             {generated.warnings.length > 0 && (
               <p className="mt-1.5 text-xs text-amber-300/80">
@@ -260,7 +256,7 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
               </p>
             )}
             <p className="mt-2 text-xs text-slate-400">
-              Free-tier or preview models (like Gemini 3.7 Flash) may experience brief capacity spikes. Click &ldquo;Retry generating cards&rdquo; above or select a different model in Settings.
+              Check that Ollama is running and the model is pulled. Click &ldquo;Retry generating cards&rdquo; above or select a different model in Settings.
             </p>
           </div>
         )}
@@ -1195,69 +1191,6 @@ function Browser({ deckId, onChange }: { deckId: string; onChange: () => void })
   )
 }
 
-function ImportPanel({ onImported }: { onImported: () => void }) {
-  const [result, setResult] = useState<ImportResult | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<unknown>(null)
-
-  return (
-    <Section
-      title="Import from Anki"
-      description="Upload a .apkg. Review history is replayed through FSRS so years of scheduling signal aren't lost."
-    >
-      <input
-        type="file"
-        accept=".apkg,.colpkg"
-        disabled={busy}
-        className="block w-full text-sm text-slate-400 file:mr-4 file:rounded-lg file:border-0 file:bg-sky-500/15 file:px-4 file:py-2 file:text-sm file:text-sky-200 hover:file:bg-sky-500/25"
-        onChange={async (e) => {
-          const file = e.target.files?.[0]
-          if (!file) return
-          setBusy(true)
-          setError(null)
-          setResult(null)
-          try {
-            setResult(await api.importApkg(file))
-            onImported()
-          } catch (err) {
-            setError(err)
-          } finally {
-            setBusy(false)
-            e.target.value = ''
-          }
-        }}
-      />
-      {busy && <div className="mt-3"><Spinner label="Parsing collection and replaying history…" /></div>}
-      <ErrorNote error={error} />
-
-      {result && (
-        <div className="mt-4 space-y-3">
-          <div className="flex flex-wrap gap-2 text-xs">
-            <span className="chip">{result.notes_mapped} notes</span>
-            <span className="chip">{result.cards_mapped} cards</span>
-            <span className="chip">{result.review_logs_mapped} reviews replayed</span>
-            <span className="chip">{result.decks_created} decks</span>
-            {result.media_copied > 0 && <span className="chip">{result.media_copied} media</span>}
-          </div>
-          {/* §11 & §15: the warnings list must be genuinely visible, not buried. */}
-          {result.warnings.length > 0 && (
-            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">
-                What didn't map cleanly
-              </p>
-              <ul className="mt-2 space-y-1.5 text-sm text-amber-100/90">
-                {result.warnings.map((w, i) => (
-                  <li key={i}>· {w}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-    </Section>
-  )
-}
-
 const JSON_IMPORT_EXAMPLE = `[
   { "front": "hablar", "back": "to speak", "tags": ["verbs"] },
   { "kind": "cloze", "cloze_text": "The {{c1::mitochondrion}} is the powerhouse." }
@@ -1390,8 +1323,8 @@ Generate cards from the material below:
 
 <PASTE YOUR SOURCE TEXT / NOTES / TOPIC HERE>`
 
-/** Bulk-create notes/cards from a hand-written or scripted JSON file — the
- *  non-Anki upload path. One request targets one deck (created if missing).
+/** Bulk-create notes/cards from a hand-written or scripted JSON file.
+ *  One request targets one deck (created if missing).
  *  Accepts a bare array (deck name comes from the field below) or an
  *  envelope with "deck" already inside it — and either "front"/"back" or the
  *  "card_type"/"question"/"answer" vocabulary common in LLM flashcard exports. */
@@ -1435,7 +1368,7 @@ function JsonImportPanel({ onImported }: { onImported: () => void }) {
 
   if (!open) {
     return (
-      <Section title="Import from JSON" description="Bulk-create notes from a JSON file — no Anki required.">
+      <Section title="Import from JSON" description="Bulk-create notes from a JSON file.">
         <div className="flex flex-wrap items-center gap-3">
           <button className="btn" onClick={() => setOpen(true)}>
             Paste or upload JSON

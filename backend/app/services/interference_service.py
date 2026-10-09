@@ -14,7 +14,7 @@ So each candidate pair is scored on both halves independently and classified:
 Similarity is computed locally — token Jaccard blended with character-trigram
 cosine, which catches morphological variants that token overlap alone misses.
 Nothing is sent anywhere: the spec's "no GPU/inference infra needed" applies
-here too, and an embedding call per note-pair would be a real BYOK cost for a
+here too, and an embedding call per note-pair would be a real cost for a
 feature that runs over the whole collection.
 
 Comparing every pair is O(n²), so candidates are blocked through an inverted

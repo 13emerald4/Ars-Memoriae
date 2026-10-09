@@ -16,7 +16,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decrypt_api_key
 from app.db import get_db
 from app.models import Card, Deck, Note, User
 from app.routers.deps import current_user, parse_uuid
@@ -132,11 +131,7 @@ async def decompose_card(
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "LLM consent is required for AI card decomposition"
         )
-    api_key = decrypt_api_key(user.google_api_key_encrypted)
-    if not api_key:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Google GenAI API key is required")
-
-    service = GradingService(api_key, user.grading_model)
+    service = GradingService(model=user.grading_model)
     try:
         cards = await service.decompose_card_atomicity(body.front, body.back)
         return DecomposeCardResponse(

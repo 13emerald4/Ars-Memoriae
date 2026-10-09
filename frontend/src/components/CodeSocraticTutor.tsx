@@ -37,7 +37,7 @@ export function CodeSocraticTutor({
         ...prev,
         {
           sender: 'tutor',
-          text: `⚠️ Socratic AI unavailable (${err?.message || 'Check Google API Key in Settings'}).`,
+          text: `⚠️ Socratic AI unavailable (${err?.message || 'Check that Ollama is running'}).`,
         },
       ])
     } finally {
