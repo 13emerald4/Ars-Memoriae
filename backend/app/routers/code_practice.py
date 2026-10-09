@@ -708,24 +708,35 @@ async def code_stats(
     mastered_total = float(len(solved_pids))
     velocity_rate = round(mastered_total / active_hours, 2) if active_hours > 0.05 else mastered_total
 
-    # FSRS stability and difficulty metrics across any linked cards
-    card_rows = (
+    # FSRS stability and difficulty across the user's cards. Averaged in SQL
+    # (AVG skips NULLs) rather than loading the whole collection.
+    avg_stab_raw, avg_diff_raw = (
         await db.execute(
-            select(Card.stability, Card.difficulty, Card.due, Card.state)
+            select(func.avg(Card.stability), func.avg(Card.difficulty))
             .join(Deck, Deck.id == Card.deck_id)
             .where(Deck.user_id == user.id)
         )
-    ).all()
-    stabs = [r[0] for r in card_rows if r[0] is not None]
-    diffs = [r[1] for r in card_rows if r[1] is not None]
-    avg_stab = round(sum(stabs) / len(stabs), 1) if stabs else 21.0
-    avg_diff = round(sum(diffs) / len(diffs), 2) if diffs else 0.45
+    ).one()
+    avg_stab = round(avg_stab_raw, 1) if avg_stab_raw is not None else 21.0
+    avg_diff = round(avg_diff_raw, 2) if avg_diff_raw is not None else 0.45
 
+    # Only cards due inside the 30-day window are fetched.
     forecast: dict[str, int] = defaultdict(int)
     horizon = now + timedelta(days=30)
-    for stab, diff, due, state in card_rows:
-        if due and due <= horizon and state != "new":
-            forecast[_day(max(due if due.tzinfo else due.replace(tzinfo=UTC), now))] += 1
+    due_dates = (
+        await db.scalars(
+            select(Card.due)
+            .join(Deck, Deck.id == Card.deck_id)
+            .where(
+                Deck.user_id == user.id,
+                Card.state != "new",
+                Card.due.isnot(None),
+                Card.due <= horizon,
+            )
+        )
+    ).all()
+    for due in due_dates:
+        forecast[_day(max(due if due.tzinfo else due.replace(tzinfo=UTC), now))] += 1
 
     totals = {
         "cards": float(len(unique_problems)),

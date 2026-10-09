@@ -349,3 +349,51 @@ async def test_unrunnable_languages_are_refused(auth_client, endpoint):
     )
     assert resp.status_code == 400
     assert "isn't supported" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_code_stats_card_metrics_match_the_users_cards(auth_client):
+    """Averages and the 30-day forecast come from SQL now; check they agree
+    with what's stored, and that new and far-future cards are left out."""
+    import uuid
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import select
+
+    from app.db import SessionLocal
+    from app.models import Card
+
+    deck_id = (await auth_client.post("/api/decks", json={"name": "Stats"})).json()["id"]
+    card_ids = []
+    for i in range(4):
+        note = (
+            await auth_client.post(
+                "/api/notes",
+                json={
+                    "deck_id": deck_id,
+                    "template_kind": "basic",
+                    "field_values": {"Front": f"q{i}", "Back": f"a{i}"},
+                },
+            )
+        ).json()
+        card_ids.append(note["cards"][0]["id"])
+
+    now = datetime.now(UTC)
+    setup = [
+        ("review", 10.0, 4.0, now + timedelta(days=3)),
+        ("review", 20.0, 6.0, now + timedelta(days=3)),
+        ("review", 30.0, 8.0, now + timedelta(days=90)),  # beyond the horizon
+        ("new", None, None, now + timedelta(days=3)),  # new cards don't count
+    ]
+
+    async with SessionLocal() as db:
+        for cid, (state, stab, diff, due) in zip(card_ids, setup, strict=True):
+            card = (await db.execute(select(Card).where(Card.id == uuid.UUID(cid)))).scalar_one()
+            card.state, card.stability, card.difficulty, card.due = state, stab, diff, due
+        await db.commit()
+
+    stats = (await auth_client.get("/api/code/stats")).json()
+    assert stats["totals"]["avg_stability_days"] == 20.0
+    assert stats["totals"]["avg_difficulty"] == 6.0
+    assert sum(stats["forecast"].values()) == 2
+    assert stats["forecast"] == {(now + timedelta(days=3)).date().isoformat(): 2}
