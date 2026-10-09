@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models import User
-from app.routers.deps import current_user, optional_user
+from app.routers.deps import optional_user
 from app.schemas.lexicon import LexiconEntryOut, LexiconLookupRequest, RecentLexiconItem
 from app.services import lexicon_service
 

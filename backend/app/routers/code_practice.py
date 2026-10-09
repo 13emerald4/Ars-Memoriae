@@ -460,9 +460,9 @@ async def export_problem_to_card(
     lang = (
         "typescript"
         if "typescript" in (p.starter_codes or {})
-        else ("python" if "python" in (p.starter_codes or {}) else (list(p.starter_codes.keys())[0] if p.starter_codes else "python"))
+        else ("python" if "python" in (p.starter_codes or {}) else next(iter(p.starter_codes or {}), "python"))
     )
-    sol = (p.solutions or {}).get(lang) or (list(p.solutions.values())[0] if p.solutions else "")
+    sol = (p.solutions or {}).get(lang) or next(iter((p.solutions or {}).values()), "")
     starter = (p.starter_codes or {}).get(lang) or ""
     starter_tests = (
         (p.starter_codes or {}).get("starter_tests")
@@ -647,7 +647,7 @@ async def code_stats(
                     suggestion_rationale=f"Repeated difficulties with {prob.title} ({count} failed runs). Inspect editorial and pattern invariants.",
                 )
             )
-    leeches.sort(key=lambda l: l.lapse_count, reverse=True)
+    leeches.sort(key=lambda leech: leech.lapse_count, reverse=True)
 
     STANDARD_CATEGORIES = [
         "Arrays & Hashing", "Two Pointers", "Sliding Window", "Stack",

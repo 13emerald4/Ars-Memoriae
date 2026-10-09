@@ -347,7 +347,7 @@ async def test_import_cpsc210_mt2_supplemental_deck(auth_client):
     if not deck_path.exists():
         return
 
-    with open(deck_path, "r", encoding="utf-8") as f:
+    with open(deck_path, encoding="utf-8") as f:
         payload = json.load(f)
 
     resp = await auth_client.post("/api/import/json", json=payload)

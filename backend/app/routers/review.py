@@ -27,15 +27,15 @@ from app.schemas.review import (
     ConfirmReviewResponse,
     Grade,
     LessonOut,
-    SocraticRequest,
-    SocraticResponse,
+    RunReviewCodeRequest,
     SocraticLineHintRequest,
     SocraticLineHintResponse,
+    SocraticRequest,
+    SocraticResponse,
     StuckAlertOut,
     SubmitAnswerRequest,
     SubmitAnswerResponse,
     WeaknessHintResponse,
-    RunReviewCodeRequest,
 )
 from app.services import leech_service, lesson_service, stuck_service
 from app.services.code_runner_service import run_code
@@ -518,7 +518,7 @@ async def confirm_review(
     if body.final_grade in (Grade.good, Grade.easy) and not identified_weaknesses and not persistent_weaknesses:
         current_active.clear()
 
-    updated_active = sorted(list(current_active))
+    updated_active = sorted(current_active)
     card.active_weaknesses = updated_active
 
     history_entry = {

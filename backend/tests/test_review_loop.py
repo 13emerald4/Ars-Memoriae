@@ -215,10 +215,11 @@ async def test_auth_is_required(client):
 
 
 async def test_weakness_hint_and_progression_loop(auth_client):
+    import uuid
+
     from app.core.security import new_answer_hash
     from app.db import get_db
     from app.models import Card, GradingCache
-    import uuid
 
     deck_id = await _deck(auth_client, "Weakness Deck")
     note = await _note(auth_client, deck_id, "What happens with zero?", "Special handling needed")
@@ -232,8 +233,8 @@ async def test_weakness_hint_and_progression_loop(auth_client):
     # 2. Simulate graded answer with a captured weakness in GradingCache
     ans_text = "Just normal handling"
     h = new_answer_hash(ans_text)
-    from app.main import app
     from app.db import SessionLocal
+    from app.main import app
 
     async with SessionLocal() as db:
         db.add(

@@ -8,13 +8,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.services.code_runner_service import run_node_code
 
+
 async def main():
     deck_path = Path(r"C:\Users\micha\OneDrive\Documents\UBC BCS ICS\CPSC 210\Midterm 2\Cards\cpsc210_mt2_supplemental.json")
     if not deck_path.exists():
         print(f"Deck not found at {deck_path}")
         return
 
-    with open(deck_path, "r", encoding="utf-8") as f:
+    with open(deck_path, encoding="utf-8") as f:
         data = json.load(f)
 
     notes = data.get("notes", [])
@@ -30,7 +31,7 @@ async def main():
         title = card.get("title", f"Card {idx+1}")
         solution = card.get("back", "")
         test_cases = card.get("test_cases", [])
-        
+
         if not test_cases:
             print(f"[{idx+1}/8] {title}: No test_cases defined (skipping)")
             continue
