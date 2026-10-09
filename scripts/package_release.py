@@ -56,6 +56,7 @@ def create_release_zip() -> Path:
     exclude_files = {
         ".env",
         ".env.local",
+        ".secret_key",
         "dev.db",
         "dev.db-shm",
         "dev.db-wal",

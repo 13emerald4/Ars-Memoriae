@@ -315,8 +315,9 @@ What's enforced, and tested:
   test drives one account's token against another's decks, notes, cards, sources and extracts
   across 14 endpoints and asserts 404 on each, plus the listing and export endpoints, planting a
   note in someone else's deck, and borrowing their note type.
-- **Secrets.** Passwords are salted scrypt (stdlib, no bcrypt build step). Startup logs a warning
-  if `SECRET_KEY` is still the dev default.
+- **Secrets.** Passwords are salted scrypt (stdlib, no bcrypt build step). If `SECRET_KEY` is
+  unset, a random one is generated on first start and kept in `backend/.secret_key`, so no install
+  signs tokens with a publicly known key.
 - **Uploads.** Server-generated random filenames (an uploaded `../../../etc/passwd.png` cannot
   escape the media directory), a content-type allowlist, and a 20 MB cap.
 

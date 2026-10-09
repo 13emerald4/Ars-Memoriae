@@ -17,6 +17,10 @@ from app.core.config import settings
 
 _SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2**14, 8, 1
 
+# The old built-in default. An instance still configured with it signs tokens
+# anyone can forge, so it is called out at startup.
+KNOWN_PUBLIC_SECRETS = {"dev-insecure-secret-change-me"}
+
 
 def hash_password(password: str) -> str:
     salt = os.urandom(16)
@@ -65,8 +69,8 @@ def insecure_defaults() -> list[str]:
     dev fallbacks (§10 puts backup/upgrade responsibility on the operator —
     they should at least be told which secrets are unset)."""
     problems = []
-    if settings.secret_key == "dev-insecure-secret-change-me":
-        problems.append("SECRET_KEY is the built-in dev default — sessions are forgeable.")
+    if settings.secret_key in KNOWN_PUBLIC_SECRETS:
+        problems.append("SECRET_KEY is a value published in this repo — sessions are forgeable.")
     return problems
 
 

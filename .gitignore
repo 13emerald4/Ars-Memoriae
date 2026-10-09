@@ -1,5 +1,7 @@
 # secrets — .env.example is the template, .env is yours
 .env
+# generated on first start when SECRET_KEY is unset
+.secret_key
 
 # python
 __pycache__/

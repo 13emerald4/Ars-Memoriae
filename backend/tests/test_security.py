@@ -431,3 +431,27 @@ async def test_first_account_can_always_register(monkeypatch):
 
     monkeypatch.setattr(settings, "allow_registration", True)
     assert await registration_open(FakeDb(uuid.uuid4())) is True
+
+
+# ── SECRET_KEY: generated per install, never a public default ───────────────
+
+
+def test_missing_secret_key_is_generated_once_and_reused(tmp_path):
+    from app.core.config import _load_or_create_secret
+
+    path = tmp_path / ".secret_key"
+    first = _load_or_create_secret(path)
+    assert len(first) >= 48
+    assert path.read_text() == first
+    assert _load_or_create_secret(path) == first, "restarts must keep sessions valid"
+    assert _load_or_create_secret(tmp_path / "other") != first, "each install gets its own key"
+
+
+def test_an_empty_secret_file_is_refilled(tmp_path):
+    from app.core.config import _load_or_create_secret
+
+    path = tmp_path / ".secret_key"
+    path.write_text("")
+    secret = _load_or_create_secret(path)
+    assert secret
+    assert path.read_text() == secret

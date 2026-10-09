@@ -176,7 +176,7 @@ Coverage spans the entire review cycle, FSRS fuzzing/backlog smoothing, grading 
 
 Key settings (see `.env.example` for full list):
 
-- **`SECRET_KEY`**: JWT signing (generate with `secrets.token_urlsafe(48)`)
+- **`SECRET_KEY`**: JWT signing (generate with `secrets.token_urlsafe(48)`). Unset → generated on first start into `.secret_key` (`SECRET_KEY_FILE`)
 - **`OLLAMA_BASE_URL`**: Where the Ollama daemon listens (default `http://localhost:11434`)
 - **`DATABASE_URL`**: Postgres or SQLite (`sqlite+aiosqlite:///./db.sqlite3` for dev)
 - **`ALLOW_REGISTRATION`**: 0 (default) = only the first account can sign up; 1 = open sign-up
