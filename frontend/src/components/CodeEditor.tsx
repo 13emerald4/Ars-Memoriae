@@ -36,14 +36,11 @@ export interface CodeEditorProps {
   grading?: boolean
 }
 
+// Only what the backend runner can execute (code_practice.RUNNABLE_LANGUAGES).
 const SUPPORTED_LANGUAGES = [
   { id: 'python', label: 'Python3' },
   { id: 'typescript', label: 'TypeScript' },
   { id: 'javascript', label: 'JavaScript' },
-  { id: 'cpp', label: 'C++' },
-  { id: 'java', label: 'Java' },
-  { id: 'rust', label: 'Rust' },
-  { id: 'go', label: 'Go' },
 ]
 
 const CONTROL_KEYWORDS = new Set([

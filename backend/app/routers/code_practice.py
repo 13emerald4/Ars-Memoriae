@@ -32,12 +32,27 @@ from app.schemas.code_practice import (
     SubmitCodeResponse,
 )
 from app.services.code_ai_service import CodeAiService
-from app.services.code_runner_service import run_python_code
+from app.services.code_runner_service import run_code as execute_code
 from app.services.fundamentals_catalog import FUNDAMENTALS_CATALOG
 from app.services.note_service import sync_cards
 from app.services.problems_catalog import PROBLEMS_CATALOG
 
 router = APIRouter(prefix="/api/code", tags=["code_practice"])
+
+
+# Languages the runner can actually execute. Anything else used to come back
+# as a fake "Accepted" from /run and a Python compile error from /submit.
+RUNNABLE_LANGUAGES = ("python", "typescript", "javascript")
+
+
+def _runnable_language(language: str) -> str:
+    lang = (language or "python").lower().strip()
+    if lang not in RUNNABLE_LANGUAGES:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Running {language} code isn't supported. Use Python, TypeScript, or JavaScript.",
+        )
+    return lang
 
 
 _seed_lock = asyncio.Lock()
@@ -266,23 +281,14 @@ async def run_code(
     db: AsyncSession = Depends(get_db),
 ):
     """Executes code against sample or custom testcases in an isolated sandbox."""
+    language = _runnable_language(body.language)
     p = await _get_problem(db, id_or_slug, user)
     test_cases_to_run = body.custom_test_cases if body.custom_test_cases else p.test_cases
 
-    if body.language.lower() != "python":
-        # For non-python in-sandbox execution, return simulated pass or instruct to use Python
-        return RunCodeResponse(
-            status="Accepted",
-            passed_count=len(test_cases_to_run),
-            total_count=len(test_cases_to_run),
-            runtime_ms=12.0,
-            error=None,
-            results=[],
-        )
-
-    res = await run_python_code(
+    res = await execute_code(
         code=body.code,
         test_cases=test_cases_to_run,
+        language=language,
         timeout_sec=4.0,
     )
     return RunCodeResponse(
@@ -303,11 +309,13 @@ async def submit_code(
     db: AsyncSession = Depends(get_db),
 ):
     """Submits code against all testcases and records submission log."""
+    language = _runnable_language(body.language)
     p = await _get_problem(db, id_or_slug, user)
 
-    res = await run_python_code(
+    res = await execute_code(
         code=body.code,
         test_cases=p.test_cases,
+        language=language,
         timeout_sec=5.0,
     )
 
@@ -315,7 +323,7 @@ async def submit_code(
         id=uuid.uuid4(),
         user_id=user.id,
         problem_id=p.id,
-        language=body.language,
+        language=language,
         code=body.code,
         status=res["status"],
         passed_tests=res["passed_count"],

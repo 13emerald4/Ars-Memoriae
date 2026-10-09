@@ -308,3 +308,44 @@ async def test_submit_ignores_a_stray_deck_id(auth_client):
     )
     assert resp.status_code == 200, resp.text
     assert resp.json()["status"] == "Accepted"
+
+
+@pytest.mark.asyncio
+async def test_typescript_is_actually_run_on_run_and_submit(auth_client):
+    """/run used to return a fake "Accepted" for any non-Python language, and
+    /submit ran TypeScript through the Python worker."""
+    good = """class Solution {
+    twoSum(nums: number[], target: number): number[] {
+        const seen = new Map<number, number>();
+        for (let i = 0; i < nums.length; i++) {
+            const j = seen.get(target - nums[i]);
+            if (j !== undefined) return [j, i];
+            seen.set(nums[i], i);
+        }
+        return [];
+    }
+}
+"""
+    bad = good.replace("return [j, i];", "return [i, j];")
+
+    run_bad = await auth_client.post(
+        "/api/code/problems/two-sum/run", json={"code": bad, "language": "typescript"}
+    )
+    assert run_bad.status_code == 200, run_bad.text
+    assert run_bad.json()["status"] == "Wrong Answer"
+
+    submit_good = await auth_client.post(
+        "/api/code/problems/two-sum/submit", json={"code": good, "language": "typescript"}
+    )
+    assert submit_good.status_code == 200, submit_good.text
+    assert submit_good.json()["status"] == "Accepted"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("endpoint", ["run", "submit"])
+async def test_unrunnable_languages_are_refused(auth_client, endpoint):
+    resp = await auth_client.post(
+        f"/api/code/problems/two-sum/{endpoint}", json={"code": "int main() {}", "language": "cpp"}
+    )
+    assert resp.status_code == 400
+    assert "isn't supported" in resp.json()["detail"]

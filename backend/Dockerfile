@@ -12,6 +12,10 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends build-essential libpq-dev curl \
  && rm -rf /var/lib/apt/lists/*
 
+# Code practice runs TypeScript/JavaScript through Node. 24+ strips TS types
+# natively, which the TS worker relies on; Debian's packaged node is too old.
+COPY --from=node:24-slim /usr/local/bin/node /usr/local/bin/node
+
 COPY pyproject.toml ./
 COPY app ./app
 RUN pip install --no-cache-dir . \
