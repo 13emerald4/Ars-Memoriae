@@ -33,7 +33,6 @@ from app.schemas.code_practice import (
 )
 from app.services.code_ai_service import CodeAiService
 from app.services.code_runner_service import run_python_code
-from app.services.fsrs_service import FSRSService
 from app.services.fundamentals_catalog import FUNDAMENTALS_CATALOG
 from app.services.note_service import sync_cards
 from app.services.problems_catalog import PROBLEMS_CATALOG
@@ -326,75 +325,6 @@ async def submit_code(
         ai_feedback=None,
     )
     db.add(submission)
-
-    # Optional FSRS scheduling if deck_id provided or card exists
-    fsrs_scheduled = False
-    next_review = None
-
-    if body.deck_id:
-        deck_id_parsed = parse_uuid(body.deck_id, "deck_id")
-        deck = await db.get(Deck, deck_id_parsed)
-        if deck and deck.user_id == user.id:
-            # Find or create note for this problem
-            note_stmt = select(Note).where(
-                Note.deck_id == deck.id,
-                Note.fields.contains({"title": p.title}),
-            )
-            note = (await db.execute(note_stmt)).scalar_one_or_none()
-            if not note:
-                # Find note type
-                nt_stmt = select(NoteType).where(
-                    NoteType.user_id == user.id,
-                    NoteType.grading_profile == "math_code",
-                )
-                nt = (await db.execute(nt_stmt)).scalar_one_or_none()
-                if not nt:
-                    nt_stmt_any = select(NoteType).where(NoteType.user_id == user.id)
-                    nt = (await db.execute(nt_stmt_any)).scalar_one_or_none()
-
-                if nt:
-                    note = Note(
-                        id=uuid.uuid4(),
-                        user_id=user.id,
-                        note_type_id=nt.id,
-                        field_values={
-                            "Front": f"### {p.title}\n\n{p.description}",
-                            "Back": f"```python\n{p.solutions.get('python', '')}\n```",
-                            "title": p.title,
-                        },
-                    )
-                    db.add(note)
-                    await db.flush()
-                    await sync_cards(db, note, nt, deck.id)
-
-            # Update card FSRS state
-            card_stmt = select(Card).where(Card.note_id == note.id)
-            card = (await db.execute(card_stmt)).scalars().first()
-            if card:
-                now = datetime.now(UTC)
-                fsrs_grade = "good" if res["status"] == "Accepted" else "again"
-                grade_enum = FSRSService.parse_grade(fsrs_grade)
-                record = FSRSService.calculate_next_review(
-                    stability=card.fsrs_stability,
-                    difficulty=card.fsrs_difficulty,
-                    reps=card.fsrs_reps,
-                    lapses=card.fsrs_lapses,
-                    last_reviewed=card.fsrs_last_reviewed or now,
-                    grade=grade_enum,
-                    now=now,
-                    desired_retention=user.desired_retention,
-                    weights=user.fsrs_parameters,
-                )
-                card.fsrs_stability = record["stability"]
-                card.fsrs_difficulty = record["difficulty"]
-                card.fsrs_reps = record["reps"]
-                card.fsrs_lapses = record["lapses"]
-                card.fsrs_state = record["state"]
-                card.fsrs_last_reviewed = record["last_reviewed"]
-                card.due_at = record["due"]
-                fsrs_scheduled = True
-                next_review = record["due"]
-
     await db.commit()
 
     return SubmitCodeResponse(
@@ -404,8 +334,6 @@ async def submit_code(
         total_count=res["total_count"],
         runtime_ms=res["runtime_ms"],
         results=res["results"],
-        fsrs_scheduled=fsrs_scheduled,
-        fsrs_next_review=next_review,
     )
 
 

@@ -392,7 +392,7 @@ export const api = {
   ) => post<RunCodeResponse>(`/api/code/problems/${idOrSlug}/run`, body),
   submitCode: (
     idOrSlug: string,
-    body: { code: string; language?: string; deck_id?: string },
+    body: { code: string; language?: string },
   ) => post<SubmitCodeResponse>(`/api/code/problems/${idOrSlug}/submit`, body),
   socraticCodeHint: (
     idOrSlug: string,

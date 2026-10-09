@@ -1,7 +1,7 @@
 """Socratic AI Guide: one diagnostic question at a time, never the answer.
 
 Two layers get tested separately: the service method's answer-leak guard in
-isolation (no transport, no HTTP), and the endpoint's consent/key gating the
+isolation (no transport, no HTTP), and the endpoint's consent gating the
 same way test_grading.py exercises the grading path."""
 
 from __future__ import annotations
@@ -220,3 +220,37 @@ class TestSocraticLineHint:
         assert body["line_number"] == 2
         assert body["current_line_text"] == "line2"
 
+
+    async def test_endpoint_degrades_when_the_model_call_crashes(self, auth_client, monkeypatch):
+        """An unexpected error (not GradingUnavailable) still degrades to the
+        canned hint instead of a 500."""
+        from app.routers import review as review_router
+
+        async def boom(self, **kwargs):
+            raise RuntimeError("model returned garbage")
+
+        monkeypatch.setattr(review_router.GradingService, "ask_socratic_line_hint", boom)
+        await auth_client.patch("/api/me", json={"llm_grading_consent": True})
+
+        deck_id = (await auth_client.post("/api/decks", json={"name": "D"})).json()["id"]
+        note = (
+            await auth_client.post(
+                "/api/notes",
+                json={
+                    "deck_id": deck_id,
+                    "template_kind": "basic",
+                    "field_values": {"Front": "Question", "Back": "Answer"},
+                },
+            )
+        ).json()
+        card_id = note["cards"][0]["id"]
+
+        resp = await auth_client.post(
+            f"/api/review/{card_id}/line-hint",
+            json={"code": "line1\nline2", "line_number": 2, "language": "python"},
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["degraded"] is True
+        assert body["degraded_reason"] == "model returned garbage"
+        assert body["line_number"] == 2

@@ -10,6 +10,7 @@ the calibration loop in §4.3 has something to learn from.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import UTC, datetime
 
@@ -37,7 +38,7 @@ from app.schemas.review import (
     RunReviewCodeRequest,
 )
 from app.services import leech_service, lesson_service, stuck_service
-from app.services.code_runner_service import run_code, run_python_code
+from app.services.code_runner_service import run_code
 from app.services.fsrs_service import GRADE_TO_RATING, FSRSService
 from app.services.grading_service import (
     GRADES,
@@ -50,6 +51,7 @@ from app.services.grading_service import (
 )
 from app.services.rendering import render, select_grading_profile
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/review", tags=["review"])
 
 BIAS_LEARNING_RATE = 0.1
@@ -359,7 +361,7 @@ async def card_weakness_hint(
             active_weaknesses=card.active_weaknesses,
             has_past_weaknesses=result.get("has_past_weaknesses", True),
         )
-    except GradingUnavailable as exc:
+    except GradingUnavailable:
         return WeaknessHintResponse(
             hint=f"Watch out for previous difficulty: {card.active_weaknesses[0]}.",
             active_weaknesses=card.active_weaknesses,

@@ -691,8 +691,6 @@ export interface SubmitCodeResponse {
   student_tests?: StudentTestResult[]
   student_passed_count?: number
   student_total_count?: number
-  fsrs_scheduled: boolean
-  fsrs_next_review: string | null
 }
 
 export interface SocraticCodeResponse {

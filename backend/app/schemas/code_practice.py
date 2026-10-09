@@ -70,7 +70,6 @@ class RunCodeResponse(BaseModel):
 class SubmitCodeRequest(BaseModel):
     code: str
     language: str = "python"
-    deck_id: str | None = None  # Optional: also update or create FSRS card
 
 
 class SubmitCodeResponse(BaseModel):
@@ -80,8 +79,6 @@ class SubmitCodeResponse(BaseModel):
     total_count: int
     runtime_ms: float
     results: list[TestCaseResult] = Field(default_factory=list)
-    fsrs_scheduled: bool = False
-    fsrs_next_review: datetime | None = None
 
 
 class SocraticCodeRequest(BaseModel):

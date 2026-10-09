@@ -292,3 +292,19 @@ class TestClamp(unittest.TestCase):
     assert len(res["student_tests"]) == 2
     assert all(t["passed"] for t in res["student_tests"])
 
+
+
+@pytest.mark.asyncio
+async def test_submit_ignores_a_stray_deck_id(auth_client):
+    """deck_id used to route into a scheduling branch built on fields that
+    don't exist, so any submit carrying one was a 500."""
+    deck_id = (await auth_client.post("/api/decks", json={"name": "Code"})).json()["id"]
+    detail = (
+        await auth_client.get("/api/code/problems/find-the-largest-almost-missing-integer")
+    ).json()
+    resp = await auth_client.post(
+        "/api/code/problems/find-the-largest-almost-missing-integer/submit",
+        json={"code": detail["solutions"]["python"], "language": "python", "deck_id": deck_id},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "Accepted"
