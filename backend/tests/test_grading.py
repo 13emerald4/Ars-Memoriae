@@ -165,19 +165,66 @@ class TestEscalation:
         svc.calls = calls
         return svc
 
-    async def test_direct_model_evaluation(self):
+    async def test_confident_grade_stays_on_the_small_model(self):
         svc = self._service(['{"score":85,"confidence":0.92,"reasoning":"ok"}'])
         result = await svc.grade_with_escalation("f", "b", "a", "short_answer")
         assert svc.calls == ["small-model"]
         assert result["escalated"] is False
+        assert result["model_used"] == "small-model"
         assert result["score"] == 85
         assert result["grade"] == "good"
 
-    async def test_math_code_evaluation(self):
+    async def test_low_confidence_retries_on_the_big_model(self):
+        svc = self._service([
+            '{"score":50,"confidence":0.3,"reasoning":"unsure"}',
+            '{"score":80,"confidence":0.9,"reasoning":"sure"}',
+        ])
+        result = await svc.grade_with_escalation("f", "b", "a", "short_answer")
+        assert svc.calls == ["small-model", "big-model"]
+        assert result["escalated"] is True
+        assert result["model_used"] == "big-model"
+        assert result["score"] == 80
+
+    async def test_math_code_goes_straight_to_the_big_model(self):
         svc = self._service(['{"score":95,"confidence":0.95,"reasoning":"equivalent"}'])
         result = await svc.grade_with_escalation("f", "b", "a", "math_code")
-        assert svc.calls == ["small-model"]
+        assert svc.calls == ["big-model"]
+        assert result["escalated"] is True
         assert result["score"] == 95
+
+    async def test_a_disputed_card_goes_straight_to_the_big_model(self):
+        svc = self._service(['{"score":60,"confidence":0.9,"reasoning":"ok"}'])
+        await svc.grade_with_escalation("f", "b", "a", "short_answer", force_escalate=True)
+        assert svc.calls == ["big-model"]
+
+    async def test_same_model_never_escalates(self):
+        svc = GradingService("only-model", "only-model")
+        calls = []
+
+        async def fake_generate(prompt, model=None, schema=None, **kwargs):
+            calls.append(model)
+            return '{"score":50,"confidence":0.1,"reasoning":"unsure"}'
+
+        svc._generate = fake_generate
+        result = await svc.grade_with_escalation("f", "b", "a", "math_code")
+        assert calls == ["only-model"]
+        assert result["escalated"] is False
+
+    async def test_missing_big_model_falls_back_to_the_small_one(self):
+        svc = GradingService("small-model", "big-model")
+        calls = []
+
+        async def fake_generate(prompt, model=None, schema=None, **kwargs):
+            calls.append(model)
+            if model == "big-model":
+                raise GradingUnavailable("Model 'big-model' not found in Ollama")
+            return '{"score":90,"confidence":0.9,"reasoning":"ok"}'
+
+        svc._generate = fake_generate
+        result = await svc.grade_with_escalation("f", "b", "a", "math_code")
+        assert calls == ["big-model", "small-model"]
+        assert result["model_used"] == "small-model"
+        assert result["escalated"] is False
 
     async def test_missing_score_is_rejected(self):
         svc = self._service(['{"confidence":0.9,"reasoning":"no score field"}'])

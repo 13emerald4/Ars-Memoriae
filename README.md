@@ -120,7 +120,8 @@ Reliability measures, all of which have tests:
 - **Rubric profiles per note type** — short-answer, conceptual (grades content, not prose), and
   math/code (treats the reference as *one* worked solution and checks result + method separately).
 - **Escalation** — low confidence, a card you've overridden twice running, or a math/code card
-  goes to the larger model.
+  goes to `ESCALATION_GRADING_MODEL`. Off by default (it equals the grading model); set it to a
+  larger model you've pulled to turn it on.
 - **Heuristic cross-check** — a keyword-overlap score runs alongside the LLM; if the model says
   "good" on an answer sharing nothing with the reference (or "again" on a near-verbatim one), the
   grade is flagged for your confirmation instead of auto-accepting.

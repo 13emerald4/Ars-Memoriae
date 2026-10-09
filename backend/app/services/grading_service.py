@@ -177,20 +177,42 @@ class GradingService:
         previous_weaknesses: list[str] | None = None,
         force_escalate: bool = False,
     ) -> dict:
-        """Evaluates answers directly using Qwen 2.5 Coder 7B."""
-        target_model = self.model
-        result = await self.grade(
-            front,
-            back,
-            user_answer,
-            profile,
-            card_type,
-            test_code=test_code,
-            previous_weaknesses=previous_weaknesses,
-            model=target_model,
-        )
-        result["model_used"] = target_model
-        result["escalated"] = False
+        """§4.2 escalation: a disputed card or a math/code profile goes straight
+        to the escalation model; a low-confidence grade is retried on it.
+
+        A no-op when the escalation model is the grading model (the default),
+        since asking the same model twice buys nothing. If the escalation model
+        isn't pulled, the grading model's answer is kept rather than lost.
+        """
+
+        async def grade_on(model: str) -> dict:
+            result = await self.grade(
+                front,
+                back,
+                user_answer,
+                profile,
+                card_type,
+                test_code=test_code,
+                previous_weaknesses=previous_weaknesses,
+                model=model,
+            )
+            result["model_used"] = model
+            result["escalated"] = model != self.model
+            return result
+
+        can_escalate = self.escalation_model != self.model
+        if can_escalate and (force_escalate or profile in ALWAYS_ESCALATE):
+            try:
+                return await grade_on(self.escalation_model)
+            except GradingUnavailable:
+                pass  # fall through to the grading model
+
+        result = await grade_on(self.model)
+        if can_escalate and result["confidence"] < settings.grading_confidence_threshold:
+            try:
+                return await grade_on(self.escalation_model)
+            except GradingUnavailable:
+                return result  # keep the low-confidence answer over nothing
         return result
 
     # ── IR card generation (§8.3) — reuses this same client ─────────────────

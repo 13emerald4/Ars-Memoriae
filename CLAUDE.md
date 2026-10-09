@@ -102,7 +102,7 @@ Wraps `py-fsrs` 6.x. Cards carry Difficulty/Stability/Retrievability. Intervals 
 **`app/services/grading_service.py`**
 Calls the local Ollama daemon (`OLLAMA_BASE_URL`, default model `qwen2.5-coder:7b`); no API key. Requests JSON output and parses it tolerantly. Implements:
 - Rubric profiles (short_answer, conceptual, math_code)
-- Escalation to larger model (low confidence, repeated overrides, math/code cards)
+- Escalation to `ESCALATION_GRADING_MODEL` (low confidence, repeated overrides, math/code cards); no-op when it equals the grading model
 - Heuristic cross-check (keyword overlap vs. LLM grade)
 - Calibration bias from user overrides
 - Answer caching keyed on `(card_id, answer_hash)`
