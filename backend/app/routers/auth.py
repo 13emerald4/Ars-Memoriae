@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db import get_db
 from app.models import Deck, NoteType, QueueConfig, User
@@ -51,8 +52,21 @@ def user_out(user: User) -> UserOut:
     )
 
 
+async def registration_open(db: AsyncSession) -> bool:
+    """The first account can always sign up; more need ALLOW_REGISTRATION."""
+    if settings.allow_registration:
+        return True
+    return await db.scalar(select(User.id).limit(1)) is None
+
+
 @router.post("/auth/register", response_model=TokenResponse, status_code=201)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+    if not await registration_open(db):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Sign-up is closed: this instance already has an account. "
+            "The operator can set ALLOW_REGISTRATION=1 to allow more.",
+        )
     email = body.email.lower()
     existing = await db.scalar(select(User).where(User.email == email))
     if existing:

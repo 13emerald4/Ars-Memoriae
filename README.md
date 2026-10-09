@@ -78,7 +78,8 @@ report clearly that the extra is missing instead of failing silently.
 
 ## First run
 
-1. Create an account (first registration seeds a Default deck and four note types).
+1. Create an account (first registration seeds a Default deck and four note types). Sign-up then
+   closes; set `ALLOW_REGISTRATION=1` to let more people register on a shared server.
 2. **Start Ollama** and pull the grading model: `ollama run qwen2.5-coder:7b`. Settings shows
    whether the daemon is reachable and which models are installed.
 3. **Settings → LLM grading → consent.** Off by default. Your typed answers and any reading

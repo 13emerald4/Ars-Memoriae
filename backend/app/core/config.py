@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     url_fetch_allow_private: bool = False
     access_token_ttl_seconds: int = 60 * 60 * 24 * 14
 
+    # Sign-up is open only until the first account exists. Code practice runs
+    # user code on this machine, so on an instance reachable from outside
+    # (the UBC tunnel, a LAN, a server) open sign-up would hand anyone who
+    # finds the URL a way to run programs here. Set to 1 for a shared server.
+    allow_registration: bool = False
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

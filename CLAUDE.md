@@ -179,6 +179,7 @@ Key settings (see `.env.example` for full list):
 - **`SECRET_KEY`**: JWT signing (generate with `secrets.token_urlsafe(48)`)
 - **`OLLAMA_BASE_URL`**: Where the Ollama daemon listens (default `http://localhost:11434`)
 - **`DATABASE_URL`**: Postgres or SQLite (`sqlite+aiosqlite:///./db.sqlite3` for dev)
+- **`ALLOW_REGISTRATION`**: 0 (default) = only the first account can sign up; 1 = open sign-up
 - **`PLUGIN_DIR`**: Path to plugin directory (empty = disabled, the safe default)
 - **`ENABLE_BACKGROUND_JOBS`**: Set to 0 to disable nightly FSRS refit and cache eviction
 - **`URL_FETCH_ENABLED`**: Set to 0 to disable server-side URL fetching entirely

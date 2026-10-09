@@ -11,6 +11,8 @@ os.environ.setdefault("DATABASE_URL", f"sqlite+aiosqlite:///{TMP / 'test.db'}")
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("MEDIA_ROOT", str(TMP / "media"))
 os.environ.setdefault("ENABLE_BACKGROUND_JOBS", "0")
+# Most tests need several accounts; the closed default is tested explicitly.
+os.environ.setdefault("ALLOW_REGISTRATION", "1")
 
 import httpx
 from asgi_lifespan import LifespanManager  # type: ignore

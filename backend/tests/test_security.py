@@ -388,3 +388,46 @@ async def test_spa_route_still_serves_real_build_files(client, fake_dist):
     resp = await client.get("/robots.txt")
     assert resp.status_code == 200
     assert resp.text == "User-agent: *"
+
+
+# ── sign-up closes once the instance has an account ─────────────────────────
+
+
+async def test_registration_closes_after_the_first_account(client, monkeypatch):
+    # Make sure at least one account exists, whatever ran before this test.
+    await client.post(
+        "/api/auth/register", json={"email": "owner@example.com", "password": "pw-123456"}
+    )
+    monkeypatch.setattr(settings, "allow_registration", False)
+
+    resp = await client.post(
+        "/api/auth/register", json={"email": "stranger@example.com", "password": "pw-123456"}
+    )
+    assert resp.status_code == 403
+    assert "ALLOW_REGISTRATION" in resp.json()["detail"]
+
+    # Existing accounts can still sign in.
+    login = await client.post(
+        "/api/auth/login", json={"email": "owner@example.com", "password": "pw-123456"}
+    )
+    assert login.status_code == 200
+
+
+async def test_first_account_can_always_register(monkeypatch):
+    """An empty instance must accept its owner even with sign-up closed."""
+    from app.routers.auth import registration_open
+
+    monkeypatch.setattr(settings, "allow_registration", False)
+
+    class FakeDb:
+        def __init__(self, first_user_id):
+            self.first_user_id = first_user_id
+
+        async def scalar(self, _stmt):
+            return self.first_user_id
+
+    assert await registration_open(FakeDb(None)) is True
+    assert await registration_open(FakeDb(uuid.uuid4())) is False
+
+    monkeypatch.setattr(settings, "allow_registration", True)
+    assert await registration_open(FakeDb(uuid.uuid4())) is True
