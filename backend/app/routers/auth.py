@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import asyncio
+from functools import cache
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import login_throttle
 from app.core.config import settings
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db import get_db
@@ -30,6 +34,10 @@ STARTER_NOTE_TYPES = [
 ]
 
 
+# Nullable settings where an explicit null means "clear it", not "unchanged".
+CLEARABLE_USER_FIELDS = frozenset({"target_event_date", "target_event_title"})
+
+
 def user_out(user: User) -> UserOut:
     return UserOut(
         id=str(user.id),
@@ -52,6 +60,7 @@ def user_out(user: User) -> UserOut:
         show_pre_leetcode=user.show_pre_leetcode,
         show_code_lab=user.show_code_lab,
         show_thematic_context=user.show_thematic_context,
+        timezone=user.timezone,
     )
 
 
@@ -95,11 +104,37 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) ->
     return TokenResponse(access_token=create_access_token(str(user.id)))
 
 
+@cache
+def _dummy_hash() -> str:
+    """Checked against when the email is unknown, so a miss costs the same
+    scrypt time as a wrong password and response timing can't reveal which
+    emails have accounts."""
+    return hash_password("no account has this password")
+
+
 @router.post("/auth/login", response_model=TokenResponse)
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
-    user = await db.scalar(select(User).where(User.email == body.email.lower()))
-    if user is None or not verify_password(body.password, user.password_hash):
+async def login(
+    body: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)
+) -> TokenResponse:
+    email = body.email.lower()
+    ip = login_throttle.client_ip(request)
+    wait = login_throttle.retry_after(ip, email)
+    if wait:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            f"too many failed sign-ins; try again in {wait}s",
+            headers={"Retry-After": str(wait)},
+        )
+
+    user = await db.scalar(select(User).where(User.email == email))
+    stored = user.password_hash if user is not None else _dummy_hash()
+    # scrypt takes ~50 ms of CPU; off the event loop so sign-ins don't stall
+    # every other request.
+    ok = await asyncio.to_thread(verify_password, body.password, stored)
+    if user is None or not ok:
+        login_throttle.record_failure(ip, email)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid credentials")
+    login_throttle.record_success(ip, email)
     return TokenResponse(access_token=create_access_token(str(user.id)))
 
 
@@ -113,7 +148,7 @@ async def update_me(
     body: UserUpdate, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
 ) -> UserOut:
     for key, value in body.model_dump(exclude_unset=True).items():
-        if value is not None:
+        if value is not None or key in CLEARABLE_USER_FIELDS:
             setattr(user, key, value)
     await db.commit()
     await db.refresh(user)

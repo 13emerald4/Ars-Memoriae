@@ -68,7 +68,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|.*\.trycloudflare\.com|.*\.loca\.lt)(:[0-9]+)?$",
+    # Local dev servers on any port. Remote access (the UBC tunnel) goes
+    # through this app's own origin, so no third-party tunnel domain — which
+    # anyone can register — is trusted here.
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

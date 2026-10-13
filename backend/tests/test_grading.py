@@ -154,7 +154,7 @@ class TestEscalation:
 
     @staticmethod
     def _service(responses):
-        svc = GradingService("small-model", "big-model")
+        svc = GradingService("qwen2.5-coder:3b", "qwen2.5-coder:7b")
         calls = []
 
         async def fake_generate(prompt, model=None, schema=None, **kwargs):
@@ -168,9 +168,9 @@ class TestEscalation:
     async def test_confident_grade_stays_on_the_small_model(self):
         svc = self._service(['{"score":85,"confidence":0.92,"reasoning":"ok"}'])
         result = await svc.grade_with_escalation("f", "b", "a", "short_answer")
-        assert svc.calls == ["small-model"]
+        assert svc.calls == ["qwen2.5-coder:3b"]
         assert result["escalated"] is False
-        assert result["model_used"] == "small-model"
+        assert result["model_used"] == "qwen2.5-coder:3b"
         assert result["score"] == 85
         assert result["grade"] == "good"
 
@@ -180,25 +180,25 @@ class TestEscalation:
             '{"score":80,"confidence":0.9,"reasoning":"sure"}',
         ])
         result = await svc.grade_with_escalation("f", "b", "a", "short_answer")
-        assert svc.calls == ["small-model", "big-model"]
+        assert svc.calls == ["qwen2.5-coder:3b", "qwen2.5-coder:7b"]
         assert result["escalated"] is True
-        assert result["model_used"] == "big-model"
+        assert result["model_used"] == "qwen2.5-coder:7b"
         assert result["score"] == 80
 
     async def test_math_code_goes_straight_to_the_big_model(self):
         svc = self._service(['{"score":95,"confidence":0.95,"reasoning":"equivalent"}'])
         result = await svc.grade_with_escalation("f", "b", "a", "math_code")
-        assert svc.calls == ["big-model"]
+        assert svc.calls == ["qwen2.5-coder:7b"]
         assert result["escalated"] is True
         assert result["score"] == 95
 
     async def test_a_disputed_card_goes_straight_to_the_big_model(self):
         svc = self._service(['{"score":60,"confidence":0.9,"reasoning":"ok"}'])
         await svc.grade_with_escalation("f", "b", "a", "short_answer", force_escalate=True)
-        assert svc.calls == ["big-model"]
+        assert svc.calls == ["qwen2.5-coder:7b"]
 
     async def test_same_model_never_escalates(self):
-        svc = GradingService("only-model", "only-model")
+        svc = GradingService("qwen2.5-coder:7b", "qwen2.5-coder:7b")
         calls = []
 
         async def fake_generate(prompt, model=None, schema=None, **kwargs):
@@ -207,23 +207,23 @@ class TestEscalation:
 
         svc._generate = fake_generate
         result = await svc.grade_with_escalation("f", "b", "a", "math_code")
-        assert calls == ["only-model"]
+        assert calls == ["qwen2.5-coder:7b"]
         assert result["escalated"] is False
 
     async def test_missing_big_model_falls_back_to_the_small_one(self):
-        svc = GradingService("small-model", "big-model")
+        svc = GradingService("qwen2.5-coder:3b", "qwen2.5-coder:7b")
         calls = []
 
         async def fake_generate(prompt, model=None, schema=None, **kwargs):
             calls.append(model)
-            if model == "big-model":
-                raise GradingUnavailable("Model 'big-model' not found in Ollama")
+            if model == "qwen2.5-coder:7b":
+                raise GradingUnavailable("Model 'qwen2.5-coder:7b' not found in Ollama")
             return '{"score":90,"confidence":0.9,"reasoning":"ok"}'
 
         svc._generate = fake_generate
         result = await svc.grade_with_escalation("f", "b", "a", "math_code")
-        assert calls == ["big-model", "small-model"]
-        assert result["model_used"] == "small-model"
+        assert calls == ["qwen2.5-coder:7b", "qwen2.5-coder:3b"]
+        assert result["model_used"] == "qwen2.5-coder:3b"
         assert result["escalated"] is False
 
     async def test_missing_score_is_rejected(self):
@@ -258,6 +258,17 @@ class TestEscalation:
         monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
         await GradingService("m").grade("f", "b", "a")
         assert sent and sent[0]["options"]["temperature"] == 0
+        # 2048 silently truncated the instructions off long prompts.
+        from app.core.config import settings
+
+        assert sent[0]["options"]["num_ctx"] == settings.ollama_num_ctx >= 6000
+
+    def test_models_off_the_allowlist_fall_back_to_the_default(self):
+        from app.core.config import settings
+
+        for name in ("llama3:70b-test", "mock", "some-model", ""):
+            assert GradingService(name).model == settings.default_grading_model
+        assert GradingService("qwen2.5-coder:3b").model == "qwen2.5-coder:3b"
 
 
 class TestScoring:
@@ -441,6 +452,69 @@ class TestReviewIntegration:
         # The note is informational and shows up on every fallback path too —
         # it isn't gated behind grading actually succeeding.
         assert resp.json()["latency_note"] == "answered in under a second"
+
+    async def test_resubmitting_with_a_model_reuses_or_replaces_the_cache(
+        self, auth_client, monkeypatch
+    ):
+        """The UI names a model on every submit. Its own model must hit the
+        cache, and a different one must regrade without a duplicate-key 500."""
+        import app.routers.review as review_router
+
+        calls = {"n": 0}
+
+        async def fake_grade(self, **kwargs):
+            calls["n"] += 1
+            return {
+                "score": 60 + calls["n"],
+                "grade": "good",
+                "confidence": 0.9,
+                "reasoning": "ok",
+                "model_used": kwargs.get("model"),
+            }
+
+        monkeypatch.setattr(review_router.GradingService, "grade_with_escalation", fake_grade)
+        me = (await auth_client.patch("/api/me", json={"llm_grading_consent": True})).json()
+        own = me["grading_model"]
+        other = "qwen2.5-coder:3b" if own != "qwen2.5-coder:3b" else "qwen2.5-coder:1.5b"
+        deck_id = (await auth_client.post("/api/decks", json={"name": "Recache"})).json()["id"]
+        note = (
+            await auth_client.post(
+                "/api/notes",
+                json={
+                    "deck_id": deck_id,
+                    "template_kind": "basic",
+                    "field_values": {"Front": "Capital of Peru?", "Back": "Lima"},
+                },
+            )
+        ).json()
+        url = f"/api/review/{note['cards'][0]['id']}/answer"
+        answer = {"typed_answer": "Lima", "latency_ms": 900}
+
+        first = await auth_client.post(url, json={**answer, "model": own})
+        assert first.status_code == 200 and first.json()["cached"] is False
+
+        same = await auth_client.post(url, json={**answer, "model": own})
+        assert same.status_code == 200 and same.json()["cached"] is True
+        assert calls["n"] == 1
+
+        regrade = await auth_client.post(url, json={**answer, "model": other})
+        assert regrade.status_code == 200, regrade.text
+        assert regrade.json()["cached"] is False
+        assert calls["n"] == 2
+
+        # The regrade replaced the cached verdict rather than colliding with it.
+        after = await auth_client.post(url, json=answer)
+        assert after.json()["cached"] is True and after.json()["score"] == 62
+
+        # Editing the reference answer invalidates grades made against it.
+        edited = await auth_client.patch(
+            f"/api/notes/{note['id']}",
+            json={"field_values": {"Front": "Capital of Peru?", "Back": "Lima (Ciudad de los Reyes)"}},
+        )
+        assert edited.status_code == 200, edited.text
+        fresh = await auth_client.post(url, json=answer)
+        assert fresh.json()["cached"] is False
+        assert calls["n"] == 3
 
     async def test_no_consent_manual_fallback_still_carries_the_latency_note(self, auth_client):
         deck_id = (await auth_client.post("/api/decks", json={"name": "NoConsent"})).json()["id"]

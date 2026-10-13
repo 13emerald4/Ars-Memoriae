@@ -249,6 +249,8 @@ export interface User {
   show_pre_leetcode?: boolean
   show_code_lab?: boolean
   show_thematic_context?: boolean
+  /** IANA zone for the study-day boundary; null until first set. */
+  timezone?: string | null
 }
 
 export interface Deck {

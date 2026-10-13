@@ -6,58 +6,19 @@ and verifying expected output with AST introspection and timeout guards.
 
 from __future__ import annotations
 
-import ast
 import asyncio
+import contextlib
 import json
 import os
 import shutil
+import signal
+import subprocess
 import sys
 import tempfile
 import time
+import weakref
 from pathlib import Path
 from typing import Any
-
-
-def _find_entrypoint(code: str) -> tuple[str, bool]:
-    """Finds the function or method name to invoke.
-
-    Returns (func_name, is_method).
-    """
-    try:
-        tree = ast.parse(code)
-    except SyntaxError:
-        return ("", False)
-
-    for node in ast.iter_child_nodes(tree):
-        if isinstance(node, ast.ClassDef) and node.name == "Solution":
-            for item in node.body:
-                if isinstance(item, ast.FunctionDef) and not item.name.startswith("__"):
-                    return (item.name, True)
-        elif isinstance(node, ast.FunctionDef) and not node.name.startswith("__"):
-            return (node.name, False)
-
-    return ("", False)
-
-
-def _deep_equal(a: Any, b: Any) -> bool:
-    """Tolerant structural comparison (tuples vs lists, float precision)."""
-    if isinstance(a, tuple) and isinstance(b, list):
-        return len(a) == len(b) and all(_deep_equal(x, y) for x, y in zip(a, b, strict=False))
-    if isinstance(a, list) and isinstance(b, tuple):
-        return len(a) == len(b) and all(_deep_equal(x, y) for x, y in zip(a, b, strict=False))
-    if isinstance(a, (list, tuple)) and isinstance(b, (list, tuple)):
-        return len(a) == len(b) and all(_deep_equal(x, y) for x, y in zip(a, b, strict=False))
-    if isinstance(a, dict) and isinstance(b, dict):
-        if set(a.keys()) != set(b.keys()):
-            return False
-        return all(_deep_equal(a[k], b[k]) for k in a)
-    if isinstance(a, float) or isinstance(b, float):
-        try:
-            return abs(float(a) - float(b)) < 1e-5
-        except (ValueError, TypeError):
-            return False
-    return a == b
-
 
 # Just enough environment to start an interpreter. User code runs with the
 # backend's OS privileges, so it must not also inherit the backend's secrets
@@ -70,9 +31,132 @@ _WORKER_ENV_KEYS = frozenset({
 _PYTHON_WORKER = Path(__file__).with_name("code_sandbox_worker.py")
 _NODE_WORKER = Path(__file__).with_name("ts_sandbox_worker.mjs")
 
+# Bounds on what one run can consume. Still NOT a sandbox (see _run_worker);
+# these stop a runaway program from taking the whole machine with it.
+MAX_CONCURRENT_RUNS = 2
+MAX_OUTPUT_BYTES = 2 * 1024 * 1024
+PYTHON_MEMORY_LIMIT_BYTES = 512 * 1024 * 1024
+
+# One semaphore per event loop: a loop-bound primitive created at import time
+# breaks as soon as a second loop (e.g. each test's) contends for it.
+_run_slots: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore] = (
+    weakref.WeakKeyDictionary()
+)
+
 
 def _worker_env() -> dict[str, str]:
     return {k: v for k, v in os.environ.items() if k.upper() in _WORKER_ENV_KEYS}
+
+
+def _slots() -> asyncio.Semaphore:
+    loop = asyncio.get_running_loop()
+    sem = _run_slots.get(loop)
+    if sem is None:
+        sem = _run_slots[loop] = asyncio.Semaphore(MAX_CONCURRENT_RUNS)
+    return sem
+
+
+def _posix_limits(cpu_seconds: int, memory_bytes: int | None):
+    """preexec_fn for POSIX workers. Limits are inherited by anything the user
+    code spawns. Each is best-effort: macOS rejects some, and a failure here
+    must not stop the worker from starting."""
+    import resource
+
+    def apply() -> None:
+        limits = [(resource.RLIMIT_CPU, cpu_seconds)]
+        if memory_bytes is not None:
+            limits.append((resource.RLIMIT_AS, memory_bytes))
+        for which, value in limits:
+            with contextlib.suppress(ValueError, OSError):
+                resource.setrlimit(which, (value, value))
+
+    return apply
+
+
+def _kill_tree(proc: asyncio.subprocess.Process) -> None:
+    """Kill the worker *and* anything it spawned; proc.kill() alone leaves
+    grandchildren running after a timeout."""
+    if proc.returncode is not None:
+        return
+    try:
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+        else:
+            # The worker leads its own session (start_new_session), so its
+            # process group is exactly the worker and its descendants.
+            os.killpg(proc.pid, signal.SIGKILL)
+    except OSError:
+        pass
+    with contextlib.suppress(ProcessLookupError):
+        proc.kill()
+
+
+class _OutputLimitExceeded(Exception):
+    pass
+
+
+async def _read_capped(
+    stream: asyncio.StreamReader, limit: int, proc: asyncio.subprocess.Process
+) -> bytes:
+    """Read to EOF, killing the worker once output passes `limit`. Draining
+    continues after the kill (discarding): until both pipes hit EOF, asyncio
+    on Python 3.11 never completes proc.wait()."""
+    buf = bytearray()
+    over = False
+    while chunk := await stream.read(65536):
+        if over:
+            continue
+        buf += chunk
+        if len(buf) > limit:
+            over = True
+            _kill_tree(proc)
+    if over:
+        raise _OutputLimitExceeded
+    return bytes(buf)
+
+
+async def _reap(proc: asyncio.subprocess.Process) -> None:
+    """After a kill, drain both pipes and wait for exit (see _read_capped),
+    giving up after a few seconds rather than hanging the request."""
+
+    async def drain(stream: asyncio.StreamReader | None) -> None:
+        while stream is not None and await stream.read(65536):
+            pass
+
+    with contextlib.suppress(Exception):
+        await asyncio.wait_for(
+            asyncio.gather(drain(proc.stdout), drain(proc.stderr), proc.wait()), timeout=5
+        )
+
+
+async def _communicate(proc: asyncio.subprocess.Process, payload: bytes) -> tuple[bytes, bytes]:
+    assert proc.stdin and proc.stdout and proc.stderr
+    try:
+        proc.stdin.write(payload)
+        await proc.stdin.drain()
+    except (BrokenPipeError, ConnectionResetError):
+        pass  # the worker exited early; its stderr says why
+    finally:
+        proc.stdin.close()
+    readers = [
+        asyncio.ensure_future(_read_capped(proc.stdout, MAX_OUTPUT_BYTES, proc)),
+        asyncio.ensure_future(_read_capped(proc.stderr, MAX_OUTPUT_BYTES, proc)),
+    ]
+    try:
+        out, err = await asyncio.gather(*readers)
+    except BaseException:
+        # Overflow or timeout: stop the readers so _reap can own the pipes.
+        for r in readers:
+            r.cancel()
+        await asyncio.gather(*readers, return_exceptions=True)
+        raise
+    await proc.wait()
+    return out, err
 
 
 def _failure(status: str, error: str, test_cases: list[dict], runtime_ms: float) -> dict[str, Any]:
@@ -95,6 +179,7 @@ async def _run_worker(
     timeout_sec: float,
     spawn_error: str,
     invalid_output_error: str,
+    memory_limit_bytes: int | None = None,
 ) -> dict[str, Any]:
     """Runs one worker process over a JSON payload on stdin.
 
@@ -102,7 +187,37 @@ async def _run_worker(
     its cwd, so neither ``os.environ`` nor a relative path like ``.env`` or
     ``dev.db`` reaches backend secrets. This is NOT a sandbox: the code still
     runs as the backend's OS user and can read any file that user can.
+
+    At most MAX_CONCURRENT_RUNS workers run at once, output is capped at
+    MAX_OUTPUT_BYTES, and a timeout kills the worker's whole process tree. On
+    POSIX the worker also gets CPU-time and (Python only) address-space
+    limits.
     """
+    async with _slots():
+        return await _run_worker_now(
+            cmd,
+            code,
+            test_cases,
+            test_code,
+            custom_entrypoint,
+            timeout_sec,
+            spawn_error,
+            invalid_output_error,
+            memory_limit_bytes,
+        )
+
+
+async def _run_worker_now(
+    cmd: list[str],
+    code: str,
+    test_cases: list[dict],
+    test_code: str | None,
+    custom_entrypoint: str | None,
+    timeout_sec: float,
+    spawn_error: str,
+    invalid_output_error: str,
+    memory_limit_bytes: int | None,
+) -> dict[str, Any]:
     payload = json.dumps({
         "code": code,
         "test_code": test_code,
@@ -113,6 +228,12 @@ async def _run_worker(
     total_start = time.perf_counter()
 
     with tempfile.TemporaryDirectory(prefix="code-run-", ignore_cleanup_errors=True) as workdir:
+        posix: dict[str, Any] = {}
+        if os.name != "nt":
+            posix = {
+                "start_new_session": True,
+                "preexec_fn": _posix_limits(int(timeout_sec) + 1, memory_limit_bytes),
+            }
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -121,21 +242,28 @@ async def _run_worker(
                 stderr=asyncio.subprocess.PIPE,
                 cwd=workdir,
                 env=_worker_env(),
+                **posix,
             )
         except Exception as e:
             return _failure("Runtime Error", f"{spawn_error}: {e}", test_cases, 0.0)
 
         try:
             stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                proc.communicate(input=payload),
+                _communicate(proc, payload),
                 timeout=timeout_sec,
             )
+        except _OutputLimitExceeded:
+            _kill_tree(proc)
+            await _reap(proc)
+            return _failure(
+                "Output Limit Exceeded",
+                f"Output Limit Exceeded (> {MAX_OUTPUT_BYTES // (1024 * 1024)} MB)",
+                test_cases,
+                round((time.perf_counter() - total_start) * 1000.0, 2),
+            )
         except TimeoutError:
-            try:
-                proc.kill()
-                await proc.wait()
-            except Exception:
-                pass
+            _kill_tree(proc)
+            await _reap(proc)
             return {
                 "status": "Time Limit Exceeded",
                 "passed_count": 0,
@@ -188,6 +316,7 @@ async def run_python_code(
         timeout_sec,
         spawn_error="Failed to spawn execution worker",
         invalid_output_error="Execution worker returned invalid output.",
+        memory_limit_bytes=PYTHON_MEMORY_LIMIT_BYTES,
     )
 
 
@@ -201,7 +330,9 @@ async def run_node_code(
     """Executes TypeScript / JavaScript code against test cases using isolated Node.js worker."""
     node_bin = shutil.which("node") or shutil.which("node.exe") or r"C:\Program Files\nodejs\node.EXE"
     return await _run_worker(
-        [node_bin, str(_NODE_WORKER)],
+        # V8 reserves far more address space than it uses, so Node gets a
+        # heap cap instead of RLIMIT_AS.
+        [node_bin, "--max-old-space-size=256", str(_NODE_WORKER)],
         code,
         test_cases,
         test_code,

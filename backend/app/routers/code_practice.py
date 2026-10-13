@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.timeutil import day_key
 from app.db import get_db
 from app.models import Card, CodeProblem, CodeSubmission, Deck, Note, NoteType, StudySession, User
 from app.routers.deps import current_user, parse_uuid
@@ -533,10 +534,6 @@ async def list_submissions(
     ]
 
 
-def _day(dt: datetime) -> str:
-    return (dt if dt.tzinfo else dt.replace(tzinfo=UTC)).date().isoformat()
-
-
 def _interval_bucket(days: float) -> str:
     if days < 1:
         return "<1d"
@@ -589,7 +586,7 @@ async def code_stats(
     heatmap: dict[str, int] = defaultdict(int)
     for s in subs:
         subs_by_pid[s.problem_id].append(s)
-        heatmap[_day(s.created_at)] += 1
+        heatmap[day_key(s.created_at, user.timezone)] += 1
 
     prob_by_id = {p.id: p for p in unique_problems}
     solved_pids: set[uuid.UUID] = set()
@@ -736,7 +733,7 @@ async def code_stats(
         )
     ).all()
     for due in due_dates:
-        forecast[_day(max(due if due.tzinfo else due.replace(tzinfo=UTC), now))] += 1
+        forecast[day_key(max(due if due.tzinfo else due.replace(tzinfo=UTC), now), user.timezone)] += 1
 
     totals = {
         "cards": float(len(unique_problems)),

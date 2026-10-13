@@ -147,3 +147,68 @@ def test_schedule_is_invariant_to_response_duration():
     assert card1.stability == card2.stability == card3.stability
     assert card1.difficulty == card2.difficulty == card3.difficulty
     assert state1 == state2 == state3
+
+
+class TestStudyDay:
+    """Daily caps and day buckets follow the user's local study day, which
+    rolls over at 04:00 local — not at UTC midnight (4-5 pm in Vancouver)."""
+
+    def test_day_start_is_local_four_am(self):
+        from app.core.timeutil import day_key, day_start
+
+        afternoon = datetime(2026, 10, 13, 23, 30, tzinfo=UTC)  # 16:30 PDT
+        assert day_start(afternoon, "America/Vancouver") == datetime(2026, 10, 13, 11, tzinfo=UTC)
+        assert day_key(afternoon, "America/Vancouver") == "2026-10-13"
+        # 03:00 local still belongs to the previous study day.
+        late_night = datetime(2026, 10, 14, 10, 0, tzinfo=UTC)
+        assert day_key(late_night, "America/Vancouver") == "2026-10-13"
+        # Unset or unknown zone falls back to UTC.
+        assert day_start(afternoon, None) == datetime(2026, 10, 13, 4, tzinfo=UTC)
+        assert day_start(afternoon, "Not/AZone") == day_start(afternoon, None)
+
+    async def test_timezone_is_validated_and_stored(self, auth_client):
+        bad = await auth_client.patch("/api/me", json={"timezone": "Mars/Olympus"})
+        assert bad.status_code == 422
+        ok = await auth_client.patch("/api/me", json={"timezone": "America/Vancouver"})
+        assert ok.status_code == 200
+        assert ok.json()["timezone"] == "America/Vancouver"
+
+    async def test_new_card_cap_counts_the_local_study_day(self, auth_client):
+        """A review logged before today's local 04:00 no longer counts
+        against today's new-card cap."""
+        import uuid
+
+        from sqlalchemy import select
+
+        from app.core.timeutil import day_start
+        from app.db import SessionLocal
+        from app.models import ReviewLog, User
+        from app.services.queue_service import _counts_today
+
+        me = (await auth_client.patch("/api/me", json={"timezone": "Asia/Tokyo"})).json()
+        deck_id = (await auth_client.post("/api/decks", json={"name": "TZ"})).json()["id"]
+        note = (
+            await auth_client.post(
+                "/api/notes",
+                json={
+                    "deck_id": deck_id,
+                    "template_kind": "basic",
+                    "field_values": {"Front": "q", "Back": "a"},
+                },
+            )
+        ).json()
+        card_id = uuid.UUID(note["cards"][0]["id"])
+        now = datetime.now(UTC)
+        boundary = day_start(now, "Asia/Tokyo")
+
+        async with SessionLocal() as db:
+            for at in (boundary - timedelta(minutes=1), boundary + timedelta(minutes=1)):
+                db.add(
+                    ReviewLog(
+                        card_id=card_id, reviewed_at=at, final_grade="good", state_before="new"
+                    )
+                )
+            await db.commit()
+            user = await db.scalar(select(User).where(User.id == uuid.UUID(me["id"])))
+            reviews, news = await _counts_today(db, user, now)
+        assert (reviews, news) == (0, 1)

@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.timeutil import day_key
 from app.db import get_db
 from app.models import (
     Card,
@@ -31,10 +32,6 @@ from app.services.note_service import default_note_type, sync_cards
 from app.services.rendering import render
 
 router = APIRouter(prefix="/api", tags=["stats"])
-
-
-def _day(dt: datetime) -> str:
-    return (dt if dt.tzinfo else dt.replace(tzinfo=UTC)).date().isoformat()
 
 
 @router.get("/stats", response_model=StatsOut)
@@ -88,7 +85,7 @@ async def stats(
         graduated,
         log_card_id,
     ) in logs:
-        heatmap[_day(reviewed_at)] += 1
+        heatmap[day_key(reviewed_at, user.timezone)] += 1
         if latency:
             total_latency += latency
             latency_n += 1
@@ -171,7 +168,7 @@ async def stats(
         )
     ).all()
     for (due,) in upcoming:
-        forecast[_day(max(due if due.tzinfo else due.replace(tzinfo=UTC), now))] += 1
+        forecast[day_key(max(due if due.tzinfo else due.replace(tzinfo=UTC), now), user.timezone)] += 1
 
     state_counts = {
         row[0]: row[1]

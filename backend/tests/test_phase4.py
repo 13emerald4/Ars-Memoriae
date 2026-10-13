@@ -149,6 +149,20 @@ class TestSpacing:
         assert abs(order.index(str(a)) - order.index(str(b))) >= 2
         assert len(spaced) == len(items)
 
+    def test_sisters_ranked_last_are_still_pushed_apart(self):
+        """Greedy placement used to append the last sister right after the
+        other when both came last — the source of a flaky session test."""
+        import uuid
+
+        a, b = uuid.uuid4(), uuid.uuid4()
+        fillers = [_item(str(uuid.uuid4()), f"o{i}") for i in range(4)]
+        items = [*fillers, _item(str(a), "1"), _item(str(b), "2")]
+        spaced = space_sisters(items, {a: {b}, b: {a}}, min_gap=3)
+
+        order = [i.note_id for i in spaced]
+        assert abs(order.index(str(a)) - order.index(str(b))) >= 2
+        assert {i.id for i in spaced} == {i.id for i in items}
+
     def test_nothing_is_dropped_when_everything_conflicts(self):
         import uuid
 

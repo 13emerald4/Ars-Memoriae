@@ -306,7 +306,9 @@ class TestBankTotals:
 
         me = (await auth_client.get("/api/me")).json()
         now = datetime.now(UTC)
-        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        from app.core.timeutil import day_start
+
+        today = day_start(now, None)
         placements = [
             (today + timedelta(minutes=5), 100),  # today
             (today - timedelta(hours=10), 200),  # yesterday, still this week

@@ -19,7 +19,9 @@ services:
 
   backend:
     build:
-      context: ./backend
+      # Repo root, so the image can also build and serve the frontend bundle.
+      context: .
+      dockerfile: backend/Dockerfile
       args:
         # torch is a ~2GB dependency; only needed for the FSRS parameter
         # optimizer (§3). Set to 1 to enable personalized weight refitting.
@@ -37,17 +39,6 @@ services:
       # never on a shared instance. Try it with the shipped example:
       #   - ./backend/plugins.example:/srv/plugins:ro
       # and add PLUGIN_DIR=/srv/plugins to .env
-
-  frontend:
-    build:
-      context: ./frontend
-      args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
-    env_file: .env
-    depends_on:
-      - backend
-    ports:
-      - "5173:5173"
 
 volumes:
   pgdata:

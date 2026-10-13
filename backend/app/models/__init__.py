@@ -78,6 +78,8 @@ class User(Base):
     show_pre_leetcode: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     show_code_lab: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     show_thematic_context: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # IANA zone for the study-day boundary (app.core.timeutil). None = UTC.
+    timezone: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
@@ -508,6 +510,7 @@ class ReviewLog(Base):
             "final_grade IN ('again','hard','good','easy')", name="ck_review_logs_grade"
         ),
         Index("idx_review_logs_card", "card_id", "reviewed_at"),
+        Index("idx_review_logs_reviewed_at", "reviewed_at"),
     )
 
 

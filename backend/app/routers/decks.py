@@ -7,11 +7,22 @@ from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import Card, Deck, Extract, KnowledgeNode, Note, NoteType, ReviewLog, Source, User
+from app.models import (
+    Card,
+    Deck,
+    Extract,
+    GradingCache,
+    KnowledgeNode,
+    Note,
+    NoteType,
+    ReviewLog,
+    Source,
+    User,
+)
 from app.routers.deps import current_user, parse_uuid
 from app.schemas.core import (
     CardOut,
@@ -567,6 +578,13 @@ async def update_note(
     if deck_id is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "note has no cards to update")
     await sync_cards(db, note, nt, deck_id, tags=body.tags)
+    if body.field_values is not None:
+        # Cached grades were judged against the old reference answer.
+        await db.execute(
+            delete(GradingCache).where(
+                GradingCache.card_id.in_(select(Card.id).where(Card.note_id == note.id))
+            )
+        )
     await db.commit()
     return await _note_out(db, note.id)
 

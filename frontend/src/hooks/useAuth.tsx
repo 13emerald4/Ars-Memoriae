@@ -25,7 +25,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     try {
-      setUser(await api.me())
+      let me = await api.me()
+      // The server buckets "today" (daily caps, heatmap) by the user's local
+      // study day; adopt the browser's zone the first time we see the user.
+      if (!me.timezone) {
+        const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+        if (zone) me = await api.updateMe({ timezone: zone }).catch(() => me)
+      }
+      setUser(me)
     } catch {
       token.clear()
       setUser(null)

@@ -455,3 +455,58 @@ def test_an_empty_secret_file_is_refilled(tmp_path):
     secret = _load_or_create_secret(path)
     assert secret
     assert path.read_text() == secret
+
+
+async def test_repeated_bad_logins_are_throttled(client, monkeypatch):
+    """Brute-forcing a password over the tunnel must not be free."""
+    from app.core import login_throttle
+
+    login_throttle.reset()
+    clock = {"t": 1000.0}
+    monkeypatch.setattr(login_throttle, "_now", lambda: clock["t"])
+    email = "throttled@example.com"
+    await client.post("/api/auth/register", json={"email": email, "password": "right-pass-1"})
+
+    for _ in range(login_throttle.FREE_ATTEMPTS):
+        bad = await client.post("/api/auth/login", json={"email": email, "password": "nope-nope"})
+        assert bad.status_code == 401
+
+    # Locked: even the right password is refused until the window passes.
+    locked = await client.post("/api/auth/login", json={"email": email, "password": "right-pass-1"})
+    assert locked.status_code == 429
+    assert int(locked.headers["Retry-After"]) > 0
+
+    # Another address is unaffected by this one's failures.
+    other = await client.post(
+        "/api/auth/login",
+        json={"email": email, "password": "right-pass-1"},
+        headers={"CF-Connecting-IP": "203.0.113.9"},
+    )
+    assert other.status_code == 200  # the test transport connects from 127.0.0.1
+
+    clock["t"] += login_throttle.MAX_LOCK_SECONDS + 1
+    ok = await client.post("/api/auth/login", json={"email": email, "password": "right-pass-1"})
+    assert ok.status_code == 200
+    login_throttle.reset()
+
+
+async def test_unknown_email_still_pays_for_a_hash(client, monkeypatch):
+    """No fast path for unknown emails: timing would reveal which exist."""
+    import app.routers.auth as auth_router
+    from app.core import login_throttle
+
+    login_throttle.reset()
+    checked = []
+    real = auth_router.verify_password
+
+    def spy(password, stored):
+        checked.append(stored)
+        return real(password, stored)
+
+    monkeypatch.setattr(auth_router, "verify_password", spy)
+    resp = await client.post(
+        "/api/auth/login", json={"email": "nobody-here@example.com", "password": "whatever1"}
+    )
+    assert resp.status_code == 401
+    assert checked and checked[0].startswith("scrypt$")
+    login_throttle.reset()

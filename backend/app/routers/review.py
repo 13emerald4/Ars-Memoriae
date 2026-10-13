@@ -16,6 +16,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import new_answer_hash
@@ -78,6 +79,14 @@ async def _disputed_recently(db: AsyncSession, card_id: uuid.UUID) -> bool:
     )
     flags = [r[0] for r in rows.all()]
     return len(flags) == 2 and all(flags)
+
+
+def _upcoming(event: datetime | None, now: datetime) -> datetime | None:
+    """The event date if it is still ahead of `now`, else None."""
+    if event is None:
+        return None
+    aware = event if event.tzinfo else event.replace(tzinfo=UTC)
+    return aware if aware > now else None
 
 
 def format_latency(latency_ms: int | None) -> str | None:
@@ -171,7 +180,10 @@ async def submit_answer(
     cached = await db.get(GradingCache, (card.id, answer_hash))
     overlap = heuristic_overlap(back, body.typed_answer)
 
-    if cached is not None and not body.model:
+    # The UI always names a model, usually the user's own; only a *different*
+    # one is an explicit request to regrade rather than reuse the cache.
+    model_override = bool(body.model) and body.model != user.grading_model
+    if cached is not None and not model_override:
         result = dict(cached.response)
         return _build_response(
             result,
@@ -222,9 +234,8 @@ async def submit_answer(
             auto_note,
         )
 
-    db.add(GradingCache(card_id=card.id, answer_hash=answer_hash, response=result))
-    await db.commit()
-    return _build_response(
+    # Built before the commit: a rollback below would expire `user`.
+    response = _build_response(
         result,
         back,
         overlap,
@@ -232,6 +243,18 @@ async def submit_answer(
         latency_note=latency_note,
         latency_ms=body.latency_ms,
     )
+    if cached is not None:
+        cached.response = result
+        cached.created_at = datetime.now(UTC)
+    else:
+        db.add(GradingCache(card_id=card.id, answer_hash=answer_hash, response=result))
+    try:
+        await db.commit()
+    except IntegrityError:
+        # A concurrent submit of the same answer cached it first; its grade
+        # is as good as this one.
+        await db.rollback()
+    return response
 
 
 def _build_response(
@@ -449,15 +472,17 @@ async def socratic_line_hint(
             degraded=True,
             degraded_reason=str(exc),
         )
-    except Exception as exc:
-        log.warning("socratic line hint failed: %s", exc)
+    except Exception:
+        # Logged in full here; the client gets a generic reason rather than
+        # whatever internal detail the exception carried.
+        log.exception("socratic line hint failed")
         return SocraticLineHintResponse(
             hint=f"Focus on line {clamped_line}: consider what operation or state change connects your previous setup to the expected return type.",
             target_concept="Algorithmic Step",
             line_number=clamped_line,
             current_line_text=current_line_text,
             degraded=True,
-            degraded_reason=str(exc),
+            degraded_reason="hint_generation_failed",
         )
 
 
@@ -482,7 +507,8 @@ async def confirm_review(
 
     # Per-deck desired retention is the "% bias per subject" knob (§16 Appendix).
     # In Event Horizon mode, retention target dynamically ramps to peak_retention_target.
-    target_event = deck.target_event_date or user.target_event_date
+    # A past event no longer ramps retention or compresses intervals.
+    target_event = _upcoming(deck.target_event_date or user.target_event_date, now)
     retention = deck.desired_retention_override or (
         user.peak_retention_target if target_event else user.desired_retention
     )

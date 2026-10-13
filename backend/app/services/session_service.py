@@ -25,6 +25,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.timeutil import day_start
 from app.models import Card, Deck, ReviewLog, StudySession, User
 
 # A session longer than this is almost certainly one someone forgot to close
@@ -179,12 +180,11 @@ class BankTotals:
 async def bank_totals(db: AsyncSession, user: User, *, now: datetime | None = None) -> BankTotals:
     """Banked time for today, the last 7 days, and all time.
 
-    Day boundaries are UTC, matching how the queue's daily caps and the stats
-    heatmap already bucket days — one convention across the app beats a
-    locally-correct one here that disagrees with everything else.
+    "Today" is the user's study day (app.core.timeutil), the same boundary
+    the queue's daily caps and the stats heatmap use.
     """
     now = now or datetime.now(UTC)
-    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today = day_start(now, user.timezone)
     week = now - timedelta(days=7)
 
     async def banked_since(since: datetime | None) -> int:

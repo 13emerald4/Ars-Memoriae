@@ -100,3 +100,46 @@ async def test_deck_all_cards_run_tenant_isolation(client: AsyncClient):
     # User 2 tries to fetch all cards run items -> 404
     resp = await c2.get(f"/api/decks/{deck_id}/all-cards-run-items")
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_only_the_latest_grade_moves_a_card(auth_client: AsyncClient):
+    """A card's *latest* grade sets its place; older history doesn't."""
+    import uuid
+    from datetime import UTC, datetime, timedelta
+
+    from app.db import SessionLocal
+    from app.models import ReviewLog
+
+    deck_id = (await auth_client.post("/api/decks", json={"name": "Latest Grade"})).json()["id"]
+    ids = {}
+    for front in ("Recovered", "Slipped"):
+        note = (
+            await auth_client.post(
+                "/api/notes",
+                json={
+                    "deck_id": deck_id,
+                    "template_kind": "basic",
+                    "field_values": {"Front": front, "Back": "x"},
+                },
+            )
+        ).json()
+        ids[front] = uuid.UUID(note["cards"][0]["id"])
+
+    now = datetime.now(UTC)
+    history = {"Recovered": ["again", "again", "easy"], "Slipped": ["easy", "easy", "again"]}
+    async with SessionLocal() as db:
+        for front, grades in history.items():
+            for i, grade in enumerate(grades):
+                db.add(
+                    ReviewLog(
+                        card_id=ids[front],
+                        reviewed_at=now - timedelta(days=3 - i),
+                        final_grade=grade,
+                        state_before="review",
+                    )
+                )
+        await db.commit()
+
+    items = (await auth_client.get(f"/api/decks/{deck_id}/all-cards-run-items")).json()
+    assert [i["front"] for i in items] == ["Recovered", "Slipped"]

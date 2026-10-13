@@ -1,0 +1,16 @@
+# The backend image builds from the repo root; keep local state and
+# platform-specific installs out of the build context.
+.git
+**/node_modules
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/*.db
+**/*.db-*
+**/.env
+**/.secret_key
+backend/media
+frontend/dist
+tools
+release

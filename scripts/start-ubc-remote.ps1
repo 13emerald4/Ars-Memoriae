@@ -18,14 +18,15 @@ if (-not (Test-Path $toolsDir)) {
     New-Item -ItemType Directory -Path $toolsDir | Out-Null
 }
 
-# 1. Verify Local Services (FastAPI 8000, Vite 5173, Ollama 11434)
+# 1. Verify Local Services (FastAPI 8000, Ollama 11434)
+# The tunnel points at FastAPI, which serves the built frontend (frontend/dist)
+# and /media from the same origin. The Vite dev server is never exposed.
 Write-Host "[1/3] Checking local servers..." -ForegroundColor Gray
 
 $backendConn = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Listen' }
-$frontendConn = Get-NetTCPConnection -LocalPort 5173 -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Listen' }
 $ollamaConn = Get-NetTCPConnection -LocalPort 11434 -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Listen' }
 
-if (-not $backendConn -or -not $frontendConn -or -not $ollamaConn) {
+if (-not $backendConn -or -not $ollamaConn) {
     Write-Host "  -> Some local services are not running. Launching them now..." -ForegroundColor Yellow
     $startBatch = Join-Path $PSScriptRoot "check_and_start_services.bat"
     if (Test-Path $startBatch) {
@@ -33,7 +34,23 @@ if (-not $backendConn -or -not $frontendConn -or -not $ollamaConn) {
         Start-Sleep -Seconds 4
     }
 } else {
-    Write-Host "  ✓ FastAPI (8000), Vite (5173), and Ollama (11434) are active." -ForegroundColor Green
+    Write-Host "  ✓ FastAPI (8000) and Ollama (11434) are active." -ForegroundColor Green
+}
+
+# Rebuild the frontend bundle if any source file is newer than it.
+$frontendDir = Join-Path $repoRoot "frontend"
+$distIndex = Join-Path $frontendDir "dist\index.html"
+$srcDir = Join-Path $frontendDir "src"
+$needsBuild = -not (Test-Path $distIndex)
+if (-not $needsBuild) {
+    $builtAt = (Get-Item $distIndex).LastWriteTime
+    $newer = Get-ChildItem $srcDir -Recurse -File | Where-Object { $_.LastWriteTime -gt $builtAt } | Select-Object -First 1
+    $needsBuild = [bool]$newer
+}
+if ($needsBuild) {
+    Write-Host "  -> Frontend sources changed; building frontend/dist..." -ForegroundColor Yellow
+    Push-Location $frontendDir
+    try { npm run build | Out-Host } finally { Pop-Location }
 }
 
 # 2. Prepare Cloudflared Tunnel Utility
@@ -57,11 +74,11 @@ if (-not (Test-Path $cloudflaredExe) -and -not $cloudflaredCmd) {
 $tunnelUrl = ""
 
 if (Test-Path $cloudflaredExe) {
-    Write-Host "[3/3] Starting Cloudflare Quick Tunnel on port 5173..." -ForegroundColor Gray
+    Write-Host "[3/3] Starting Cloudflare Quick Tunnel on port 8000..." -ForegroundColor Gray
     $logFile = Join-Path $env:TEMP "cloudflared_memorization.log"
     if (Test-Path $logFile) { Remove-Item $logFile -Force }
 
-    $cfProc = Start-Process -FilePath $cloudflaredExe -ArgumentList "tunnel --url http://127.0.0.1:5173" -RedirectStandardError $logFile -PassThru -WindowStyle Hidden
+    $cfProc = Start-Process -FilePath $cloudflaredExe -ArgumentList "tunnel --url http://127.0.0.1:8000" -RedirectStandardError $logFile -PassThru -WindowStyle Hidden
 
     Write-Host "  -> Waiting for tunnel connection..." -ForegroundColor Gray
     for ($i = 0; $i -lt 30; $i++) {
@@ -83,7 +100,7 @@ if (-not $tunnelUrl) {
     if ($sshCmd) {
         $sshLog = Join-Path $env:TEMP "ssh_tunnel.log"
         if (Test-Path $sshLog) { Remove-Item $sshLog -Force }
-        $sshProc = Start-Process -FilePath "ssh" -ArgumentList "-R 80:127.0.0.1:5173 -o StrictHostKeyChecking=no nokey@localhost.run" -RedirectStandardOutput $sshLog -PassThru -WindowStyle Hidden
+        $sshProc = Start-Process -FilePath "ssh" -ArgumentList "-R 80:127.0.0.1:8000 -o StrictHostKeyChecking=no nokey@localhost.run" -RedirectStandardOutput $sshLog -PassThru -WindowStyle Hidden
         for ($i = 0; $i -lt 25; $i++) {
             Start-Sleep -Milliseconds 800
             if (Test-Path $sshLog) {

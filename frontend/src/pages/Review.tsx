@@ -226,6 +226,10 @@ export default function Review() {
   )
   const [installedModels, setInstalledModels] = useState<string[]>([])
   const gradingAbortRef = useRef<AbortController | null>(null)
+  // One confirm in flight at a time: a double click or key repeat would
+  // otherwise schedule the card twice and log two reviews.
+  const confirmingRef = useRef(false)
+  const [confirming, setConfirming] = useState(false)
 
   useEffect(() => {
     if (user?.grading_model && isAllowedQwenCoderModel(user.grading_model)) {
@@ -1106,16 +1110,11 @@ export default function Review() {
 
   async function confirm(finalGrade: Grade) {
     if (!item || item.kind !== 'card') return
+    if (confirmingRef.current) return
+    confirmingRef.current = true
+    setConfirming(true)
     const overridden = Boolean(result && !result.degraded_to_manual && result.suggested_grade !== finalGrade)
     const latency = Date.now() - shownAt.current
-
-    if (blitzActive) {
-      setBlitzCardsAnswered((prev) => prev + 1)
-      if (finalGrade === 'good' || finalGrade === 'easy') {
-        setBlitzCorrectCount((prev) => prev + 1)
-      }
-      setBlitzLatencies((prev) => [...prev, latency])
-    }
 
     try {
       const outcome = await api.confirmReview(
@@ -1127,6 +1126,14 @@ export default function Review() {
         confidence || undefined,
         blitzActive,
       )
+      // Counted only once the review is actually recorded.
+      if (blitzActive) {
+        setBlitzCardsAnswered((prev) => prev + 1)
+        if (finalGrade === 'good' || finalGrade === 'easy') {
+          setBlitzCorrectCount((prev) => prev + 1)
+        }
+        setBlitzLatencies((prev) => [...prev, latency])
+      }
       if (outcome.stuck_alert) setStuckAlert(outcome.stuck_alert)
       // Let the session timer refresh its progress toward the card target.
       window.dispatchEvent(new Event(REVIEW_EVENT))
@@ -1206,6 +1213,9 @@ export default function Review() {
       }
     } catch (err) {
       setError(err)
+    } finally {
+      confirmingRef.current = false
+      setConfirming(false)
     }
   }
 
@@ -2302,6 +2312,7 @@ export default function Review() {
                           <button
                             key={g}
                             onClick={() => confirm(g)}
+                            disabled={confirming}
                             className={`btn ${GRADE_STYLE[g]} ${
                               suggested ? 'ring-1 ring-inset ring-current' : ''
                             }`}
@@ -3538,6 +3549,7 @@ export default function Review() {
                         <button
                           key={g}
                           onClick={() => confirm(g)}
+                          disabled={confirming}
                           className={`btn ${GRADE_STYLE[g]} ${
                             suggested ? 'ring-1 ring-inset ring-current' : ''
                           }`}

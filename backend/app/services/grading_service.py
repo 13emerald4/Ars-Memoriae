@@ -139,6 +139,13 @@ def is_allowed_qwen_coder_model(model_name: str | None) -> bool:
     return False
 
 
+def resolve_model(model_name: str | None) -> str:
+    """The requested model if it is on the allowlist, else the default."""
+    if model_name and is_allowed_qwen_coder_model(model_name):
+        return model_name
+    return settings.default_grading_model
+
+
 async def find_local_fallback_models(
     base_url: str,
     current_model: str,
@@ -195,14 +202,7 @@ class GradingService:
         escalation_model: str | None = None,
         base_url: str | None = None,
     ) -> None:
-        target_model = model or settings.default_grading_model
-        if (
-            target_model
-            and not is_allowed_qwen_coder_model(target_model)
-            and not any(token in target_model.lower() for token in ("mock", "fake", "test", "model"))
-        ):
-            target_model = settings.default_grading_model
-        self.model = target_model
+        self.model = resolve_model(model)
         self.escalation_model = escalation_model or settings.escalation_grading_model
         self.base_url = (base_url or settings.ollama_base_url).rstrip("/")
         self.last_used_model: str | None = None
@@ -221,7 +221,9 @@ class GradingService:
             "prompt": prompt,
             "stream": False,
             "options": {
-                "num_ctx": 2048,
+                # Ollama silently drops the *start* of an over-long prompt —
+                # the instructions — so this must fit the longest prompt.
+                "num_ctx": settings.ollama_num_ctx,
                 # Greedy decoding on every call: Ollama's default temperature
                 # samples, so the same answer could get a different grade.
                 "temperature": 0,
@@ -270,14 +272,7 @@ class GradingService:
         allow_smaller_model: bool = False,
         **kwargs: Any,
     ) -> str:
-        target_model = model or self.model
-        if (
-            target_model
-            and not is_allowed_qwen_coder_model(target_model)
-            and not any(token in target_model.lower() for token in ("mock", "fake", "test", "model"))
-        ):
-            target_model = settings.default_grading_model
-
+        target_model = resolve_model(model or self.model)
         self.last_used_model = target_model
         try:
             return await self._generate_ollama(
@@ -416,25 +411,7 @@ class GradingService:
         cards = data.get("cards") if isinstance(data, dict) else None
         if not isinstance(cards, list):
             raise GradingUnavailable("card generation returned no cards")
-        out = []
-        for c in cards[:max_cards]:
-            if not isinstance(c, dict):
-                continue
-            is_cloze = c.get("kind") == "cloze" and bool(c.get("cloze_text"))
-            is_code = c.get("kind") == "code" or bool(c.get("starter_code")) or bool(c.get("starter_tests"))
-            kind = "cloze" if is_cloze else ("code" if is_code else "qa")
-            item = {
-                "kind": kind,
-                "front": str(c.get("front", "")).strip(),
-                "back": str(c.get("back", "")).strip(),
-                "cloze_text": str(c.get("cloze_text", "")).strip() or None,
-            }
-            if is_code:
-                item["title"] = c.get("title")
-                item["starter_code"] = c.get("starter_code")
-                item["starter_tests"] = c.get("starter_tests")
-                item["test_cases"] = c.get("test_cases") or []
-            out.append(item)
+        out = [_normalize_generated_card(c) for c in cards[:max_cards] if isinstance(c, dict)]
         return [c for c in out if c["front"] or c["cloze_text"]]
 
     async def generate_cards_with_citations(
@@ -468,24 +445,11 @@ class GradingService:
         for c in cards[:max_cards]:
             if not isinstance(c, dict):
                 continue
-            is_cloze = c.get("kind") == "cloze" and bool(c.get("cloze_text"))
-            is_code = c.get("kind") == "code" or bool(c.get("starter_code")) or bool(c.get("starter_tests"))
-            kind = "cloze" if is_cloze else ("code" if is_code else "qa")
+            item = _normalize_generated_card(c)
             quote = str(c.get("quote", "")).strip()
-            item = {
-                "kind": kind,
-                "front": str(c.get("front", "")).strip(),
-                "back": str(c.get("back", "")).strip(),
-                "cloze_text": str(c.get("cloze_text", "")).strip() or None,
-                "quote": quote,
-                "quote_verified": quote_is_grounded(quote, passage),
-                "locator": locator,
-            }
-            if is_code:
-                item["title"] = c.get("title")
-                item["starter_code"] = c.get("starter_code")
-                item["starter_tests"] = c.get("starter_tests")
-                item["test_cases"] = c.get("test_cases") or []
+            item["quote"] = quote
+            item["quote_verified"] = quote_is_grounded(quote, passage)
+            item["locator"] = locator
             out.append(item)
         return [c for c in out if c["front"] or c["cloze_text"]]
 
@@ -757,6 +721,24 @@ class GradingService:
 
 
 # ── parsing & sanity checks ─────────────────────────────────────────────────
+
+
+def _normalize_generated_card(c: dict) -> dict:
+    """One model-proposed card, coerced to the shape the accept endpoints take."""
+    is_cloze = c.get("kind") == "cloze" and bool(c.get("cloze_text"))
+    is_code = c.get("kind") == "code" or bool(c.get("starter_code")) or bool(c.get("starter_tests"))
+    item = {
+        "kind": "cloze" if is_cloze else ("code" if is_code else "qa"),
+        "front": str(c.get("front", "")).strip(),
+        "back": str(c.get("back", "")).strip(),
+        "cloze_text": str(c.get("cloze_text", "")).strip() or None,
+    }
+    if is_code:
+        item["title"] = c.get("title")
+        item["starter_code"] = c.get("starter_code")
+        item["starter_tests"] = c.get("starter_tests")
+        item["test_cases"] = c.get("test_cases") or []
+    return item
 
 
 def parse_json(raw: str) -> dict:

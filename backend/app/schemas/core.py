@@ -45,6 +45,7 @@ class UserOut(BaseModel):
     show_pre_leetcode: bool = False
     show_code_lab: bool = False
     show_thematic_context: bool = True
+    timezone: str | None = None
 
 
 class UserUpdate(BaseModel):
@@ -76,6 +77,17 @@ class UserUpdate(BaseModel):
     show_pre_leetcode: bool | None = None
     show_code_lab: bool | None = None
     show_thematic_context: bool | None = None
+    timezone: str | None = Field(default=None, max_length=64)
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, v: str | None) -> str | None:
+        if v is not None:
+            from app.core.timeutil import is_valid_timezone
+
+            if not is_valid_timezone(v):
+                raise ValueError(f"unknown timezone '{v}'; use an IANA name like America/Vancouver")
+        return v
 
 
 class QueueConfigOut(BaseModel):

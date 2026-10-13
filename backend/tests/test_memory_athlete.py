@@ -151,3 +151,68 @@ async def test_latency_does_not_downgrade_grade_or_force_confirmation(auth_clien
     assert data["automaticity_exceeded"] is True
     assert "Graded purely on correctness" in data["automaticity_note"]
 
+
+
+async def test_event_horizon_can_be_cleared(auth_client):
+    """Settings clears the event by sending null; that must not be ignored."""
+    event = (datetime.now(UTC) + timedelta(days=10)).isoformat()
+    me = await auth_client.patch(
+        "/api/me", json={"target_event_date": event, "target_event_title": "Final"}
+    )
+    assert me.json()["target_event_date"] is not None
+
+    me = await auth_client.patch(
+        "/api/me", json={"target_event_date": None, "target_event_title": None}
+    )
+    assert me.json()["target_event_date"] is None
+    assert me.json()["target_event_title"] is None
+    # Fields left out are still untouched by a PATCH.
+    me = await auth_client.patch("/api/me", json={"daily_new_limit": 7})
+    assert me.json()["daily_new_limit"] == 7
+
+
+@pytest.mark.parametrize(
+    ("offset_days", "expected"), [(-3, "desired_retention"), (5, "peak_retention_target")]
+)
+async def test_only_an_upcoming_event_ramps_retention(
+    auth_client, monkeypatch, offset_days, expected
+):
+    import app.routers.review as review_router
+
+    seen: list[float] = []
+    real_init = review_router.FSRSService.__init__
+
+    def spy_init(self, *args, **kwargs):
+        seen.append(kwargs["desired_retention"])
+        real_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(review_router.FSRSService, "__init__", spy_init)
+
+    event = (datetime.now(UTC) + timedelta(days=offset_days)).isoformat()
+    me = (
+        await auth_client.patch(
+            "/api/me",
+            json={
+                "target_event_date": event,
+                "desired_retention": 0.8,
+                "peak_retention_target": 0.97,
+            },
+        )
+    ).json()
+    deck_id = (await auth_client.post("/api/decks", json={"name": "Exam"})).json()["id"]
+    note = (
+        await auth_client.post(
+            "/api/notes",
+            json={
+                "deck_id": deck_id,
+                "template_kind": "basic",
+                "field_values": {"Front": "q", "Back": "a"},
+            },
+        )
+    ).json()
+    resp = await auth_client.post(
+        f"/api/review/{note['cards'][0]['id']}/confirm",
+        json={"final_grade": "good", "overridden": False},
+    )
+    assert resp.status_code == 200, resp.text
+    assert seen == [me[expected]]

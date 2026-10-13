@@ -28,6 +28,7 @@ from typing import Literal
 from sqlalchemy import and_, false, func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.timeutil import day_start
 from app.models import (
     Card,
     CardReference,
@@ -115,10 +116,6 @@ class SessionPlan:
     notes: list[str] = field(default_factory=list)
 
 
-def start_of_day(now: datetime) -> datetime:
-    return now.replace(hour=0, minute=0, second=0, microsecond=0)
-
-
 def _aware(dt: datetime | None) -> datetime | None:
     if dt is None:
         return None
@@ -137,7 +134,7 @@ async def get_queue_config(db: AsyncSession, user: User) -> QueueConfig:
 
 async def _counts_today(db: AsyncSession, user: User, now: datetime) -> tuple[int, int]:
     """(reviews done today, new cards introduced today) — drives the caps."""
-    since = start_of_day(now)
+    since = day_start(now, user.timezone)
     rows = await db.execute(
         select(ReviewLog.state_before, func.count())
         .join(Card, Card.id == ReviewLog.card_id)
@@ -250,7 +247,7 @@ async def eligible_counts(
     call len() on them is what made this endpoint take seconds on an imported
     collection.
     """
-    today = start_of_day(now)
+    today = day_start(now, user.timezone)
 
     async def count(*extra) -> int:
         return int(
@@ -511,9 +508,26 @@ def space_sisters(
                 chosen = idx
                 break
         else:
-            chosen = 0  # everything clashes; keep priority order rather than stall
+            # Everything left clashes with the tail — typically two sisters
+            # left for last. Slot this one back among what's already placed,
+            # as late as keeps it min_gap from its sisters, rather than
+            # appending it right next to one.
+            item = remaining.pop(0)
+            out.insert(_spaced_slot(out, item, conflicts, min_gap), item)
+            continue
         out.append(remaining.pop(chosen))
     return out
+
+
+def _spaced_slot(out: list[ComposedItem], item: ComposedItem, conflicts: dict, min_gap: int) -> int:
+    """Latest index to insert `item` at with no sister within min_gap places
+    on either side; the end if there is none."""
+    clashes = {str(c) for c in conflicts.get(_as_uuid(item.note_id), set())}
+    for pos in range(len(out), -1, -1):
+        window = out[max(0, pos - min_gap) : pos + min_gap]
+        if not any(str(o.note_id) in clashes for o in window):
+            return pos
+    return len(out)
 
 
 def _as_uuid(value):
@@ -874,13 +888,23 @@ async def compose_deck_all_cards_run_queue(
     if not rows:
         return []
 
-    card_ids = [c.id for c, _ in rows]
-    log_stmt = (
-        select(ReviewLog.card_id, ReviewLog.final_grade)
-        .where(ReviewLog.card_id.in_(card_ids))
-        .order_by(ReviewLog.reviewed_at.asc())
+    # Only each card's latest grade matters; let SQL pick it (one row per card
+    # via idx_review_logs_card) instead of shipping the deck's whole history.
+    latest = (
+        select(ReviewLog.card_id, func.max(ReviewLog.reviewed_at).label("at"))
+        .join(Card, Card.id == ReviewLog.card_id)
+        .where(Card.deck_id == deck.id)
+        .group_by(ReviewLog.card_id)
+        .subquery()
     )
-    log_rows = (await db.execute(log_stmt)).all()
+    log_rows = (
+        await db.execute(
+            select(ReviewLog.card_id, ReviewLog.final_grade).join(
+                latest,
+                and_(ReviewLog.card_id == latest.c.card_id, ReviewLog.reviewed_at == latest.c.at),
+            )
+        )
+    ).all()
     latest_grades: dict[uuid.UUID, str] = dict(log_rows)
 
     scored_cards: list[tuple[float, Card]] = []

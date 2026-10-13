@@ -11,6 +11,11 @@ export default defineConfig({
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
+      // Uploaded images (occlusion cards) are served by the backend too.
+      '/media': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
     },
   },
 })

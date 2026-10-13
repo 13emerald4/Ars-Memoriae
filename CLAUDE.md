@@ -19,7 +19,7 @@ python -m venv .venv && .venv/bin/pip install -e ".[dev]"  # Windows: .venv\Scri
 .venv/bin/uvicorn app.main:app --reload --port 8000        # Dev server
 
 # Testing
-.venv/bin/pytest -q                   # Run all 184+ tests
+.venv/bin/pytest -q                   # Run all 420+ tests
 .venv/bin/pytest tests/test_grading.py  # Single test file
 .venv/bin/pytest -k test_name         # Run specific test by name
 
@@ -85,12 +85,14 @@ First-party implementations register themselves in `app/services/rendering.py` a
 
 ### Database Schema Evolution
 
-The schema has evolved through 9+ migrations:
+The schema has evolved through 20 migrations:
 
 - **0001_initial.py**: Core tables (users, decks, note_types, notes, cards, sources, extracts, reviews)
 - **0002_sister_pairs.py**: Sister-card interference tracking
 - **0003_queue_indexes.py**: Covering indexes for queue performance (112ms target)
 - **0004–0009**: Knowledge tree, card references, reading sources, lessons, mastery gating, study sessions
+- **0010–0019**: Velocity, reflection, analytics, memory-champion fields, code practice, weakness memory, lexicon, module visibility, deck documentation
+- **0020**: `users.timezone` (study-day boundary) and an index on `review_logs.reviewed_at`
 
 When writing migrations, use the frozen type aliases at the top of each migration file (JSONType, StringArray, TS) to ensure Postgres/SQLite compatibility.
 
@@ -171,6 +173,7 @@ Coverage spans the entire review cycle, FSRS fuzzing/backlog smoothing, grading 
 4. **FSRS has no `new` state.** Map it on the way in/out; internally use `Learning`.
 5. **Models wrap JSON in prose or code fences.** Always parse LLM output with the tolerant `parse_json`, never `json.loads` directly.
 6. **Don't mutate the grading model instance.** Pass the escalated model per call, not by reassigning `self.model`.
+7. **"Today" is the user's study day**, not a UTC date: their time zone (`users.timezone`), rolling over at 04:00. Use `app/core/timeutil.py` (`day_start`, `day_key`) for daily caps and day buckets.
 
 ## Environment Variables
 
@@ -178,6 +181,7 @@ Key settings (see `.env.example` for full list):
 
 - **`SECRET_KEY`**: JWT signing (generate with `secrets.token_urlsafe(48)`). Unset → generated on first start into `.secret_key` (`SECRET_KEY_FILE`)
 - **`OLLAMA_BASE_URL`**: Where the Ollama daemon listens (default `http://localhost:11434`)
+- **`OLLAMA_NUM_CTX`**: Context window sent with every request (default 8192). Ollama drops the *start* of longer prompts — the instructions — so don't shrink it below the longest prompt
 - **`DATABASE_URL`**: Postgres or SQLite (`sqlite+aiosqlite:///./db.sqlite3` for dev)
 - **`ALLOW_REGISTRATION`**: 0 (default) = only the first account can sign up; 1 = open sign-up
 - **`PLUGIN_DIR`**: Path to plugin directory (empty = disabled, the safe default)
@@ -203,7 +207,7 @@ Key endpoints:
 - **Routers**: `backend/app/routers/` (FastAPI endpoints)
 - **Schemas**: `backend/app/schemas/` (Pydantic request/response)
 - **Migrations**: `backend/alembic/versions/`
-- **Tests**: `backend/tests/` (pytest, 184+ tests)
+- **Tests**: `backend/tests/` (pytest, 420+ tests)
 - **Frontend pages**: `frontend/src/pages/`
 - **Frontend API client**: `frontend/src/api/client.ts`
 - **Plugin example**: `backend/plugins.example/`

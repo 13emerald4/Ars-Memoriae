@@ -17,6 +17,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.timeutil import day_key
 from app.models import Card, Deck, ReviewLog, StudySession, User
 from app.schemas.analytics import (
     CalibrationBucket,
@@ -366,7 +367,7 @@ async def _compute_item_discrimination(
     # Group logs by day to compute session baseline performance
     by_day: dict[str, list[bool]] = defaultdict(list)
     for log in logs:
-        day_str = log["reviewed_at"].date().isoformat()
+        day_str = day_key(log["reviewed_at"], user.timezone)
         by_day[day_str].append(log["passed"])
 
     day_acc = {d: sum(vals) / len(vals) for d, vals in by_day.items()}
@@ -392,8 +393,8 @@ async def _compute_item_discrimination(
             r_pb = 0.0
         else:
             # Mean day accuracy when card was passed vs failed
-            m1_vals = [day_acc[x["reviewed_at"].date().isoformat()] for x in card_logs if x["passed"]]
-            m0_vals = [day_acc[x["reviewed_at"].date().isoformat()] for x in card_logs if not x["passed"]]
+            m1_vals = [day_acc[day_key(x["reviewed_at"], user.timezone)] for x in card_logs if x["passed"]]
+            m0_vals = [day_acc[day_key(x["reviewed_at"], user.timezone)] for x in card_logs if not x["passed"]]
             m1 = sum(m1_vals) / len(m1_vals) if m1_vals else 0.5
             m0 = sum(m0_vals) / len(m0_vals) if m0_vals else 0.5
             r_pb = ((m1 - m0) / s_x) * math.sqrt(p * (1 - p))

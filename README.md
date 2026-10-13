@@ -41,7 +41,7 @@ python -c "import secrets; print('SECRET_KEY=' + secrets.token_urlsafe(48))"
 docker compose up --build
 ```
 
-- App: <http://localhost:5173>
+- App: <http://localhost:8000> (the backend serves the built frontend)
 - API + interactive docs: <http://localhost:8000/docs>
 
 Migrations run automatically on backend start.

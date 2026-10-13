@@ -511,6 +511,17 @@ function SchedulingPanel({ user, onChange }: { user: User; onChange: () => Promi
             onBlur={(e) => save({ leech_threshold: Number(e.target.value) })}
           />
         </Field>
+        <Field label="Time zone" hint="Daily limits and streaks reset at 4 am here. IANA name, e.g. America/Vancouver.">
+          <input
+            type="text"
+            className="input"
+            defaultValue={user.timezone ?? ''}
+            onBlur={(e) => {
+              const zone = e.target.value.trim()
+              if (zone && zone !== user.timezone) void save({ timezone: zone })
+            }}
+          />
+        </Field>
       </div>
 
       <div className="mt-5 border-t border-ink-line pt-4">

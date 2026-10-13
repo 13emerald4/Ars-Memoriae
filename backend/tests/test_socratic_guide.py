@@ -15,7 +15,7 @@ class TestLeakGuard:
 
     @staticmethod
     def _service(raw_response: str) -> GradingService:
-        svc = GradingService("small-model")
+        svc = GradingService("qwen2.5-coder:3b")
 
         async def fake_generate(prompt, model, schema=None):
             return raw_response
@@ -161,7 +161,7 @@ class TestGuideEndpoint:
 class TestSocraticLineHint:
     @staticmethod
     def _service(raw_response: str) -> GradingService:
-        svc = GradingService("small-model")
+        svc = GradingService("qwen2.5-coder:3b")
 
         async def fake_generate(prompt, model, schema=None):
             return raw_response
@@ -252,5 +252,6 @@ class TestSocraticLineHint:
         assert resp.status_code == 200, resp.text
         body = resp.json()
         assert body["degraded"] is True
-        assert body["degraded_reason"] == "model returned garbage"
+        # Internal exception text stays in the server log, not the response.
+        assert body["degraded_reason"] == "hint_generation_failed"
         assert body["line_number"] == 2

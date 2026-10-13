@@ -69,6 +69,79 @@ async def test_python_code_runner_timeout_kill():
     assert res["passed_count"] == 0
 
 
+def _pid_alive(pid: int) -> bool:
+    import os
+    import subprocess
+
+    if os.name == "nt":
+        out = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True, text=True
+        ).stdout
+        return str(pid) in out
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+@pytest.mark.asyncio
+async def test_timeout_also_kills_processes_the_code_spawned(tmp_path):
+    """proc.kill() alone orphans grandchildren; the whole tree must die."""
+    import asyncio
+
+    pid_file = tmp_path / "grandchild.pid"
+    code = f"""import subprocess, sys, time
+child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+open({str(pid_file)!r}, "w").write(str(child.pid))
+time.sleep(60)
+
+def f():
+    return 1
+"""
+    res = await run_python_code(code, [{"input": {}, "expected": 1}], timeout_sec=2.0)
+    assert res["status"] == "Time Limit Exceeded"
+    pid = int(pid_file.read_text())
+    for _ in range(20):
+        if not _pid_alive(pid):
+            break
+        await asyncio.sleep(0.1)
+    assert not _pid_alive(pid)
+
+
+@pytest.mark.asyncio
+async def test_runaway_output_is_cut_off_not_buffered():
+    code = """def f():
+    print("x" * (8 * 1024 * 1024))
+    return 1
+"""
+    res = await run_python_code(code, [{"input": {}, "expected": 1}], timeout_sec=10.0)
+    assert res["status"] == "Output Limit Exceeded"
+
+
+@pytest.mark.asyncio
+async def test_runs_are_capped_to_a_few_at_a_time(monkeypatch):
+    import asyncio
+
+    import app.services.code_runner_service as runner
+
+    monkeypatch.setattr(runner, "MAX_CONCURRENT_RUNS", 1)
+    running = {"now": 0, "peak": 0}
+
+    async def fake_now(*args, **kwargs):
+        running["now"] += 1
+        running["peak"] = max(running["peak"], running["now"])
+        await asyncio.sleep(0.05)
+        running["now"] -= 1
+        return {}
+
+    monkeypatch.setattr(runner, "_run_worker_now", fake_now)
+    runner._run_slots.clear()
+    await asyncio.gather(*(run_python_code("", []) for _ in range(4)))
+    runner._run_slots.clear()
+    assert running["peak"] == 1
+
+
 
 @pytest.mark.asyncio
 async def test_typescript_code_runner():
@@ -396,4 +469,6 @@ async def test_code_stats_card_metrics_match_the_users_cards(auth_client):
     assert stats["totals"]["avg_stability_days"] == 20.0
     assert stats["totals"]["avg_difficulty"] == 6.0
     assert sum(stats["forecast"].values()) == 2
-    assert stats["forecast"] == {(now + timedelta(days=3)).date().isoformat(): 2}
+    from app.core.timeutil import day_key
+
+    assert stats["forecast"] == {day_key(now + timedelta(days=3), None): 2}
