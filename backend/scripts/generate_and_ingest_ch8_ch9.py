@@ -6,11 +6,11 @@ import asyncio
 import json
 import logging
 import os
-from pathlib import Path
+
 from sqlalchemy import select
 
 from app.db import SessionLocal
-from app.models import Card, CardReference, Deck, Note, User
+from app.models import CardReference, Deck, Note, User
 from app.services.note_service import default_note_type, sync_cards
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -543,7 +543,7 @@ CH9_CARDS = [
         "category": "Branch Coverage",
         "difficulty": "Medium",
         "front": "In LA09's cooling system, there are two distinct ways for the status to become 'emergency'. What are they, and why must both have independent tests?",
-        "back": "1. **Temperature Emergency**: Temperature $\ge$ `criticalTempC - 20`.\n2. **Total Pump Failure Under Power**: Every pump is offline AND power $> 0$.\n\n*Why both need tests*: They are two independent compound boolean clauses in the contract. A test covering high temperature will not catch a mutant that breaks the zero-pumps-under-power logic, and vice versa.",
+        "back": "1. **Temperature Emergency**: Temperature $\\ge$ `criticalTempC - 20`.\n2. **Total Pump Failure Under Power**: Every pump is offline AND power $> 0$.\n\n*Why both need tests*: They are two independent compound boolean clauses in the contract. A test covering high temperature will not catch a mutant that breaks the zero-pumps-under-power logic, and vice versa.",
         "quote": "evaluateSafety has four branches: emergency (temp >= critical - 20), emergency (all pumps offline under power), warning, and stable.",
         "locator": "LA09.1 — TASK 1: Partition inputs by status",
         "tags": ["cpsc210", "ch09", "branch-coverage", "la09"]

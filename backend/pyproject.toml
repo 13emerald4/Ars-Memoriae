@@ -61,4 +61,6 @@ ignore = [
 "tests/*" = ["E402", "F401"]  # conftest sets env vars before importing the app
 "app/services/fundamentals_catalog.py" = ["RUF001", "RUF003", "W291", "W293"]
 "app/services/problems_catalog.py" = ["W291", "W293"]
+# Course-content strings legitimately contain typographic dashes.
+"scripts/populate_cpsc210.py" = ["RUF001", "RUF003"]
 

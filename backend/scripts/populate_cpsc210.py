@@ -6,20 +6,17 @@ import asyncio
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import SessionLocal
 from app.models import (
-    Card,
     CardReference,
     Deck,
     Import,
     Note,
-    NoteType,
     User,
 )
 from app.services.note_service import default_note_type, sync_cards
@@ -559,7 +556,7 @@ async def run_population():
                 if not file_path.exists():
                     logger.warning(f"File not found: {file_path}")
                     continue
-                with open(file_path, "r", encoding="utf-8") as fh:
+                with open(file_path, encoding="utf-8") as fh:
                     raw_content = json.load(fh)
                 notes_data = raw_content if isinstance(raw_content, list) else raw_content.get("notes", [])
                 cnt = await ingest_notes_list(notes_data, dest_deck, file_path.name)
@@ -570,7 +567,7 @@ async def run_population():
 
         supp_path = supp_dir / "cpsc210_mt2_supplemental.json"
         if supp_path.exists():
-            with open(supp_path, "r", encoding="utf-8") as fh:
+            with open(supp_path, encoding="utf-8") as fh:
                 raw_supp = json.load(fh)
             notes_data = raw_supp if isinstance(raw_supp, list) else raw_supp.get("notes", [])
             cnt = await ingest_notes_list(notes_data, part1_deck, supp_path.name)
@@ -578,7 +575,7 @@ async def run_population():
 
         piazza_path = piazza_dir / "cpsc210_mt2_piazza_highyield.json"
         if piazza_path.exists():
-            with open(piazza_path, "r", encoding="utf-8") as fh:
+            with open(piazza_path, encoding="utf-8") as fh:
                 raw_piazza = json.load(fh)
             notes_data = raw_piazza if isinstance(raw_piazza, list) else raw_piazza.get("notes", [])
             cnt = await ingest_notes_list(notes_data, part1_deck, piazza_path.name)
@@ -595,7 +592,7 @@ async def run_population():
         await db.commit()
 
         logger.info("==================================================================")
-        logger.info(f"CPSC 210 IMPORT COMPLETE!")
+        logger.info("CPSC 210 IMPORT COMPLETE!")
         logger.info(f"Total Notes created: {total_notes}")
         logger.info(f"Total Cards created: {total_cards}")
         logger.info(f"Total Citations created: {total_citations}")

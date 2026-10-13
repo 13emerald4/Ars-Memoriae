@@ -28,7 +28,17 @@ from typing import Literal
 from sqlalchemy import and_, false, func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Card, CardReference, Deck, Extract, Note, QueueConfig, ReviewLog, Source, User
+from app.models import (
+    Card,
+    CardReference,
+    Deck,
+    Extract,
+    Note,
+    QueueConfig,
+    ReviewLog,
+    Source,
+    User,
+)
 from app.services import registry
 from app.services.fsrs_service import FSRSService
 from app.services.rendering import occlusion_payload, render
@@ -871,7 +881,7 @@ async def compose_deck_all_cards_run_queue(
         .order_by(ReviewLog.reviewed_at.asc())
     )
     log_rows = (await db.execute(log_stmt)).all()
-    latest_grades: dict[uuid.UUID, str] = {c_id: grade for c_id, grade in log_rows}
+    latest_grades: dict[uuid.UUID, str] = dict(log_rows)
 
     scored_cards: list[tuple[float, Card]] = []
     for card, note in rows:

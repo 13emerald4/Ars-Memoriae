@@ -2,7 +2,9 @@
 
 import asyncio
 import logging
+
 from sqlalchemy import select
+
 from app.db import SessionLocal
 from app.models import Deck, User
 

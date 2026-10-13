@@ -1,3 +1,4 @@
+import contextlib
 import json
 import sqlite3
 from pathlib import Path
@@ -42,10 +43,8 @@ cards_rows = c.fetchall()
 cards_data = []
 for row in cards_rows:
     card_dict = dict(row)
-    try:
+    with contextlib.suppress(Exception):
         card_dict["field_values"] = json.loads(card_dict["field_values"])
-    except Exception:
-        pass
 
     c.execute("""
         SELECT source_title, locator, quote, quote_verified

@@ -178,9 +178,7 @@ async def find_local_fallback_models(
     for m in installed:
         if m["name"] == current_model:
             continue
-        if current_size is not None and m["size"] < current_size:
-            smaller.append(m["name"])
-        elif current_size is None and m["name"] != current_model:
+        if (current_size is not None and m["size"] < current_size) or (current_size is None and m["name"] != current_model):
             smaller.append(m["name"])
 
     if not smaller:
@@ -198,9 +196,12 @@ class GradingService:
         base_url: str | None = None,
     ) -> None:
         target_model = model or settings.default_grading_model
-        if target_model and not is_allowed_qwen_coder_model(target_model):
-            if not any(token in target_model.lower() for token in ("mock", "fake", "test", "model")):
-                target_model = settings.default_grading_model
+        if (
+            target_model
+            and not is_allowed_qwen_coder_model(target_model)
+            and not any(token in target_model.lower() for token in ("mock", "fake", "test", "model"))
+        ):
+            target_model = settings.default_grading_model
         self.model = target_model
         self.escalation_model = escalation_model or settings.escalation_grading_model
         self.base_url = (base_url or settings.ollama_base_url).rstrip("/")
@@ -270,9 +271,12 @@ class GradingService:
         **kwargs: Any,
     ) -> str:
         target_model = model or self.model
-        if target_model and not is_allowed_qwen_coder_model(target_model):
-            if not any(token in target_model.lower() for token in ("mock", "fake", "test", "model")):
-                target_model = settings.default_grading_model
+        if (
+            target_model
+            and not is_allowed_qwen_coder_model(target_model)
+            and not any(token in target_model.lower() for token in ("mock", "fake", "test", "model"))
+        ):
+            target_model = settings.default_grading_model
 
         self.last_used_model = target_model
         try:

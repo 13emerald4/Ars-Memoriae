@@ -1,13 +1,14 @@
 import pytest
+
+from app.schemas.core import UserUpdate
+from app.schemas.review import SubmitAnswerRequest, SubmitAnswerResponse
 from app.services.grading_service import (
     GradingService,
     VramExhaustedError,
-    is_memory_or_vram_error,
     find_local_fallback_models,
     is_allowed_qwen_coder_model,
+    is_memory_or_vram_error,
 )
-from app.schemas.core import UserUpdate
-from app.schemas.review import SubmitAnswerRequest, SubmitAnswerResponse
 
 
 def test_is_allowed_qwen_coder_model():
