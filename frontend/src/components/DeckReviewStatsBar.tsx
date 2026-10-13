@@ -11,6 +11,9 @@ interface DeckReviewStatsBarProps {
   onStartPersist?: (deckId: string) => void
   isPersistActive?: boolean
   onOpenDeckViewer?: () => void
+  onStartAllCardsRun?: (deckId: string) => void
+  onExitAllCardsRun?: () => void
+  isAllCardsRunActive?: boolean
 }
 
 const DIFFICULTY_CONFIG: Record<
@@ -105,6 +108,9 @@ export function DeckReviewStatsBar({
   onStartPersist,
   isPersistActive,
   onOpenDeckViewer,
+  onStartAllCardsRun,
+  onExitAllCardsRun,
+  isAllCardsRunActive,
 }: DeckReviewStatsBarProps) {
   const [stats, setStats] = useState<DeckStats | null>(null)
   const [loading, setLoading] = useState(false)
@@ -263,6 +269,32 @@ export function DeckReviewStatsBar({
               title="Persist reviewing this deck until all cards are rated Easy"
             >
               <span>⚡ Persist Deck</span>
+            </button>
+          )}
+
+          {onStartAllCardsRun && deckId && (
+            <button
+              type="button"
+              onClick={() => {
+                if (isAllCardsRunActive && onExitAllCardsRun) {
+                  onExitAllCardsRun()
+                } else {
+                  onStartAllCardsRun(deckId)
+                }
+              }}
+              className={`flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 text-[11px] font-semibold transition shadow-sm shrink-0 cursor-pointer ${
+                isAllCardsRunActive
+                  ? 'border-purple-500/60 bg-purple-500/20 text-purple-200 ring-1 ring-purple-500/40 hover:bg-purple-500/30'
+                  : 'border-purple-500/40 bg-purple-500/10 text-purple-200 hover:bg-purple-500/25'
+              }`}
+              title={
+                isAllCardsRunActive
+                  ? 'Click to exit All Cards Run and return to FSRS queue'
+                  : 'Toggle All Cards Run: review every card in this deck consecutively, starting from the easiest ones and progressing to the hardest ones seen last. Thereafter, FSRS takes over.'
+              }
+            >
+              <span>🏁</span>
+              <span>{isAllCardsRunActive ? 'Exit Run (FSRS)' : 'All Cards Run'}</span>
             </button>
           )}
 

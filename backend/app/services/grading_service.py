@@ -81,6 +81,115 @@ class GradingUnavailable(RuntimeError):
     """Raised when grading cannot complete; callers degrade to manual (§4.3)."""
 
 
+class VramExhaustedError(GradingUnavailable):
+    """Raised when the local Ollama model ran out of GPU VRAM or host memory."""
+
+    def __init__(
+        self,
+        message: str,
+        failed_model: str,
+        fallback_model: str | None = None,
+        available_models: list[str] | None = None,
+    ):
+        super().__init__(message)
+        self.failed_model = failed_model
+        self.fallback_model = fallback_model
+        self.available_models = available_models or []
+
+
+def is_memory_or_vram_error(exc: Exception | str) -> bool:
+    """Detects whether an Ollama error is caused by VRAM or host memory exhaustion."""
+    text = str(exc).lower()
+    return any(
+        phrase in text
+        for phrase in (
+            "cudamalloc failed",
+            "out of memory",
+            "unable to allocate",
+            "memory layout cannot be allocated",
+            "cuda0 buffer",
+            "cpu buffer",
+            "exit status 2",
+            "exit status 1",
+            "panic: unable to load model",
+            "exit status -1073741819",
+        )
+    )
+
+
+ALLOWED_QWEN_CODER_SIZES: tuple[str, ...] = ("7b", "3b", "1.5b")
+
+
+def is_allowed_qwen_coder_model(model_name: str | None) -> bool:
+    """Returns True only for quantized Qwen 2.5 Coder models in 7B, 3B, or 1.5B sizes."""
+    if not model_name:
+        return False
+    m = model_name.lower().strip()
+    # Must be in the Qwen 2.5 Coder family
+    if "qwen2.5-coder" not in m:
+        return False
+    # Never allow embeddings or rerankers
+    if "embed" in m or "rerank" in m:
+        return False
+    # Must match one of the permitted sizes (7b, 3b, 1.5b)
+    for size in ALLOWED_QWEN_CODER_SIZES:
+        pattern = rf"(^|[:\-_]){re.escape(size)}([:\-_]|$)"
+        if re.search(pattern, m):
+            return True
+    return False
+
+
+async def find_local_fallback_models(
+    base_url: str,
+    current_model: str,
+) -> tuple[str | None, list[str]]:
+    """Returns (next_biggest_model, all_smaller_models) from installed local Ollama models.
+    Strictly restricted to allowed quantized Qwen 2.5 Coder models (7B, 3B, 1.5B).
+    """
+    try:
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            resp = await client.get(f"{base_url}/api/tags")
+            if resp.status_code != 200:
+                return None, []
+            data = resp.json()
+            models = data.get("models", [])
+    except Exception as exc:
+        log.warning("Could not query Ollama tags: %s", exc)
+        return None, []
+
+    installed: list[dict[str, Any]] = []
+    for m in models:
+        name = m.get("name", "")
+        if not is_allowed_qwen_coder_model(name):
+            continue
+        size = m.get("size", 0)
+        installed.append({"name": name, "size": size})
+
+    # Sort descending by size (e.g. 7B -> 3B -> 1.5B)
+    installed.sort(key=lambda x: x["size"], reverse=True)
+
+    current_size = None
+    for m in installed:
+        if m["name"] == current_model:
+            current_size = m["size"]
+            break
+
+    smaller: list[str] = []
+    for m in installed:
+        if m["name"] == current_model:
+            continue
+        if current_size is not None and m["size"] < current_size:
+            smaller.append(m["name"])
+        elif current_size is None and m["name"] != current_model:
+            smaller.append(m["name"])
+
+    if not smaller:
+        return None, []
+
+    next_biggest = smaller[0]
+    return next_biggest, smaller
+
+
 class GradingService:
     def __init__(
         self,
@@ -88,11 +197,65 @@ class GradingService:
         escalation_model: str | None = None,
         base_url: str | None = None,
     ) -> None:
-        self.model = model or settings.default_grading_model
+        target_model = model or settings.default_grading_model
+        if target_model and not is_allowed_qwen_coder_model(target_model):
+            if not any(token in target_model.lower() for token in ("mock", "fake", "test", "model")):
+                target_model = settings.default_grading_model
+        self.model = target_model
         self.escalation_model = escalation_model or settings.escalation_grading_model
         self.base_url = (base_url or settings.ollama_base_url).rstrip("/")
+        self.last_used_model: str | None = None
 
     # ── transport ───────────────────────────────────────────────────────────
+
+    async def _generate_ollama(
+        self,
+        prompt: str,
+        model: str,
+        schema: dict | None = None,
+        **kwargs: Any,
+    ) -> str:
+        payload: dict[str, Any] = {
+            "model": model,
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "num_ctx": 2048,
+            },
+        }
+        if schema is not None or kwargs.get("response_schema") is not None:
+            payload["format"] = "json"
+
+        last_exc = None
+        for attempt in range(2):
+            try:
+                async with httpx.AsyncClient(timeout=45.0) as client:
+                    resp = await client.post(
+                        f"{self.base_url}/api/generate",
+                        json=payload,
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+                    self.last_used_model = model
+                    return data.get("response", "")
+            except httpx.ConnectError as exc:
+                raise GradingUnavailable(
+                    f"Could not connect to Ollama at {self.base_url}. Make sure Ollama is running (`ollama run {model}`)."
+                ) from exc
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 404:
+                    raise GradingUnavailable(
+                        f"Model '{model}' not found in Ollama. Run: ollama pull {model}"
+                    ) from exc
+                last_exc = exc
+                await asyncio.sleep(0.5 * (attempt + 1))
+            except Exception as exc:
+                last_exc = exc
+                await asyncio.sleep(0.5 * (attempt + 1))
+
+        if last_exc:
+            raise GradingUnavailable(f"Ollama generation failed: {last_exc}") from last_exc
+        return ""
 
     async def _generate(
         self,
@@ -100,46 +263,50 @@ class GradingService:
         model: str | None = None,
         schema: dict | None = None,
         thinking_budget: int | None = None,
+        allow_smaller_model: bool = False,
         **kwargs: Any,
     ) -> str:
         target_model = model or self.model
-        payload: dict[str, Any] = {
-            "model": target_model,
-            "prompt": prompt,
-            "stream": False,
-        }
-        if schema is not None or kwargs.get("response_schema") is not None:
-            payload["format"] = "json"
+        if target_model and not is_allowed_qwen_coder_model(target_model):
+            if not any(token in target_model.lower() for token in ("mock", "fake", "test", "model")):
+                target_model = settings.default_grading_model
 
-        last_exc = None
-        for attempt in range(3):
-            try:
-                async with httpx.AsyncClient(timeout=90.0) as client:
-                    resp = await client.post(
-                        f"{self.base_url}/api/generate",
-                        json=payload,
+        self.last_used_model = target_model
+        try:
+            return await self._generate_ollama(
+                prompt,
+                model=target_model,
+                schema=schema or kwargs.get("response_schema"),
+                **kwargs,
+            )
+        except Exception as exc:
+            # Check if this failure is caused by VRAM or host memory exhaustion
+            if is_memory_or_vram_error(exc):
+                next_model, smaller_models = await find_local_fallback_models(self.base_url, target_model)
+                log.warning(
+                    "Ollama model '%s' hit VRAM/memory limit (%s). Fallback model: %s, all smaller: %s",
+                    target_model,
+                    exc,
+                    next_model,
+                    smaller_models,
+                )
+                if allow_smaller_model and next_model:
+                    log.info("Auto-falling back to next biggest local model: %s", next_model)
+                    self.last_used_model = next_model
+                    return await self._generate_ollama(
+                        prompt,
+                        model=next_model,
+                        schema=schema or kwargs.get("response_schema"),
+                        **kwargs,
                     )
-                    resp.raise_for_status()
-                    data = resp.json()
-                    return data.get("response", "")
-            except httpx.ConnectError as exc:
-                raise GradingUnavailable(
-                    f"Could not connect to Ollama at {self.base_url}. Make sure Ollama is running (`ollama run {target_model}`)."
-                ) from exc
-            except httpx.HTTPStatusError as exc:
-                if exc.response.status_code == 404:
-                    raise GradingUnavailable(
-                        f"Model '{target_model}' not found in Ollama. Run: ollama pull {target_model}"
+                else:
+                    raise VramExhaustedError(
+                        message=f"Local model '{target_model}' ran out of GPU VRAM / host memory: {exc}",
+                        failed_model=target_model,
+                        fallback_model=next_model,
+                        available_models=smaller_models,
                     ) from exc
-                last_exc = exc
-                await asyncio.sleep(1.0 * (attempt + 1))
-            except Exception as exc:
-                last_exc = exc
-                await asyncio.sleep(1.0 * (attempt + 1))
-
-        if last_exc:
-            raise GradingUnavailable(f"Ollama generation failed: {last_exc}") from last_exc
-        return ""
+            raise
 
     # ── grading (§4.1) ──────────────────────────────────────────────────────
 
@@ -153,6 +320,7 @@ class GradingService:
         test_code: str | None = None,
         previous_weaknesses: list[str] | None = None,
         model: str | None = None,
+        allow_smaller_model: bool = False,
     ) -> dict:
         prompt = build_prompt(
             profile,
@@ -163,7 +331,11 @@ class GradingService:
             test_code=test_code,
             previous_weaknesses=previous_weaknesses,
         )
-        raw = await self._generate(prompt, model or self.model, SCORE_SCHEMA)
+        target_model = model or self.model
+        if allow_smaller_model:
+            raw = await self._generate(prompt, target_model, SCORE_SCHEMA, allow_smaller_model=True)
+        else:
+            raw = await self._generate(prompt, target_model, SCORE_SCHEMA)
         return _normalize_result(parse_json(raw))
 
     async def grade_with_escalation(
@@ -175,6 +347,8 @@ class GradingService:
         card_type: str = "basic",
         test_code: str | None = None,
         previous_weaknesses: list[str] | None = None,
+        model: str | None = None,
+        allow_smaller_model: bool = False,
         force_escalate: bool = False,
     ) -> dict:
         """§4.2 escalation: a disputed card or a math/code profile goes straight
@@ -184,8 +358,9 @@ class GradingService:
         since asking the same model twice buys nothing. If the escalation model
         isn't pulled, the grading model's answer is kept rather than lost.
         """
+        primary_model = model or self.model
 
-        async def grade_on(model: str) -> dict:
+        async def grade_on(m: str) -> dict:
             result = await self.grade(
                 front,
                 back,
@@ -194,20 +369,21 @@ class GradingService:
                 card_type,
                 test_code=test_code,
                 previous_weaknesses=previous_weaknesses,
-                model=model,
+                model=m,
+                allow_smaller_model=allow_smaller_model,
             )
-            result["model_used"] = model
-            result["escalated"] = model != self.model
+            result["model_used"] = self.last_used_model or m
+            result["escalated"] = m != primary_model
             return result
 
-        can_escalate = self.escalation_model != self.model
+        can_escalate = self.escalation_model != primary_model
         if can_escalate and (force_escalate or profile in ALWAYS_ESCALATE):
             try:
                 return await grade_on(self.escalation_model)
             except GradingUnavailable:
                 pass  # fall through to the grading model
 
-        result = await grade_on(self.model)
+        result = await grade_on(primary_model)
         if can_escalate and result["confidence"] < settings.grading_confidence_threshold:
             try:
                 return await grade_on(self.escalation_model)
@@ -561,7 +737,11 @@ class GradingService:
                 resp = await client.get(f"{self.base_url}/api/tags")
                 resp.raise_for_status()
                 data = resp.json()
-                models = [m.get("name", "") for m in data.get("models", []) if m.get("name")]
+                models = [
+                    m.get("name", "")
+                    for m in data.get("models", [])
+                    if m.get("name") and is_allowed_qwen_coder_model(m.get("name"))
+                ]
                 return sorted(models)
             except Exception as exc:
                 raise GradingUnavailable(

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { EventReadiness, QueueConfig, User } from '../api/types'
+import { isAllowedQwenCoderModel, ALLOWED_QWEN_CODER_MODELS } from '../api/types'
 import { ErrorNote, Section, Spinner } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
 import { FullscreenButton, useFullscreen } from '../components/FullscreenContext'
@@ -35,6 +36,7 @@ export default function Settings() {
       <MemoryChampionPanel user={user} onChange={refresh} />
       <CognitiveThemePanel />
       <DisplayFocusPanel />
+      <NavigationModulesPanel user={user} onChange={refresh} />
       <SchedulingPanel user={user} onChange={refresh} />
       <QueuePanel cfg={queueCfg} onChange={load} />
       <DataPanel />
@@ -80,8 +82,8 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
 
   return (
     <Section
-      title="💻 Local AI Engine (Qwen 2.5 Coder 7B Instruct)"
-      description="Zero cloud costs, zero rate limits, and 100% private. Runs on your machine via Ollama."
+      title="💻 Local AI Engine (Qwen 2.5 Coder)"
+      description="Strictly utilizes quantized Qwen 2.5 Coder models (7B, 3B, 1.5B). Zero cloud costs, zero rate limits, and 100% private."
     >
       <div className="space-y-6">
         {/* Connection status card */}
@@ -99,7 +101,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               />
               <div>
                 <h4 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-                  <span>Qwen 2.5 Coder 7B Instruct</span>
+                  <span>{user.grading_model || 'qwen2.5-coder:7b'}</span>
                   <span className="chip text-[10px] px-1.5 py-0.2 border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
                     Active Grader
                   </span>
@@ -110,13 +112,37 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               </div>
             </div>
 
-            <button
-              className="btn text-xs py-1.5 px-3"
-              disabled={checking}
-              onClick={() => void checkStatus()}
-            >
-              {checking ? 'Testing…' : '↻ Test Connection'}
-            </button>
+            <div className="flex items-center gap-2">
+              {status?.models_installed &&
+                status.models_installed.filter(isAllowedQwenCoderModel).length > 0 && (
+                  <select
+                    value={user.grading_model}
+                    onChange={async (e) => {
+                      await api.updateMe({ grading_model: e.target.value })
+                      await onChange()
+                      void checkStatus()
+                    }}
+                    className="select text-xs py-1 px-2.5 bg-slate-900 border-slate-700 text-slate-200 font-mono rounded cursor-pointer"
+                    title="Switch active local grading model"
+                  >
+                    {status.models_installed
+                      .filter(isAllowedQwenCoderModel)
+                      .map((m) => (
+                        <option key={m} value={m}>
+                          {m}
+                        </option>
+                      ))}
+                  </select>
+                )}
+
+              <button
+                className="btn text-xs py-1.5 px-3"
+                disabled={checking}
+                onClick={() => void checkStatus()}
+              >
+                {checking ? 'Testing…' : '↻ Test Connection'}
+              </button>
+            </div>
           </div>
 
           {/* Status Diagnostic Callout */}
@@ -125,7 +151,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               {status.connected && status.model_ready ? (
                 <div className="flex items-center gap-2 text-emerald-300">
                   <span>✓</span>
-                  <span>Ollama is online and <strong>qwen2.5-coder:7b</strong> is ready to grade solutions.</span>
+                  <span>Ollama is online and <strong>{user.grading_model || 'model'}</strong> is ready to grade solutions.</span>
                 </div>
               ) : status.connected ? (
                 <div className="space-y-2">
@@ -154,6 +180,58 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               )}
             </div>
           )}
+
+          {/* Supported Quantized Qwen 2.5 Coder Specs */}
+          <div className="mt-4 pt-3 border-t border-ink-line space-y-2">
+            <span className="text-xs font-semibold text-slate-300">
+              Supported Quantized Models (Qwen 2.5 Coder):
+            </span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+              {ALLOWED_QWEN_CODER_MODELS.map((opt) => {
+                const isInstalled = status?.models_installed?.some(
+                  (im) => im.toLowerCase() === opt.id.toLowerCase() || im.toLowerCase().startsWith(opt.id.toLowerCase())
+                )
+                const isActive = (user.grading_model || 'qwen2.5-coder:7b') === opt.id
+                return (
+                  <div
+                    key={opt.id}
+                    className={`rounded-lg border p-2.5 space-y-1.5 transition text-xs ${
+                      isActive
+                        ? 'border-sky-500/60 bg-sky-950/40'
+                        : isInstalled
+                        ? 'border-slate-800 bg-slate-900/50'
+                        : 'border-slate-800/60 bg-slate-900/20 text-slate-500'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-200">{opt.name}</span>
+                      <span className="text-[10px] font-mono text-slate-400">{opt.vramApprox}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-tight">{opt.desc}</p>
+                    <div className="pt-1 flex items-center justify-between text-[11px]">
+                      {isInstalled ? (
+                        <span className="text-emerald-400 flex items-center gap-1 font-medium">
+                          ✓ Installed
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => void navigator.clipboard.writeText(`ollama pull ${opt.id}`)}
+                          className="text-[10px] text-sky-400 hover:text-sky-200 underline font-mono cursor-pointer"
+                          title={`Click to copy: ollama pull ${opt.id}`}
+                        >
+                          Copy pull command
+                        </button>
+                      )}
+                      {isActive && (
+                        <span className="text-[10px] text-sky-300 font-bold">Active</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Feature Toggles */}
@@ -628,6 +706,179 @@ function DisplayFocusPanel() {
             <span>Exit fullscreen or dismiss distraction-free Zen mode</span>
           </li>
         </ul>
+      </div>
+    </Section>
+  )
+}
+
+function NavigationModulesPanel({ user, onChange }: { user: User; onChange: () => Promise<void> }) {
+  const [savingPreLeetCode, setSavingPreLeetCode] = useState(false)
+  const [savingCodeLab, setSavingCodeLab] = useState(false)
+  const [savingThematicContext, setSavingThematicContext] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+
+  const togglePreLeetCode = async () => {
+    setSavingPreLeetCode(true)
+    setError(null)
+    try {
+      await api.updateMe({ show_pre_leetcode: !user.show_pre_leetcode })
+      await onChange()
+    } catch (err) {
+      setError(err)
+    } finally {
+      setSavingPreLeetCode(false)
+    }
+  }
+
+  const toggleCodeLab = async () => {
+    setSavingCodeLab(true)
+    setError(null)
+    try {
+      await api.updateMe({ show_code_lab: !user.show_code_lab })
+      await onChange()
+    } catch (err) {
+      setError(err)
+    } finally {
+      setSavingCodeLab(false)
+    }
+  }
+
+  const toggleThematicContext = async () => {
+    setSavingThematicContext(true)
+    setError(null)
+    try {
+      await api.updateMe({ show_thematic_context: user.show_thematic_context === false ? true : false })
+      await onChange()
+    } catch (err) {
+      setError(err)
+    } finally {
+      setSavingThematicContext(false)
+    }
+  }
+
+  return (
+    <Section
+      title="Navigation & Modules"
+      description="Toggle visibility for specialized study modules in the top navigation bar and study documentation overlays. Disabled modules remain accessible via direct URL."
+    >
+      <ErrorNote error={error} />
+      <div className="space-y-3">
+        {/* Pre-LeetCode */}
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-ink-line/60 bg-ink-soft/40 p-4">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm text-slate-200">Pre-LeetCode</span>
+              <span
+                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                  user.show_pre_leetcode
+                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'
+                }`}
+              >
+                {user.show_pre_leetcode ? 'Visible' : 'Hidden'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400">
+              Interactive Python fundamentals, cognitive Socratic tutoring, and code execution sandbox.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={Boolean(user.show_pre_leetcode)}
+            aria-label="Toggle Pre-LeetCode visibility"
+            disabled={savingPreLeetCode}
+            onClick={togglePreLeetCode}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 ${
+              user.show_pre_leetcode ? 'bg-sky-500' : 'bg-slate-700'
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                user.show_pre_leetcode ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Code Lab */}
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-ink-line/60 bg-ink-soft/40 p-4">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm text-slate-200">Code Lab</span>
+              <span
+                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                  user.show_code_lab
+                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'
+                }`}
+              >
+                {user.show_code_lab ? 'Visible' : 'Hidden'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400">
+              Targeted coding practice problems, automated test suites, and memory-anchored algorithm drills.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={Boolean(user.show_code_lab)}
+            aria-label="Toggle Code Lab visibility"
+            disabled={savingCodeLab}
+            onClick={toggleCodeLab}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 ${
+              user.show_code_lab ? 'bg-sky-500' : 'bg-slate-700'
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                user.show_code_lab ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Thematic Context & Documentation */}
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-ink-line/60 bg-ink-soft/40 p-4">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm text-slate-200">Thematic Context &amp; Documentation</span>
+              <span
+                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                  user.show_thematic_context !== false
+                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'
+                }`}
+              >
+                {user.show_thematic_context !== false ? 'Visible' : 'Hidden'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400">
+              Display attached deck &amp; card documentation, creation source documents, and thematic nature during reviews and card exploration.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={user.show_thematic_context !== false}
+            aria-label="Toggle Thematic Context and Documentation visibility"
+            disabled={savingThematicContext}
+            onClick={toggleThematicContext}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 ${
+              user.show_thematic_context !== false ? 'bg-sky-500' : 'bg-slate-700'
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                user.show_thematic_context !== false ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
       </div>
     </Section>
   )

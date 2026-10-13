@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Grade(str, Enum):
@@ -54,6 +54,13 @@ class QueueItem(BaseModel):
     # Longitudinal Weakness Memory
     active_weaknesses: list[str] = Field(default_factory=list)
     weakness_history: list[dict] = Field(default_factory=list)
+    # Thematic context, documentation & source documents
+    deck_documentation: str | None = None
+    deck_thematic_nature: str | None = None
+    deck_source_documents: list[dict | str] = Field(default_factory=list)
+    card_documentation: str | None = None
+    card_thematic_nature: str | None = None
+    card_source_documents: list[dict | str] = Field(default_factory=list)
 
 
 class SessionSummary(BaseModel):
@@ -71,6 +78,20 @@ class SubmitAnswerRequest(BaseModel):
     typed_answer: str
     test_code: str | None = None
     latency_ms: int
+    model: str | None = None
+    allow_smaller_model: bool = False
+
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, v: str | None) -> str | None:
+        if v is not None:
+            from app.services.grading_service import is_allowed_qwen_coder_model
+
+            if not is_allowed_qwen_coder_model(v):
+                raise ValueError(
+                    f"Model '{v}' is not permitted. Only quantized Qwen 2.5 Coder models in 7B, 3B, or 1.5B sizes are allowed."
+                )
+        return v
 
 
 class RunReviewCodeRequest(BaseModel):
@@ -108,6 +129,11 @@ class SubmitAnswerResponse(BaseModel):
     automaticity_exceeded: bool = False
     automaticity_threshold_ms: int | None = None
     automaticity_note: str | None = None
+    # VRAM / Memory Constraint Interactivity
+    vram_constrained: bool = False
+    failed_model: str | None = None
+    fallback_model: str | None = None
+    available_fallback_models: list[str] = Field(default_factory=list)
 
 
 class WeaknessHintResponse(BaseModel):

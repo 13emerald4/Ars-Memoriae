@@ -74,6 +74,10 @@ class User(Base):
     target_event_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     target_event_title: Mapped[str | None] = mapped_column(Text, nullable=True)
     peak_retention_target: Mapped[float | None] = mapped_column(Float, nullable=True, default=0.95)
+    # Module navigation visibility toggles
+    show_pre_leetcode: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    show_code_lab: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    show_thematic_context: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
@@ -96,6 +100,9 @@ class Deck(Base):
     default_priority: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=50)
     target_event_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     target_event_title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    documentation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    thematic_nature: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_documents: Mapped[list] = mapped_column(JSONType, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
@@ -314,6 +321,10 @@ class Card(Base):
     tags: Mapped[list[str]] = mapped_column(StringArray, nullable=False, default=list)
     active_weaknesses: Mapped[list[str]] = mapped_column(JSONType, nullable=False, default=list)
     weakness_history: Mapped[list[dict]] = mapped_column(JSONType, nullable=False, default=list)
+    # Documentation, thematic nature & source document provenance
+    documentation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    thematic_nature: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_documents: Mapped[list] = mapped_column(JSONType, nullable=False, default=list)
 
     __table_args__ = (
         CheckConstraint(

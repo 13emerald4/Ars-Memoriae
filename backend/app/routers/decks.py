@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -54,11 +55,12 @@ def card_out(card: Card, deck_name: str | None = None) -> CardOut:
     front, back = render(
         card.note.note_type.template_kind, card.note.field_values or {}, card.template_slot
     )
+    deck = card.deck
     return CardOut(
         id=str(card.id),
         note_id=str(card.note_id),
         deck_id=str(card.deck_id),
-        deck_name=deck_name or (card.deck.name if card.deck else None),
+        deck_name=deck_name or (deck.name if deck else None),
         template_slot=card.template_slot,
         state=card.state,
         due=card.due,
@@ -74,6 +76,9 @@ def card_out(card: Card, deck_name: str | None = None) -> CardOut:
         occlusion=occlusion_payload(card.note.field_values or {}, card.template_slot)
         if card.note.note_type.template_kind == "image_occlusion"
         else None,
+        documentation=card.documentation or (deck.documentation if deck else None),
+        thematic_nature=card.thematic_nature or (deck.thematic_nature if deck else None),
+        source_documents=list(card.source_documents or (deck.source_documents if deck else [])),
     )
 
 
@@ -127,6 +132,39 @@ async def list_decks(
         ).all()
     }
 
+    children_map: dict[uuid.UUID | None, list[uuid.UUID]] = defaultdict(list)
+    for d in decks:
+        children_map[d.parent_id].append(d.id)
+
+    total_counts: dict[uuid.UUID, int] = {}
+    total_dues: dict[uuid.UUID, int] = {}
+    total_news: dict[uuid.UUID, int] = {}
+
+    def rollup(deck_id: uuid.UUID, seen: set[uuid.UUID] | None = None) -> tuple[int, int, int]:
+        if deck_id in total_counts:
+            return total_counts[deck_id], total_dues[deck_id], total_news[deck_id]
+        if seen is None:
+            seen = set()
+        if deck_id in seen:
+            return 0, 0, 0
+        seen.add(deck_id)
+        c = counts.get(deck_id, 0)
+        du = due.get(deck_id, 0)
+        nw = new.get(deck_id, 0)
+        for child_id in children_map.get(deck_id, []):
+            rc, rdu, rnw = rollup(child_id, seen)
+            c += rc
+            du += rdu
+            nw += rnw
+        total_counts[deck_id] = c
+        total_dues[deck_id] = du
+        total_news[deck_id] = nw
+        return c, du, nw
+
+    for d in decks:
+        if d.id not in total_counts:
+            rollup(d.id)
+
     return [
         DeckOut(
             id=str(d.id),
@@ -137,8 +175,14 @@ async def list_decks(
             card_count=counts.get(d.id, 0),
             due_count=due.get(d.id, 0),
             new_count=new.get(d.id, 0),
+            total_card_count=total_counts.get(d.id, counts.get(d.id, 0)),
+            total_due_count=total_dues.get(d.id, due.get(d.id, 0)),
+            total_new_count=total_news.get(d.id, new.get(d.id, 0)),
             target_event_date=d.target_event_date,
             target_event_title=d.target_event_title,
+            documentation=d.documentation,
+            thematic_nature=d.thematic_nature,
+            source_documents=list(d.source_documents or []),
         )
         for d in decks
     ]
@@ -160,6 +204,9 @@ async def create_deck(
         default_priority=body.default_priority,
         target_event_date=body.target_event_date,
         target_event_title=body.target_event_title,
+        documentation=body.documentation,
+        thematic_nature=body.thematic_nature,
+        source_documents=body.source_documents or [],
     )
     db.add(deck)
     await db.commit()
@@ -172,6 +219,9 @@ async def create_deck(
         default_priority=deck.default_priority,
         target_event_date=deck.target_event_date,
         target_event_title=deck.target_event_title,
+        documentation=deck.documentation,
+        thematic_nature=deck.thematic_nature,
+        source_documents=list(deck.source_documents or []),
     )
 
 
@@ -205,6 +255,9 @@ async def update_deck(
         default_priority=deck.default_priority,
         target_event_date=deck.target_event_date,
         target_event_title=deck.target_event_title,
+        documentation=deck.documentation,
+        thematic_nature=deck.thematic_nature,
+        source_documents=list(deck.source_documents or []),
     )
 
 
@@ -334,6 +387,21 @@ async def deck_persist_items(
     return [to_schema(i) for i in items]
 
 
+@router.get("/decks/{deck_id}/all-cards-run-items", response_model=list[QueueItem])
+async def deck_all_cards_run_items(
+    deck_id: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[QueueItem]:
+    """Return all active cards in a deck formatted as QueueItems, ordered consecutively from easiest to hardest."""
+    deck = await _owned_deck(db, user, parse_uuid(deck_id))
+    from app.routers.queue import to_schema
+    from app.services.queue_service import compose_deck_all_cards_run_queue
+
+    items = await compose_deck_all_cards_run_queue(db, user, deck.id)
+    return [to_schema(i) for i in items]
+
+
 @router.delete("/decks", status_code=204)
 async def delete_all_decks(
     user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
@@ -456,7 +524,17 @@ async def create_note(
     note = Note(user_id=user.id, note_type_id=nt.id, field_values=body.field_values)
     db.add(note)
     await db.flush()
-    await sync_cards(db, note, nt, deck.id, tags=body.tags, priority=body.priority)
+    await sync_cards(
+        db,
+        note,
+        nt,
+        deck.id,
+        tags=body.tags,
+        priority=body.priority,
+        documentation=body.documentation,
+        thematic_nature=body.thematic_nature,
+        source_documents=body.source_documents,
+    )
     await db.commit()
     return await _note_out(db, note.id)
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type {
@@ -14,7 +14,7 @@ import type {
   StuckAlert,
   SubmitAnswerResponse,
 } from '../api/types'
-import { GRADES } from '../api/types'
+import { GRADES, isAllowedQwenCoderModel } from '../api/types'
 import { CodeEditor } from '../components/CodeEditor'
 import { CodeTestConsole } from '../components/CodeTestConsole'
 import { OcclusionCard } from '../components/Occlusion'
@@ -199,7 +199,7 @@ function extractCleanCode(raw?: string | null): string {
 /** The unified session view (§9): one endpoint hands back cards *and* extracts,
  *  so this page routes on `kind` rather than the user picking a mode. */
 export default function Review() {
-  const { user } = useAuth()
+  const { user, refresh } = useAuth()
   const navigate = useNavigate()
   // `?branch=<node id>` restricts the session to one knowledge-tree branch.
   const [params, setParams] = useSearchParams()
@@ -213,10 +213,37 @@ export default function Review() {
   const [answer, setAnswer] = useState('')
   const [grading, setGrading] = useState(false)
   const [result, setResult] = useState<SubmitAnswerResponse | null>(null)
+  const [vramDismissed, setVramDismissed] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const [lastOutcome, setLastOutcome] = useState<string | null>(null)
   const [confidence, setConfidence] = useState<number | null>(null)
   const [deckStatsTrigger, setDeckStatsTrigger] = useState(0)
+
+  const [activeModel, setActiveModel] = useState<string>(() =>
+    user?.grading_model && isAllowedQwenCoderModel(user.grading_model)
+      ? user.grading_model
+      : 'qwen2.5-coder:7b',
+  )
+  const [installedModels, setInstalledModels] = useState<string[]>([])
+  const gradingAbortRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    if (user?.grading_model && isAllowedQwenCoderModel(user.grading_model)) {
+      setActiveModel(user.grading_model)
+    }
+  }, [user?.grading_model])
+
+  useEffect(() => {
+    api
+      .llmStatus()
+      .then((res) => {
+        if (res?.models_installed && res.models_installed.length > 0) {
+          const genModels = res.models_installed.filter(isAllowedQwenCoderModel)
+          setInstalledModels(genModels)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const { setCognitiveContext } = useTheme()
 
@@ -236,6 +263,15 @@ export default function Review() {
   const [persistCompleted, setPersistCompleted] = useState(false)
   const [allDecks, setAllDecks] = useState<Deck[]>([])
   const [selectedPersistDeckId, setSelectedPersistDeckId] = useState<string>('')
+
+  // 🏁 All Cards Run Mode: Review every card in deck consecutively, easiest to hardest, then FSRS takes over
+  const runParam = params.get('run') === 'all' || params.get('all_cards_run') === '1'
+  const [allCardsRunActive, setAllCardsRunActive] = useState<boolean>(false)
+  const [allCardsRunDeckId, setAllCardsRunDeckId] = useState<string | null>(null)
+  const [allCardsRunDeckName, setAllCardsRunDeckName] = useState<string>('')
+  const [allCardsRunCards, setAllCardsRunCards] = useState<QueueItem[]>([])
+  const [allCardsRunIndex, setAllCardsRunIndex] = useState<number>(0)
+  const [allCardsRunCompleted, setAllCardsRunCompleted] = useState<boolean>(false)
 
   // 💻 LeetCode-Style Split IDE & Code Execution Workbench
   const [layoutMode, setLayoutMode] = useState<'split' | 'classic'>(() => {
@@ -331,7 +367,6 @@ export default function Review() {
     cpm: number
     automaticityRate: number
   } | null>(null)
-  const [liveElapsedMs, setLiveElapsedMs] = useState(0)
 
   // Stuck-state detector: a real-time nudge, not a per-card verdict — it
   // persists across the card transition below rather than being cleared by
@@ -442,17 +477,6 @@ export default function Review() {
   const shownAt = useRef<number>(Date.now())
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Live timer for automaticity reaction time
-  useEffect(() => {
-    if (!item || item.kind !== 'card' || revealed) {
-      setLiveElapsedMs(0)
-      return
-    }
-    const interval = setInterval(() => {
-      setLiveElapsedMs(Date.now() - shownAt.current)
-    }, 100)
-    return () => clearInterval(interval)
-  }, [item, revealed])
 
   // Blitz countdown timer
   useEffect(() => {
@@ -534,6 +558,7 @@ export default function Review() {
     }
     setActiveEditorTab('solution')
     setResult(null)
+    setVramDismissed(false)
     setRevealed(false)
     setConfidence(null)
     setLesson(null)
@@ -577,7 +602,11 @@ export default function Review() {
     setLoading(true)
     setError(null)
     try {
-      const [next, summary] = await Promise.all([api.nextItem(branch), api.session(branch)])
+      const activeDeck = !persistParam && !runParam ? deckParam : null
+      const [next, summary] = await Promise.all([
+        api.nextItem(branch, activeDeck),
+        api.session(branch, activeDeck),
+      ])
       setItem(next)
       setSession(summary)
       initCardState(next)
@@ -586,7 +615,7 @@ export default function Review() {
     } finally {
       setLoading(false)
     }
-  }, [branch, initCardState])
+  }, [branch, deckParam, persistParam, runParam, initCardState])
 
   const startPersistMode = useCallback(
     async (deckId: string, deckName?: string) => {
@@ -650,6 +679,67 @@ export default function Review() {
       const next = new URLSearchParams(p)
       next.delete('deck')
       next.delete('persist')
+      return next
+    })
+    void load()
+  }, [load, setParams])
+
+  const startAllCardsRun = useCallback(
+    async (deckId: string, deckName?: string) => {
+      setLoading(true)
+      setError(null)
+      // Cancel persist mode if running
+      setPersistActive(false)
+      setAllCardsRunActive(true)
+      setAllCardsRunDeckId(deckId)
+      setAllCardsRunIndex(0)
+      setAllCardsRunCompleted(false)
+
+      setParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('deck', deckId)
+        next.set('run', 'all')
+        next.delete('persist')
+        return next
+      })
+
+      try {
+        const cards = await api.deckAllCardsRunItems(deckId)
+        setAllCardsRunCards(cards)
+        const dName =
+          cards[0]?.deck_name ||
+          deckName ||
+          allDecks.find((d) => d.id === deckId)?.name ||
+          'Selected Deck'
+        setAllCardsRunDeckName(dName)
+
+        if (cards.length === 0) {
+          setItem(null)
+        } else {
+          setItem(cards[0])
+          initCardState(cards[0])
+          setLastOutcome(`🏁 All Cards Run started — Card 1 of ${cards.length} (Easiest → Hardest).`)
+        }
+      } catch (err) {
+        setError(err)
+        setAllCardsRunActive(false)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [allDecks, initCardState, setParams],
+  )
+
+  const exitAllCardsRun = useCallback(() => {
+    setAllCardsRunActive(false)
+    setAllCardsRunDeckId(null)
+    setAllCardsRunCards([])
+    setAllCardsRunIndex(0)
+    setAllCardsRunCompleted(false)
+    setParams((p) => {
+      const next = new URLSearchParams(p)
+      next.delete('run')
+      next.delete('all_cards_run')
       return next
     })
     void load()
@@ -798,7 +888,12 @@ export default function Review() {
   }, [])
 
   useEffect(() => {
-    if (persistParam && deckParam) {
+    if (runParam && deckParam) {
+      if (activeDeckRef.current !== deckParam || !allCardsRunActive || allCardsRunDeckId !== deckParam) {
+        activeDeckRef.current = deckParam
+        void startAllCardsRun(deckParam)
+      }
+    } else if (persistParam && deckParam) {
       if (activeDeckRef.current !== deckParam || !persistActive || persistDeckId !== deckParam) {
         activeDeckRef.current = deckParam
         void startPersistMode(deckParam)
@@ -807,7 +902,18 @@ export default function Review() {
       activeDeckRef.current = null
       void load()
     }
-  }, [deckParam, persistParam, load, startPersistMode, persistActive, persistDeckId])
+  }, [
+    deckParam,
+    persistParam,
+    runParam,
+    load,
+    startPersistMode,
+    startAllCardsRun,
+    persistActive,
+    persistDeckId,
+    allCardsRunActive,
+    allCardsRunDeckId,
+  ])
 
   useEffect(() => {
     if (item?.kind === 'card' && !revealed) inputRef.current?.focus()
@@ -870,23 +976,72 @@ export default function Review() {
 
   const llmEnabled = Boolean(user?.llm_grading_consent)
 
-  async function grade() {
+  const handleSwitchModel = useCallback(
+    async (modelName: string) => {
+      setActiveModel(modelName)
+      try {
+        await api.updateMe({ grading_model: modelName })
+        void refresh?.()
+      } catch {
+        // ignore
+      }
+    },
+    [refresh],
+  )
+
+  const handleGradeWithModel = useCallback(
+    async (modelName: string) => {
+      setActiveModel(modelName)
+      await grade(modelName)
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [item, answer, testCode, activeModel, user],
+  )
+
+  async function grade(targetModel?: string, allowSmaller: boolean = false) {
     if (!item || item.kind !== 'card') return
+
+    // Abort previous in-flight grading if still running
+    if (gradingAbortRef.current) {
+      gradingAbortRef.current.abort()
+    }
+    const abortController = new AbortController()
+    gradingAbortRef.current = abortController
+
+    const modelToUse = targetModel || activeModel || user?.grading_model
     const latency = Date.now() - shownAt.current
     setGrading(true)
     setError(null)
+    setVramDismissed(false)
     try {
-      const graded = await api.submitAnswer(item.id, answer, latency, testCode)
+      const graded = await api.submitAnswer(item.id, answer, latency, testCode, {
+        model: modelToUse,
+        allow_smaller_model: allowSmaller,
+        signal: abortController.signal,
+      })
+      if (abortController.signal.aborted) return
       setResult(graded)
       setRevealed(true)
-    } catch (err) {
+      if (modelToUse && modelToUse !== user?.grading_model) {
+        void api.updateMe({ grading_model: modelToUse }).then(() => refresh?.())
+      }
+    } catch (err: any) {
+      if (abortController.signal.aborted || err?.name === 'AbortError') {
+        return
+      }
       setError(err)
     } finally {
-      setGrading(false)
+      if (!abortController.signal.aborted) {
+        setGrading(false)
+      }
     }
   }
 
   function reveal() {
+    if (gradingAbortRef.current) {
+      gradingAbortRef.current.abort()
+    }
+    setGrading(false)
     setRevealed(true)
     setResult(null)
   }
@@ -980,7 +1135,25 @@ export default function Review() {
       removeDraft(item.id)
       setSavedCount(getSavedDraftsCount())
 
-      if (persistActive) {
+      if (allCardsRunActive) {
+        const nextIdx = allCardsRunIndex + 1
+        setAllCardsRunIndex(nextIdx)
+
+        if (nextIdx >= allCardsRunCards.length) {
+          setAllCardsRunCompleted(true)
+          setItem(null)
+          setLastOutcome(
+            `🏁 All Cards Run complete! All ${allCardsRunCards.length} cards in this deck reviewed consecutively from easiest to hardest. FSRS algorithm now takes over.`,
+          )
+        } else {
+          const nextCard = allCardsRunCards[nextIdx]
+          setItem(nextCard)
+          initCardState(nextCard)
+          setLastOutcome(
+            `${finalGrade} — Card ${nextIdx + 1} of ${allCardsRunCards.length} in run (Easiest → Hardest).`,
+          )
+        }
+      } else if (persistActive) {
         setPersistTotalReviews((prev) => prev + 1)
         setPersistCardAttempts((prev) => ({
           ...prev,
@@ -1133,6 +1306,7 @@ export default function Review() {
   const clearBranch = () => setParams((p) => {
     const next = new URLSearchParams(p)
     next.delete('branch')
+    next.delete('deck')
     return next
   })
 
@@ -1142,6 +1316,107 @@ export default function Review() {
   const renderBody = () => {
     if (loading) return <Spinner label="Composing your session…" />
     if (error && !item) return <ErrorNote error={error} />
+
+    const deckActive = Boolean(deckParam && !persistActive && !allCardsRunActive)
+    const activeDeckName =
+      allDecks.find((d) => d.id === deckParam)?.name || item?.deck_name || undefined
+
+    if (allCardsRunCompleted) {
+      return (
+        <div className="space-y-6">
+          <SessionHeader
+            session={session}
+            outcome={lastOutcome}
+            allCardsRunActive={allCardsRunActive}
+            allCardsRunDeckName={allCardsRunDeckName}
+            onExitAllCardsRun={exitAllCardsRun}
+            learnMode={learnMode}
+            onToggleLearnMode={toggleLearnMode}
+            savedCount={savedCount}
+            onOpenSavedDrawer={() => setSavedDrawerOpen(true)}
+          />
+          <div className="rounded-3xl border border-purple-500/40 bg-gradient-to-b from-[#140b24] via-[#0d091a] to-[#0b101b] p-8 sm:p-10 text-center max-w-xl mx-auto space-y-6 shadow-2xl backdrop-blur">
+            <div className="inline-flex h-20 w-20 items-center justify-center rounded-3xl bg-purple-500/15 border border-purple-500/30 text-4xl shadow-inner animate-bounce">
+              🏁
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-purple-300">
+                All Cards Run Complete!
+              </h2>
+              <p className="text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+                You've successfully reviewed every card in <strong className="text-white">{allCardsRunDeckName}</strong> consecutively from easiest to hardest!
+              </p>
+              <p className="text-xs text-purple-200/80 max-w-md mx-auto leading-relaxed">
+                All stability states, recall ratings, and review intervals have been recorded. <strong className="text-white">FSRS spaced repetition algorithm now takes over</strong> for future reviews.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 py-3 border-y border-purple-500/20 bg-purple-950/20 rounded-xl px-4 text-xs font-mono">
+              <div className="space-y-0.5">
+                <span className="text-slate-400 text-[10px] uppercase">Cards Reviewed</span>
+                <p className="text-white font-bold text-base">{allCardsRunCards.length}</p>
+              </div>
+              <div className="space-y-0.5 border-l border-purple-500/20">
+                <span className="text-slate-400 text-[10px] uppercase">Progression</span>
+                <p className="text-purple-300 font-bold text-base">Easiest → Hardest</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <div className="flex flex-col sm:flex-row justify-center gap-3">
+                <button
+                  type="button"
+                  className="btn btn-primary bg-purple-600 hover:bg-purple-500 text-white font-bold flex items-center justify-center gap-2 py-2.5 px-5 shadow-lg shadow-purple-900/40 cursor-pointer"
+                  onClick={exitAllCardsRun}
+                >
+                  <span>⚡</span>
+                  <span>Resume Standard FSRS Queue</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn border border-ink-line hover:bg-ink-soft text-slate-300 py-2.5 px-4 cursor-pointer"
+                  onClick={() => {
+                    if (allCardsRunDeckId) {
+                      void startAllCardsRun(allCardsRunDeckId, allCardsRunDeckName)
+                    } else {
+                      exitAllCardsRun()
+                    }
+                  }}
+                >
+                  ↻ Run Again (Easiest → Hardest)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    if (allCardsRunActive && !item && allCardsRunCards.length === 0) {
+      return (
+        <div className="space-y-6">
+          <SessionHeader
+            session={session}
+            allCardsRunActive={allCardsRunActive}
+            allCardsRunDeckName={allCardsRunDeckName}
+            onExitAllCardsRun={exitAllCardsRun}
+            learnMode={learnMode}
+            onToggleLearnMode={toggleLearnMode}
+          />
+          <Empty title={`No cards in ${allCardsRunDeckName || 'this deck'}.`}>
+            <p>This deck doesn't have any cards to review yet. Add cards or import notes to this deck.</p>
+            <div className="mt-4 flex justify-center gap-2">
+              <button className="btn" onClick={() => navigate('/decks')}>
+                Add cards
+              </button>
+              <button className="btn border border-ink-line" onClick={exitAllCardsRun}>
+                Exit All Cards Run
+              </button>
+            </div>
+          </Empty>
+        </div>
+      )
+    }
 
     if (persistCompleted) {
       return (
@@ -1249,22 +1524,35 @@ export default function Review() {
           <SessionHeader
             session={session}
             branchActive={Boolean(branch)}
+            deckActive={deckActive}
+            deckName={activeDeckName}
             onClearBranch={clearBranch}
             learnMode={learnMode}
             onToggleLearnMode={toggleLearnMode}
             allDecks={allDecks}
             onStartPersist={startPersistMode}
+            onStartAllCardsRun={startAllCardsRun}
           />
-          <Empty title={branch ? 'Nothing due in this branch.' : 'Nothing due right now.'}>
+          <Empty
+            title={
+              branch
+                ? 'Nothing due in this branch.'
+                : deckActive
+                ? `Nothing due in ${activeDeckName || 'this deck'} (or its subdecks).`
+                : 'Nothing due right now.'
+            }
+          >
             <p>
               {branch
                 ? 'This branch is caught up. Study everything, or add more under it in the Tree.'
+                : deckActive
+                ? 'This deck and its subdecks are caught up. Study all decks in the collection, or add more cards in Decks.'
                 : 'Your queue is empty for today. Add cards, import a deck, or bring in something to read.'}
             </p>
             <div className="mt-4 flex justify-center gap-2">
-              {branch ? (
-                <button className="btn" onClick={clearBranch}>
-                  Study everything
+              {branch || deckActive ? (
+                <button className="btn btn-primary" onClick={clearBranch}>
+                  Study all decks
                 </button>
               ) : (
                 <>
@@ -1278,16 +1566,16 @@ export default function Review() {
               )}
             </div>
 
-            {/* ⚡ Persist Mode Deck Launcher */}
+            {/* ⚡ Persist & 🏁 All Cards Run Deck Launcher */}
             <div className="mt-8 rounded-2xl border border-sky-500/30 bg-gradient-to-b from-sky-950/20 to-ink-soft/30 p-5 max-w-lg mx-auto text-left shadow-lg">
               <div className="flex items-center gap-2.5 mb-2">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/20 text-sky-300 font-bold text-sm">
                   ⚡
                 </span>
                 <div>
-                  <h3 className="font-semibold text-slate-100 text-sm">Persist Review a Deck</h3>
+                  <h3 className="font-semibold text-slate-100 text-sm">Deck Study Modes</h3>
                   <p className="text-xs text-slate-400">
-                    Review a deck continuously until all cards are rated <strong className="text-emerald-300 font-semibold">Easy</strong>.
+                    Drill a deck continuously via <strong className="text-emerald-300 font-semibold">Persist Review</strong> (until all Easy) or run <strong className="text-purple-300 font-semibold">All Cards Run</strong> (easiest to hardest, then FSRS takes over).
                   </p>
                 </div>
               </div>
@@ -1300,26 +1588,38 @@ export default function Review() {
                       value={selectedPersistDeckId}
                       onChange={(e) => setSelectedPersistDeckId(e.target.value)}
                     >
-                      <option value="">-- Choose a deck to persist --</option>
+                      <option value="">-- Choose a deck --</option>
                       {allDecks.map((d) => (
                         <option key={d.id} value={d.id}>
                           {d.name} ({d.card_count} {d.card_count === 1 ? 'card' : 'cards'})
                         </option>
                       ))}
                     </select>
-                    <button
-                      type="button"
-                      disabled={!selectedPersistDeckId}
-                      onClick={() => selectedPersistDeckId && startPersistMode(selectedPersistDeckId)}
-                      className="btn btn-primary text-xs whitespace-nowrap disabled:opacity-50"
-                    >
-                      ⚡ Start Persist Review
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={!selectedPersistDeckId}
+                        onClick={() => selectedPersistDeckId && startPersistMode(selectedPersistDeckId)}
+                        className="btn btn-primary text-xs whitespace-nowrap disabled:opacity-50"
+                        title="Persist reviewing until every card is rated Easy"
+                      >
+                        ⚡ Persist
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!selectedPersistDeckId}
+                        onClick={() => selectedPersistDeckId && startAllCardsRun(selectedPersistDeckId)}
+                        className="btn border border-purple-500/50 bg-purple-500/20 text-purple-200 hover:bg-purple-500/30 text-xs whitespace-nowrap disabled:opacity-50"
+                        title="Review every card consecutively from easiest to hardest, then FSRS takes over"
+                      >
+                        🏁 All Cards Run
+                      </button>
+                    </div>
                   </div>
 
                   {allDecks.filter((d) => d.card_count > 0).length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      <span className="text-[11px] text-slate-500">Quick pick:</span>
+                      <span className="text-[11px] text-slate-500">Quick run:</span>
                       {allDecks
                         .filter((d) => d.card_count > 0)
                         .slice(0, 4)
@@ -1327,10 +1627,11 @@ export default function Review() {
                           <button
                             key={d.id}
                             type="button"
-                            onClick={() => startPersistMode(d.id, d.name)}
-                            className="chip border-sky-500/30 hover:border-sky-400 hover:text-sky-200 text-xs transition"
+                            onClick={() => startAllCardsRun(d.id, d.name)}
+                            className="chip border-purple-500/30 hover:border-purple-400 hover:text-purple-200 text-xs transition"
+                            title="Run all cards in easiest to hardest order"
                           >
-                            ⚡ {d.name} ({d.card_count})
+                            🏁 {d.name} ({d.card_count})
                           </button>
                         ))}
                     </div>
@@ -1338,7 +1639,7 @@ export default function Review() {
                 </div>
               ) : (
                 <p className="mt-3 text-xs text-slate-500">
-                  No decks available yet. Create or import a deck to start persist review!
+                  No decks available yet. Create or import a deck to start reviewing!
                 </p>
               )}
             </div>
@@ -1354,6 +1655,8 @@ export default function Review() {
             session={session}
             outcome={lastOutcome}
             branchActive={Boolean(branch)}
+            deckActive={deckActive}
+            deckName={activeDeckName}
             onClearBranch={clearBranch}
             learnMode={learnMode}
             onToggleLearnMode={toggleLearnMode}
@@ -1372,6 +1675,8 @@ export default function Review() {
             session={session}
             outcome={lastOutcome}
             branchActive={Boolean(branch)}
+            deckActive={deckActive}
+            deckName={activeDeckName}
             onClearBranch={clearBranch}
             learnMode={learnMode}
             onToggleLearnMode={toggleLearnMode}
@@ -1379,6 +1684,7 @@ export default function Review() {
             onOpenSavedDrawer={() => setSavedDrawerOpen(true)}
           />
           <LessonGate
+            item={item}
             lesson={lesson}
             loading={lessonLoading}
             deckName={item.deck_name}
@@ -1426,6 +1732,8 @@ export default function Review() {
           session={session}
           outcome={lastOutcome}
           branchActive={Boolean(branch)}
+          deckActive={deckActive}
+          deckName={activeDeckName}
           onClearBranch={clearBranch}
           learnMode={learnMode}
           onToggleLearnMode={toggleLearnMode}
@@ -1439,6 +1747,14 @@ export default function Review() {
             total: persistCards.length,
             round: persistRound,
           }}
+          allCardsRunActive={allCardsRunActive}
+          allCardsRunDeckName={allCardsRunDeckName}
+          onExitAllCardsRun={exitAllCardsRun}
+          allCardsRunProgress={{
+            current: allCardsRunIndex + 1,
+            total: allCardsRunCards.length,
+          }}
+          onStartAllCardsRun={startAllCardsRun}
           allDecks={allDecks}
           onStartPersist={startPersistMode}
           savedCount={savedCount}
@@ -1560,6 +1876,71 @@ export default function Review() {
           </div>
         )}
 
+        {allCardsRunActive && (
+          <div className="rounded-xl border border-purple-500/40 bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-purple-950/20 p-4 shadow-lg backdrop-blur space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/20 text-base">
+                  🏁
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-100 text-sm">
+                      All Cards Run: {allCardsRunDeckName || item?.deck_name || 'Active Deck'}
+                    </span>
+                    <span className="rounded-full bg-purple-500/20 border border-purple-500/40 px-2 py-0.5 text-[10px] font-mono text-purple-200">
+                      Easiest → Hardest
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Reviewing every card in this deck consecutively in ascending difficulty order. Thereafter, FSRS scheduling takes over.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={exitAllCardsRun}
+                  className="rounded-md border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-xs text-purple-300 hover:bg-purple-500/20 transition cursor-pointer"
+                  title="Exit All Cards Run and return to standard FSRS queue"
+                >
+                  ✕ Exit Run (to FSRS)
+                </button>
+              </div>
+            </div>
+
+            {/* Live Run Progress Bar */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-300 flex items-center gap-2">
+                  <span>📈 Progress:</span>
+                  <strong className="text-purple-300 font-mono">
+                    Card {allCardsRunIndex + 1} of {allCardsRunCards.length}
+                  </strong>
+                  <span className="text-slate-500 text-[11px]">
+                    ({Math.max(0, allCardsRunCards.length - (allCardsRunIndex + 1))} remaining)
+                  </span>
+                </span>
+                <span className="font-mono font-bold text-purple-300">
+                  {Math.round(((allCardsRunIndex + 1) / Math.max(1, allCardsRunCards.length)) * 100)}%
+                </span>
+              </div>
+              <div className="relative h-2 w-full overflow-hidden rounded-full bg-slate-800/80">
+                <div
+                  className="h-full bg-gradient-to-r from-purple-500 to-indigo-400 transition-all duration-300 ease-out"
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      Math.max(0, ((allCardsRunIndex + 1) / Math.max(1, allCardsRunCards.length)) * 100)
+                    )}%`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Live Deck Progress & Difficulty Distribution Stats Bar */}
         {item && item.kind === 'card' && item.deck_or_source_id && (
           <DeckReviewStatsBar
@@ -1569,6 +1950,9 @@ export default function Review() {
             onStartPersist={(id) => startPersistMode(id, item.deck_name || undefined)}
             isPersistActive={persistActive}
             onOpenDeckViewer={() => setDeckViewerOpen(true)}
+            onStartAllCardsRun={(id) => void startAllCardsRun(id, item.deck_name || undefined)}
+            onExitAllCardsRun={exitAllCardsRun}
+            isAllCardsRunActive={allCardsRunActive}
           />
         )}
 
@@ -1679,21 +2063,6 @@ export default function Review() {
                   >
                     🗂️ Classic Card
                   </button>
-
-                  {!revealed && liveElapsedMs > 0 && (
-                    <span
-                      className={`chip font-mono text-[11px] font-medium transition-colors ${
-                        liveElapsedMs < 1500
-                          ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-                          : liveElapsedMs <= (user?.automaticity_threshold_ms ?? 3000)
-                          ? 'border-sky-500/40 bg-sky-500/10 text-sky-300'
-                          : 'border-rose-500/40 bg-rose-500/10 text-rose-300 animate-pulse'
-                      }`}
-                      title={`Live reaction time`}
-                    >
-                      ⏱ {(liveElapsedMs / 1000).toFixed(1)}s
-                    </span>
-                  )}
                 </div>
               </div>
 
@@ -1743,15 +2112,30 @@ export default function Review() {
                 </div>
               )}
 
+              {/* Thematic Context & Documentation */}
+              {user?.show_thematic_context !== false && (
+                <ThematicDocumentationCard item={item} />
+              )}
+
               {/* Pre-reveal action & Socratic guide */}
               {!revealed && (
                 <div className="space-y-3 pt-2">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink-line/60 pt-3">
                     <div className="flex items-center gap-2">
+                      {llmEnabled && (
+                        <DiscreteModelSelector
+                          activeModel={activeModel}
+                          installedModels={installedModels}
+                          grading={grading}
+                          hasAnswer={Boolean(answer.trim())}
+                          onSelectModel={(m) => void handleSwitchModel(m)}
+                          onGradeWithModel={(m) => void handleGradeWithModel(m)}
+                        />
+                      )}
                       {llmEnabled ? (
                         <button
                           className="btn btn-primary"
-                          onClick={grade}
+                          onClick={() => void grade()}
                           disabled={grading || !answer.trim()}
                         >
                           {grading ? 'Evaluating…' : 'Submit for LLM Rubric'}
@@ -1875,14 +2259,32 @@ export default function Review() {
                     matchedPhrases={matchedTerms}
                   />
 
-                  {result && !result.degraded_to_manual && <GradeReasoning result={result} />}
+                  {result && !result.degraded_to_manual && (
+                    <GradeReasoning
+                      result={result}
+                      installedModels={installedModels}
+                      activeModel={activeModel}
+                      grading={grading}
+                      hasAnswer={Boolean(answer.trim())}
+                      onSelectModel={(m) => void handleSwitchModel(m)}
+                      onGradeWithModel={(m) => void handleGradeWithModel(m)}
+                    />
+                  )}
 
-                  {result?.degraded_to_manual && result.degraded_reason !== 'consent_not_given' && (
+                  {result?.vram_constrained && !vramDismissed ? (
+                    <VramConstraintPrompt
+                      result={result}
+                      loading={grading}
+                      onSwitchModel={(model) => void grade(model, true)}
+                      onRetry={() => void grade(result.failed_model || undefined)}
+                      onGradeManually={() => setVramDismissed(true)}
+                    />
+                  ) : result?.degraded_to_manual && result.degraded_reason !== 'consent_not_given' ? (
                     <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
                       Automatic grading was unavailable ({result.degraded_reason}). Grade it yourself — your
                       scheduling is unaffected.
                     </div>
-                  )}
+                  ) : null}
 
                   <div>
                     <p className="label">
@@ -2454,27 +2856,6 @@ export default function Review() {
                   </button>
                 )}
               </div>
-
-              {/* Reaction Latency & Automaticity Telemetry (§Feature 4) */}
-              {!revealed && liveElapsedMs > 0 && (
-                <span
-                  className={`chip font-mono text-[11px] font-medium transition-colors ${
-                    liveElapsedMs < 1500
-                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-                      : liveElapsedMs <= (user?.automaticity_threshold_ms ?? 3000)
-                      ? 'border-sky-500/40 bg-sky-500/10 text-sky-300'
-                      : 'border-rose-500/40 bg-rose-500/10 text-rose-300 animate-pulse'
-                  }`}
-                  title={`Live retrieval reaction time (Automaticity threshold: ${((user?.automaticity_threshold_ms ?? 3000) / 1000).toFixed(1)}s)`}
-                >
-                  ⏱ {(liveElapsedMs / 1000).toFixed(1)}s{' '}
-                  {liveElapsedMs < 1500
-                    ? '⚡ Reflex'
-                    : liveElapsedMs <= (user?.automaticity_threshold_ms ?? 3000)
-                    ? 'Fluent'
-                    : 'Latent'}
-                </span>
-              )}
             </div>
 
             {/* Related Content Drawer / Primer */}
@@ -2521,6 +2902,13 @@ export default function Review() {
                     <span className="text-amber-200/90 italic">{item.edge_cases.join(', ')}</span>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Thematic Context & Documentation */}
+            {user?.show_thematic_context !== false && (
+              <div className="mt-3">
+                <ThematicDocumentationCard item={item} />
               </div>
             )}
 
@@ -2964,10 +3352,20 @@ export default function Review() {
                   />
                 )}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {llmEnabled && (
+                    <DiscreteModelSelector
+                      activeModel={activeModel}
+                      installedModels={installedModels}
+                      grading={grading}
+                      hasAnswer={Boolean(answer.trim())}
+                      onSelectModel={(m) => void handleSwitchModel(m)}
+                      onGradeWithModel={(m) => void handleGradeWithModel(m)}
+                    />
+                  )}
                   {llmEnabled ? (
                     <button
                       className="btn btn-primary"
-                      onClick={grade}
+                      onClick={() => void grade()}
                       disabled={grading || !answer.trim()}
                     >
                       {grading ? 'Grading…' : 'Submit answer'}
@@ -3036,7 +3434,7 @@ export default function Review() {
                     <button className="underline hover:text-slate-400" onClick={() => navigate('/settings')}>
                       Settings
                     </button>{' '}
-                    by giving consent.
+                    by adding a Google API key and giving consent.
                   </p>
                 )}
                 {guideOpen && (
@@ -3097,13 +3495,32 @@ export default function Review() {
                   matchedPhrases={matchedTerms}
                 />
 
-                {result && !result.degraded_to_manual && <GradeReasoning result={result} />}
-                {result?.degraded_to_manual && result.degraded_reason !== 'consent_not_given' && (
+                {result && !result.degraded_to_manual && (
+                  <GradeReasoning
+                    result={result}
+                    installedModels={installedModels}
+                    activeModel={activeModel}
+                    grading={grading}
+                    hasAnswer={Boolean(answer.trim())}
+                    onSelectModel={(m) => void handleSwitchModel(m)}
+                    onGradeWithModel={(m) => void handleGradeWithModel(m)}
+                  />
+                )}
+
+                {result?.vram_constrained && !vramDismissed ? (
+                  <VramConstraintPrompt
+                    result={result}
+                    loading={grading}
+                    onSwitchModel={(model) => void grade(model, true)}
+                    onRetry={() => void grade(result.failed_model || undefined)}
+                    onGradeManually={() => setVramDismissed(true)}
+                  />
+                ) : result?.degraded_to_manual && result.degraded_reason !== 'consent_not_given' ? (
                   <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
                     Automatic grading was unavailable ({result.degraded_reason}). Grade it yourself —
                     your scheduling is unaffected.
                   </div>
-                )}
+                ) : null}
 
                 <div>
                   <p className="label">
@@ -3349,38 +3766,68 @@ function SocraticGuide({
   )
 }
 
-/** Learn & Practice: the lesson gate shown before a card's question.
+/** Learn & Practice: the priming gate shown before testing a card's question.
  *
- *  Built from the card's own citations, never invented — a card with none is
- *  plainly not teachable rather than getting a fabricated explanation. When
- *  grading is off the cited passage itself is shown, labelled as the raw
- *  source rather than a written lesson, mirroring how grading degrades.
+ *  Shows the user:
+ *  1. The Question to be asked.
+ *  2. The Verbatim Answer expected.
+ *  3. (Optional) Supporting citations / lesson notes.
+ *  Then prompts the user to enter the active recall / practice phase.
  */
 function LessonGate({
+  item,
   lesson,
-  loading,
+  loading: _loading,
   deckName,
   onContinue,
-  onOpenSettings,
+  onOpenSettings: _onOpenSettings,
 }: {
+  item: QueueItem
   lesson: Lesson | null
-  loading: boolean
+  loading?: boolean
   deckName: string | null
   onContinue: () => void
-  onOpenSettings: () => void
+  onOpenSettings?: () => void
 }) {
   const { openLexicon } = useLexicon()
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+        const target = e.target as HTMLElement
+        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+          e.preventDefault()
+          onContinue()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onContinue])
+
+  const hasReferences = Boolean(item.references && item.references.length > 0)
+  const thematic = item.card_thematic_nature || item.deck_thematic_nature
+  const doc = item.card_documentation || item.deck_documentation
+
   return (
-    <div className="card">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+    <div className="card space-y-5">
+      {/* ── Top Header Strip ── */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-line pb-3 text-xs">
         <div className="flex flex-wrap items-center gap-2">
-          {deckName && <span className="chip">{deckName}</span>}
-          <span className="chip text-sky-300">learn &amp; practice</span>
+          {deckName && <span className="chip font-semibold text-slate-300">{deckName}</span>}
+          <span className="chip border-sky-500/40 bg-sky-500/15 text-sky-200 font-semibold">
+            📖 Learn &amp; Practice
+          </span>
+          {thematic && (
+            <span className="chip border-sky-400/30 text-sky-300">
+              {thematic}
+            </span>
+          )}
         </div>
+
         <button
           type="button"
-          onClick={() => openLexicon('binary approximations', lesson?.body)}
+          onClick={() => openLexicon(item.title || 'terminology', item.front || '')}
           className="flex items-center gap-1.5 rounded-full border border-sky-400/40 bg-sky-950/70 px-2.5 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-900/80 hover:border-sky-300 transition-all shadow-sm"
           title="Open Concordance &amp; Lexicon definition lookup"
         >
@@ -3389,86 +3836,122 @@ function LessonGate({
         </button>
       </div>
 
-      {loading || !lesson ? (
-        <Spinner label="Preparing the lesson…" />
-      ) : !lesson.available ? (
-        <div className="space-y-3">
-          <Empty title="Nothing to teach from for this card.">
-            This card has no source citation — Learn &amp; Practice only works on cards
-            generated from an uploaded document (Decks → Generate a deck from a document).
-          </Empty>
-          <button className="btn btn-primary" onClick={onContinue}>
-            Skip straight to the question
-          </button>
+      {/* Step Indicator Banner */}
+      <div className="rounded-lg bg-sky-500/10 border border-sky-500/25 p-3 text-xs text-sky-200 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-sky-300">Step 1: Priming</span>
+          <span>Study the question and the verbatim answer below. Once ready, proceed to test your memory.</span>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {!lesson.generated && (
-            <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-              {lesson.reason === 'consent_not_given' ? (
-                <>
-                  Showing the raw source passage — turn on LLM grading in{' '}
-                  <button className="underline" onClick={onOpenSettings}>
-                    Settings
-                  </button>{' '}
-                  for a written lesson instead.
-                </>
-              ) : (
-                `Showing the raw source passage — lesson generation was unavailable (${lesson.reason}).`
-              )}
-            </p>
+        <kbd className="hidden sm:inline-block px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono border border-slate-700 text-sky-300">
+          Press Enter ↵
+        </kbd>
+      </div>
+
+      {/* ── 1. The Question Asked ── */}
+      <div className="space-y-2 rounded-xl border border-sky-500/30 bg-sky-950/15 p-4">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-sky-300 flex items-center gap-1.5">
+            <span>❓</span> Question Prompt (What you will be asked)
+          </span>
+          {item.category && (
+            <span className="chip text-[10px] text-slate-400">{item.category}</span>
           )}
+        </div>
 
-          <RichText
-            text={lesson.body}
-            className="text-[15px] leading-7 text-slate-200"
-          />
+        {item.title && <h3 className="text-base font-bold text-slate-100">{item.title}</h3>}
 
-          {/* Concordance interactive guidance tip */}
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300 bg-slate-900/70 rounded-lg px-3 py-2 border border-sky-500/20">
-            <span className="flex items-center gap-1.5">
-              <span className="text-sky-300 font-semibold">💡 Lexicon Tip:</span>
-              <span>
-                Highlight any word or phrase (or <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-mono border border-slate-700 text-sky-200">Alt</kbd>+click) to view its concordance definition.
-              </span>
-            </span>
-            <button
-              type="button"
-              onClick={() => openLexicon('binary approximations', lesson.body)}
-              className="text-sky-300 hover:text-sky-200 underline font-medium text-xs ml-auto"
-            >
-              Look up "binary approximations"
-            </button>
-          </div>
-
-          {lesson.key_points.length > 0 && (
-            <div>
-              <p className="label">Key points</p>
-              <ul className="space-y-1 text-sm text-slate-300">
-                {lesson.key_points.map((p, i) => (
-                  <li key={i}>· {p}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="flex flex-wrap items-center gap-2 border-t border-ink-line pt-3 text-xs">
-            {lesson.citations.map((c, i) => (
-              <span key={i} className="chip">
-                {c.locator ?? c.source_title ?? 'source'}
-              </span>
-            ))}
-            {lesson.generated && lesson.model_used && (
-              <span className="chip">{lesson.model_used}</span>
+        {item.occlusion ? (
+          <div className="space-y-2">
+            {item.occlusion.header && (
+              <p className="text-sm font-medium text-slate-200">{item.occlusion.header}</p>
             )}
-            {lesson.cached && <span className="chip">cached</span>}
+            <OcclusionCard payload={item.occlusion} revealed={false} />
           </div>
+        ) : (
+          <RichText
+            text={item.front || item.title || 'No prompt specified'}
+            className="text-sm md:text-base font-medium text-slate-100 leading-relaxed"
+          />
+        )}
+      </div>
 
-          <button className="btn btn-primary" onClick={onContinue}>
-            I've got it — quiz me
-          </button>
+      {/* ── 2. The Answer to the Question (Verbatim) ── */}
+      <div className="space-y-2 rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+            <span>💡</span> Expected Verbatim Answer (To Be Recalled)
+          </span>
+          <span className="chip border-emerald-500/30 bg-emerald-500/10 text-[10px] font-semibold text-emerald-300">
+            Memorize This
+          </span>
         </div>
+
+        {item.occlusion ? (
+          <div className="space-y-2">
+            <OcclusionCard payload={item.occlusion} revealed={true} />
+          </div>
+        ) : (
+          <div className="rounded-lg border border-emerald-500/20 bg-slate-950/70 p-3.5">
+            <RichText
+              text={item.back || 'No answer specified'}
+              className="text-xs md:text-sm text-emerald-100 leading-relaxed font-mono whitespace-pre-wrap"
+            />
+          </div>
+        )}
+
+        {(item.time_complexity || item.space_complexity) && (
+          <div className="flex items-center gap-3 pt-1 text-xs text-emerald-400/90 font-mono">
+            {item.time_complexity && <span>Time: {item.time_complexity}</span>}
+            {item.space_complexity && <span>Space: {item.space_complexity}</span>}
+          </div>
+        )}
+      </div>
+
+      {/* ── 3. Supporting Context / Citations / Lesson Notes ── */}
+      {(doc || hasReferences || (lesson && lesson.body)) && (
+        <details className="rounded-lg border border-ink-line/80 bg-ink/40 p-3 text-xs text-slate-300 group">
+          <summary className="cursor-pointer font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 select-none">
+            <span>📚 Background Reference Notes &amp; Citations</span>
+            <span className="text-[11px] text-slate-500 group-open:hidden">(Click to expand)</span>
+          </summary>
+          <div className="mt-3 space-y-3 pt-2 border-t border-ink-line/60">
+            {doc && (
+              <div>
+                <span className="text-slate-400 font-medium block mb-1">Documentation:</span>
+                <RichText text={doc} className="text-xs leading-relaxed text-slate-300" />
+              </div>
+            )}
+            {lesson && lesson.body && lesson.body !== item.back && (
+              <div>
+                <span className="text-slate-400 font-medium block mb-1">Lesson Notes:</span>
+                <RichText text={lesson.body} className="text-xs leading-relaxed text-slate-300" />
+              </div>
+            )}
+            {hasReferences && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-slate-400 text-[11px]">Citations:</span>
+                {item.references.map((ref, idx) => (
+                  <span key={idx} className="chip text-[10px] text-slate-400" title={ref.quote || undefined}>
+                    📄 {ref.source_title ?? ref.locator ?? 'source'}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </details>
       )}
+
+      {/* ── 4. Call-to-action to enter Practice Phase ── */}
+      <div className="pt-2">
+        <button
+          type="button"
+          className="btn btn-primary w-full py-3 text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-sky-950/40 hover:scale-[1.01] active:scale-[0.99] transition-all"
+          onClick={onContinue}
+        >
+          <span>⚡ Ready — Quiz Me on This Question</span>
+          <span className="text-xs text-sky-300/80 font-normal">(Press Enter ↵)</span>
+        </button>
+      </div>
     </div>
   )
 }
@@ -3560,6 +4043,374 @@ function ReferenceReadings({
   )
 }
 
+interface VramConstraintPromptProps {
+  result: SubmitAnswerResponse
+  loading: boolean
+  onSwitchModel: (model: string) => void
+  onRetry: () => void
+  onGradeManually: () => void
+}
+
+function VramConstraintPrompt({
+  result,
+  loading,
+  onSwitchModel,
+  onRetry,
+  onGradeManually,
+}: VramConstraintPromptProps) {
+  const defaultModel =
+    result.fallback_model ||
+    result.available_fallback_models?.[0] ||
+    'qwen2.5-coder:1.5b'
+  const [chosenModel, setChosenModel] = useState<string>(defaultModel)
+
+  return (
+    <div className="rounded-xl border border-amber-500/50 bg-amber-950/40 p-5 space-y-4 text-slate-200 shadow-xl animate-fadeIn">
+      <div className="flex items-start gap-3.5">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-300 text-xl border border-amber-500/30">
+          ⚠️
+        </div>
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-base font-semibold text-amber-200">
+              GPU VRAM / Memory Limit Reached
+            </h4>
+            <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono">
+              {result.failed_model || 'Local Model'}
+            </span>
+          </div>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Your system's available GPU VRAM or host memory could not allocate space for{' '}
+            <strong className="text-amber-300 font-mono">{result.failed_model || 'this model'}</strong>.
+            Would you like to switch to a smaller local model, or free up more VRAM by closing apps and retry?
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-lg bg-black/40 border border-white/10 p-3.5 space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="space-y-1">
+            <span className="text-slate-400 font-medium">Recommended next biggest model:</span>
+            <div className="flex items-center gap-2 font-mono text-emerald-300 font-semibold text-sm">
+              <span>⚡ {chosenModel}</span>
+              <span className="chip text-[10px] px-1.5 py-0.2 border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
+                {getModelInfo(chosenModel).badge || 'Smaller size'}
+              </span>
+            </div>
+          </div>
+
+          {result.available_fallback_models &&
+            result.available_fallback_models.filter(isAllowedQwenCoderModel).length > 1 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400">Other local models:</span>
+                <select
+                  value={chosenModel}
+                  onChange={(e) => setChosenModel(e.target.value)}
+                  className="select text-xs py-1 px-2.5 bg-slate-900 border-slate-700 text-slate-200 font-mono rounded"
+                >
+                  {result.available_fallback_models.filter(isAllowedQwenCoderModel).map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2.5 pt-1">
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => onSwitchModel(chosenModel)}
+          className="btn btn-primary text-xs py-2 px-4 font-medium flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-sm"
+        >
+          {loading ? (
+            <>
+              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+              <span>Grading with {chosenModel}…</span>
+            </>
+          ) : (
+            <>
+              <span>⚡ Switch to {chosenModel} & Grade</span>
+            </>
+          )}
+        </button>
+
+        <button
+          type="button"
+          disabled={loading}
+          onClick={onRetry}
+          className="btn btn-secondary text-xs py-2 px-3.5 flex items-center gap-1.5 border-slate-700 hover:bg-slate-800 text-slate-200"
+          title="Close heavy background apps (e.g. browser tabs, IDEs) to free up VRAM, then click this button"
+        >
+          <span>↻ Closed Apps? Retry {result.failed_model || 'Grading'}</span>
+        </button>
+
+        <button
+          type="button"
+          disabled={loading}
+          onClick={onGradeManually}
+          className="btn text-xs py-2 px-3 opacity-75 hover:opacity-100 text-slate-400 hover:text-slate-200 ml-auto"
+        >
+          <span>Grade Manually</span>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** Model metadata formatter for local Ollama coding models */
+/** Model metadata formatter for local Ollama Qwen 2.5 Coder models */
+function getModelInfo(modelName: string): { label: string; short: string; badge?: string; desc?: string } {
+  const m = (modelName || '').toLowerCase()
+  if (m.includes('7b')) {
+    return {
+      label: 'Qwen 2.5 Coder 7B',
+      short: 'Qwen 7B',
+      badge: 'Recommended',
+      desc: 'High precision code & logic grader (~4.7 GB)',
+    }
+  }
+  if (m.includes('3b')) {
+    return {
+      label: 'Qwen 2.5 Coder 3B',
+      short: 'Qwen 3B',
+      badge: 'Balanced',
+      desc: 'Balanced reasoning for moderate VRAM (~1.9 GB)',
+    }
+  }
+  if (m.includes('1.5b')) {
+    return {
+      label: 'Qwen 2.5 Coder 1.5B',
+      short: 'Qwen 1.5B',
+      badge: 'Fast / Low VRAM',
+      desc: 'Ultra lightweight & instant response (~986 MB)',
+    }
+  }
+  const clean = modelName.replace(/:latest$/, '')
+  return {
+    label: clean,
+    short: clean.split(':')[0] || clean,
+    desc: 'Local Ollama quantized Qwen Coder model',
+  }
+}
+
+interface DiscreteModelSelectorProps {
+  activeModel: string
+  installedModels: string[]
+  grading: boolean
+  hasAnswer: boolean
+  isRevealed?: boolean
+  onSelectModel: (model: string) => void
+  onGradeWithModel: (model: string) => void
+  className?: string
+}
+
+/** Discrete model switcher positioned adjacent to grading button.
+ *  Allows user to switch active local model at will, or retry grading with another model.
+ *  Strictly restricted to quantized Qwen 2.5 Coder models in 7B, 3B, and 1.5B sizes.
+ */
+function DiscreteModelSelector({
+  activeModel,
+  installedModels,
+  grading,
+  hasAnswer,
+  isRevealed = false,
+  onSelectModel,
+  onGradeWithModel,
+  className = '',
+}: DiscreteModelSelectorProps) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handleDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', handleDown)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleDown)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [open])
+
+  // Only permit quantized Qwen 2.5 Coder models in 7B, 3B, and 1.5B sizes
+  const models = useMemo<string[]>(() => {
+    const installedAllowed = installedModels.filter(isAllowedQwenCoderModel)
+    const baseStandard = ['qwen2.5-coder:7b', 'qwen2.5-coder:3b', 'qwen2.5-coder:1.5b']
+    const active = isAllowedQwenCoderModel(activeModel) ? [activeModel] : []
+    return Array.from(new Set([...installedAllowed, ...active, ...baseStandard].filter(isAllowedQwenCoderModel)))
+  }, [activeModel, installedModels])
+
+  const currentInfo = getModelInfo(activeModel)
+  const isFast = currentInfo.badge?.toLowerCase().includes('fast')
+
+  return (
+    <div className={`relative inline-block ${className}`} ref={menuRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className={`group flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all ${
+          open
+            ? 'border-sky-500/60 bg-sky-950/50 text-sky-200 ring-2 ring-sky-500/20'
+            : grading
+            ? 'border-amber-500/40 bg-amber-500/10 text-amber-200 hover:border-amber-400'
+            : 'border-slate-700/80 bg-slate-900/80 text-slate-300 hover:border-slate-500 hover:bg-slate-800 hover:text-white'
+        }`}
+        title={`Active AI Grader: ${activeModel}. Click to switch models or retry grading.`}
+      >
+        <span className="text-[12px]">{isFast ? '⚡' : '🤖'}</span>
+        <span className="font-mono text-[11px] font-semibold tracking-tight">{currentInfo.short}</span>
+        <span
+          className={`text-[9px] text-slate-400 transition-transform duration-150 ${
+            open ? 'rotate-180 text-sky-400' : 'group-hover:text-slate-200'
+          }`}
+        >
+          ▾
+        </span>
+      </button>
+
+      {open && (
+        <div className="absolute bottom-full left-0 mb-2 w-80 rounded-xl border border-slate-700/80 bg-slate-900/95 p-3 shadow-2xl backdrop-blur-md z-50 text-xs">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-slate-100">Local AI Grader</span>
+              <span className="text-[10px] text-slate-400 font-mono">(Qwen 2.5 Coder)</span>
+            </div>
+            <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Quantized
+            </span>
+          </div>
+
+          <div className="my-2 space-y-1.5 max-h-60 overflow-y-auto pr-1">
+            {models.map((m) => {
+              const isCurrent = m === activeModel
+              const info = getModelInfo(m)
+              const isInstalled = installedModels.some(
+                (im) => im.toLowerCase() === m.toLowerCase() || im.toLowerCase().startsWith(m.toLowerCase()),
+              )
+              return (
+                <div
+                  key={m}
+                  className={`group flex items-center justify-between rounded-lg border p-2 transition ${
+                    isCurrent
+                      ? 'border-sky-500/50 bg-sky-950/40 text-sky-100'
+                      : isInstalled
+                      ? 'border-slate-800 bg-slate-900/40 hover:border-slate-700 hover:bg-slate-800/60 text-slate-300 cursor-pointer'
+                      : 'border-slate-800/60 bg-slate-900/20 text-slate-500'
+                  }`}
+                  onClick={() => {
+                    if (isInstalled) {
+                      onSelectModel(m)
+                      setOpen(false)
+                    } else {
+                      void navigator.clipboard.writeText(`ollama pull ${m}`)
+                    }
+                  }}
+                >
+                  <div className="flex-1 min-w-0 pr-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`font-medium truncate ${isInstalled ? 'text-slate-100' : 'text-slate-400'}`}>
+                        {info.label}
+                      </span>
+                      {info.badge && (
+                        <span
+                          className={`text-[9px] px-1 py-0.2 rounded font-semibold border ${
+                            info.badge.includes('Fast')
+                              ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
+                              : info.badge.includes('Balanced')
+                              ? 'border-amber-500/40 text-amber-300 bg-amber-500/10'
+                              : 'border-sky-500/40 text-sky-300 bg-sky-500/10'
+                          }`}
+                        >
+                          {info.badge}
+                        </span>
+                      )}
+                      {isCurrent && (
+                        <span className="text-[10px] text-sky-400 font-bold ml-auto shrink-0">✓ Active</span>
+                      )}
+                    </div>
+                    {info.desc && (
+                      <p className="text-[11px] text-slate-400 truncate mt-0.5">{info.desc}</p>
+                    )}
+                  </div>
+
+                  {/* Immediate Action: Grade if installed, or Pull prompt if not installed */}
+                  {isInstalled ? (
+                    hasAnswer && (
+                      <button
+                        type="button"
+                        className="shrink-0 rounded px-2 py-1 text-[11px] font-medium border border-slate-700 bg-slate-800 hover:border-sky-500 hover:bg-sky-600 hover:text-white text-slate-200 transition"
+                        title={`Grade answer now using ${m}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onGradeWithModel(m)
+                          setOpen(false)
+                        }}
+                      >
+                        {grading ? '↻ Retry' : isRevealed ? '↻ Re-grade' : '⚡ Grade'}
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void navigator.clipboard.writeText(`ollama pull ${m}`)
+                      }}
+                      className="shrink-0 text-[10px] px-2 py-0.5 rounded border border-slate-700 bg-slate-800/80 text-slate-400 hover:text-sky-300 hover:border-sky-500/40 font-mono transition"
+                      title={`Click to copy command: ollama pull ${m}`}
+                    >
+                      pull {info.short.toLowerCase().replace('qwen ', '')}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">
+              {grading ? (
+                <span className="text-amber-300 flex items-center gap-1">
+                  <span className="animate-spin text-xs">↻</span> Grading in progress…
+                </span>
+              ) : hasAnswer ? (
+                <span>Click model to switch, or button to grade</span>
+              ) : (
+                <span>Click model to set as active grader</span>
+              )}
+            </span>
+            {grading && (
+              <button
+                type="button"
+                className="text-amber-400 hover:text-amber-200 underline font-medium cursor-pointer"
+                onClick={() => {
+                  const alt = models.find((m) => m !== activeModel) || activeModel
+                  onGradeWithModel(alt)
+                  setOpen(false)
+                }}
+              >
+                Cancel &amp; retry
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** §4.1 step 5: show the score *and* the reasoning, so the model is auditable.
  *
  *  The score (0-100) is the actual grading feedback — correctness against key
@@ -3568,24 +4419,57 @@ function ReferenceReadings({
  *  entirely (how sure the model is in its own score), so it's labelled to
  *  avoid being read as a second correctness number.
  */
-function GradeReasoning({ result }: { result: SubmitAnswerResponse }) {
+function GradeReasoning({
+  result,
+  installedModels = [],
+  activeModel,
+  grading = false,
+  hasAnswer = false,
+  onSelectModel,
+  onGradeWithModel,
+}: {
+  result: SubmitAnswerResponse
+  installedModels?: string[]
+  activeModel?: string
+  grading?: boolean
+  hasAnswer?: boolean
+  onSelectModel?: (m: string) => void
+  onGradeWithModel?: (m: string) => void
+}) {
   const pct = Math.round(result.confidence * 100)
   return (
     <div className="rounded-lg border border-ink-line bg-ink p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {result.score !== null && (
-          <span className={`chip text-base font-semibold ${GRADE_STYLE[result.suggested_grade]}`}>
-            {Math.round(result.score)}%
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {result.score !== null && (
+            <span className={`chip text-base font-semibold ${GRADE_STYLE[result.suggested_grade]}`}>
+              {Math.round(result.score)}%
+            </span>
+          )}
+          <span className={`chip capitalize ${GRADE_STYLE[result.suggested_grade]}`}>
+            {result.suggested_grade}
           </span>
-        )}
-        <span className={`chip capitalize ${GRADE_STYLE[result.suggested_grade]}`}>
-          {result.suggested_grade}
-        </span>
-        <span className="chip">model confidence {pct}%</span>
-        {result.model_used && <span className="chip">{result.model_used}</span>}
-        {result.cached && <span className="chip">cached</span>}
-        {result.heuristic_overlap !== null && (
-          <span className="chip">keyword overlap {Math.round(result.heuristic_overlap * 100)}%</span>
+          <span className="chip">model confidence {pct}%</span>
+          {result.model_used && <span className="chip">{result.model_used}</span>}
+          {result.cached && <span className="chip">cached</span>}
+          {result.heuristic_overlap !== null && (
+            <span className="chip">keyword overlap {Math.round(result.heuristic_overlap * 100)}%</span>
+          )}
+        </div>
+
+        {onSelectModel && onGradeWithModel && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-slate-400">Retry with:</span>
+            <DiscreteModelSelector
+              activeModel={activeModel || result.model_used || 'qwen2.5-coder:7b'}
+              installedModels={installedModels}
+              grading={grading}
+              hasAnswer={hasAnswer}
+              isRevealed={true}
+              onSelectModel={onSelectModel}
+              onGradeWithModel={onGradeWithModel}
+            />
+          </div>
         )}
       </div>
 
@@ -3610,7 +4494,85 @@ function GradeReasoning({ result }: { result: SubmitAnswerResponse }) {
 /** Pre-Answer Primer: collapsible related content drawer allowing the student
  *  to optionally review source quotes, citations, or lesson before committing
  *  an answer to memory.
- */
+/** Collapsible card for thematic context, deck documentation, and creation source documents. */
+function ThematicDocumentationCard({ item }: { item: QueueItem }) {
+  const [expanded, setExpanded] = useState(false)
+
+  const theme = item.card_thematic_nature || item.deck_thematic_nature
+  const doc = item.card_documentation || item.deck_documentation
+  const sources = item.card_source_documents || item.deck_source_documents || []
+
+  if (!theme && !doc && sources.length === 0) return null
+
+  return (
+    <div className="rounded-xl border border-sky-500/30 bg-gradient-to-r from-sky-950/20 to-ink-soft/40 p-3.5 space-y-2 text-xs backdrop-blur-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-sky-200">Thematic Context &amp; Documentation</span>
+          {theme && (
+            <span className="chip border-sky-400/40 text-sky-300 bg-sky-500/10 font-semibold">
+              {theme}
+            </span>
+          )}
+        </div>
+        {doc && (
+          <button
+            type="button"
+            onClick={() => setExpanded((prev) => !prev)}
+            className="text-[11px] text-sky-300 hover:text-white underline cursor-pointer"
+          >
+            {expanded ? 'Hide Documentation' : 'View Documentation'}
+          </button>
+        )}
+      </div>
+
+      {sources.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+          <span className="text-[11px] text-slate-400">Creation Documents:</span>
+          {sources.map((sd: any, idx: number) => {
+            let label = ''
+            let quoteText = ''
+            if (typeof sd === 'string') {
+              try {
+                const parsed = JSON.parse(sd)
+                if (typeof parsed === 'object' && parsed !== null) {
+                  sd = parsed
+                } else {
+                  label = sd
+                }
+              } catch {
+                label = sd
+              }
+            }
+            if (typeof sd === 'object' && sd !== null) {
+              const name = sd.title || sd.name || sd.filename || 'Document'
+              const locator = sd.locator ? ` (${sd.locator})` : ''
+              const pages = !sd.locator && sd.pages ? ` (pp. ${sd.pages})` : ''
+              label = `${name}${locator || pages}`
+              quoteText = sd.quote || ''
+            }
+            return (
+              <span
+                key={idx}
+                className="chip border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-[11px]"
+                title={quoteText ? `Citation quote: "${quoteText}"` : undefined}
+              >
+                📄 {label}
+              </span>
+            )
+          })}
+        </div>
+      )}
+
+      {expanded && doc && (
+        <div className="mt-2 rounded-lg border border-ink-line/60 bg-ink/80 p-3 text-slate-300 leading-relaxed text-xs">
+          <RichText text={doc} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 function PrimerDrawer({
   item,
   lesson,
@@ -4042,6 +5004,8 @@ function SessionHeader({
   outcome,
   branchActive,
   onClearBranch,
+  deckActive,
+  deckName,
   learnMode,
   onToggleLearnMode,
   blitzActive,
@@ -4050,6 +5014,11 @@ function SessionHeader({
   persistDeckName,
   onExitPersist,
   persistProgress,
+  allCardsRunActive,
+  allCardsRunDeckName,
+  onExitAllCardsRun,
+  allCardsRunProgress,
+  onStartAllCardsRun,
   allDecks,
   onStartPersist,
   savedCount,
@@ -4059,6 +5028,8 @@ function SessionHeader({
   outcome?: string | null
   branchActive?: boolean
   onClearBranch?: () => void
+  deckActive?: boolean
+  deckName?: string
   learnMode?: boolean
   onToggleLearnMode?: () => void
   blitzActive?: boolean
@@ -4067,12 +5038,17 @@ function SessionHeader({
   persistDeckName?: string
   onExitPersist?: () => void
   persistProgress?: { grasped: number; total: number; round: number }
+  allCardsRunActive?: boolean
+  allCardsRunDeckName?: string
+  onExitAllCardsRun?: () => void
+  allCardsRunProgress?: { current: number; total: number }
+  onStartAllCardsRun?: (deckId: string, deckName?: string) => void
   allDecks?: Deck[]
   onStartPersist?: (deckId: string, deckName?: string) => void
   savedCount?: number
   onOpenSavedDrawer?: () => void
 }) {
-  if (!session && !persistActive) return null
+  if (!session && !persistActive && !allCardsRunActive) return null
   const counts = session?.counts
   const caps = session?.caps
   const planned = ((counts?.review ?? 0) + (counts?.new ?? 0) + (counts?.ir ?? 0))
@@ -4080,6 +5056,27 @@ function SessionHeader({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-xs">
+        {allCardsRunActive && (
+          <span className="chip border-purple-500/50 bg-purple-500/15 text-purple-200 font-semibold flex items-center gap-1.5 shadow-sm">
+            <span>🏁 Run: {allCardsRunDeckName || 'Current Deck'}</span>
+            {allCardsRunProgress && (
+              <span className="text-[10px] text-purple-300/90 font-mono">
+                ({allCardsRunProgress.current}/{allCardsRunProgress.total} · Easiest → Hardest)
+              </span>
+            )}
+            {onExitAllCardsRun && (
+              <button
+                type="button"
+                className="ml-1 text-slate-400 hover:text-white underline text-[11px] cursor-pointer"
+                onClick={onExitAllCardsRun}
+                title="Exit All Cards Run and return to FSRS queue"
+              >
+                exit
+              </button>
+            )}
+          </span>
+        )}
+
         {persistActive && (
           <span className="chip border-amber-500/50 bg-amber-500/15 text-amber-200 font-semibold flex items-center gap-1.5 shadow-sm">
             <span>⚡ Persist: {persistDeckName || 'Current Deck'}</span>
@@ -4104,9 +5101,33 @@ function SessionHeader({
         {branchActive && (
           <span className="chip border-sky-500/40 text-sky-300">
             branch-scoped
-            <button className="ml-2 underline" onClick={onClearBranch}>
-              exit
-            </button>
+            {onClearBranch && (
+              <button className="ml-2 underline" onClick={onClearBranch}>
+                exit
+              </button>
+            )}
+          </span>
+        )}
+
+        {deckActive && (
+          <span className="chip border-sky-500/50 bg-sky-500/10 text-sky-200 flex items-center gap-1.5 shadow-sm">
+            <span>🗂️ Deck Tree: {deckName || 'Deck + Subdecks'}</span>
+            {onClearBranch && (
+              <button
+                type="button"
+                className="ml-1 text-slate-400 hover:text-white underline text-[11px]"
+                onClick={onClearBranch}
+                title="Switch to studying all decks in collection"
+              >
+                study all
+              </button>
+            )}
+          </span>
+        )}
+
+        {!branchActive && !deckActive && !persistActive && !allCardsRunActive && (
+          <span className="chip border-emerald-500/40 bg-emerald-500/10 text-emerald-200 font-medium">
+            📚 Collection: All Decks
           </span>
         )}
 
@@ -4124,7 +5145,7 @@ function SessionHeader({
         )}
 
         {/* ⚡ Quick Persist Deck Selector (when not in persist mode) */}
-        {!persistActive && allDecks && allDecks.filter((d) => d.card_count > 0).length > 0 && onStartPersist && (
+        {!persistActive && !allCardsRunActive && allDecks && allDecks.filter((d) => d.card_count > 0).length > 0 && onStartPersist && (
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] text-amber-400 font-medium">⚡ Persist Deck:</span>
             <select
@@ -4140,6 +5161,35 @@ function SessionHeader({
             >
               <option value="" disabled>
                 Select deck to drill…
+              </option>
+              {allDecks
+                .filter((d) => d.card_count > 0)
+                .map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name} ({d.card_count} cards)
+                  </option>
+                ))}
+            </select>
+          </div>
+        )}
+
+        {/* 🏁 Quick All Cards Run Selector */}
+        {!allCardsRunActive && !persistActive && allDecks && allDecks.filter((d) => d.card_count > 0).length > 0 && onStartAllCardsRun && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-purple-400 font-medium">🏁 All Cards Run:</span>
+            <select
+              className="rounded border border-purple-500/30 bg-ink-soft/90 px-2 py-0.5 text-[11px] text-purple-200 hover:border-purple-400 focus:outline-none cursor-pointer"
+              defaultValue=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  const d = allDecks.find((deck) => deck.id === e.target.value)
+                  onStartAllCardsRun(e.target.value, d?.name)
+                  e.target.value = ''
+                }
+              }}
+            >
+              <option value="" disabled>
+                Select deck to run…
               </option>
               {allDecks
                 .filter((d) => d.card_count > 0)

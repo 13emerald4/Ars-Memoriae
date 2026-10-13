@@ -95,8 +95,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (text ? JSON.parse(text) : null) as T
 }
 
-const post = <T,>(path: string, body?: unknown) =>
-  request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
+const post = <T,>(path: string, body?: unknown, init: RequestInit = {}) =>
+  request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body), ...init })
 const patch = <T,>(path: string, body: unknown) =>
   request<T>(path, { method: 'PATCH', body: JSON.stringify(body) })
 
@@ -123,11 +123,22 @@ export const api = {
     }>('/api/llm/status'),
 
   // ── queue (§9) ──────────────────────────────────────────────────────────
-  // `branch` scopes the session to one knowledge-tree subtree.
-  nextItem: (branch?: string | null) =>
-    request<QueueItem | null>(`/api/queue/next${branch ? `?branch=${branch}` : ''}`),
-  session: (branch?: string | null) =>
-    request<SessionSummary>(`/api/queue/session${branch ? `?branch=${branch}` : ''}`),
+  // `branch` scopes the session to one knowledge-tree subtree;
+  // `deck` scopes the session to a deck and all its subdecks recursively.
+  nextItem: (branch?: string | null, deck?: string | null) => {
+    const params = new URLSearchParams()
+    if (branch) params.set('branch', branch)
+    if (deck) params.set('deck', deck)
+    const qs = params.toString() ? `?${params.toString()}` : ''
+    return request<QueueItem | null>(`/api/queue/next${qs}`)
+  },
+  session: (branch?: string | null, deck?: string | null) => {
+    const params = new URLSearchParams()
+    if (branch) params.set('branch', branch)
+    if (deck) params.set('deck', deck)
+    const qs = params.toString() ? `?${params.toString()}` : ''
+    return request<SessionSummary>(`/api/queue/session${qs}`)
+  },
   queueConfig: () => request<QueueConfig>('/api/queue-config'),
   updateQueueConfig: (body: Partial<QueueConfig>) => patch<QueueConfig>('/api/queue-config', body),
 
@@ -158,8 +169,24 @@ export const api = {
     post<WeaknessHintResponse>(`/api/review/${cardId}/weakness-hint`, {}),
   socraticLineHint: (cardId: string, body: SocraticLineHintRequest) =>
     post<SocraticLineHintResponse>(`/api/review/${cardId}/line-hint`, body),
-  submitAnswer: (cardId: string, typed_answer: string, latency_ms: number, test_code?: string) =>
-    post<SubmitAnswerResponse>(`/api/review/${cardId}/answer`, { typed_answer, latency_ms, test_code }),
+  submitAnswer: (
+    cardId: string,
+    typed_answer: string,
+    latency_ms: number,
+    test_code?: string,
+    options?: { model?: string; allow_smaller_model?: boolean; signal?: AbortSignal },
+  ) =>
+    post<SubmitAnswerResponse>(
+      `/api/review/${cardId}/answer`,
+      {
+        typed_answer,
+        latency_ms,
+        test_code,
+        model: options?.model,
+        allow_smaller_model: options?.allow_smaller_model,
+      },
+      options?.signal ? { signal: options.signal } : {},
+    ),
   runReviewCode: (
     cardId: string,
     body: { code: string; test_code?: string; custom_test_cases?: any[]; language?: string },
@@ -187,8 +214,15 @@ export const api = {
   decks: () => request<Deck[]>('/api/decks'),
   deckStats: (id: string) => request<DeckStats>(`/api/decks/${id}/stats`),
   deckPersistItems: (deckId: string) => request<QueueItem[]>(`/api/decks/${deckId}/persist-items`),
-  createDeck: (body: { name: string; default_priority?: number; parent_id?: string | null }) =>
-    post<Deck>('/api/decks', body),
+  deckAllCardsRunItems: (deckId: string) => request<QueueItem[]>(`/api/decks/${deckId}/all-cards-run-items`),
+  createDeck: (body: {
+    name: string
+    default_priority?: number
+    parent_id?: string | null
+    documentation?: string | null
+    thematic_nature?: string | null
+    source_documents?: Array<Record<string, any>>
+  }) => post<Deck>('/api/decks', body),
   updateDeck: (id: string, body: Record<string, unknown>) => patch<Deck>(`/api/decks/${id}`, body),
   deleteDeck: (id: string, cascade: boolean = true) =>
     request<void>(`/api/decks/${id}${cascade ? '?cascade=true' : ''}`, { method: 'DELETE' }),
@@ -207,6 +241,9 @@ export const api = {
     field_values: Record<string, unknown>
     tags?: string[]
     priority?: number | null
+    documentation?: string | null
+    thematic_nature?: string | null
+    source_documents?: Array<Record<string, any>>
   }) => post<{ id: string; cards: Card[] }>('/api/notes', body),
   deleteNote: (id: string) => request<void>(`/api/notes/${id}`, { method: 'DELETE' }),
   cards: (params: Record<string, string | number | boolean> = {}) => {
@@ -240,8 +277,21 @@ export const api = {
       thinking_budget?: number
     } = {},
   ) => post<GenerateDeckResponse>(`/api/documents/${sourceId}/generate-deck`, body),
-  acceptDeck: (sourceId: string, deck: string, cards: CitedCard[]) =>
-    post<AcceptDeckResponse>(`/api/documents/${sourceId}/accept-deck`, { deck, cards }),
+  acceptDeck: (
+    sourceId: string,
+    deck: string,
+    cards: CitedCard[],
+    options?: {
+      thematic_nature?: string | null
+      documentation?: string | null
+      source_documents?: Array<Record<string, any>>
+    },
+  ) =>
+    post<AcceptDeckResponse>(`/api/documents/${sourceId}/accept-deck`, {
+      deck,
+      cards,
+      ...options,
+    }),
 
   // ── knowledge tree ──────────────────────────────────────────────────────
   tree: () => request<{ nodes: TreeNode[] }>('/api/tree'),

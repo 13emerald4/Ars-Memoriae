@@ -7,7 +7,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Card, Note, NoteType, User
+from app.models import Card, Deck, Note, NoteType, User
 from app.services.rendering import slots_for
 
 
@@ -53,6 +53,9 @@ async def sync_cards(
     priority: int | None = None,
     origin: str = "manual",
     origin_extract_id: uuid.UUID | None = None,
+    documentation: str | None = None,
+    thematic_nature: str | None = None,
+    source_documents: list | None = None,
 ) -> list[Card]:
     """Create the cards a note implies, and retire cards whose slot vanished.
 
@@ -67,6 +70,14 @@ async def sync_cards(
         for c in (await db.scalars(select(Card).where(Card.note_id == note.id))).all()
     }
 
+    # If documentation/thematic_nature/source_documents are not provided, inherit from deck
+    if documentation is None and thematic_nature is None and source_documents is None:
+        deck = await db.get(Deck, deck_id)
+        if deck:
+            documentation = deck.documentation
+            thematic_nature = deck.thematic_nature
+            source_documents = list(deck.source_documents or [])
+
     cards: list[Card] = []
     for slot in wanted:
         card = existing.get(slot)
@@ -79,6 +90,9 @@ async def sync_cards(
                 origin=origin,
                 origin_extract_id=origin_extract_id,
                 tags=list(tags or []),
+                documentation=documentation,
+                thematic_nature=thematic_nature,
+                source_documents=list(source_documents or []),
             )
             db.add(card)
         else:
@@ -87,6 +101,12 @@ async def sync_cards(
                 card.tags = list(tags)
             if priority is not None:
                 card.priority = priority
+            if documentation is not None:
+                card.documentation = documentation
+            if thematic_nature is not None:
+                card.thematic_nature = thematic_nature
+            if source_documents is not None:
+                card.source_documents = list(source_documents)
         cards.append(card)
 
     for slot, card in existing.items():

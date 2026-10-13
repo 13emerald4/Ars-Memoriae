@@ -285,14 +285,36 @@ async def accept_deck(
 
     existing = await db.scalar(select(Deck).where(Deck.user_id == user.id, Deck.name == body.deck))
     deck_created = existing is None
+    thematic_nature = body.thematic_nature or f"Document Study: {source.title}"
+    documentation = (
+        body.documentation
+        or f"Deck generated from document '{source.title}'. Includes {len(body.cards)} citable cards."
+    )
+    doc_meta = {"title": source.title, "source_id": str(source.id)}
+    if source.url:
+        doc_meta["url"] = source.url
+    source_docs = list(body.source_documents) if body.source_documents else [doc_meta]
+
     deck = existing or Deck(
         user_id=user.id,
         name=body.deck,
         default_priority=body.priority if body.priority is not None else 50,
+        thematic_nature=thematic_nature,
+        documentation=documentation,
+        source_documents=source_docs,
     )
     if deck_created:
         db.add(deck)
         await db.flush()
+    else:
+        existing_docs = list(deck.source_documents or [])
+        if not any(isinstance(d, dict) and d.get("source_id") == str(source.id) for d in existing_docs):
+            existing_docs.append(doc_meta)
+            deck.source_documents = existing_docs
+        if not deck.thematic_nature:
+            deck.thematic_nature = thematic_nature
+        if not deck.documentation:
+            deck.documentation = documentation
 
     # Only extracts belonging to *this* document are citable, so a crafted
     # extract_id can't attach another user's reading to a card.
@@ -333,6 +355,11 @@ async def accept_deck(
         note = Note(user_id=user.id, note_type_id=nt.id, field_values=fields)
         db.add(note)
         await db.flush()
+        card_doc = (
+            item.quote
+            if item.quote_verified
+            else f"Cites '{source.title}' ({item.locator or 'Section'})"
+        )
         new_cards = await sync_cards(
             db,
             note,
@@ -341,6 +368,9 @@ async def accept_deck(
             tags=["document", source.title[:40]],
             origin="extract" if extract_id else "manual",
             origin_extract_id=extract_id,
+            documentation=card_doc,
+            thematic_nature=thematic_nature,
+            source_documents=[doc_meta],
         )
         notes_created += 1
         cards_created += len(new_cards)

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Spinner } from './components/ui'
 import { useAuth } from './hooks/useAuth'
@@ -17,8 +17,8 @@ const Tutorial = lazy(() => import('./pages/Tutorial'))
 const NAV = [
   { to: '/tutorial', label: 'Start here' },
   { to: '/review', label: 'Review' },
-  { to: '/code/fundamentals', label: '🛠 Pre-LeetCode' },
-  { to: '/code', label: '⚡ Code Lab' },
+  { to: '/code/fundamentals', label: 'Pre-LeetCode' },
+  { to: '/code', label: 'Code Lab' },
   { to: '/tree', label: 'Tree' },
   { to: '/read', label: 'Read' },
   { to: '/decks', label: 'Decks' },
@@ -193,12 +193,21 @@ function ThemeNavButton() {
 }
 
 function AppLayout() {
+  const { user } = useAuth()
   const location = useLocation()
   const isWide = location.pathname.startsWith('/code') || location.pathname.startsWith('/review')
   const { isFullscreen, isZenMode } = useFullscreen()
   const [headerHovered, setHeaderHovered] = useState(false)
 
   const hideHeader = isZenMode && !headerHovered
+
+  const visibleNav = useMemo(() => {
+    return NAV.filter((item) => {
+      if (item.to === '/code/fundamentals' && !user?.show_pre_leetcode) return false
+      if (item.to === '/code' && !user?.show_code_lab) return false
+      return true
+    })
+  }, [user?.show_pre_leetcode, user?.show_code_lab])
 
   return (
     <div className={`min-h-screen ${isFullscreen ? 'bg-[#090d16]' : ''}`}>
@@ -229,7 +238,7 @@ function AppLayout() {
           <span className="text-sm font-semibold tracking-tight text-slate-100">Ars Memoriae</span>
           <div className="flex items-center gap-2.5">
             <nav className="flex flex-wrap gap-1">
-              {NAV.map((item) => (
+              {visibleNav.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}

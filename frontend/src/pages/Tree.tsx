@@ -2,7 +2,25 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Card, TreeNode } from '../api/types'
+import { SuperMemoTree, type SuperMemoNode } from '../components/SuperMemoTree'
 import { Empty, ErrorNote, PriorityBar, RichText, Section, Spinner } from '../components/ui'
+
+function toSuperMemoNodes(treeNodes: TreeNode[]): SuperMemoNode[] {
+  return treeNodes.map((tn) => ({
+    id: tn.id,
+    title: tn.title,
+    kind: tn.kind,
+    parentId: tn.parent_id,
+    elementCount: tn.card_count || tn.extract_count || 0,
+    dueCount: tn.due_count,
+    newCount: tn.new_count,
+    deckId: tn.deck_id,
+    extractId: tn.extract_id,
+    locked: tn.locked,
+    originalNode: tn,
+    children: toSuperMemoNodes(tn.children || []),
+  }))
+}
 
 /** The knowledge tree: one hierarchy over decks *and* reading material.
  *
@@ -11,11 +29,13 @@ import { Empty, ErrorNote, PriorityBar, RichText, Section, Spinner } from '../co
  *  long scrolled tree is the case dragging handles worst.
  */
 export default function Tree() {
+  const navigate = useNavigate()
   const [nodes, setNodes] = useState<TreeNode[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<unknown>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [highestOrderOnly, setHighestOrderOnly] = useState(false)
+  const [viewMode, setViewMode] = useState<'supermemo' | 'list'>('supermemo')
 
   const load = useCallback(async () => {
     try {
@@ -37,6 +57,66 @@ export default function Tree() {
     void load()
   }, [load])
 
+  const superMemoNodes = useMemo(() => toSuperMemoNodes(nodes), [nodes])
+
+  const handleStudySuperMemoNode = useCallback(
+    (node: SuperMemoNode) => {
+      if (node.id === '__root__') {
+        navigate('/review')
+      } else if (node.deckId) {
+        navigate(`/review?deck=${node.deckId}`)
+      } else {
+        navigate(`/review?branch=${node.id}`)
+      }
+    },
+    [navigate],
+  )
+
+  const handleAddChild = useCallback(
+    async (parent: SuperMemoNode | null) => {
+      const parentName = parent && parent.id !== '__root__' ? parent.title : 'Root'
+      const title = prompt(`Enter new topic name under "${parentName}":`)
+      if (!title || !title.trim()) return
+      try {
+        await api.createTopic({
+          title: title.trim(),
+          parent_id: parent && parent.id !== '__root__' ? parent.id : null,
+        })
+        await load()
+      } catch (err) {
+        setError(err)
+      }
+    },
+    [load],
+  )
+
+  const handleRename = useCallback(
+    async (node: SuperMemoNode) => {
+      const title = prompt(`Rename "${node.title}" to:`, node.title)
+      if (!title || !title.trim() || title.trim() === node.title) return
+      try {
+        await api.updateNode(node.id, { title: title.trim() })
+        await load()
+      } catch (err) {
+        setError(err)
+      }
+    },
+    [load],
+  )
+
+  const handleDelete = useCallback(
+    async (node: SuperMemoNode) => {
+      if (!confirm(`Are you sure you want to delete "${node.title}"?`)) return
+      try {
+        await api.deleteNode(node.id)
+        await load()
+      } catch (err) {
+        setError(err)
+      }
+    },
+    [load],
+  )
+
   // Flat list of every node, for the "move to…" picker and the depth guides.
   const flat = useMemo(() => flatten(nodes), [nodes])
 
@@ -51,37 +131,68 @@ export default function Tree() {
         description="Everything you're learning in one hierarchy — topics, decks, articles and the extracts carved out of them. Priority flows down a branch."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className={`btn px-2.5 py-1 text-xs transition ${
-                highestOrderOnly
-                  ? 'border-sky-500/60 bg-sky-500/15 text-sky-200 ring-1 ring-sky-500/30'
-                  : 'text-slate-400'
-              }`}
-              onClick={() => setHighestOrderOnly(!highestOrderOnly)}
-              title="Show only top-level parent subjects, documents, and decks"
-            >
-              {highestOrderOnly ? '✓ Highest-order parents only' : 'Highest-order parents only'}
-            </button>
-            {!highestOrderOnly && (
+            {/* View Switcher: SuperMemo Contents vs Detailed Rows */}
+            <div className="flex items-center rounded-lg border border-slate-700 bg-slate-800/80 p-0.5 text-xs">
+              <button
+                type="button"
+                className={`px-2 py-1 rounded transition ${
+                  viewMode === 'supermemo'
+                    ? 'bg-sky-500/20 text-sky-200 font-semibold shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                onClick={() => setViewMode('supermemo')}
+              >
+                🗂️ SuperMemo Contents
+              </button>
+              <button
+                type="button"
+                className={`px-2 py-1 rounded transition ${
+                  viewMode === 'list'
+                    ? 'bg-sky-500/20 text-sky-200 font-semibold shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                onClick={() => setViewMode('list')}
+              >
+                📋 Detailed Rows
+              </button>
+            </div>
+
+            {viewMode === 'list' && (
               <>
                 <button
                   type="button"
-                  className="btn px-2 py-1 text-xs"
-                  onClick={() => setExpanded(new Set(flat.map((f) => f.id)))}
+                  className={`btn px-2.5 py-1 text-xs transition ${
+                    highestOrderOnly
+                      ? 'border-sky-500/60 bg-sky-500/15 text-sky-200 ring-1 ring-sky-500/30'
+                      : 'text-slate-400'
+                  }`}
+                  onClick={() => setHighestOrderOnly(!highestOrderOnly)}
+                  title="Show only top-level parent subjects, documents, and decks"
                 >
-                  Expand all
+                  {highestOrderOnly ? '✓ Highest-order parents only' : 'Highest-order parents only'}
                 </button>
-                <button
-                  type="button"
-                  className="btn px-2 py-1 text-xs"
-                  onClick={() => setExpanded(new Set())}
-                >
-                  Collapse all
-                </button>
+                {!highestOrderOnly && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn px-2 py-1 text-xs"
+                      onClick={() => setExpanded(new Set(flat.map((f) => f.id)))}
+                    >
+                      Expand all
+                    </button>
+                    <button
+                      type="button"
+                      className="btn px-2 py-1 text-xs"
+                      onClick={() => setExpanded(new Set())}
+                    >
+                      Collapse all
+                    </button>
+                  </>
+                )}
+                <NewTopic parentId={null} onDone={load} label="New topic" />
               </>
             )}
-            <NewTopic parentId={null} onDone={load} label="New topic" />
+
             {nodes.length > 0 && (
               <button
                 type="button"
@@ -112,6 +223,14 @@ export default function Tree() {
           <Empty title="Nothing here yet.">
             Add a deck or import something to read and it will appear in the tree.
           </Empty>
+        ) : viewMode === 'supermemo' ? (
+          <SuperMemoTree
+            nodes={superMemoNodes}
+            onStudyNode={handleStudySuperMemoNode}
+            onAddChild={handleAddChild}
+            onRename={handleRename}
+            onDelete={handleDelete}
+          />
         ) : (
           <div className="space-y-1">
             {nodes.map((n) => (

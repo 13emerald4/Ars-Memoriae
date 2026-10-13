@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 # ── auth & settings ─────────────────────────────────────────────────────────
 
@@ -42,12 +42,27 @@ class UserOut(BaseModel):
     target_event_date: datetime | None = None
     target_event_title: str | None = None
     peak_retention_target: float | None = 0.95
+    show_pre_leetcode: bool = False
+    show_code_lab: bool = False
+    show_thematic_context: bool = True
 
 
 class UserUpdate(BaseModel):
     desired_retention: float | None = Field(default=None, ge=0.7, le=0.99)
     grading_model: str | None = None
     queue_time_budget_minutes: int | None = Field(default=None, ge=1, le=600)
+
+    @field_validator("grading_model")
+    @classmethod
+    def validate_grading_model(cls, v: str | None) -> str | None:
+        if v is not None:
+            from app.services.grading_service import is_allowed_qwen_coder_model
+
+            if not is_allowed_qwen_coder_model(v):
+                raise ValueError(
+                    f"Model '{v}' is not permitted. Only quantized Qwen 2.5 Coder models in 7B, 3B, or 1.5B sizes are allowed."
+                )
+        return v
     leech_remediation_opt_in: bool | None = None
     daily_new_limit: int | None = Field(default=None, ge=0, le=9999)
     daily_review_limit: int | None = Field(default=None, ge=0, le=99999)
@@ -58,6 +73,9 @@ class UserUpdate(BaseModel):
     target_event_date: datetime | None = None
     target_event_title: str | None = None
     peak_retention_target: float | None = Field(default=None, ge=0.7, le=0.99)
+    show_pre_leetcode: bool | None = None
+    show_code_lab: bool | None = None
+    show_thematic_context: bool | None = None
 
 
 class QueueConfigOut(BaseModel):
@@ -86,6 +104,9 @@ class DeckCreate(BaseModel):
     default_priority: int = Field(default=50, ge=0, le=100)
     target_event_date: datetime | None = None
     target_event_title: str | None = None
+    documentation: str | None = None
+    thematic_nature: str | None = None
+    source_documents: list[dict | str] = Field(default_factory=list)
 
 
 class DeckUpdate(BaseModel):
@@ -95,6 +116,9 @@ class DeckUpdate(BaseModel):
     default_priority: int | None = Field(default=None, ge=0, le=100)
     target_event_date: datetime | None = None
     target_event_title: str | None = None
+    documentation: str | None = None
+    thematic_nature: str | None = None
+    source_documents: list[dict | str] | None = None
 
 
 class DeckOut(BaseModel):
@@ -106,8 +130,14 @@ class DeckOut(BaseModel):
     card_count: int = 0
     due_count: int = 0
     new_count: int = 0
+    total_card_count: int = 0
+    total_due_count: int = 0
+    total_new_count: int = 0
     target_event_date: datetime | None = None
     target_event_title: str | None = None
+    documentation: str | None = None
+    thematic_nature: str | None = None
+    source_documents: list[dict | str] = Field(default_factory=list)
 
 
 class DeckStatsOut(BaseModel):
@@ -150,6 +180,9 @@ class NoteCreate(BaseModel):
     field_values: dict
     tags: list[str] = Field(default_factory=list)
     priority: int | None = Field(default=None, ge=0, le=100)
+    documentation: str | None = None
+    thematic_nature: str | None = None
+    source_documents: list[dict | str] = Field(default_factory=list)
 
 
 class NoteUpdate(BaseModel):
@@ -175,6 +208,9 @@ class CardOut(BaseModel):
     front: str
     back: str
     occlusion: dict | None = None
+    documentation: str | None = None
+    thematic_nature: str | None = None
+    source_documents: list[dict | str] = Field(default_factory=list)
 
 
 class NoteOut(BaseModel):

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../api/client'
+import { SuperMemoTree, type SuperMemoNode } from '../components/SuperMemoTree'
 import type {
   AcceptDeckResponse,
   AtomicityLintResult,
@@ -43,22 +44,231 @@ export default function Decks() {
 
   if (loading) return <Spinner />
 
+  const selectedDeck = decks.find((d) => d.id === selected) || null
+
   return (
     <div className="space-y-6">
       <ErrorNote error={error} />
       <DeckList decks={decks} selected={selected} onSelect={setSelected} onChange={load} />
+      {selectedDeck && (
+        <DeckDocumentationPanel deck={selectedDeck} onChange={load} />
+      )}
       {selected && (
         <>
-          <AddNote deckId={selected} noteTypes={noteTypes} onAdded={load} />
+          <AddNote deckId={selected} noteTypes={noteTypes} deck={selectedDeck} onAdded={load} />
           <SequentialClozePanel deckId={selected} onAdded={load} />
           <AddOcclusion deckId={selected} onAdded={load} />
-          <Browser deckId={selected} onChange={load} />
+          <Browser deckId={selected} deck={selectedDeck} onChange={load} />
         </>
       )}
       <DocumentDeckPanel onImported={load} />
       <JsonImportPanel onImported={load} />
       <LlmPromptPanel />
     </div>
+  )
+}
+
+function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () => void }) {
+  const [editing, setEditing] = useState(false)
+  const [thematicNature, setThematicNature] = useState(deck.thematic_nature || '')
+  const [documentation, setDocumentation] = useState(deck.documentation || '')
+  const formatDocString = (d: any): string => {
+    if (typeof d === 'string') {
+      try {
+        const parsed = JSON.parse(d)
+        if (typeof parsed === 'object' && parsed !== null) return formatDocString(parsed)
+      } catch {
+        return d
+      }
+      return d
+    }
+    if (typeof d === 'object' && d !== null) {
+      const name = d.title || d.name || d.filename || 'Document'
+      const pages = d.pages ? ` (pp. ${d.pages})` : ''
+      return `${name}${pages}`
+    }
+    return String(d)
+  }
+
+  const [sourceDocsText, setSourceDocsText] = useState(
+    (deck.source_documents || []).map(formatDocString).join('\n'),
+  )
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+
+  useEffect(() => {
+    setThematicNature(deck.thematic_nature || '')
+    setDocumentation(deck.documentation || '')
+    setSourceDocsText(
+      (deck.source_documents || []).map(formatDocString).join('\n'),
+    )
+    setEditing(false)
+  }, [deck.id, deck.thematic_nature, deck.documentation, deck.source_documents])
+
+  async function handleSave() {
+    setBusy(true)
+    setError(null)
+    try {
+      const parsedDocs = sourceDocsText
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((title) => ({ title }))
+      await api.updateDeck(deck.id, {
+        thematic_nature: thematicNature.trim() || null,
+        documentation: documentation.trim() || null,
+        source_documents: parsedDocs.length > 0 ? parsedDocs : null,
+      })
+      setEditing(false)
+      onChange()
+    } catch (err) {
+      setError(err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const sourceDocs = deck.source_documents || []
+
+  return (
+    <Section
+      title={`Documentation & Provenance: ${deck.name}`}
+      description="Thematic scope, creation documents, and documentation attached to this deck and inherited by all its cards."
+      actions={
+        <button
+          type="button"
+          onClick={() => setEditing((prev) => !prev)}
+          className="btn px-2.5 py-1 text-xs"
+        >
+          {editing ? 'Cancel' : 'Edit Documentation & Theme'}
+        </button>
+      }
+    >
+      <ErrorNote error={error} />
+      {editing ? (
+        <div className="space-y-4 rounded-xl border border-sky-500/30 bg-sky-950/10 p-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Thematic Nature
+            </label>
+            <input
+              className="input w-full text-xs"
+              placeholder="e.g. Computer Science - Systems & Concurrency"
+              value={thematicNature}
+              onChange={(e) => setThematicNature(e.target.value)}
+            />
+            <p className="mt-1 text-[11px] text-slate-500">
+              The high-level domain, discipline, or thematic context represented by this deck.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Attached Documentation &amp; Syllabus Notes
+            </label>
+            <textarea
+              className="input w-full min-h-[6rem] text-xs font-mono"
+              placeholder="Detailed documentation, overview of concepts, syllabus alignment, or memory hooks…"
+              value={documentation}
+              onChange={(e) => setDocumentation(e.target.value)}
+            />
+            <p className="mt-1 text-[11px] text-slate-500">
+              Markdown supported. Inherited by each card unless overridden at the card level.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Source Documents Used in Creation
+            </label>
+            <textarea
+              className="input w-full min-h-[4rem] text-xs font-mono"
+              placeholder="One source document per line (e.g. Operating Systems: Three Easy Pieces Ch. 28)"
+              value={sourceDocsText}
+              onChange={(e) => setSourceDocsText(e.target.value)}
+            />
+            <p className="mt-1 text-[11px] text-slate-500">
+              Document titles, papers, textbook chapters, or URLs used to create this deck.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-ink-line">
+            <button
+              type="button"
+              className="btn text-xs px-3 py-1.5"
+              onClick={() => setEditing(false)}
+              disabled={busy}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary text-xs px-3 py-1.5"
+              onClick={handleSave}
+              disabled={busy}
+            >
+              {busy ? 'Saving…' : 'Save Documentation'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {/* Thematic Nature Banner */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-slate-400">Thematic Nature:</span>
+            {deck.thematic_nature ? (
+              <span className="rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-xs font-semibold text-sky-200">
+                {deck.thematic_nature}
+              </span>
+            ) : (
+              <span className="text-xs italic text-slate-500">
+                None specified (click Edit Documentation &amp; Theme to set)
+              </span>
+            )}
+          </div>
+
+          {/* Source Documents */}
+          <div className="space-y-1">
+            <span className="text-xs font-semibold text-slate-400">Documents Used in Creation:</span>
+            {sourceDocs.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                {sourceDocs.map((doc: any, i: number) => {
+                  const label = formatDocString(doc)
+                  return (
+                    <span
+                      key={i}
+                      className="chip border-emerald-500/40 bg-emerald-500/10 text-emerald-300 text-xs font-medium"
+                    >
+                      📄 {label}
+                    </span>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-xs italic text-slate-500 pt-0.5">
+                No creation documents linked yet.
+              </p>
+            )}
+          </div>
+
+          {/* Documentation Content */}
+          <div className="pt-2 border-t border-ink-line">
+            <span className="text-xs font-semibold text-slate-400 block mb-1">
+              Deck Documentation:
+            </span>
+            {deck.documentation ? (
+              <div className="rounded-lg border border-ink-line bg-ink/40 p-3 text-xs leading-relaxed text-slate-300">
+                <RichText text={deck.documentation} />
+              </div>
+            ) : (
+              <p className="text-xs italic text-slate-500">
+                No documentation added yet. Click &ldquo;Edit Documentation &amp; Theme&rdquo; to add background notes, syllabus objectives, and reference materials.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </Section>
   )
 }
 
@@ -76,6 +286,8 @@ const THINKING_LEVELS = [
 function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
   const [doc, setDoc] = useState<DocumentUpload | null>(null)
   const [deckName, setDeckName] = useState('')
+  const [thematicNature, setThematicNature] = useState('')
+  const [docDocumentation, setDocDocumentation] = useState('')
   const [selectedModel, setSelectedModel] = useState('qwen2.5-coder:7b')
   const [selectedThinking, setSelectedThinking] = useState('dynamic')
   const [generated, setGenerated] = useState<GenerateDeckResponse | null>(null)
@@ -90,6 +302,9 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
     setChosen(new Set())
     setAccepted(null)
     setError(null)
+    setDeckName('')
+    setThematicNature('')
+    setDocDocumentation('')
   }
 
   async function upload(file: File) {
@@ -101,6 +316,8 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
       const uploaded = await api.uploadDocument(file)
       setDoc(uploaded)
       if (!deckName.trim()) setDeckName(uploaded.title)
+      setThematicNature(`${uploaded.title} — Key Concepts`)
+      setDocDocumentation(`Deck generated from document "${uploaded.title}" (${uploaded.segment_count} sections analyzed).`)
     } catch (err) {
       setError(err)
     } finally {
@@ -138,7 +355,12 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
     setBusy('Creating cards…')
     setError(null)
     try {
-      setAccepted(await api.acceptDeck(doc.source_id, deckName.trim() || doc.title, cards))
+      setAccepted(
+        await api.acceptDeck(doc.source_id, deckName.trim() || doc.title, cards, {
+          thematic_nature: thematicNature.trim() || undefined,
+          documentation: docDocumentation.trim() || undefined,
+        }),
+      )
       onImported()
     } catch (err) {
       setError(err)
@@ -359,6 +581,36 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
               </div>
             )}
 
+            <div className="space-y-3 rounded-lg border border-ink-line bg-ink/40 p-3.5">
+              <p className="text-xs font-semibold text-slate-300">
+                Deck Thematic Nature &amp; Documentation
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">
+                    Thematic Nature
+                  </label>
+                  <input
+                    className="input w-full text-xs"
+                    placeholder="e.g. Distributed Systems & Consensus"
+                    value={thematicNature}
+                    onChange={(e) => setThematicNature(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">
+                    Deck Documentation
+                  </label>
+                  <input
+                    className="input w-full text-xs"
+                    placeholder="Documentation overview or syllabus notes"
+                    value={docDocumentation}
+                    onChange={(e) => setDocDocumentation(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="flex flex-wrap items-center gap-2">
               <input
                 className="input w-56"
@@ -406,6 +658,35 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
   )
 }
 
+function buildDeckTree(decks: Deck[]): SuperMemoNode[] {
+  const childrenMap = new Map<string | null, Deck[]>()
+  for (const d of decks) {
+    const p = d.parent_id || null
+    if (!childrenMap.has(p)) childrenMap.set(p, [])
+    childrenMap.get(p)!.push(d)
+  }
+
+  function nodeFor(d: Deck): SuperMemoNode {
+    const kids = (childrenMap.get(d.id) || []).map(nodeFor)
+    return {
+      id: d.id,
+      title: d.name,
+      kind: 'deck',
+      parentId: d.parent_id,
+      elementCount: d.total_card_count ?? d.card_count,
+      dueCount: d.total_due_count ?? d.due_count,
+      newCount: d.total_new_count ?? d.new_count,
+      deckId: d.id,
+      originalDeck: d,
+      children: kids,
+    }
+  }
+
+  const deckIds = new Set(decks.map((d) => d.id))
+  const roots = decks.filter((d) => !d.parent_id || !deckIds.has(d.parent_id))
+  return roots.map(nodeFor)
+}
+
 function DeckList({
   decks,
   selected,
@@ -419,7 +700,48 @@ function DeckList({
 }) {
   const navigate = useNavigate()
   const [name, setName] = useState('')
+  const [parentId, setParentId] = useState<string>('')
   const [busy, setBusy] = useState(false)
+  const [viewMode, setViewMode] = useState<'supermemo' | 'list'>('supermemo')
+
+  const deckTreeNodes = useMemo(() => buildDeckTree(decks), [decks])
+  const totalCollectionCards = useMemo(() => decks.reduce((sum, d) => sum + d.card_count, 0), [decks])
+  const totalDue = useMemo(() => decks.reduce((sum, d) => sum + d.due_count, 0), [decks])
+  const totalNew = useMemo(() => decks.reduce((sum, d) => sum + d.new_count, 0), [decks])
+
+  const [detailedTheme, setDetailedTheme] = useState('')
+  const [detailedDoc, setDetailedDoc] = useState('')
+  const [detailedSources, setDetailedSources] = useState('')
+  const [showDetailedCreate, setShowDetailedCreate] = useState(false)
+
+  async function handleCreateDetailedDeck(e: React.FormEvent) {
+    e.preventDefault()
+    if (!name.trim()) return
+    setBusy(true)
+    try {
+      const parsedDocs = detailedSources
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((title) => ({ title }))
+      await api.createDeck({
+        name: name.trim(),
+        parent_id: parentId || undefined,
+        thematic_nature: detailedTheme.trim() || undefined,
+        documentation: detailedDoc.trim() || undefined,
+        source_documents: parsedDocs.length > 0 ? parsedDocs : undefined,
+      })
+      setName('')
+      setParentId('')
+      setDetailedTheme('')
+      setDetailedDoc('')
+      setDetailedSources('')
+      setShowDetailedCreate(false)
+      onChange()
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function handleDeleteAll() {
     if (!confirm('Are you sure you want to delete ALL decks? All cards, notes, and progress in them will be permanently deleted.')) {
@@ -450,9 +772,44 @@ function DeckList({
   return (
     <Section
       title="Decks"
-      description="Per-deck priority and retention are the “% bias per subject” controls."
+      description="Per-deck priority and retention are the “% bias per subject” controls. Organize subdecks hierarchically as in SuperMemo."
       actions={
         <div className="flex flex-wrap items-center gap-2">
+          {/* View mode toggle */}
+          <div className="flex items-center rounded-lg border border-slate-700 bg-slate-800/80 p-0.5 text-xs">
+            <button
+              type="button"
+              className={`px-2 py-1 rounded transition ${
+                viewMode === 'supermemo'
+                  ? 'bg-sky-500/20 text-sky-200 font-semibold shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              onClick={() => setViewMode('supermemo')}
+            >
+              🗂️ SuperMemo Tree
+            </button>
+            <button
+              type="button"
+              className={`px-2 py-1 rounded transition ${
+                viewMode === 'list'
+                  ? 'bg-sky-500/20 text-sky-200 font-semibold shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              onClick={() => setViewMode('list')}
+            >
+              📋 Flat List
+            </button>
+          </div>
+
+          <button
+            type="button"
+            className={`btn text-xs px-2.5 py-1 ${showDetailedCreate ? 'btn-primary' : ''}`}
+            onClick={() => setShowDetailedCreate((prev) => !prev)}
+            title="Create a new deck with attached documentation, thematic nature, and source documents"
+          >
+            {showDetailedCreate ? 'Cancel New Deck' : '+ New Deck with Documentation'}
+          </button>
+
           {decks.length > 0 && (
             <button
               type="button"
@@ -463,37 +820,258 @@ function DeckList({
               Delete all decks
             </button>
           )}
-          <form
-            className="flex gap-2"
-            onSubmit={async (e) => {
-              e.preventDefault()
-              if (!name.trim()) return
-              setBusy(true)
-              try {
-                await api.createDeck({ name: name.trim() })
-                setName('')
-                onChange()
-              } finally {
-                setBusy(false)
-              }
-            }}
-          >
-            <input
-              className="input w-36 text-xs py-1"
-              placeholder="New deck name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <button className="btn text-xs px-2.5 py-1" disabled={busy}>
-              Add deck
-            </button>
-          </form>
+
+          {!showDetailedCreate && (
+            <form
+              className="flex flex-wrap items-center gap-2"
+              onSubmit={async (e) => {
+                e.preventDefault()
+                if (!name.trim()) return
+                setBusy(true)
+                try {
+                  await api.createDeck({ name: name.trim(), parent_id: parentId || undefined })
+                  setName('')
+                  setParentId('')
+                  onChange()
+                } finally {
+                  setBusy(false)
+                }
+              }}
+            >
+              <select
+                className="input w-36 text-xs py-1"
+                value={parentId}
+                onChange={(e) => setParentId(e.target.value)}
+                title="Parent deck (optional for creating subdecks)"
+              >
+                <option value="">(No parent / Root)</option>
+                {decks.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    Inside {d.name}
+                  </option>
+                ))}
+              </select>
+              <input
+                className="input w-36 text-xs py-1"
+                placeholder="New deck name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <button className="btn text-xs px-2.5 py-1" disabled={busy}>
+                Add deck
+              </button>
+            </form>
+          )}
         </div>
       }
     >
-      <div className="space-y-2">
+      <div className="space-y-3">
+        {/* Detailed Deck Creation Form */}
+        {showDetailedCreate && (
+          <form
+            onSubmit={handleCreateDetailedDeck}
+            className="rounded-xl border border-sky-500/40 bg-sky-950/20 p-4 space-y-3 shadow-lg"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm text-sky-200">
+                Create New Deck with Documentation &amp; Thematic Scope
+              </h3>
+              <button
+                type="button"
+                className="text-xs text-slate-400 hover:text-slate-200"
+                onClick={() => setShowDetailedCreate(false)}
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Deck Name *
+                </label>
+                <input
+                  className="input w-full text-xs"
+                  placeholder="e.g. Operating Systems: Virtual Memory"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Parent Deck (Hierarchical Tree)
+                </label>
+                <select
+                  className="input w-full text-xs"
+                  value={parentId}
+                  onChange={(e) => setParentId(e.target.value)}
+                >
+                  <option value="">(Root / No parent)</option>
+                  {decks.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      Inside {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">
+                Thematic Nature
+              </label>
+              <input
+                className="input w-full text-xs"
+                placeholder="e.g. Computer Science - OS Virtual Memory, Paging & TLB"
+                value={detailedTheme}
+                onChange={(e) => setDetailedTheme(e.target.value)}
+              />
+              <p className="mt-1 text-[11px] text-slate-400">
+                Thematic context attached to this deck and inherited by each created card.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">
+                Deck Documentation &amp; Syllabus Notes
+              </label>
+              <textarea
+                className="input w-full min-h-[5rem] text-xs font-mono"
+                placeholder="Documentation markdown: objectives, definitions, core theorems, or review notes…"
+                value={detailedDoc}
+                onChange={(e) => setDetailedDoc(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">
+                Documents Used in Creation
+              </label>
+              <textarea
+                className="input w-full min-h-[3.5rem] text-xs font-mono"
+                placeholder="One source document title/URL per line (e.g. OSTEP Chapter 18, Lecture 7 Notes)"
+                value={detailedSources}
+                onChange={(e) => setDetailedSources(e.target.value)}
+              />
+              <p className="mt-1 text-[11px] text-slate-400">
+                Provenance records: which textbooks, papers, or documents were used to create this deck.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-ink-line">
+              <button
+                type="button"
+                className="btn text-xs px-3 py-1.5"
+                onClick={() => setShowDetailedCreate(false)}
+                disabled={busy}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary text-xs px-3 py-1.5"
+                disabled={busy || !name.trim()}
+              >
+                {busy ? 'Creating Deck…' : 'Create Deck with Documentation'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Collection Study Hero Banner */}
+        {decks.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg border border-sky-500/30 bg-sky-500/10 mb-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sky-200 text-sm">Study Collection (All Decks)</span>
+                <span className="chip border-sky-400/40 text-sky-200 bg-sky-500/20">{totalCollectionCards} cards</span>
+                {totalDue > 0 && <span className="chip text-sky-300 font-semibold">{totalDue} due</span>}
+                {totalNew > 0 && <span className="chip text-emerald-300">{totalNew} new</span>}
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Study all {decks.length} deck{decks.length === 1 ? '' : 's'} in your collection all at once, interleaved by priority and FSRS schedule.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/review')}
+              className="btn btn-primary text-xs font-bold px-3 py-1.5 shadow-sm"
+              title="Study all decks in the collection at once"
+            >
+              ⚡ Study All Decks
+            </button>
+          </div>
+        )}
+
         {decks.length === 0 ? (
           <p className="text-xs text-slate-500 py-2">No decks created yet. Add one above or import a document.</p>
+        ) : viewMode === 'supermemo' ? (
+          <SuperMemoTree
+            rootTitle="All Decks"
+            nodes={deckTreeNodes}
+            onSelectNode={(node) => {
+              if (node.deckId) onSelect(node.deckId)
+            }}
+            onStudyNode={(node) => {
+              if (node.id === '__root__') {
+                navigate('/review')
+              } else if (node.deckId) {
+                navigate(`/review?deck=${node.deckId}`)
+              }
+            }}
+            onAddChild={(parent) => {
+              const pDeckId = parent?.deckId || parent?.id
+              if (pDeckId && pDeckId !== '__root__') {
+                setParentId(pDeckId)
+                const subName = prompt(`Enter subdeck name under "${parent?.title}":`)
+                if (subName && subName.trim()) {
+                  void (async () => {
+                    setBusy(true)
+                    try {
+                      await api.createDeck({ name: subName.trim(), parent_id: pDeckId })
+                      onChange()
+                    } finally {
+                      setBusy(false)
+                    }
+                  })()
+                }
+              } else {
+                const newName = prompt('Enter top-level deck name:')
+                if (newName && newName.trim()) {
+                  void (async () => {
+                    setBusy(true)
+                    try {
+                      await api.createDeck({ name: newName.trim() })
+                      onChange()
+                    } finally {
+                      setBusy(false)
+                    }
+                  })()
+                }
+              }
+            }}
+            onRename={(node) => {
+              if (!node.deckId) return
+              const newName = prompt(`Rename deck "${node.title}" to:`, node.title)
+              if (newName && newName.trim() && newName.trim() !== node.title) {
+                void (async () => {
+                  setBusy(true)
+                  try {
+                    await api.updateDeck(node.deckId!, { name: newName.trim() })
+                    onChange()
+                  } finally {
+                    setBusy(false)
+                  }
+                })()
+              }
+            }}
+            onDelete={(node) => {
+              if (!node.originalDeck) return
+              handleDeleteDeck(node.originalDeck)
+            }}
+          />
         ) : (
           decks.map((d) => (
             <div
@@ -503,15 +1081,39 @@ function DeckList({
               }`}
             >
               <button className="min-w-0 flex-1 text-left" onClick={() => onSelect(d.id)}>
-                <p className="font-medium text-slate-200">{d.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-slate-200">{d.name}</p>
+                  {d.parent_id && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                      subdeck
+                    </span>
+                  )}
+                </div>
                 <p className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
                   <span className="chip">{d.card_count} cards</span>
+                  {d.total_card_count !== undefined && d.total_card_count !== d.card_count && (
+                    <span className="chip border-sky-500/40 text-sky-300">
+                      {d.total_card_count} total (with subdecks)
+                    </span>
+                  )}
                   <span className="chip">{d.due_count} due</span>
                   <span className="chip">{d.new_count} new</span>
                 </p>
               </button>
 
               <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    navigate(`/review?deck=${d.id}`)
+                  }}
+                  className="btn btn-primary text-xs px-2.5 py-1 font-semibold"
+                  title={`Study ${d.name} and all its subdecks`}
+                >
+                  Study
+                </button>
+
                 {d.card_count > 0 && (
                   <button
                     type="button"
@@ -525,6 +1127,32 @@ function DeckList({
                     <span>⚡ Persist Review</span>
                   </button>
                 )}
+
+                {d.card_count > 0 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/review?deck=${d.id}&run=all`)
+                    }}
+                    className="flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-500/10 px-2.5 py-1 text-xs font-semibold text-purple-200 hover:bg-purple-500/20 hover:border-purple-400 transition shadow-sm"
+                    title={`Run all cards in ${d.name} consecutively, easiest to hardest. Thereafter, FSRS takes over.`}
+                  >
+                    <span>🏁 All Cards Run</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setParentId(d.id)
+                  }}
+                  className="btn text-xs px-2 py-1 text-slate-400 hover:text-slate-200"
+                  title="Create a subdeck inside this deck"
+                >
+                  + Subdeck
+                </button>
 
                 <label className="flex items-center gap-2 text-xs text-slate-500">
                   priority
@@ -582,10 +1210,12 @@ function DeckList({
 function AddNote({
   deckId,
   noteTypes,
+  deck,
   onAdded,
 }: {
   deckId: string
   noteTypes: NoteType[]
+  deck?: Deck | null
   onAdded: () => void
 }) {
   const [noteTypeId, setNoteTypeId] = useState(noteTypes[0]?.id ?? '')
@@ -593,6 +1223,9 @@ function AddNote({
   const [back, setBack] = useState('')
   const [clozeText, setClozeText] = useState('')
   const [tags, setTags] = useState('')
+  const [showDocFields, setShowDocFields] = useState(false)
+  const [cardThematicNature, setCardThematicNature] = useState('')
+  const [cardDocumentation, setCardDocumentation] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<unknown>(null)
 
@@ -644,12 +1277,16 @@ function AddNote({
           note_type_id: noteTypeId,
           field_values: { Front: card.front, Back: card.back },
           tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
+          thematic_nature: cardThematicNature.trim() || undefined,
+          documentation: cardDocumentation.trim() || undefined,
         })
       }
       setFront('')
       setBack('')
       setDecomposedCards(null)
       setAtomicity(null)
+      setCardThematicNature('')
+      setCardDocumentation('')
       onAdded()
     } catch (err) {
       setError(err)
@@ -668,10 +1305,14 @@ function AddNote({
         note_type_id: noteTypeId,
         field_values: isCloze ? { Text: clozeText, Extra: back } : { Front: front, Back: back },
         tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
+        thematic_nature: cardThematicNature.trim() || undefined,
+        documentation: cardDocumentation.trim() || undefined,
       })
       setFront('')
       setBack('')
       setClozeText('')
+      setCardThematicNature('')
+      setCardDocumentation('')
       setAtomicity(null)
       setDecomposedCards(null)
       onAdded()
@@ -807,6 +1448,44 @@ function AddNote({
           value={tags}
           onChange={(e) => setTags(e.target.value)}
         />
+
+        {/* Card Documentation & Thematic Override */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowDocFields((v) => !v)}
+            className="text-xs text-sky-400 hover:text-sky-300 underline cursor-pointer"
+          >
+            {showDocFields ? 'Hide Card Documentation & Thematic Override' : '+ Card Documentation & Thematic Override'}
+          </button>
+          {showDocFields && (
+            <div className="mt-2 space-y-2 rounded-lg border border-ink-line bg-ink/50 p-3 text-xs">
+              <div>
+                <label className="block text-slate-400 font-medium mb-1">
+                  Card-Specific Thematic Nature (Leave blank to inherit &ldquo;{deck?.thematic_nature || 'Deck theme'}&rdquo;)
+                </label>
+                <input
+                  className="input w-full text-xs"
+                  placeholder="Card thematic override"
+                  value={cardThematicNature}
+                  onChange={(e) => setCardThematicNature(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-slate-400 font-medium mb-1">
+                  Card-Specific Documentation (Leave blank to inherit deck documentation)
+                </label>
+                <textarea
+                  className="input w-full min-h-[3.5rem] text-xs font-mono"
+                  placeholder="Card documentation notes, specific citations, or reference hooks…"
+                  value={cardDocumentation}
+                  onChange={(e) => setCardDocumentation(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
         <ErrorNote error={error} />
         <button className="btn btn-primary" disabled={busy}>
           {busy ? 'Adding…' : 'Add note'}
@@ -1092,7 +1771,7 @@ function AddOcclusion({ deckId, onAdded }: { deckId: string; onAdded: () => void
   )
 }
 
-function Browser({ deckId, onChange }: { deckId: string; onChange: () => void }) {
+function Browser({ deckId, deck, onChange }: { deckId: string; deck?: Deck | null; onChange: () => void }) {
   const [cards, setCards] = useState<Card[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -1167,7 +1846,13 @@ function Browser({ deckId, onChange }: { deckId: string; onChange: () => void })
                   </button>
                 </div>
               </div>
+
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                {(c.thematic_nature || deck?.thematic_nature) && (
+                  <span className="chip border-sky-500/40 text-sky-300 font-medium">
+                    Theme: {c.thematic_nature || deck?.thematic_nature}
+                  </span>
+                )}
                 <span className="chip">{c.state}</span>
                 <span className="chip">{c.template_slot}</span>
                 {c.due && <span className="chip">due {new Date(c.due).toLocaleDateString()}</span>}
@@ -1183,6 +1868,24 @@ function Browser({ deckId, onChange }: { deckId: string; onChange: () => void })
                 ))}
                 <PriorityBar value={c.priority} />
               </div>
+
+              {(c.documentation || deck?.documentation) && (
+                <div className="mt-2 text-xs border-l-2 border-slate-700/80 bg-slate-900/40 px-2.5 py-1 text-slate-400 rounded-r">
+                  <span className="font-semibold text-slate-300">Documentation: </span>
+                  {c.documentation || deck?.documentation}
+                </div>
+              )}
+
+              {((c.source_documents && c.source_documents.length > 0) || (deck?.source_documents && deck.source_documents.length > 0)) && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+                  <span className="text-[11px] text-slate-500">Sources:</span>
+                  {(c.source_documents && c.source_documents.length > 0 ? c.source_documents : deck?.source_documents || []).map((sd: any, idx: number) => (
+                    <span key={idx} className="chip text-[10px] border-emerald-500/30 text-emerald-300 bg-emerald-500/5">
+                      📄 {typeof sd === 'string' ? sd : sd.title || JSON.stringify(sd)}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -1323,8 +2026,8 @@ Generate cards from the material below:
 
 <PASTE YOUR SOURCE TEXT / NOTES / TOPIC HERE>`
 
-/** Bulk-create notes/cards from a hand-written or scripted JSON file.
- *  One request targets one deck (created if missing).
+/** Bulk-create notes/cards from a hand-written or scripted JSON file — the
+ *  non-Anki upload path. One request targets one deck (created if missing).
  *  Accepts a bare array (deck name comes from the field below) or an
  *  envelope with "deck" already inside it — and either "front"/"back" or the
  *  "card_type"/"question"/"answer" vocabulary common in LLM flashcard exports. */
@@ -1368,7 +2071,7 @@ function JsonImportPanel({ onImported }: { onImported: () => void }) {
 
   if (!open) {
     return (
-      <Section title="Import from JSON" description="Bulk-create notes from a JSON file.">
+      <Section title="Import from JSON" description="Bulk-create notes from a JSON file — no Anki required.">
         <div className="flex flex-wrap items-center gap-3">
           <button className="btn" onClick={() => setOpen(true)}>
             Paste or upload JSON

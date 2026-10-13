@@ -117,6 +117,12 @@ export interface QueueItem {
   category?: string | null
   active_weaknesses?: string[]
   weakness_history?: Array<Record<string, any>>
+  deck_documentation?: string | null
+  deck_thematic_nature?: string | null
+  deck_source_documents?: Array<Record<string, any>>
+  card_documentation?: string | null
+  card_thematic_nature?: string | null
+  card_source_documents?: Array<Record<string, any>>
 }
 
 export interface CitedCard {
@@ -192,6 +198,10 @@ export interface SubmitAnswerResponse {
   automaticity_exceeded?: boolean
   automaticity_threshold_ms?: number | null
   automaticity_note?: string | null
+  vram_constrained?: boolean
+  failed_model?: string | null
+  fallback_model?: string | null
+  available_fallback_models?: string[]
 }
 
 export interface WeaknessHintResponse {
@@ -236,6 +246,9 @@ export interface User {
   target_event_date?: string | null
   target_event_title?: string | null
   peak_retention_target?: number | null
+  show_pre_leetcode?: boolean
+  show_code_lab?: boolean
+  show_thematic_context?: boolean
 }
 
 export interface Deck {
@@ -247,8 +260,14 @@ export interface Deck {
   card_count: number
   due_count: number
   new_count: number
+  total_card_count?: number
+  total_due_count?: number
+  total_new_count?: number
   target_event_date?: string | null
   target_event_title?: string | null
+  documentation?: string | null
+  thematic_nature?: string | null
+  source_documents?: Array<Record<string, any>>
 }
 
 export interface DeckStats {
@@ -376,6 +395,9 @@ export interface Card {
   front: string
   back: string
   occlusion: OcclusionPayload | null
+  documentation?: string | null
+  thematic_nature?: string | null
+  source_documents?: Array<Record<string, any>>
 }
 
 export interface Source {
@@ -773,5 +795,46 @@ export interface RecentLexiconItem {
   created_at: string
 }
 
+export interface QwenCoderModelOption {
+  id: string
+  name: string
+  size: '7B' | '3B' | '1.5B'
+  vramApprox: string
+  badge: string
+  desc: string
+}
 
+export const ALLOWED_QWEN_CODER_MODELS: QwenCoderModelOption[] = [
+  {
+    id: 'qwen2.5-coder:7b',
+    name: 'Qwen 2.5 Coder 7B',
+    size: '7B',
+    vramApprox: '~4.7 GB',
+    badge: 'Recommended',
+    desc: 'High precision code & logic grader',
+  },
+  {
+    id: 'qwen2.5-coder:3b',
+    name: 'Qwen 2.5 Coder 3B',
+    size: '3B',
+    vramApprox: '~1.9 GB',
+    badge: 'Balanced',
+    desc: 'Balanced reasoning for moderate VRAM',
+  },
+  {
+    id: 'qwen2.5-coder:1.5b',
+    name: 'Qwen 2.5 Coder 1.5B',
+    size: '1.5B',
+    vramApprox: '~986 MB',
+    badge: 'Fast / Low VRAM',
+    desc: 'Ultra lightweight & instant response',
+  },
+]
 
+export function isAllowedQwenCoderModel(modelName: string): boolean {
+  if (!modelName) return false
+  const m = modelName.toLowerCase().trim()
+  if (!m.includes('qwen2.5-coder')) return false
+  if (m.includes('embed') || m.includes('rerank')) return false
+  return /(?:^|[:\-_])(7b|3b|1\.5b)(?:[:\-_]|$)/i.test(m)
+}

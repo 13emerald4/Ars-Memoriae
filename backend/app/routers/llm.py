@@ -23,17 +23,19 @@ async def list_models(user: User = Depends(current_user)) -> dict:
 @router.get("/llm/status")
 async def llm_status(user: User = Depends(current_user)) -> dict:
     """Checks local Ollama daemon connectivity and Qwen 2.5 Coder availability."""
+    from app.services.grading_service import is_allowed_qwen_coder_model
+
     service = GradingService(model=user.grading_model)
     try:
         models = await service.verify_engine()
-        has_qwen = any("qwen2.5-coder:7b" in m or "qwen2.5-coder" in m for m in models)
+        has_qwen = any(is_allowed_qwen_coder_model(m) for m in models)
         return {
             "connected": True,
             "provider": "ollama",
             "base_url": service.base_url,
-            "model": user.grading_model,
+            "model": service.model,
             "models_installed": models,
-            "model_ready": has_qwen or (user.grading_model in models),
+            "model_ready": has_qwen or (is_allowed_qwen_coder_model(user.grading_model) and user.grading_model in models),
             "error": None,
         }
     except Exception as exc:

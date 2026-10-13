@@ -29,3 +29,8 @@ release/
 .DS_Store
 .idea/
 .vscode/
+
+# unrelated projects / local workspaces
+tcs-website/
+pnpm-lock.yaml
+pnpm-workspace.yaml

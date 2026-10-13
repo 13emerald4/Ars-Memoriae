@@ -25,6 +25,10 @@ def _branch_id(raw: str | None):
     return parse_uuid(raw, "branch") if raw else None
 
 
+def _deck_id(raw: str | None):
+    return parse_uuid(raw, "deck") if raw else None
+
+
 def to_schema(item: ComposedItem) -> QueueItem:
     return QueueItem(
         kind=item.kind,
@@ -52,6 +56,14 @@ def to_schema(item: ComposedItem) -> QueueItem:
         title=item.title,
         difficulty=item.difficulty,
         category=item.category,
+        active_weaknesses=item.active_weaknesses,
+        weakness_history=item.weakness_history,
+        deck_documentation=item.deck_documentation,
+        deck_thematic_nature=item.deck_thematic_nature,
+        deck_source_documents=item.deck_source_documents,
+        card_documentation=item.card_documentation,
+        card_thematic_nature=item.card_thematic_nature,
+        card_source_documents=item.card_source_documents,
     )
 
 
@@ -61,10 +73,13 @@ async def next_item(
     branch: str | None = Query(
         default=None, description="Knowledge-tree node id — study only this branch"
     ),
+    deck: str | None = Query(
+        default=None, description="Deck id — study this deck and all its subdecks"
+    ),
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    plan = await compose_session(db, user, limit=1, branch=_branch_id(branch))
+    plan = await compose_session(db, user, limit=1, branch=_branch_id(branch), deck=_deck_id(deck))
     if not plan.items:
         response.status_code = status.HTTP_204_NO_CONTENT
         return None
@@ -77,12 +92,15 @@ async def session(
     branch: str | None = Query(
         default=None, description="Knowledge-tree node id — study only this branch"
     ),
+    deck: str | None = Query(
+        default=None, description="Deck id — study this deck and all its subdecks"
+    ),
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ) -> SessionSummary:
     """The whole composed plan: counts, caps, the §3.1 guardrail notices, and
     a preview of the upcoming items so the UI can show session progress."""
-    plan = await compose_session(db, user, branch=_branch_id(branch))
+    plan = await compose_session(db, user, branch=_branch_id(branch), deck=_deck_id(deck))
     return SessionSummary(
         counts=plan.counts,
         caps=plan.caps,

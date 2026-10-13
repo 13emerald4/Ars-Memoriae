@@ -49,6 +49,9 @@ def user_out(user: User) -> UserOut:
         target_event_date=user.target_event_date,
         target_event_title=user.target_event_title,
         peak_retention_target=user.peak_retention_target,
+        show_pre_leetcode=user.show_pre_leetcode,
+        show_code_lab=user.show_code_lab,
+        show_thematic_context=user.show_thematic_context,
     )
 
 

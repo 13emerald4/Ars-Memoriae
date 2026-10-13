@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import math
 import uuid
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Literal
@@ -27,7 +28,7 @@ from typing import Literal
 from sqlalchemy import and_, false, func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Card, CardReference, Deck, Extract, QueueConfig, ReviewLog, Source, User
+from app.models import Card, CardReference, Deck, Extract, Note, QueueConfig, ReviewLog, Source, User
 from app.services import registry
 from app.services.fsrs_service import FSRSService
 from app.services.rendering import occlusion_payload, render
@@ -87,6 +88,12 @@ class ComposedItem:
     category: str | None = None
     active_weaknesses: list[str] = field(default_factory=list)
     weakness_history: list[dict] = field(default_factory=list)
+    deck_documentation: str | None = None
+    deck_thematic_nature: str | None = None
+    deck_source_documents: list = field(default_factory=list)
+    card_documentation: str | None = None
+    card_thematic_nature: str | None = None
+    card_source_documents: list = field(default_factory=list)
 
 
 @dataclass
@@ -413,6 +420,12 @@ def _card_item(card: Card, effective: float, seconds: float) -> ComposedItem:
         category=fv.get("category"),
         active_weaknesses=card.active_weaknesses or [],
         weakness_history=card.weakness_history or [],
+        deck_documentation=card.deck.documentation if card.deck else None,
+        deck_thematic_nature=card.deck.thematic_nature if card.deck else None,
+        deck_source_documents=list(card.deck.source_documents or []) if card.deck else [],
+        card_documentation=card.documentation or (card.deck.documentation if card.deck else None),
+        card_thematic_nature=card.thematic_nature or (card.deck.thematic_nature if card.deck else None),
+        card_source_documents=list(card.source_documents or (card.deck.source_documents if card.deck else [])),
     )
 
 
@@ -518,6 +531,26 @@ def _interleave(streams: list[list[ComposedItem]]) -> list[ComposedItem]:
     return [item for _, _, item in keyed]
 
 
+async def deck_scope(db: AsyncSession, user: User, root_deck_id: uuid.UUID) -> BranchScope | None:
+    deck = await db.get(Deck, root_deck_id)
+    if deck is None or deck.user_id != user.id:
+        return None
+    all_decks = (await db.scalars(select(Deck).where(Deck.user_id == user.id))).all()
+    children: dict[uuid.UUID, list[uuid.UUID]] = defaultdict(list)
+    for d in all_decks:
+        if d.parent_id:
+            children[d.parent_id].append(d.id)
+    deck_ids = {root_deck_id}
+    queue = [root_deck_id]
+    while queue:
+        curr = queue.pop(0)
+        for child_id in children.get(curr, []):
+            if child_id not in deck_ids:
+                deck_ids.add(child_id)
+                queue.append(child_id)
+    return BranchScope(node_id=root_deck_id, title=deck.name, deck_ids=deck_ids)
+
+
 async def compose_session(
     db: AsyncSession,
     user: User,
@@ -525,6 +558,7 @@ async def compose_session(
     now: datetime | None = None,
     limit: int | None = None,
     branch=None,
+    deck=None,
 ) -> SessionPlan:
     now = now or datetime.now(UTC)
     cfg = await get_queue_config(db, user)
@@ -532,9 +566,14 @@ async def compose_session(
         weights=user.fsrs_parameters, desired_retention=user.desired_retention, fuzz=False
     )
 
-    # A branch restricts the whole composition to one part of the knowledge
-    # tree — everything below still runs unchanged, it just draws from less.
-    scope = await branch_scope(db, user, branch) if branch else None
+    # Scoping: A branch restricts to a knowledge tree subtree; a deck restricts
+    # to that deck and all its recursive subdecks. If neither is specified,
+    # scope is None and the session covers the entire collection all at once.
+    scope = None
+    if branch:
+        scope = await branch_scope(db, user, branch)
+    elif deck:
+        scope = await deck_scope(db, user, deck)
 
     # Mastery gating (§ Tree): excluded up front so every downstream query —
     # counts, candidates, extracts — simply never sees a locked card. The
@@ -695,8 +734,8 @@ async def compose_session(
     )
 
 
-async def next_item(db: AsyncSession, user: User, *, branch=None) -> ComposedItem | None:
-    plan = await compose_session(db, user, limit=1, branch=branch)
+async def next_item(db: AsyncSession, user: User, *, branch=None, deck=None) -> ComposedItem | None:
+    plan = await compose_session(db, user, limit=1, branch=branch, deck=deck)
     return plan.items[0] if plan.items else None
 
 
@@ -781,6 +820,103 @@ async def compose_deck_persist_queue(
     )
     rows = await db.execute(stmt)
     cards = list(rows.scalars())
+    items = [_card_item(c, float(c.effective_priority), 12.0) for c in cards]
+    await attach_references(db, items)
+    return items
+
+
+async def compose_deck_all_cards_run_queue(
+    db: AsyncSession,
+    user: User,
+    deck_id: uuid.UUID,
+) -> list[ComposedItem]:
+    """Load all active cards in a deck sorted consecutively from easiest to hardest.
+
+    Difficulty scoring:
+    1. Categorical difficulty in note field values:
+       - 'Easy' -> baseline 2.0
+       - 'Medium' -> baseline 5.0
+       - 'Hard' -> baseline 8.0
+       - Unrated -> baseline 4.5
+    2. FSRS difficulty (card.difficulty, 1.0 - 10.0):
+       - If present, incorporates into baseline
+    3. Review log history adjustment:
+       - Latest rating: Easy (-1.5), Good (-0.5), Hard (+1.5), Again (+2.5)
+       - Card lapse count: +0.4 per lapse
+       - Leech flag: +2.5
+
+    Cards are sorted ascending by difficulty score (easiest seen first, hardest seen last).
+    """
+    deck = await db.get(Deck, deck_id)
+    if deck is None or deck.user_id != user.id:
+        return []
+
+    stmt = (
+        select(Card, Note)
+        .join(Deck, Deck.id == Card.deck_id)
+        .join(Note, Note.id == Card.note_id)
+        .where(
+            Card.deck_id == deck.id,
+            Card.suspended.is_(False),
+        )
+    )
+    rows = (await db.execute(stmt)).all()
+    if not rows:
+        return []
+
+    card_ids = [c.id for c, _ in rows]
+    log_stmt = (
+        select(ReviewLog.card_id, ReviewLog.final_grade)
+        .where(ReviewLog.card_id.in_(card_ids))
+        .order_by(ReviewLog.reviewed_at.asc())
+    )
+    log_rows = (await db.execute(log_stmt)).all()
+    latest_grades: dict[uuid.UUID, str] = {c_id: grade for c_id, grade in log_rows}
+
+    scored_cards: list[tuple[float, Card]] = []
+    for card, note in rows:
+        fv = note.field_values or {}
+        raw_diff = fv.get("difficulty") or fv.get("Difficulty") or fv.get("diff")
+
+        if isinstance(raw_diff, str) and raw_diff.strip():
+            d_lower = raw_diff.strip().lower()
+            if "easy" in d_lower:
+                base_diff = 2.0
+            elif "hard" in d_lower:
+                base_diff = 8.0
+            elif "medium" in d_lower:
+                base_diff = 5.0
+            else:
+                base_diff = 4.5
+        elif card.difficulty is not None:
+            base_diff = float(card.difficulty)
+        else:
+            base_diff = 4.0
+
+        if card.difficulty is not None:
+            base_diff = (base_diff + float(card.difficulty)) / 2.0
+
+        grade = latest_grades.get(card.id)
+        if grade == "easy":
+            base_diff -= 1.5
+        elif grade == "good":
+            base_diff -= 0.5
+        elif grade == "hard":
+            base_diff += 1.5
+        elif grade == "again":
+            base_diff += 2.5
+
+        if card.lapse_count:
+            base_diff += min(3.0, card.lapse_count * 0.4)
+        if card.leech_flag:
+            base_diff += 2.5
+
+        scored_cards.append((base_diff, card))
+
+    # Sort ascending: lowest difficulty score first (easiest), highest last (hardest)
+    scored_cards.sort(key=lambda x: (x[0], x[1].id))
+    cards = [c for _, c in scored_cards]
+
     items = [_card_item(c, float(c.effective_priority), 12.0) for c in cards]
     await attach_references(db, items)
     return items

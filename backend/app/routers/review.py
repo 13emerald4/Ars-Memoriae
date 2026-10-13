@@ -44,6 +44,7 @@ from app.services.grading_service import (
     GRADES,
     GradingService,
     GradingUnavailable,
+    VramExhaustedError,
     apply_bias,
     disagrees_with_heuristic,
     grade_for_score,
@@ -101,6 +102,10 @@ def _manual(
     automaticity_exceeded: bool = False,
     automaticity_threshold_ms: int | None = None,
     automaticity_note: str | None = None,
+    vram_constrained: bool = False,
+    failed_model: str | None = None,
+    fallback_model: str | None = None,
+    available_fallback_models: list[str] | None = None,
 ) -> SubmitAnswerResponse:
     """§4.3 — the fallback is a real opt-out, not a degraded error state: the
     user gets the reference answer and the four buttons, same as Phase 1."""
@@ -116,6 +121,10 @@ def _manual(
         automaticity_exceeded=automaticity_exceeded,
         automaticity_threshold_ms=automaticity_threshold_ms,
         automaticity_note=automaticity_note,
+        vram_constrained=vram_constrained,
+        failed_model=failed_model,
+        fallback_model=fallback_model,
+        available_fallback_models=available_fallback_models or [],
     )
 
 
@@ -162,7 +171,7 @@ async def submit_answer(
     cached = await db.get(GradingCache, (card.id, answer_hash))
     overlap = heuristic_overlap(back, body.typed_answer)
 
-    if cached is not None:
+    if cached is not None and not body.model:
         result = dict(cached.response)
         return _build_response(
             result,
@@ -175,7 +184,8 @@ async def submit_answer(
         )
 
     profile = select_grading_profile(note.note_type.grading_profile, note.note_type.template_kind)
-    service = GradingService(model=user.grading_model)
+    target_model = body.model or user.grading_model
+    service = GradingService(model=target_model)
     try:
         result = await service.grade_with_escalation(
             front=front,
@@ -185,7 +195,22 @@ async def submit_answer(
             card_type=note.note_type.template_kind,
             test_code=body.test_code,
             previous_weaknesses=card.active_weaknesses or [],
+            model=target_model,
+            allow_smaller_model=body.allow_smaller_model,
             force_escalate=await _disputed_recently(db, card.id),
+        )
+    except VramExhaustedError as exc:
+        return _manual(
+            back,
+            "vram_constrained",
+            latency_note,
+            auto_exceeded,
+            user.automaticity_threshold_ms,
+            auto_note,
+            vram_constrained=True,
+            failed_model=exc.failed_model,
+            fallback_model=exc.fallback_model,
+            available_fallback_models=exc.available_models,
         )
     except GradingUnavailable as exc:
         return _manual(

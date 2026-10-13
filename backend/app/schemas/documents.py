@@ -58,6 +58,9 @@ class AcceptDeckRequest(BaseModel):
     deck: str = Field(min_length=1, max_length=200)
     cards: list[CitedCard] = Field(min_length=1, max_length=1000)
     priority: int | None = Field(default=None, ge=0, le=100)
+    thematic_nature: str | None = None
+    documentation: str | None = None
+    source_documents: list[dict | str] = Field(default_factory=list)
 
 
 class AcceptDeckResponse(BaseModel):
