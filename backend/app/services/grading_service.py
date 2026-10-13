@@ -221,6 +221,9 @@ class GradingService:
             "stream": False,
             "options": {
                 "num_ctx": 2048,
+                # Greedy decoding on every call: Ollama's default temperature
+                # samples, so the same answer could get a different grade.
+                "temperature": 0,
             },
         }
         if schema is not None or kwargs.get("response_schema") is not None:

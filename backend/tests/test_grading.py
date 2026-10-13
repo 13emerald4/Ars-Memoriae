@@ -241,6 +241,24 @@ class TestEscalation:
         with pytest.raises(GradingUnavailable):
             await svc.grade("f", "b", "a")
 
+    async def test_every_call_is_sent_with_temperature_zero(self, monkeypatch):
+        """Sampling would let the same answer earn different grades."""
+        import httpx
+
+        sent = []
+
+        async def fake_post(self, url, json=None, **kwargs):
+            sent.append(json)
+            return httpx.Response(
+                200,
+                json={"response": '{"score":80,"confidence":0.9,"reasoning":"ok"}'},
+                request=httpx.Request("POST", url),
+            )
+
+        monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+        await GradingService("m").grade("f", "b", "a")
+        assert sent and sent[0]["options"]["temperature"] == 0
+
 
 class TestScoring:
     """§4.1 — a 0-100 correctness score is what the user sees and what

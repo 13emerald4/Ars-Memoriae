@@ -3434,7 +3434,7 @@ export default function Review() {
                     <button className="underline hover:text-slate-400" onClick={() => navigate('/settings')}>
                       Settings
                     </button>{' '}
-                    by adding a Google API key and giving consent.
+                    by giving consent.
                   </p>
                 )}
                 {guideOpen && (
