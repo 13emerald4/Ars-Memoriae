@@ -20,9 +20,9 @@ def start() -> AsyncIOScheduler:
     if _scheduler is not None:
         return _scheduler
     sched = AsyncIOScheduler(timezone="UTC")
-    sched.add_job(run_for_all_users, CronTrigger(hour=3, minute=30), id="fsrs_optimize")
-    sched.add_job(evict_stale_cache, CronTrigger(hour=4, minute=0), id="cache_eviction")
-    sched.add_job(release_next_extracts, IntervalTrigger(minutes=30), id="ir_release")
+    sched.add_job(run_for_all_users, CronTrigger(hour=3, minute=30, timezone="UTC"), id="fsrs_optimize")
+    sched.add_job(evict_stale_cache, CronTrigger(hour=4, minute=0, timezone="UTC"), id="cache_eviction")
+    sched.add_job(release_next_extracts, IntervalTrigger(minutes=30, timezone="UTC"), id="ir_release")
     sched.start()
     _scheduler = sched
     log.info("background jobs started: %s", [j.id for j in sched.get_jobs()])
