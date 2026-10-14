@@ -9,7 +9,7 @@ ergonomics of Anki, and the review-quality signals of Mnemosyne — with two str
 - **A priority queue, not a due-date list.** Due reviews, new cards, and Incremental Reading
   extracts are ranked by priority and filled into a daily time budget, then interleaved.
 
-Self-hostable via Docker Compose, imports notes from JSON, and exports everything on demand.
+Self-hostable, imports notes from JSON, and exports everything on demand.
 
 ---
 
@@ -28,25 +28,7 @@ The script automatically sets up the local Python virtual environment, applies d
 
 ---
 
-### Docker Compose (Optional)
-
-For containerized environments or production deployments:
-
-```bash
-cp .env.example .env
-# generate real secrets:
-python -c "import secrets; print('SECRET_KEY=' + secrets.token_urlsafe(48))"
-# paste it into .env, and set POSTGRES_PASSWORD (matching it inside DATABASE_URL)
-
-docker compose up --build
-```
-
-- App: <http://localhost:8000> (the backend serves the built frontend)
-- API + interactive docs: <http://localhost:8000/docs>
-
-Migrations run automatically on backend start.
-
-### Local development (no Docker)
+### Local development
 
 ```bash
 # backend — defaults to SQLite, so Postgres is optional for dev
@@ -64,11 +46,11 @@ npm run dev
 ### Enabling the FSRS parameter optimizer
 
 Personalized weight refitting needs `fsrs[optimizer]`, which pulls in torch (~2 GB). It's off by
-default so the image stays small. To enable:
+default to keep installs lightweight. To enable:
 
 ```bash
-# docker-compose.yml → services.backend.build.args
-INSTALL_FSRS_OPTIMIZER: "1"
+cd backend
+.venv/bin/pip install -e ".[optimizer]"  # Windows: .venv\Scripts\pip install -e ".[optimizer]"
 ```
 
 Without it everything works on FSRS's shipped default weights; `/api/optimize` and the nightly job
@@ -360,7 +342,6 @@ Everything here was driven by how a library or API actually behaves, not prefere
 
 ```
 memorization-app/
-├── docker-compose.yml
 ├── .env.example
 ├── backend/
 │   ├── alembic/versions/0001_initial.py   # the §5.1 schema

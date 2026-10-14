@@ -58,8 +58,23 @@ import {
 } from './components/ThemeContext'
 
 function ThemeNavButton() {
-  const { themeMode, setThemeMode, fixedTheme, setFixedTheme, activeThemeMeta } = useTheme()
+  const {
+    themeMode,
+    setThemeMode,
+    fixedTheme,
+    setFixedTheme,
+    activeThemeMeta,
+    enableOledBlack,
+    setEnableOledBlack,
+  } = useTheme()
   const [open, setOpen] = useState(false)
+
+  const navLabel =
+    themeMode === 'dynamic'
+      ? 'Adaptive'
+      : activeThemeMeta.id === 'dark'
+        ? 'Dark'
+        : activeThemeMeta.label.split(' ')[0]
 
   return (
     <div className="relative">
@@ -70,9 +85,7 @@ function ThemeNavButton() {
         className="flex items-center gap-1.5 rounded-lg border border-ink-line bg-ink-soft px-2 py-1 text-xs font-semibold text-slate-300 hover:border-slate-500 hover:text-slate-100 transition-colors cursor-pointer"
       >
         <span>{themeMode === 'dynamic' ? '🔀' : activeThemeMeta.icon}</span>
-        <span className="hidden lg:inline text-[11px]">
-          {themeMode === 'dynamic' ? 'Adaptive' : activeThemeMeta.label.split(' ')[0]}
-        </span>
+        <span className="hidden lg:inline text-[11px]">{navLabel}</span>
         <span
           className="w-2 h-2 rounded-full border border-white/20 shrink-0"
           style={{ backgroundColor: activeThemeMeta.primaryColor }}
@@ -124,6 +137,30 @@ function ThemeNavButton() {
               >
                 <span>🔒</span>
                 <span>Fixed Lock</span>
+              </button>
+            </div>
+
+            {/* OLED / Pure Black Toggle */}
+            <div className="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-ink border border-ink-line mb-2.5 text-xs">
+              <span className="flex items-center gap-1.5 text-slate-300 font-medium text-[11px]">
+                <span>🌑</span>
+                <span>OLED Pitch Black Canvas</span>
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={enableOledBlack}
+                onClick={() => setEnableOledBlack(!enableOledBlack)}
+                className={`w-7 h-4 rounded-full transition-colors relative cursor-pointer ${
+                  enableOledBlack ? 'bg-sky-500' : 'bg-slate-700'
+                }`}
+                title="Force true pitch black (#000000) canvas"
+              >
+                <span
+                  className={`w-3 h-3 rounded-full bg-white absolute top-0.5 transition-transform ${
+                    enableOledBlack ? 'left-3.5' : 'left-0.5'
+                  }`}
+                />
               </button>
             </div>
 

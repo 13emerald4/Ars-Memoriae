@@ -64,6 +64,31 @@ html[data-theme='circadian'] {
   --theme-accent-secondary: #fde68a;
 }
 
+/* 7. Dark Mode (OLED Pitch Black) */
+html[data-theme='dark'] {
+  --theme-bg-canvas: #000000;
+  --theme-bg-card: #090a0f;
+  --theme-border: #1a1d27;
+  --theme-accent: #38bdf8;
+  --theme-accent-secondary: #94a3b8;
+}
+
+/* 8. Classic Ars Memoriae (Default Slate & Sky) */
+html[data-theme='classic'] {
+  --theme-bg-canvas: #0f1117;
+  --theme-bg-card: #171a23;
+  --theme-border: #252938;
+  --theme-accent: #0ea5e9;
+  --theme-accent-secondary: #94a3b8;
+}
+
+/* OLED Pure Black Modifier (applies #000000 canvas across any cognitive state) */
+html[data-oled='true'] {
+  --theme-bg-canvas: #000000 !important;
+  --theme-bg-card: #090a0f !important;
+  --theme-border: #1a1d27 !important;
+}
+
 @layer base {
   html {
     color-scheme: dark;

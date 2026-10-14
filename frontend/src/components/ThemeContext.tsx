@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState, useMemo, useCall
 export type ThemeMode = 'dynamic' | 'fixed'
 
 export type CognitiveTheme =
+  | 'dark'
   | 'classic'
   | 'acquisition'
   | 'recall'
@@ -12,6 +13,7 @@ export type CognitiveTheme =
   | 'circadian'
 
 export type CognitiveContextState =
+  | 'dark'
   | 'acquisition'
   | 'recall'
   | 'diagnostic'
@@ -35,6 +37,20 @@ export interface ThemeMeta {
 }
 
 export const THEME_REGISTRY: Record<CognitiveTheme, ThemeMeta> = {
+  dark: {
+    id: 'dark',
+    label: 'Dark Mode (OLED Black)',
+    subtitle: 'True Pitch Black & Neutral Contrast',
+    icon: '🌑',
+    primaryColor: '#38bdf8',
+    secondaryColor: '#94a3b8',
+    bgCanvas: '#000000',
+    bgCard: '#090a0f',
+    borderColor: '#1a1d27',
+    bestFor: 'OLED displays, low-light study & high-contrast distraction-free focus',
+    psychology:
+      'True pitch-black eliminates all peripheral photon luminescence, relieving ocular strain during extended sessions while keeping focus sharp.',
+  },
   acquisition: {
     id: 'acquisition',
     label: 'Acquisition & Learning',
@@ -144,6 +160,8 @@ interface ThemeContextValue {
   setCognitiveContext: (context: CognitiveContextState) => void
   enableNightAutoShift: boolean
   setEnableNightAutoShift: (enabled: boolean) => void
+  enableOledBlack: boolean
+  setEnableOledBlack: (enabled: boolean) => void
   activeThemeMeta: ThemeMeta
 }
 
@@ -173,6 +191,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem('memorization.nightAutoShift') !== '0'
   })
 
+  // Pure Black / OLED Dark canvas toggle (applies #000000 background across all themes)
+  const [enableOledBlack, setEnableOledBlackState] = useState<boolean>(() => {
+    if (typeof localStorage === 'undefined') return false
+    return localStorage.getItem('memorization.oledDark') === '1'
+  })
+
   const setThemeMode = useCallback((mode: ThemeMode) => {
     setThemeModeState(mode)
     localStorage.setItem('memorization.themeMode', mode)
@@ -186,6 +210,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setEnableNightAutoShift = useCallback((enabled: boolean) => {
     setEnableNightAutoShiftState(enabled)
     localStorage.setItem('memorization.nightAutoShift', enabled ? '1' : '0')
+  }, [])
+
+  const setEnableOledBlack = useCallback((enabled: boolean) => {
+    setEnableOledBlackState(enabled)
+    localStorage.setItem('memorization.oledDark', enabled ? '1' : '0')
   }, [])
 
   // Determine if it's currently night time (after 8 PM / 20:00 or before 6 AM)
@@ -218,16 +247,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (typeof document === 'undefined') return
     const root = document.documentElement
     root.setAttribute('data-theme', activeTheme)
+    root.setAttribute('data-oled', enableOledBlack ? 'true' : 'false')
 
-    const meta = THEME_REGISTRY[activeTheme] || THEME_REGISTRY.classic
-    root.style.setProperty('--theme-bg-canvas', meta.bgCanvas)
-    root.style.setProperty('--theme-bg-card', meta.bgCard)
-    root.style.setProperty('--theme-border', meta.borderColor)
+    const meta = THEME_REGISTRY[activeTheme] || THEME_REGISTRY.dark
+    const isPureBlack = enableOledBlack || activeTheme === 'dark'
+    const bgCanvas = isPureBlack ? '#000000' : meta.bgCanvas
+    const bgCard = isPureBlack ? '#090a0f' : meta.bgCard
+    const border = isPureBlack ? '#1a1d27' : meta.borderColor
+
+    root.style.setProperty('--theme-bg-canvas', bgCanvas)
+    root.style.setProperty('--theme-bg-card', bgCard)
+    root.style.setProperty('--theme-border', border)
     root.style.setProperty('--theme-accent', meta.primaryColor)
     root.style.setProperty('--theme-accent-secondary', meta.secondaryColor)
-  }, [activeTheme])
+  }, [activeTheme, enableOledBlack])
 
-  const activeThemeMeta = THEME_REGISTRY[activeTheme] || THEME_REGISTRY.classic
+  const activeThemeMeta = THEME_REGISTRY[activeTheme] || THEME_REGISTRY.dark
 
   const value = useMemo(
     () => ({
@@ -240,6 +275,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setCognitiveContext,
       enableNightAutoShift,
       setEnableNightAutoShift,
+      enableOledBlack,
+      setEnableOledBlack,
       activeThemeMeta,
     }),
     [
@@ -252,6 +289,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setCognitiveContext,
       enableNightAutoShift,
       setEnableNightAutoShift,
+      enableOledBlack,
+      setEnableOledBlack,
       activeThemeMeta,
     ],
   )

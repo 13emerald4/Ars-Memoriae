@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A spaced-repetition web app combining FSRS scheduling with LLM-graded typed answers and incremental reading. Users type their answers rather than self-grading; a small local LLM (Qwen 2.5 Coder via Ollama) grades it with reasoning shown. A priority queue (not a due-date list) ranks reviews, new cards, and reading extracts to fill a daily time budget.
 
-**Stack:** FastAPI backend with SQLAlchemy/AsyncPG (Postgres) or SQLite, React+TypeScript frontend with Vite, Docker Compose for deployment.
+**Stack:** FastAPI backend with SQLAlchemy (SQLite or Postgres), React+TypeScript frontend with Vite, native 1-click launchers.
 
 ## Development Commands
 
@@ -39,18 +39,6 @@ npm run dev         # Dev server (port 5173)
 npm run build       # TypeScript check + Vite build
 npm run typecheck   # Type-check only (no build)
 ```
-
-### Docker Compose
-
-```bash
-# First time: generate secrets
-python -c "import secrets; print('SECRET_KEY=' + secrets.token_urlsafe(48))"
-# Add it to .env along with POSTGRES_PASSWORD
-
-docker compose up --build
-```
-
-Migrations run automatically on backend startup.
 
 ### Migrations
 
@@ -214,9 +202,9 @@ Key endpoints:
 
 ## Dependency Notes
 
-- **`fsrs[optimizer]`** pulls in torch (~2GB). Off by default; set `INSTALL_FSRS_OPTIMIZER=1` in docker-compose.yml to enable personalized weight refitting. Without it, everything works on FSRS's default weights.
+- **`fsrs[optimizer]`** pulls in torch (~2GB). Off by default; install via `pip install ".[optimizer]"` to enable personalized weight refitting. Without it, everything works on FSRS's default weights.
 - **FastAPI** idiom uses `x: T = Depends(...)` / `File(...)`, which Ruff B008 flags as mutable defaults. This is ignored in pyproject.toml.
-- **Alembic** migrations run automatically on backend startup in Docker; manually via `alembic upgrade head` in local dev.
+- **Alembic** migrations run automatically via native launchers or manually via `alembic upgrade head`.
 
 ## Output Style: Spartan
 

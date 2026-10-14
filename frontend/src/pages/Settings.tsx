@@ -905,6 +905,8 @@ function CognitiveThemePanel() {
     setCognitiveContext,
     enableNightAutoShift,
     setEnableNightAutoShift,
+    enableOledBlack,
+    setEnableOledBlack,
   } = useTheme()
 
   return (
@@ -960,6 +962,19 @@ function CognitiveThemePanel() {
                     </span>
                   </label>
                 </div>
+                <div className="pt-2 border-t border-sky-500/20">
+                  <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={enableOledBlack}
+                      onChange={(e) => setEnableOledBlack(e.target.checked)}
+                      className="rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500 cursor-pointer"
+                    />
+                    <span className="text-[11px]">
+                      🌑 <strong>OLED Pure Black Canvas</strong>: Keep adaptive accents but force pure pitch black (<code>#000000</code>) background
+                    </span>
+                  </label>
+                </div>
               </div>
             )}
           </div>
@@ -987,12 +1002,27 @@ function CognitiveThemePanel() {
               accent pairing stays consistent across Flashcards, Code Lab, Reading, and Tree views.
             </p>
             {themeMode === 'fixed' && (
-              <div className="rounded-xl border border-sky-500/30 bg-sky-950/40 p-2.5 text-xs flex items-center justify-between">
-                <span className="text-slate-400">Locked Palette:</span>
-                <span className="font-semibold text-sky-200 flex items-center gap-1.5">
-                  <span>{activeThemeMeta.icon}</span>
-                  <span>{activeThemeMeta.label}</span>
-                </span>
+              <div className="rounded-xl border border-sky-500/30 bg-sky-950/40 p-2.5 text-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Locked Palette:</span>
+                  <span className="font-semibold text-sky-200 flex items-center gap-1.5">
+                    <span>{activeThemeMeta.icon}</span>
+                    <span>{activeThemeMeta.label}</span>
+                  </span>
+                </div>
+                <div className="pt-2 border-t border-sky-500/20">
+                  <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={enableOledBlack}
+                      onChange={(e) => setEnableOledBlack(e.target.checked)}
+                      className="rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500 cursor-pointer"
+                    />
+                    <span className="text-[11px]">
+                      🌑 <strong>OLED Pure Black Canvas</strong>: Force pure pitch black (<code>#000000</code>) background
+                    </span>
+                  </label>
+                </div>
               </div>
             )}
           </div>
