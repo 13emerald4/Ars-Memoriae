@@ -4,6 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ars Memoriae</title>
+    <script>
+      (function() {
+        try {
+          var fs = localStorage.getItem('memorization.fontSize');
+          if (fs && [10, 12, 14, 16, 18, 20].indexOf(Number(fs)) !== -1) {
+            document.documentElement.style.fontSize = fs + 'px';
+            document.documentElement.style.setProperty('--app-font-size', fs + 'px');
+            document.documentElement.setAttribute('data-font-size', fs);
+          }
+        } catch(e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

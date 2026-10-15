@@ -7,17 +7,20 @@ interface Props {
   isOpen: boolean
   onClose: () => void
   initialMode?: 'prompt' | 'tour'
+  initialType?: 'extensive' | 'brief'
 }
 
 export default function InteractiveTutorialModal({
   isOpen,
   onClose,
   initialMode = 'prompt',
+  initialType = 'extensive',
 }: Props) {
   const navigate = useNavigate()
   const { user, refresh } = useAuth()
-  const [step, setStep] = useState(0) // 0 to 5
+  const [step, setStep] = useState(0)
   const [mode, setMode] = useState<'prompt' | 'tour'>(initialMode)
+  const [tutorialType, setTutorialType] = useState<'extensive' | 'brief'>(initialType)
   const [simulatedAnswer, setSimulatedAnswer] = useState(
     'Encapsulation bundles state and methods together while hiding internal implementation details behind a public interface.'
   )
@@ -36,10 +39,11 @@ export default function InteractiveTutorialModal({
   useEffect(() => {
     if (isOpen) {
       setMode(initialMode)
+      setTutorialType(initialType)
       setStep(0)
       setGradedResult(null)
     }
-  }, [isOpen, initialMode])
+  }, [isOpen, initialMode, initialType])
 
   const finishTutorial = useCallback(
     async (targetRoute?: string) => {
@@ -81,99 +85,25 @@ export default function InteractiveTutorialModal({
     }, 700)
   }
 
-  // Keyboard navigation (Arrow keys & Esc)
-  useEffect(() => {
-    if (!isOpen) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        void finishTutorial()
-      } else if (mode === 'tour') {
-        if (e.key === 'ArrowRight' && step < 5) {
-          setStep((s) => s + 1)
-        } else if (e.key === 'ArrowLeft' && step > 0) {
-          setStep((s) => s - 1)
-        }
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, mode, step, finishTutorial])
+  const briefSteps = [
+    {
+      title: 'Active Recall & Token Similarity Grading',
+      badge: 'Core Recall',
+      icon: '🧠',
+    },
+    {
+      title: 'Knowledge Trees & Visual Progress Bars',
+      badge: 'Structure & Progress',
+      icon: '🌲',
+    },
+    {
+      title: 'Priority Queue, Time Bank & Deep Mastery',
+      badge: 'Workflow & Habits',
+      icon: '⚡',
+    },
+  ]
 
-  if (!isOpen) return null
-
-  // 1. Initial Welcome Prompt Mode
-  if (mode === 'prompt') {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-in fade-in duration-200">
-        <div className="w-full max-w-lg rounded-2xl border border-sky-500/40 bg-[#0d131f] p-6 shadow-2xl space-y-5 text-slate-200">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/20 text-2xl border border-sky-500/30 shadow-inner">
-              🏛️
-            </div>
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-sky-400">
-                Welcome to Ars Memoriae
-              </span>
-              <h2 className="text-lg font-bold text-slate-100">Take the Interactive Tour?</h2>
-            </div>
-          </div>
-
-          <p className="text-xs text-slate-300 leading-relaxed">
-            Welcome, <strong className="text-sky-300">{user?.email ?? 'scholar'}</strong>! Your
-            spaced-repetition workspace is ready.
-          </p>
-
-          <div className="rounded-xl border border-ink-line bg-ink/70 p-4 space-y-2.5 text-xs text-slate-300">
-            <div className="flex items-start gap-2.5">
-              <span className="text-emerald-400 text-sm">✓</span>
-              <span>
-                <strong className="text-slate-100">Active Recall:</strong> Type your answers with local
-                AI evaluation instead of passive self-grading.
-              </span>
-            </div>
-            <div className="flex items-start gap-2.5">
-              <span className="text-sky-400 text-sm">✓</span>
-              <span>
-                <strong className="text-slate-100">Knowledge Tree:</strong> Organize decks hierarchically
-                with drag-and-drop branch reordering and visual distribution bars.
-              </span>
-            </div>
-            <div className="flex items-start gap-2.5">
-              <span className="text-amber-400 text-sm">✓</span>
-              <span>
-                <strong className="text-slate-100">Priority Queue:</strong> Daily time budgets with zero
-                unbounded card backlogs.
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
-            <button
-              type="button"
-              onClick={() => setMode('tour')}
-              className="btn btn-primary flex-1 py-2.5 text-xs font-semibold shadow-lg shadow-sky-500/20"
-            >
-              Start Interactive Tour (2 min) →
-            </button>
-            <button
-              type="button"
-              onClick={() => void finishTutorial()}
-              className="btn py-2.5 text-xs text-slate-400 hover:text-slate-200"
-            >
-              Skip for now
-            </button>
-          </div>
-
-          <p className="text-center text-[11px] text-slate-500">
-            You can always relaunch this tour from the <strong className="text-slate-400">Start here</strong> navigation tab.
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  // 2. Multi-Step Interactive Tour Mode
-  const steps = [
+  const extensiveSteps = [
     {
       title: 'Active Recall & The FSRS Engine',
       badge: 'Core Philosophy',
@@ -206,11 +136,122 @@ export default function InteractiveTutorialModal({
     },
   ]
 
+  const steps = tutorialType === 'brief' ? briefSteps : extensiveSteps
+
+  // Keyboard navigation (Arrow keys & Esc)
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        void finishTutorial()
+      } else if (mode === 'tour') {
+        if (e.key === 'ArrowRight' && step < steps.length - 1) {
+          setStep((s) => s + 1)
+        } else if (e.key === 'ArrowLeft' && step > 0) {
+          setStep((s) => s - 1)
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, mode, step, steps.length, finishTutorial])
+
+  if (!isOpen) return null
+
+  // 1. Initial Welcome Prompt Mode: Choose Tutorial Depth
+  if (mode === 'prompt') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="w-full max-w-lg rounded-2xl border border-sky-500/40 bg-[#0d131f] p-6 shadow-2xl space-y-5 text-slate-200">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/20 text-2xl border border-sky-500/30 shadow-inner">
+              🏛️
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-sky-400">
+                Welcome to Ars Memoriae
+              </span>
+              <h2 className="text-lg font-bold text-slate-100">Choose Your Tutorial Experience</h2>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Welcome, <strong className="text-sky-300">{user?.email ?? 'scholar'}</strong>! Your
+            spaced-repetition workspace is ready. Select how thoroughly you want to tour the system:
+          </p>
+
+          <div className="grid grid-cols-1 gap-3">
+            {/* Option A: Brief High-Level Tour */}
+            <button
+              type="button"
+              onClick={() => {
+                setTutorialType('brief')
+                setMode('tour')
+                setStep(0)
+              }}
+              className="group rounded-xl border border-ink-line bg-ink/70 p-4 text-left transition hover:border-sky-500/60 hover:bg-sky-950/20 cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2 text-sky-300 font-bold text-xs">
+                  <span>⚡</span>
+                  <span>Brief High-Level Overview</span>
+                </div>
+                <span className="chip text-[10px] py-0.5 border-sky-500/40 text-sky-300 bg-sky-500/10 font-semibold">
+                  1 min
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                A rapid 3-slide executive overview of the core architecture: Active Recall, Hierarchical Knowledge Trees with distribution bars, and the Priority Queue.
+              </p>
+            </button>
+
+            {/* Option B: Extensive Deep-Dive Tour */}
+            <button
+              type="button"
+              onClick={() => {
+                setTutorialType('extensive')
+                setMode('tour')
+                setStep(0)
+              }}
+              className="group rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4 text-left transition hover:border-emerald-500/70 hover:bg-emerald-950/30 cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
+                  <span>📘</span>
+                  <span>Extensive Interactive Tutorial</span>
+                </div>
+                <span className="chip text-[10px] py-0.5 border-emerald-500/40 text-emerald-300 bg-emerald-500/10 font-semibold">
+                  Recommended · 4 min
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Full hands-on walkthrough: test-drive the FSRS retention target slider, simulate live AI grading with the token-by-token similarity checker, explore the Knowledge Tree, and learn time-budget banking.
+              </p>
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between pt-1 text-xs">
+            <button
+              type="button"
+              onClick={() => void finishTutorial()}
+              className="text-slate-400 hover:text-slate-200 text-xs underline underline-offset-2 transition cursor-pointer"
+            >
+              Skip tutorial for now
+            </button>
+            <span className="text-[11px] text-slate-500">
+              Relaunch anytime from <strong className="text-slate-400">Start here</strong>
+            </span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-200">
       <div className="flex flex-col w-full max-w-2xl max-h-[92vh] rounded-2xl border border-sky-500/30 bg-[#0d131f] shadow-2xl text-slate-200 overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-ink-line px-6 py-4 bg-ink-soft/40 shrink-0">
+        {/* Header with Step Info & Depth Switcher */}
+        <div className="flex items-center justify-between border-b border-ink-line px-6 py-4 bg-ink-soft/40 shrink-0 gap-3">
           <div className="flex items-center gap-3">
             <span className="text-2xl">{steps[step].icon}</span>
             <div>
@@ -225,14 +266,51 @@ export default function InteractiveTutorialModal({
               <h2 className="text-base font-bold text-slate-100">{steps[step].title}</h2>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => void finishTutorial()}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition"
-            title="Close walkthrough"
-          >
-            ✕
-          </button>
+
+          <div className="flex items-center gap-3 shrink-0">
+            {/* Quick Switcher between Brief and Extensive */}
+            <div className="hidden sm:flex items-center gap-1 bg-ink/80 p-0.5 rounded-lg border border-ink-line text-[11px]">
+              <button
+                type="button"
+                onClick={() => {
+                  setTutorialType('brief')
+                  setStep(0)
+                }}
+                className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
+                  tutorialType === 'brief'
+                    ? 'bg-sky-500/25 text-sky-200 border border-sky-500/40 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Switch to Brief 3-slide overview"
+              >
+                ⚡ Brief
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTutorialType('extensive')
+                  setStep(0)
+                }}
+                className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
+                  tutorialType === 'extensive'
+                    ? 'bg-emerald-500/25 text-emerald-200 border border-emerald-500/40 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Switch to Extensive hands-on tutorial"
+              >
+                📘 Extensive
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => void finishTutorial()}
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition"
+              title="Close walkthrough"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Progress Bar */}
@@ -245,8 +323,202 @@ export default function InteractiveTutorialModal({
 
         {/* Body Content */}
         <div className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
-          {/* STEP 0: FSRS & Active Recall */}
-          {step === 0 && (
+          {/* BRIEF TUTORIAL - STEP 0: Active Recall & AI Token Similarity */}
+          {tutorialType === 'brief' && step === 0 && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 space-y-2">
+                <h3 className="text-sm font-bold text-sky-200 flex items-center gap-2">
+                  <span>✍️</span>
+                  <span>Principle 1: Active Retrieval (You Type Every Answer)</span>
+                </h3>
+                <p className="text-slate-300 leading-relaxed">
+                  Conventional flashcard systems rely on passive recognition (flipping the card and self-grading).
+                  Ars Memoriae requires <strong className="text-emerald-300">effortful active retrieval</strong>: you type your response in full,
+                  activating deep neural pathways and eliminating illusory self-assessment.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-3.5 space-y-2">
+                  <div className="flex items-center gap-2 font-semibold text-emerald-300 text-xs">
+                    <span>🤖</span>
+                    <span>Local AI Grading Engine</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Powered by quantized <strong className="text-slate-200">Qwen 2.5 Coder</strong> running 100% locally in Ollama.
+                    It reads your typed answer and outputs structured feedback: grade, confidence, matched insights, missed nuances, and comprehensive reasoning.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3.5 space-y-2">
+                  <div className="flex items-center gap-2 font-semibold text-emerald-300 text-xs">
+                    <span>🔬</span>
+                    <span>Token-by-Token Similarity Checker</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    A fast local keyword and n-gram overlap heuristic runs alongside the AI grader. It cross-checks
+                    semantic predictions against verbatim token matches to eliminate hallucinations and reward accurate recall.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-ink-line bg-ink-soft/50 p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-200 text-xs">FSRS Spaced Repetition Scheduling</span>
+                  <span className="chip text-[10px] text-amber-300 border-amber-500/40">Stability & Retrievability</span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Intervals are calculated using modern Free Spaced Repetition Scheduling (FSRS) based on memory stability and retrievability,
+                  yielding predictable retention targets (e.g. 90%) with zero guesswork.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* BRIEF TUTORIAL - STEP 1: Knowledge Tree & Progress Bars */}
+          {tutorialType === 'brief' && step === 1 && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 space-y-2">
+                <h3 className="text-sm font-bold text-sky-200 flex items-center gap-2">
+                  <span>🌲</span>
+                  <span>Principle 2: Hierarchical Knowledge Architecture</span>
+                </h3>
+                <p className="text-slate-300 leading-relaxed">
+                  Knowledge is not a flat list of cards. Ars Memoriae organizes everything into a
+                  <strong className="text-sky-300"> unified hierarchical Knowledge Tree</strong> with parent courses, chapters, topics, and subdecks.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-3.5 space-y-2">
+                  <div className="flex items-center gap-2 font-semibold text-sky-300 text-xs">
+                    <span>🔀</span>
+                    <span>Drag-and-Drop Study Ordering</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Drag branches directly in the Tree view to order study materials chronologically according to syllabus syllabi
+                    rather than alphabetical filenames. Custom positions are saved persistently in the database.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-3.5 space-y-2">
+                  <div className="flex items-center gap-2 font-semibold text-emerald-300 text-xs">
+                    <span>📊</span>
+                    <span>Three Real-Time Distribution Bars with Hierarchical Rollup</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed mb-2">
+                    Every deck and course root displays three instant progress distribution bars:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px]">
+                    <div className="bg-ink/80 rounded-lg p-2 border border-ink-line">
+                      <span className="font-bold text-slate-300 block mb-1">👀 Cards Viewed</span>
+                      <span className="text-slate-400">Unseen (0 reviews) vs New (1-2) vs Mature (3+)</span>
+                    </div>
+                    <div className="bg-ink/80 rounded-lg p-2 border border-ink-line">
+                      <span className="font-bold text-slate-300 block mb-1">⚖️ FSRS Difficulty</span>
+                      <span className="text-slate-400">Easy (&lt;4.0) vs Medium (4.0-7.0) vs Hard (&gt;7.0)</span>
+                    </div>
+                    <div className="bg-ink/80 rounded-lg p-2 border border-ink-line">
+                      <span className="font-bold text-slate-300 block mb-1">🎯 Recall Ratings</span>
+                      <span className="text-slate-400">Again, Hard, Good, and Easy response telemetry</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* BRIEF TUTORIAL - STEP 2: Priority Queue & Time Bank */}
+          {tutorialType === 'brief' && step === 2 && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4 space-y-2">
+                <h3 className="text-sm font-bold text-emerald-200 flex items-center gap-2">
+                  <span>⏱️</span>
+                  <span>Principle 3: Daily Time Budgets & Deep Focus</span>
+                </h3>
+                <p className="text-slate-300 leading-relaxed">
+                  Study fatigue is real. Ars Memoriae replaces infinite due-date backlogs with bounded daily time budgets
+                  and velocity rewards.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-3.5 space-y-2">
+                  <div className="flex items-center gap-2 font-semibold text-amber-300 text-xs">
+                    <span>⏳</span>
+                    <span>Priority Queue Scheduling</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Your daily session is composed from a prioritized stream of due cards, new concepts, and reading extracts.
+                    Missed days smoothly distribute rather than snowballing into an 800-card wall.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-3.5 space-y-2">
+                  <div className="flex items-center gap-2 font-semibold text-sky-300 text-xs">
+                    <span>🏦</span>
+                    <span>Time Bank Velocity Rewards</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Finishing a session under your target duration banks remaining focus minutes into your Time Bank,
+                    rewarding cognitive speed and focus over passive seat time.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-3.5 space-y-2">
+                <div className="flex items-center gap-2 font-semibold text-purple-300 text-xs">
+                  <span>💻</span>
+                  <span>Interactive Code Lab & Incremental Reading</span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Run automated code test suites directly in browser with a Socratic AI guide that provides progressive hints without spoiling solutions,
+                  and chunk complex textbooks into bite-sized scheduled extracts with verified citations.
+                </p>
+              </div>
+
+              {/* Quick Jump Action Grid */}
+              <div className="pt-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                  Ready to begin? Choose your launchpad:
+                </span>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void finishTutorial('/review')}
+                    className="rounded-xl border border-sky-500/40 bg-sky-950/30 p-2.5 text-center hover:bg-sky-900/40 transition group cursor-pointer"
+                  >
+                    <span className="text-base block mb-0.5">🎴</span>
+                    <span className="font-semibold text-sky-200 text-xs block">Start Review</span>
+                    <span className="text-[10px] text-slate-400">Begin active recall</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => void finishTutorial('/tree')}
+                    className="rounded-xl border border-emerald-500/40 bg-emerald-950/30 p-2.5 text-center hover:bg-emerald-900/40 transition group cursor-pointer"
+                  >
+                    <span className="text-base block mb-0.5">🌲</span>
+                    <span className="font-semibold text-emerald-200 text-xs block">Knowledge Tree</span>
+                    <span className="text-[10px] text-slate-400">Explore branches</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => void finishTutorial('/decks')}
+                    className="rounded-xl border border-purple-500/40 bg-purple-950/30 p-2.5 text-center hover:bg-purple-900/40 transition group cursor-pointer"
+                  >
+                    <span className="text-base block mb-0.5">📁</span>
+                    <span className="font-semibold text-purple-200 text-xs block">Decks & Cards</span>
+                    <span className="text-[10px] text-slate-400">Import or create</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* EXTENSIVE TUTORIAL - STEP 0: FSRS & Active Recall */}
+          {tutorialType === 'extensive' && step === 0 && (
             <div className="space-y-4">
               <p className="text-slate-300 leading-relaxed">
                 Conventional flashcard apps rely on <strong className="text-amber-300">passive recognition</strong>:
@@ -295,8 +567,8 @@ export default function InteractiveTutorialModal({
             </div>
           )}
 
-          {/* STEP 1: Live AI Grading Simulator */}
-          {step === 1 && (
+          {/* EXTENSIVE TUTORIAL - STEP 1: Live AI Grading Simulator */}
+          {tutorialType === 'extensive' && step === 1 && (
             <div className="space-y-3.5">
               <p className="text-slate-300 leading-relaxed">
                 When you review a card, you type your answer. A local LLM running privately on your machine
@@ -391,8 +663,8 @@ export default function InteractiveTutorialModal({
             </div>
           )}
 
-          {/* STEP 2: Knowledge Tree */}
-          {step === 2 && (
+          {/* EXTENSIVE TUTORIAL - STEP 2: Knowledge Tree */}
+          {tutorialType === 'extensive' && step === 2 && (
             <div className="space-y-3.5">
               <p className="text-slate-300 leading-relaxed">
                 Rather than treating all flashcards as a flat list, Ars Memoriae implements a unified
@@ -461,8 +733,8 @@ export default function InteractiveTutorialModal({
             </div>
           )}
 
-          {/* STEP 3: Priority Queue & Time Bank */}
-          {step === 3 && (
+          {/* EXTENSIVE TUTORIAL - STEP 3: Priority Queue & Time Bank */}
+          {tutorialType === 'extensive' && step === 3 && (
             <div className="space-y-3.5">
               <p className="text-slate-300 leading-relaxed">
                 Backlog anxiety is the #1 reason learners abandon spaced repetition. In Ars Memoriae, you never face
@@ -505,8 +777,8 @@ export default function InteractiveTutorialModal({
             </div>
           )}
 
-          {/* STEP 4: Incremental Reading & Code Lab */}
-          {step === 4 && (
+          {/* EXTENSIVE TUTORIAL - STEP 4: Incremental Reading & Code Lab */}
+          {tutorialType === 'extensive' && step === 4 && (
             <div className="space-y-3.5">
               <p className="text-slate-300 leading-relaxed">
                 Two unique pillars empower deep technical learning and comprehensive document mastery:
@@ -538,8 +810,8 @@ export default function InteractiveTutorialModal({
             </div>
           )}
 
-          {/* STEP 5: Ready to Begin! */}
-          {step === 5 && (
+          {/* EXTENSIVE TUTORIAL - STEP 5: Ready to Begin! */}
+          {tutorialType === 'extensive' && step === 5 && (
             <div className="space-y-4">
               <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4 text-center space-y-2">
                 <span className="text-3xl">🎉</span>

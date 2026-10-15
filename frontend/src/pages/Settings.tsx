@@ -8,7 +8,7 @@ import { FullscreenButton, useFullscreen } from '../components/FullscreenContext
 
 
 
-import { useTheme, THEME_REGISTRY, type CognitiveTheme } from '../components/ThemeContext'
+import { useTheme, THEME_REGISTRY, FONT_SIZES, type CognitiveTheme, type FontSize } from '../components/ThemeContext'
 
 export default function Settings() {
   const { user, refresh, signOut } = useAuth()
@@ -35,6 +35,7 @@ export default function Settings() {
       <QwenCoderPanel user={user} onChange={refresh} />
       <MemoryChampionPanel user={user} onChange={refresh} />
       <CognitiveThemePanel />
+      <TypographyPanel />
       <DisplayFocusPanel />
       <NavigationModulesPanel user={user} onChange={refresh} />
       <SchedulingPanel user={user} onChange={refresh} />
@@ -673,6 +674,90 @@ function Field({
       {children}
       {hint && <p className="mt-1 text-xs text-slate-600">{hint}</p>}
     </div>
+  )
+}
+
+function TypographyPanel() {
+  const { fontSize, setFontSize } = useTheme()
+
+  const sizeLabels: Record<FontSize, { label: string; tag: string }> = {
+    10: { label: '10px', tag: 'Tiny / Dense' },
+    12: { label: '12px', tag: 'Compact' },
+    14: { label: '14px', tag: 'Medium' },
+    16: { label: '16px', tag: 'Default' },
+    18: { label: '18px', tag: 'Large' },
+    20: { label: '20px', tag: 'Extra Large' },
+  }
+
+  return (
+    <Section
+      title="🔤 Typography & Font Size"
+      description="Select the application base font size (10px to 20px). The interface, buttons, inputs, and knowledge cards scale smoothly in clean Verdana font."
+    >
+      <div className="space-y-4">
+        {/* Font size pill selector */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {FONT_SIZES.map((size) => {
+            const isSelected = fontSize === size
+            const meta = sizeLabels[size]
+            return (
+              <button
+                key={size}
+                type="button"
+                onClick={() => setFontSize(size)}
+                className={`flex flex-col items-center justify-center rounded-xl border px-3.5 py-2.5 transition cursor-pointer min-w-[5.25rem] ${
+                  isSelected
+                    ? 'border-sky-500 bg-sky-950/50 text-sky-200 ring-2 ring-sky-500/50 shadow-md'
+                    : 'border-ink-line bg-ink/70 text-slate-300 hover:border-slate-600 hover:bg-ink'
+                }`}
+              >
+                <span className="font-bold font-mono text-sm">
+                  {meta.label}
+                </span>
+                <span className={`text-[10px] mt-0.5 ${isSelected ? 'text-sky-300 font-semibold' : 'text-slate-500'}`}>
+                  {meta.tag}
+                </span>
+              </button>
+            )
+          })}
+
+          {fontSize !== 16 && (
+            <button
+              type="button"
+              onClick={() => setFontSize(16)}
+              className="btn text-xs py-2 px-3 text-slate-400 hover:text-slate-200"
+              title="Reset font size to 16px default"
+            >
+              ↺ Reset (16px)
+            </button>
+          )}
+        </div>
+
+        {/* Live Typography Preview Box */}
+        <div className="rounded-xl border border-ink-line bg-ink-soft/50 p-4 space-y-2">
+          <div className="flex items-center justify-between text-xs text-slate-400 border-b border-ink-line/50 pb-2">
+            <span className="font-semibold uppercase tracking-wider text-[11px] text-slate-300">
+              Live Verdana Preview ({fontSize}px base scale)
+            </span>
+            <span className="font-mono text-sky-400 text-[11px]">font-family: 'Verdana', sans-serif</span>
+          </div>
+
+          <div className="space-y-1.5 pt-1">
+            <h4 className="font-bold text-slate-100" style={{ fontSize: `${fontSize * 1.15}px` }}>
+              Active Recall & FSRS Scheduling
+            </h4>
+            <p className="text-slate-300 leading-relaxed" style={{ fontSize: `${fontSize}px` }}>
+              Every function has a contract. Type your answer to verify understanding with local AI reasoning and token-by-token answer similarity checking.
+            </p>
+            <div className="pt-1">
+              <code className="font-mono bg-ink px-2 py-0.5 rounded border border-ink-line text-emerald-300 text-xs inline-block">
+                def memory_consolidation(stability: float, difficulty: float) -&gt; float:
+              </code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Section>
   )
 }
 

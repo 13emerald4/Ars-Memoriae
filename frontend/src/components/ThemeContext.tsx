@@ -2,6 +2,9 @@ import React, { createContext, useContext, useEffect, useState, useMemo, useCall
 
 export type ThemeMode = 'dynamic' | 'fixed'
 
+export type FontSize = 10 | 12 | 14 | 16 | 18 | 20
+export const FONT_SIZES: readonly FontSize[] = [10, 12, 14, 16, 18, 20] as const
+
 export type CognitiveTheme =
   | 'dark'
   | 'classic'
@@ -163,6 +166,8 @@ interface ThemeContextValue {
   enableOledBlack: boolean
   setEnableOledBlack: (enabled: boolean) => void
   activeThemeMeta: ThemeMeta
+  fontSize: FontSize
+  setFontSize: (size: FontSize) => void
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
@@ -197,6 +202,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem('memorization.oledDark') === '1'
   })
 
+  // Font Size scale: 10, 12, 14, 16, 18, 20
+  const [fontSize, setFontSizeState] = useState<FontSize>(() => {
+    if (typeof localStorage === 'undefined') return 16
+    const saved = Number(localStorage.getItem('memorization.fontSize'))
+    return (FONT_SIZES.includes(saved as FontSize) ? saved : 16) as FontSize
+  })
+
   const setThemeMode = useCallback((mode: ThemeMode) => {
     setThemeModeState(mode)
     localStorage.setItem('memorization.themeMode', mode)
@@ -215,6 +227,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setEnableOledBlack = useCallback((enabled: boolean) => {
     setEnableOledBlackState(enabled)
     localStorage.setItem('memorization.oledDark', enabled ? '1' : '0')
+  }, [])
+
+  const setFontSize = useCallback((size: FontSize) => {
+    setFontSizeState(size)
+    localStorage.setItem('memorization.fontSize', String(size))
   }, [])
 
   // Determine if it's currently night time (after 8 PM / 20:00 or before 6 AM)
@@ -242,12 +259,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return 'acquisition'
   }, [themeMode, fixedTheme, cognitiveContext, enableNightAutoShift, isNightTime])
 
-  // Sync active theme to DOM root <html data-theme="..."> and CSS variables
+  // Sync active theme and font size to DOM root <html data-theme="..."> and CSS variables
   useEffect(() => {
     if (typeof document === 'undefined') return
     const root = document.documentElement
     root.setAttribute('data-theme', activeTheme)
     root.setAttribute('data-oled', enableOledBlack ? 'true' : 'false')
+    root.setAttribute('data-font-size', String(fontSize))
+
+    // Set root rem base and font-size CSS variable
+    root.style.fontSize = `${fontSize}px`
+    root.style.setProperty('--app-font-size', `${fontSize}px`)
 
     const meta = THEME_REGISTRY[activeTheme] || THEME_REGISTRY.dark
     const isPureBlack = enableOledBlack || activeTheme === 'dark'
@@ -260,7 +282,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty('--theme-border', border)
     root.style.setProperty('--theme-accent', meta.primaryColor)
     root.style.setProperty('--theme-accent-secondary', meta.secondaryColor)
-  }, [activeTheme, enableOledBlack])
+  }, [activeTheme, enableOledBlack, fontSize])
 
   const activeThemeMeta = THEME_REGISTRY[activeTheme] || THEME_REGISTRY.dark
 
@@ -278,6 +300,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       enableOledBlack,
       setEnableOledBlack,
       activeThemeMeta,
+      fontSize,
+      setFontSize,
     }),
     [
       themeMode,
@@ -292,6 +316,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       enableOledBlack,
       setEnableOledBlack,
       activeThemeMeta,
+      fontSize,
+      setFontSize,
     ],
   )
 

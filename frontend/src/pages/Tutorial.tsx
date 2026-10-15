@@ -164,6 +164,7 @@ export default function Tutorial() {
   const [error, setError] = useState<unknown>(null)
   const [loading, setLoading] = useState(true)
   const [showInteractiveTour, setShowInteractiveTour] = useState(false)
+  const [tourType, setTourType] = useState<'extensive' | 'brief'>('extensive')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -212,30 +213,46 @@ export default function Tutorial() {
       <ErrorNote error={error} />
 
       {/* Interactive Walkthrough Banner */}
-      <div className="card border-sky-500/40 bg-gradient-to-r from-sky-950/40 via-ink-soft to-ink-soft p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="card border-sky-500/40 bg-gradient-to-r from-sky-950/40 via-ink-soft to-ink-soft p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xl">🎓</span>
             <h2 className="text-sm font-bold text-sky-200">Interactive Walkthrough & Feature Tour</h2>
-            <span className="chip border-sky-500/40 text-sky-300 text-[10px] font-semibold">2 min</span>
+            <span className="chip border-sky-500/40 text-sky-300 text-[10px] font-semibold">Self-Paced</span>
           </div>
           <p className="mt-1 text-xs text-slate-400 max-w-xl">
-            Step through an interactive demo of Active Recall, live local AI grading with the token-by-token answer similarity checker, the Knowledge Tree, and the Priority Queue.
+            Choose between an extensive step-by-step interactive simulation or a brief high-level overview of Active Recall, token similarity grading, Knowledge Trees, and the Priority Queue.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowInteractiveTour(true)}
-          className="btn btn-primary whitespace-nowrap text-xs font-semibold px-4 py-2 shrink-0 shadow-lg shadow-sky-500/10"
-        >
-          Launch Interactive Tutorial ✨
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setTourType('brief')
+              setShowInteractiveTour(true)
+            }}
+            className="btn text-xs font-semibold px-3.5 py-2 border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-slate-200"
+          >
+            ⚡ Brief Overview (1 min)
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setTourType('extensive')
+              setShowInteractiveTour(true)
+            }}
+            className="btn btn-primary text-xs font-semibold px-4 py-2 shadow-lg shadow-sky-500/10"
+          >
+            📘 Extensive Tutorial (4 min) →
+          </button>
+        </div>
       </div>
 
       <InteractiveTutorialModal
         isOpen={showInteractiveTour}
         onClose={() => setShowInteractiveTour(false)}
         initialMode="tour"
+        initialType={tourType}
       />
 
       <Section

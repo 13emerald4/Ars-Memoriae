@@ -4,8 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ars Memoriae</title>
-    <script type="module" crossorigin src="/assets/index-C1A2qosg.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-8P1HMMGw.css">
+    <script>
+      (function() {
+        try {
+          var fs = localStorage.getItem('memorization.fontSize');
+          if (fs && [10, 12, 14, 16, 18, 20].indexOf(Number(fs)) !== -1) {
+            document.documentElement.style.fontSize = fs + 'px';
+            document.documentElement.style.setProperty('--app-font-size', fs + 'px');
+            document.documentElement.setAttribute('data-font-size', fs);
+          }
+        } catch(e) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-TuKvG5Vd.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-lp5_XD-G.css">
   </head>
   <body>
     <div id="root"></div>
