@@ -534,7 +534,7 @@ async def confirm_review(
         )
 
     # A lapse is a *review-state* card being failed — relearning failures inside
-    # the same lapse do not each count again (matches Anki's definition).
+    # the same lapse do not each count again (matches standard lapse definition).
     if body.final_grade == Grade.again and state_before == "review":
         card.lapse_count += 1
 

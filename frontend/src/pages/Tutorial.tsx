@@ -59,7 +59,7 @@ const MILESTONES: Milestone[] = [
   },
   {
     title: 'Review with Active Recall & Metacognitive Confidence',
-    body: 'Select your pre-recall confidence level (Judgment of Learning: Guess, Unsure, Likely, Solid), type your answer, and review the LLM grade breakdown or self-grade.',
+    body: 'Select your pre-recall confidence level (Judgment of Learning: Guess, Unsure, Likely, Solid), type your answer, and review the LLM grade breakdown verified by the token-by-token answer similarity checker.',
     route: '/review',
     routeLabel: 'Go to Review',
     done: (c) => c.reviewsLogged > 0,
@@ -106,7 +106,7 @@ const EXPLORE_WHEN_READY: Extra[] = [
   },
   {
     title: 'Knowledge Tree & Prerequisite Gating',
-    body: 'Organize topics, decks, and sources in a SuperMemo-style unified hierarchy. Set prerequisite gates governed by EWMA health meters and Wald’s SPRT sequential hypothesis tests.',
+    body: 'Organize topics, decks, and sources in a unified knowledge hierarchy. Set prerequisite gates governed by EWMA health meters and Wald’s SPRT sequential hypothesis tests.',
     route: '/tree',
     routeLabel: 'Go to Tree',
     tag: 'Structure',
@@ -127,7 +127,7 @@ const EXPLORE_WHEN_READY: Extra[] = [
   },
   {
     title: 'Confusable Card & Interference Scan',
-    body: 'Automatically detect sister cards with high prompt similarity but different answers (Mnemosyne principle). The review queue spaces them apart to prevent proactive interference.',
+    body: 'Automatically detect sister cards with high prompt similarity but different answers. The review queue spaces them apart to prevent proactive interference.',
     route: '/stats',
     routeLabel: 'Go to Stats',
     tag: 'Interference',
@@ -220,7 +220,7 @@ export default function Tutorial() {
             <span className="chip border-sky-500/40 text-sky-300 text-[10px] font-semibold">2 min</span>
           </div>
           <p className="mt-1 text-xs text-slate-400 max-w-xl">
-            Step through an interactive demo of Active Recall, live local AI grading, the SuperMemo Knowledge Tree, and the Priority Queue.
+            Step through an interactive demo of Active Recall, live local AI grading with the token-by-token answer similarity checker, the Knowledge Tree, and the Priority Queue.
           </p>
         </div>
         <button

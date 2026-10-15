@@ -209,7 +209,7 @@ class Extract(Base):
 
 
 class KnowledgeNode(Base):
-    """A node in the unified knowledge tree — SuperMemo's contribution (§2).
+    """A node in the unified knowledge tree — hierarchical tree design (§2).
 
     Decks hold cards and sources hold reading material, but neither can hold
     the *other*, so "everything I know about pharmacology" had nowhere to live.

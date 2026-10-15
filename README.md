@@ -1,14 +1,16 @@
 # Ars Memoriae
 
-A spaced-repetition web app that takes the scheduling rigor of SuperMemo, the card/deck
-ergonomics of Anki, and the review-quality signals of Mnemosyne — with two structural changes:
+A spaced-repetition web app that combines rigorous FSRS scheduling, fluid card and deck
+ergonomics, and proactive interference mitigation — with key structural advancements:
 
 - **You type your answer.** A small LLM running locally in Ollama grades it and shows its
   reasoning. You accept or override; the grade you confirm is what FSRS consumes, and every
   override is logged and fed back as a calibration bias.
+- **Token-by-Token Answer Similarity Checker.** A fast local token and character n-gram overlap
+  heuristic runs alongside the AI grader to instantly cross-check semantic predictions against verbatim recall.
 - **A priority queue, not a due-date list.** Due reviews, new cards, and Incremental Reading
   extracts are ranked by priority and filled into a daily time budget, then interleaved.
-- **SuperMemo-style Knowledge Tree.** Organize decks and knowledge nodes hierarchically with
+- **Hierarchical Knowledge Tree.** Organize decks and knowledge nodes hierarchically with
   intuitive drag-and-drop branch reordering and recursive progress tracking.
 - **Visual Progress & Distribution Bars.** Instantly inspect Cards Viewed, Difficulty Distribution,
   and Recall Ratings with recursive hierarchical rollup across entire courses and subdecks.
@@ -74,8 +76,8 @@ report clearly that the extra is missing instead of failing silently.
    whether the daemon is reachable and which models are installed.
 3. **Settings → LLM grading → consent.** Off by default. Your typed answers and any reading
    passages you run "LLM assist" on go to the local Ollama model, so this is an explicit opt-in.
-   **Leaving it off is a full path, not a degraded one** — you get the same four
-   Again/Hard/Good/Easy buttons Anki has.
+   **Leaving it off is a full path, not a degraded one** — you get the standard four
+   Again/Hard/Good/Easy self-assessment rating buttons.
 4. **Decks → Import from JSON** to bulk-load notes, or add notes by hand.
 5. **Review.**
 
@@ -85,8 +87,8 @@ report clearly that the extra is missing instead of failing silently.
 
 ### Scheduling — FSRS
 
-Built on [`py-fsrs`](https://github.com/open-spaced-repetition/py-fsrs) 6.x, the same algorithm
-family Anki ships. Each card carries Difficulty, Stability, and Retrievability; the next interval
+Built on [`py-fsrs`](https://github.com/open-spaced-repetition/py-fsrs) 6.x, the modern Free Spaced
+Repetition Scheduler. Each card carries Difficulty, Stability, and Retrievability; the next interval
 comes from stability plus your target retention, which is set per user and overridable per deck
 (that per-deck override is the "% bias per subject" control).
 
@@ -113,7 +115,8 @@ Reliability measures, all of which have tests:
 - **Escalation** — low confidence, a card you've overridden twice running, or a math/code card
   goes to `ESCALATION_GRADING_MODEL`. Off by default (it equals the grading model); set it to a
   larger model you've pulled to turn it on.
-- **Heuristic cross-check** — a keyword-overlap score runs alongside the LLM; if the model says
+- **Token-by-Token Answer Similarity Checker & Heuristic Cross-Check** — a fast keyword and token-overlap
+  score (Jaccard token similarity + character trigram matching) runs alongside the LLM; if the model says
   "good" on an answer sharing nothing with the reference (or "again" on a near-verbatim one), the
   grade is flagged for your confirmation instead of auto-accepting.
 - **Caching** — keyed on `(card_id, answer_hash)`, so resubmitting the same answer costs nothing.
@@ -161,7 +164,7 @@ unrelated pairs top out near 0.30, so the 0.52 cutoff sits in a wide gap.
 It runs entirely locally: no embeddings, no API calls, no cost. Candidate pairs are blocked
 through an inverted index so a large collection doesn't become O(n²).
 
-Flagged pairs are also **kept apart inside a review session** (Mnemosyne's contribution, §2) —
+Flagged pairs are also **kept apart inside a review session** to prevent confusable priming —
 showing two cards you already mix up back to back is how the interference gets reinforced. That's
 a reordering, never a drop.
 
@@ -185,7 +188,7 @@ suspend, or keep it as-is from the Stats page. One call per leech, not per revie
 
 ### Hierarchical Knowledge Tree & Drag-and-Drop Reordering
 
-Inspired by SuperMemo, knowledge is structured hierarchically into branches, topics, and subdecks. Users can dynamically reorganize the deck hierarchy via smooth drag-and-drop directly in the tree view. Custom branch ordering is maintained persistently via the deck `position` index (`POST /api/decks/reorder`), ensuring study sequences follow pedagogical syllabi rather than purely alphabetical order.
+Knowledge is structured hierarchically into branches, topics, and subdecks. Users can dynamically reorganize the deck hierarchy via smooth drag-and-drop directly in the tree view. Custom branch ordering is maintained persistently via the deck `position` index (`POST /api/decks/reorder`), ensuring study sequences follow pedagogical syllabi rather than purely alphabetical order.
 
 ### Deck Progress & Distribution Bars (Hierarchical Rollup)
 
@@ -274,7 +277,7 @@ the containers.
 ## Performance
 
 `GET /api/queue/next` runs after every review, so its cost is felt on every
-card. Benchmarked against an imported-Anki-sized collection (2,000 due + 28,000 new):
+card. Benchmarked against a large-scale collection (2,000 due + 28,000 new):
 
 | | per `/api/queue/next` |
 |---|---|
@@ -380,7 +383,7 @@ memorization-app/
 │   └── scripts/           deck study ordering, ingestion, and maintenance
 └── frontend/src/
     ├── api/               typed client & models
-    ├── components/        SuperMemoTree, DeckReviewStatsBar, CodeEditor,
+    ├── components/        KnowledgeTree, DeckReviewStatsBar, CodeEditor,
     │                      CodeTestConsole, Occlusion, LexiconPopover
     └── pages/             Review, Read, Decks, Tree, CodeLab, Stats, Settings
 ```

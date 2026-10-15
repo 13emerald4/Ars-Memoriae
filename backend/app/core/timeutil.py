@@ -1,7 +1,7 @@
 """The user's study day.
 
 A study day is the user's local calendar day, rolling over at 04:00 rather
-than midnight (Anki's convention), so a late-night session still counts
+than midnight (standard convention), so a late-night session still counts
 toward the day it began. Daily caps, heatmaps, and "today" totals all bucket
 by this one definition. A user with no timezone set gets UTC.
 """

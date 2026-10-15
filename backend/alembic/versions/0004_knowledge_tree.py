@@ -1,13 +1,13 @@
 """Unified knowledge tree over decks, sources and extracts
 
-SuperMemo's knowledge tree: one hierarchy that spans reading material *and*
+The knowledge tree: one hierarchy that spans reading material *and*
 cards, instead of a deck tree for one and a flat source list for the other.
 
 Nodes are an overlay — each points at the deck / source / extract it stands
 for, and a pure ``topic`` node points at nothing. No existing table changes, so
 this is additive and reversible; the backfill that populates nodes for data
 that already exists runs lazily in tree_service.ensure_tree rather than here,
-because it has to keep working for rows created after this migration (Anki
+because it has to keep working for rows created after this migration (bulk
 imports, new decks) too.
 
 Revision ID: 0004

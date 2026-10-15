@@ -1,4 +1,4 @@
-"""Note-type rendering — Anki-style note/card separation (§2).
+"""Note-type rendering — note/card separation (§2).
 
 One note generates N cards. A Basic note makes one card; a Cloze note makes one
 card per distinct ``{{cN::...}}`` index, each scheduling independently. Renderers
@@ -21,7 +21,7 @@ def cloze_indices(text: str) -> list[int]:
 def render_basic(fields: dict, slot: str) -> tuple[str, str]:
     front = str(fields.get("Front", "") or fields.get("front", ""))
     back = str(fields.get("Back", "") or fields.get("back", ""))
-    # "t1" is the second template of a multi-template note type — Anki's
+    # "t1" is the second template of a multi-template note type — standard
     # "Basic (and reversed card)" and friends, which arrive via .apkg import.
     if slot in ("t1", "reverse"):
         return back, front
@@ -96,7 +96,7 @@ def render_image_occlusion(fields: dict, slot: str) -> tuple[str, str]:
     target = next((s for s in shapes if s["id"] == slot), None)
 
     if target is None:
-        # An imported Anki occlusion note whose masks we couldn't parse.
+        # An imported occlusion note whose masks we couldn't parse.
         return header or "(image occlusion)", extra
 
     position = f"region {slot} ({round(target['x'] * 100)}%, {round(target['y'] * 100)}%)"

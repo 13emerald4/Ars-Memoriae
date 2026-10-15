@@ -1,4 +1,4 @@
-"""Sister-card interference detection (§2 SuperMemo, §14 Phase 4).
+"""Sister-card interference detection (§14 Phase 4).
 
 Two cards interfere when they *look* alike but must be answered differently —
 "hablar / to speak" against "hablarse / to talk to each other". That, not raw
@@ -265,7 +265,7 @@ async def scan_user(db: AsyncSession, user: User, limit: int = 200) -> dict:
 async def spacing_conflicts(db: AsyncSession, user: User) -> dict[uuid.UUID, set[uuid.UUID]]:
     """note_id -> notes it should be kept away from in a session.
 
-    Mnemosyne's "keep related/confusable cards apart" (§2), applied to the
+    "Keep related/confusable cards apart" (§2), applied to the
     composed queue rather than to scheduling: showing two confusable cards
     back to back is exactly how the interference gets reinforced.
     """

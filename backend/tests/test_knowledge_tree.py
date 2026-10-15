@@ -1,4 +1,4 @@
-"""The knowledge tree — SuperMemo's unified hierarchy over decks and reading.
+"""The knowledge tree — unified hierarchy over decks and reading.
 
 What matters here is that the tree is one structure spanning both kinds of
 material, that a branch's priority actually reaches the scheduler, and that

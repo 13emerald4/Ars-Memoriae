@@ -1,6 +1,6 @@
 """Nightly per-user FSRS parameter refit (§3, §14.1 Phase 3).
 
-Anki needs ~1000 reviews for a good fit; below that we ship the library
+FSRS typically needs ~1000 reviews for a good fit; below that we ship the library
 defaults rather than overfitting to noise. The optimizer itself lives behind
 the ``fsrs[optimizer]`` extra because it pulls in torch, so this job degrades
 to a no-op (with a log line) on the default image instead of crashing.

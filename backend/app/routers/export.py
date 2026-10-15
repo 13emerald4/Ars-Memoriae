@@ -268,7 +268,7 @@ async def export_all(
 async def export_review_logs_csv(
     user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
 ) -> StreamingResponse:
-    """Mnemosyne's "personal science" angle (§2): raw review logs as CSV, so
+    """Personal science telemetry (§2): raw review logs as CSV, so
     the data is usable in a notebook without parsing the full JSON dump."""
     rows = (
         await db.execute(

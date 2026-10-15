@@ -1,6 +1,6 @@
 """The knowledge tree — one hierarchy over decks, sources and extracts.
 
-SuperMemo organises everything you are learning as a single tree: branches for
+Knowledge is organized as a single tree: branches for
 subjects, articles hanging inside them, extracts hanging inside *those*, and
 items at the leaves. Priority flows down a branch, and you can study one branch
 instead of the whole collection.
@@ -133,7 +133,7 @@ async def ensure_tree(db: AsyncSession, user: User) -> list[KnowledgeNode]:
     """Give every deck, source and extract a node. Idempotent.
 
     Runs lazily on read rather than as a one-shot data migration, because rows
-    keep arriving from paths that know nothing about the tree — an Anki import
+    keep arriving from paths that know nothing about the tree — a bulk import
     creating forty decks, say. Reconciling on read means those show up without
     every writer having to remember to call us.
 

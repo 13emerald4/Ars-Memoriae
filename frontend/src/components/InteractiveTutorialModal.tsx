@@ -134,7 +134,7 @@ export default function InteractiveTutorialModal({
             <div className="flex items-start gap-2.5">
               <span className="text-sky-400 text-sm">✓</span>
               <span>
-                <strong className="text-slate-100">SuperMemo Tree:</strong> Organize decks hierarchically
+                <strong className="text-slate-100">Knowledge Tree:</strong> Organize decks hierarchically
                 with drag-and-drop branch reordering and visual distribution bars.
               </span>
             </div>
@@ -185,7 +185,7 @@ export default function InteractiveTutorialModal({
       icon: '🤖',
     },
     {
-      title: 'SuperMemo Tree & Progress Bars',
+      title: 'Knowledge Tree & Progress Bars',
       badge: 'Hierarchy & Structure',
       icon: '🌲',
     },
@@ -300,7 +300,8 @@ export default function InteractiveTutorialModal({
             <div className="space-y-3.5">
               <p className="text-slate-300 leading-relaxed">
                 When you review a card, you type your answer. A local LLM running privately on your machine
-                grades your typed reasoning against the reference answer.
+                grades your typed reasoning against the reference answer, verified in real-time by a
+                <strong className="text-sky-300"> token-by-token answer similarity checker</strong>.
               </p>
 
               {/* Sample Card */}
@@ -355,7 +356,7 @@ export default function InteractiveTutorialModal({
                 </button>
 
                 {gradedResult && (
-                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-3 space-y-2 animate-in fade-in duration-200">
+                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-3 space-y-2.5 animate-in fade-in duration-200">
                     <div className="flex items-center justify-between">
                       <span className="chip border-emerald-500/40 text-emerald-300 font-bold uppercase text-[10px]">
                         Grade: {gradedResult.grade.toUpperCase()} ({(gradedResult.confidence * 100).toFixed(0)}% Confidence)
@@ -367,6 +368,20 @@ export default function InteractiveTutorialModal({
                       <p className="text-emerald-300 font-medium">✓ Matched: {gradedResult.matched.join(', ')}</p>
                       <p className="text-amber-300/80 font-medium">△ Missed: {gradedResult.missed.join(', ')}</p>
                     </div>
+
+                    {/* Token-by-token answer similarity checker highlight */}
+                    <div className="rounded border border-sky-500/30 bg-black/40 p-2 space-y-1">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="font-semibold text-sky-300 flex items-center gap-1">
+                          🔍 Token-by-Token Answer Similarity Checker
+                        </span>
+                        <span className="font-mono text-emerald-400 font-bold">88% Lexical Overlap</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 leading-tight">
+                        Runs parallel token-level Jaccard and n-gram verification against the reference answer to prevent AI grading discrepancies.
+                      </p>
+                    </div>
+
                     <p className="text-[10px] text-slate-400 pt-1 border-t border-emerald-500/20">
                       💡 You can always confirm or override the AI grade with the four standard Again/Hard/Good/Easy buttons.
                     </p>
@@ -376,11 +391,11 @@ export default function InteractiveTutorialModal({
             </div>
           )}
 
-          {/* STEP 2: SuperMemo Knowledge Tree */}
+          {/* STEP 2: Knowledge Tree */}
           {step === 2 && (
             <div className="space-y-3.5">
               <p className="text-slate-300 leading-relaxed">
-                Rather than treating all flashcards as a flat list, Ars Memoriae implements a SuperMemo-style
+                Rather than treating all flashcards as a flat list, Ars Memoriae implements a unified
                 <strong className="text-sky-300"> Knowledge Tree</strong> with drag-and-drop branch reordering and
                 hierarchical distribution metrics.
               </p>
@@ -531,7 +546,7 @@ export default function InteractiveTutorialModal({
                 <h3 className="text-sm font-bold text-emerald-200">You're All Set!</h3>
                 <p className="text-xs text-slate-300 max-w-md mx-auto">
                   You now understand the core philosophy behind Ars Memoriae: Active Recall, FSRS scheduling,
-                  SuperMemo Knowledge Trees, and local AI reasoning.
+                  hierarchical Knowledge Trees, and local AI reasoning.
                 </p>
               </div>
 
@@ -561,7 +576,7 @@ export default function InteractiveTutorialModal({
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-semibold text-slate-200 group-hover:text-sky-300 text-xs">
-                      2. SuperMemo Tree
+                      2. Knowledge Tree
                     </span>
                     <span className="text-sky-400 text-xs group-hover:translate-x-0.5 transition-transform">→</span>
                   </div>

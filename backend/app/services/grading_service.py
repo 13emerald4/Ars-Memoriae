@@ -667,7 +667,7 @@ class GradingService:
         """Decomposes a complex, non-atomic card into 2-4 atomic question-answer pairs."""
         prompt = (
             "You are a cognitive science and spaced repetition expert specializing in the "
-            "Minimum Information Principle (SuperMemo Rule 4).\n"
+            "Minimum Information Principle (Rule of Atomicity).\n"
             "The user has a flashcard that is too complex, lengthy, or tests multiple facts at once.\n"
             "Deconstruct it into 2 to 4 simple, concise, and atomic flashcards. Each card must test exactly "
             "ONE fact with a clear, concise question and a short, direct answer (under 15 words).\n\n"

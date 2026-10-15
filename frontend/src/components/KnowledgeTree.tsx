@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import type { Deck, DeckStats, TreeNode } from '../api/types'
 import { CompactDeckDistributionBars } from './DeckReviewStatsBar'
 
-export type SuperMemoTheme = 'modern' | 'classic'
+export type KnowledgeTreeTheme = 'modern' | 'classic'
 export type DropPosition = 'before' | 'inside' | 'after'
 
-export interface SuperMemoNode {
+export interface KnowledgeTreeNode {
   id: string
   title: string
   kind: 'root' | 'topic' | 'deck' | 'source' | 'extract'
@@ -17,27 +17,27 @@ export interface SuperMemoNode {
   deckId?: string | null
   extractId?: string | null
   locked?: boolean
-  children: SuperMemoNode[]
+  children: KnowledgeTreeNode[]
   originalNode?: TreeNode
   originalDeck?: Deck
   stats?: DeckStats | null
 }
 
-interface SuperMemoTreeProps {
+interface KnowledgeTreeProps {
   rootTitle?: string
-  nodes: SuperMemoNode[]
-  onSelectNode?: (node: SuperMemoNode) => void
-  onStudyNode?: (node: SuperMemoNode) => void
-  onAddChild?: (parent: SuperMemoNode | null) => void
-  onRename?: (node: SuperMemoNode) => void
-  onDelete?: (node: SuperMemoNode) => void
-  onMove?: (node: SuperMemoNode) => void
+  nodes: KnowledgeTreeNode[]
+  onSelectNode?: (node: KnowledgeTreeNode) => void
+  onStudyNode?: (node: KnowledgeTreeNode) => void
+  onAddChild?: (parent: KnowledgeTreeNode | null) => void
+  onRename?: (node: KnowledgeTreeNode) => void
+  onDelete?: (node: KnowledgeTreeNode) => void
+  onMove?: (node: KnowledgeTreeNode) => void
   onDropBranch?: (
-    source: SuperMemoNode,
-    target: SuperMemoNode,
+    source: KnowledgeTreeNode,
+    target: KnowledgeTreeNode,
     position: DropPosition,
   ) => void | Promise<void>
-  onOpenCards?: (node: SuperMemoNode) => void
+  onOpenCards?: (node: KnowledgeTreeNode) => void
   initialSelectedId?: string | null
 }
 
@@ -50,7 +50,7 @@ export function DragGripIcon({ className = 'w-3 h-3' }: { className?: string }) 
   )
 }
 
-/** Glowing incandescent lightbulb icon matching SuperMemo's root item */
+/** Glowing incandescent lightbulb icon matching the root item */
 export function LightbulbIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg
@@ -98,7 +98,7 @@ function ChevronIcon({ expanded, className = 'w-3.5 h-3.5' }: { expanded: boolea
 }
 
 
-export function SuperMemoTree({
+export function KnowledgeTree({
   rootTitle = 'All',
   nodes,
   onSelectNode,
@@ -110,10 +110,10 @@ export function SuperMemoTree({
   onDropBranch,
   onOpenCards,
   initialSelectedId,
-}: SuperMemoTreeProps) {
+}: KnowledgeTreeProps) {
   const navigate = useNavigate()
-  const [theme, setTheme] = useState<SuperMemoTheme>(() => {
-    return (localStorage.getItem('supermemo.treeTheme') as SuperMemoTheme) || 'modern'
+  const [theme, setTheme] = useState<KnowledgeTreeTheme>(() => {
+    return (localStorage.getItem('knowledgeTree.theme') as KnowledgeTreeTheme) || 'modern'
   })
 
   const [expanded, setExpanded] = useState<Set<string>>(() => {
@@ -128,27 +128,27 @@ export function SuperMemoTree({
   const [showSearch, setShowSearch] = useState(false)
 
   // Drag and Drop state
-  const [draggingNode, setDraggingNode] = useState<SuperMemoNode | null>(null)
+  const [draggingNode, setDraggingNode] = useState<KnowledgeTreeNode | null>(null)
   const [dropTargetId, setDropTargetId] = useState<string | null>(null)
   const [dropPosition, setDropPosition] = useState<DropPosition | null>(null)
 
   const toggleTheme = () => {
     setTheme((prev) => {
       const next = prev === 'modern' ? 'classic' : 'modern'
-      localStorage.setItem('supermemo.treeTheme', next)
+      localStorage.setItem('knowledgeTree.theme', next)
       return next
     })
   }
 
   const [showBars, setShowBars] = useState<boolean>(() => {
     if (typeof localStorage === 'undefined') return true
-    return localStorage.getItem('supermemo.showProgressBars') !== '0'
+    return localStorage.getItem('knowledgeTree.showProgressBars') !== '0'
   })
 
   const toggleBars = () => {
     setShowBars((prev) => {
       const next = !prev
-      localStorage.setItem('supermemo.showProgressBars', next ? '1' : '0')
+      localStorage.setItem('knowledgeTree.showProgressBars', next ? '1' : '0')
       return next
     })
   }
@@ -159,7 +159,7 @@ export function SuperMemoTree({
     let due = 0
     let newCards = 0
 
-    const walk = (items: SuperMemoNode[]) => {
+    const walk = (items: KnowledgeTreeNode[]) => {
       for (const item of items) {
         elements += item.elementCount || 0
         due += item.dueCount || 0
@@ -235,8 +235,8 @@ export function SuperMemoTree({
 
   // Lookup map
   const allNodesMap = useMemo(() => {
-    const map = new Map<string, SuperMemoNode>()
-    const rootNode: SuperMemoNode = {
+    const map = new Map<string, KnowledgeTreeNode>()
+    const rootNode: KnowledgeTreeNode = {
       id: '__root__',
       title: rootTitle,
       kind: 'root',
@@ -249,7 +249,7 @@ export function SuperMemoTree({
     }
     map.set('__root__', rootNode)
 
-    const walk = (list: SuperMemoNode[]) => {
+    const walk = (list: KnowledgeTreeNode[]) => {
       for (const n of list) {
         map.set(n.id, n)
         if (n.children && n.children.length > 0) {
@@ -283,7 +283,7 @@ export function SuperMemoTree({
     setExpanded(new Set(['__root__']))
   }
 
-  const handleNodeClick = (node: SuperMemoNode) => {
+  const handleNodeClick = (node: KnowledgeTreeNode) => {
     setSelectedId(node.id)
     if (onSelectNode) onSelectNode(node)
   }
@@ -292,7 +292,7 @@ export function SuperMemoTree({
   const invalidTargetIds = useMemo(() => {
     if (!draggingNode) return new Set<string>()
     const ids = new Set<string>([draggingNode.id])
-    const walk = (n: SuperMemoNode) => {
+    const walk = (n: KnowledgeTreeNode) => {
       for (const child of n.children || []) {
         ids.add(child.id)
         walk(child)
@@ -302,7 +302,7 @@ export function SuperMemoTree({
     return ids
   }, [draggingNode])
 
-  const handleDragStart = (node: SuperMemoNode, e: React.DragEvent) => {
+  const handleDragStart = (node: KnowledgeTreeNode, e: React.DragEvent) => {
     e.stopPropagation()
     setDraggingNode(node)
     e.dataTransfer.setData('text/plain', node.title)
@@ -315,7 +315,7 @@ export function SuperMemoTree({
     setDropPosition(null)
   }
 
-  const handleDragOverNode = (node: SuperMemoNode, e: React.DragEvent) => {
+  const handleDragOverNode = (node: KnowledgeTreeNode, e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     if (!draggingNode || invalidTargetIds.has(node.id)) {
@@ -349,7 +349,7 @@ export function SuperMemoTree({
     setDropPosition(pos)
   }
 
-  const handleDropOnNode = (targetNode: SuperMemoNode, e: React.DragEvent) => {
+  const handleDropOnNode = (targetNode: KnowledgeTreeNode, e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     const source = draggingNode
@@ -401,7 +401,7 @@ export function SuperMemoTree({
       className={`flex flex-col rounded-xl border shadow-lg overflow-hidden select-none font-sans transition-all duration-200 ${containerClasses}`}
       style={{ minHeight: '440px' }}
     >
-      {/* ── 1. Modern SuperMemo Toolbar ── */}
+      {/* ── 1. Unified Knowledge Tree Toolbar ── */}
       <div className={`flex flex-wrap items-center justify-between border-b px-3 py-2 gap-2 text-xs ${toolbarClasses}`}>
         {/* Left Action Buttons */}
         <div className="flex items-center gap-1">
@@ -683,7 +683,7 @@ export function SuperMemoTree({
               {nodes
                 .filter((n) => !searchQuery || n.title.toLowerCase().includes(searchQuery.toLowerCase()))
                 .map((child) => (
-                  <SuperMemoTreeNode
+                  <KnowledgeTreeNodeComponent
                     key={child.id}
                     node={child}
                     depth={1}
@@ -738,9 +738,9 @@ export function SuperMemoTree({
   )
 }
 
-/** Individual Recursive Node in SuperMemo Knowledge Tree */
-interface SuperMemoTreeNodeProps {
-  node: SuperMemoNode
+/** Individual Recursive Node in Unified Knowledge Tree */
+interface KnowledgeTreeNodeProps {
+  node: KnowledgeTreeNode
   depth: number
   expanded: Set<string>
   selectedId: string
@@ -748,19 +748,19 @@ interface SuperMemoTreeNodeProps {
   guideLineColor: string
   isClassic: boolean
   showBars: boolean
-  draggingNode: SuperMemoNode | null
+  draggingNode: KnowledgeTreeNode | null
   dropTargetId: string | null
   dropPosition: DropPosition | null
   invalidTargetIds: Set<string>
   onToggle: (id: string, e: React.MouseEvent) => void
-  onSelect: (node: SuperMemoNode) => void
-  onDragStart: (node: SuperMemoNode, e: React.DragEvent) => void
+  onSelect: (node: KnowledgeTreeNode) => void
+  onDragStart: (node: KnowledgeTreeNode, e: React.DragEvent) => void
   onDragEnd: () => void
-  onDragOver: (node: SuperMemoNode, e: React.DragEvent) => void
-  onDrop: (node: SuperMemoNode, e: React.DragEvent) => void
+  onDragOver: (node: KnowledgeTreeNode, e: React.DragEvent) => void
+  onDrop: (node: KnowledgeTreeNode, e: React.DragEvent) => void
 }
 
-function SuperMemoTreeNode({
+function KnowledgeTreeNodeComponent({
   node,
   depth,
   expanded,
@@ -779,7 +779,7 @@ function SuperMemoTreeNode({
   onDragEnd,
   onDragOver,
   onDrop,
-}: SuperMemoTreeNodeProps) {
+}: KnowledgeTreeNodeProps) {
   const isSelected = selectedId === node.id
   const hasChildren = node.children && node.children.length > 0
   const isOpen = expanded.has(node.id)
@@ -911,7 +911,7 @@ function SuperMemoTreeNode({
           {node.children
             .filter((c) => !searchQuery || c.title.toLowerCase().includes(searchQuery.toLowerCase()))
             .map((child) => (
-              <SuperMemoTreeNode
+              <KnowledgeTreeNodeComponent
                 key={child.id}
                 node={child}
                 depth={depth + 1}

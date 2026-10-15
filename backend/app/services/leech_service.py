@@ -1,6 +1,6 @@
 """Leech detection + LLM-assisted remediation (§3.2).
 
-Trigger is Anki's transparent lapse counter rather than SuperMemo's opaque
+Trigger is a transparent lapse counter rather than an opaque
 forgetting index, since FSRS already exposes lapse count per card. A flagged
 leech is pulled from the active queue, never deleted; if the user opted in, the
 same local model used for grading proposes a fix.

@@ -1,6 +1,6 @@
 """Priority queue & session composition (§9) + review-load guardrails (§3.1).
 
-This is the piece Anki does not have: session content is chosen by priority and
+Session content is chosen by priority and
 a time budget, not by strict due-date order, and due reviews / new cards / IR
 extracts are interleaved rather than block-scheduled.
 
@@ -480,7 +480,7 @@ async def attach_references(db: AsyncSession, items: list[ComposedItem]) -> None
 def space_sisters(
     items: list[ComposedItem], conflicts: dict, min_gap: int = 3
 ) -> list[ComposedItem]:
-    """Push confusable cards apart inside the session (§2, Mnemosyne).
+    """Push confusable cards apart inside the session (§2, Interference Mitigation).
 
     Showing two cards you already mix up back to back is precisely how the
     interference gets reinforced. This is a *reordering*, never a drop: an item
@@ -705,7 +705,7 @@ async def compose_session(
 
     items = _interleave([s for s in (review_stream, new_stream, ir_stream) if s])
 
-    # §2 (Mnemosyne): keep confusable cards apart. Done after interleaving so
+    # Interference mitigation: keep confusable cards apart. Done after interleaving so
     # it only reorders within the session the budget already decided on.
     from app.services.interference_service import spacing_conflicts
 

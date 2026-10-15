@@ -1,6 +1,6 @@
 """Incremental Reading (§8).
 
-The SuperMemo loop, adapted: import source material, get it resurfaced on a
+The incremental reading loop, adapted: import source material, get it resurfaced on a
 spaced schedule, carve cards out of it as understanding builds — without the
 pressure to finish an article in one sitting.
 
@@ -264,7 +264,7 @@ async def split_extract(
     remove_from_parent: bool,
     source: Source | None = None,
 ) -> Extract:
-    """Carve a smaller extract out of a larger one — the core SuperMemo loop:
+    """Carve a smaller extract out of a larger one — the core incremental reading loop:
     read a bit, extract the important sub-part, postpone the rest (§8.2).
 
     The child is filed *beneath the parent* in the knowledge tree. That lineage

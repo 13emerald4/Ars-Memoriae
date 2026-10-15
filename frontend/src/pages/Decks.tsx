@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../api/client'
-import { SuperMemoTree, type SuperMemoNode } from '../components/SuperMemoTree'
+import { KnowledgeTree, type KnowledgeTreeNode } from '../components/KnowledgeTree'
 import type {
   AcceptDeckResponse,
   AtomicityLintResult,
@@ -746,7 +746,7 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
   )
 }
 
-function buildDeckTree(decks: Deck[]): SuperMemoNode[] {
+function buildDeckTree(decks: Deck[]): KnowledgeTreeNode[] {
   const childrenMap = new Map<string | null, Deck[]>()
   for (const d of decks) {
     const p = d.parent_id || null
@@ -754,7 +754,7 @@ function buildDeckTree(decks: Deck[]): SuperMemoNode[] {
     childrenMap.get(p)!.push(d)
   }
 
-  function nodeFor(d: Deck): SuperMemoNode {
+  function nodeFor(d: Deck): KnowledgeTreeNode {
     const kids = (childrenMap.get(d.id) || []).map(nodeFor)
     return {
       id: d.id,
@@ -791,7 +791,7 @@ function DeckList({
   const [name, setName] = useState('')
   const [parentId, setParentId] = useState<string>('')
   const [busy, setBusy] = useState(false)
-  const [viewMode, setViewMode] = useState<'supermemo' | 'list'>('supermemo')
+  const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree')
 
   const deckTreeNodes = useMemo(() => buildDeckTree(decks), [decks])
   const totalCollectionCards = useMemo(() => decks.reduce((sum, d) => sum + d.card_count, 0), [decks])
@@ -861,7 +861,7 @@ function DeckList({
   return (
     <Section
       title="Decks"
-      description="Per-deck priority and retention are the “% bias per subject” controls. Organize subdecks hierarchically as in SuperMemo."
+      description="Per-deck priority and retention are the “% bias per subject” controls. Organize subdecks hierarchically in a unified knowledge tree."
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {/* View mode toggle */}
@@ -869,13 +869,13 @@ function DeckList({
             <button
               type="button"
               className={`px-2 py-1 rounded transition ${
-                viewMode === 'supermemo'
+                viewMode === 'tree'
                   ? 'bg-sky-500/20 text-sky-200 font-semibold shadow-xs'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
-              onClick={() => setViewMode('supermemo')}
+              onClick={() => setViewMode('tree')}
             >
-              🗂️ SuperMemo Tree
+              🗂️ Knowledge Tree
             </button>
             <button
               type="button"
@@ -1096,8 +1096,8 @@ function DeckList({
 
         {decks.length === 0 ? (
           <p className="text-xs text-slate-500 py-2">No decks created yet. Add one above or import a document.</p>
-        ) : viewMode === 'supermemo' ? (
-          <SuperMemoTree
+        ) : viewMode === 'tree' ? (
+          <KnowledgeTree
             rootTitle="All Decks"
             nodes={deckTreeNodes}
             onSelectNode={(node) => {
@@ -2167,7 +2167,7 @@ Generate cards from the material below:
 <PASTE YOUR SOURCE TEXT / NOTES / TOPIC HERE>`
 
 /** Bulk-create notes/cards from a hand-written or scripted JSON file — the
- *  non-Anki upload path. One request targets one deck (created if missing).
+ *  direct JSON upload path. One request targets one deck (created if missing).
  *  Accepts a bare array (deck name comes from the field below) or an
  *  envelope with "deck" already inside it — and either "front"/"back" or the
  *  "card_type"/"question"/"answer" vocabulary common in LLM flashcard exports. */
@@ -2211,7 +2211,7 @@ function JsonImportPanel({ onImported }: { onImported: () => void }) {
 
   if (!open) {
     return (
-      <Section title="Import from JSON" description="Bulk-create notes from a JSON file — no Anki required.">
+      <Section title="Import from JSON" description="Bulk-create notes directly from a JSON file.">
         <div className="flex flex-wrap items-center gap-3">
           <button className="btn" onClick={() => setOpen(true)}>
             Paste or upload JSON

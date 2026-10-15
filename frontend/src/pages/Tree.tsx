@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Card, TreeNode } from '../api/types'
-import { SuperMemoTree, type SuperMemoNode, type DropPosition } from '../components/SuperMemoTree'
+import { KnowledgeTree, type KnowledgeTreeNode, type DropPosition } from '../components/KnowledgeTree'
 import { Empty, ErrorNote, PriorityBar, RichText, Section, Spinner } from '../components/ui'
 
-function toSuperMemoNodes(treeNodes: TreeNode[]): SuperMemoNode[] {
+function toKnowledgeTreeNodes(treeNodes: TreeNode[]): KnowledgeTreeNode[] {
   return treeNodes.map((tn) => ({
     id: tn.id,
     title: tn.title,
@@ -18,7 +18,7 @@ function toSuperMemoNodes(treeNodes: TreeNode[]): SuperMemoNode[] {
     extractId: tn.extract_id,
     locked: tn.locked,
     originalNode: tn,
-    children: toSuperMemoNodes(tn.children || []),
+    children: toKnowledgeTreeNodes(tn.children || []),
   }))
 }
 
@@ -35,7 +35,7 @@ export default function Tree() {
   const [error, setError] = useState<unknown>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [highestOrderOnly, setHighestOrderOnly] = useState(false)
-  const [viewMode, setViewMode] = useState<'supermemo' | 'list'>('supermemo')
+  const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree')
 
   const load = useCallback(async () => {
     try {
@@ -57,10 +57,10 @@ export default function Tree() {
     void load()
   }, [load])
 
-  const superMemoNodes = useMemo(() => toSuperMemoNodes(nodes), [nodes])
+  const knowledgeTreeNodes = useMemo(() => toKnowledgeTreeNodes(nodes), [nodes])
 
-  const handleStudySuperMemoNode = useCallback(
-    (node: SuperMemoNode) => {
+  const handleStudyTreeNode = useCallback(
+    (node: KnowledgeTreeNode) => {
       if (node.id === '__root__') {
         navigate('/review')
       } else if (node.deckId) {
@@ -73,7 +73,7 @@ export default function Tree() {
   )
 
   const handleAddChild = useCallback(
-    async (parent: SuperMemoNode | null) => {
+    async (parent: KnowledgeTreeNode | null) => {
       const parentName = parent && parent.id !== '__root__' ? parent.title : 'Root'
       const title = prompt(`Enter new topic name under "${parentName}":`)
       if (!title || !title.trim()) return
@@ -91,7 +91,7 @@ export default function Tree() {
   )
 
   const handleRename = useCallback(
-    async (node: SuperMemoNode) => {
+    async (node: KnowledgeTreeNode) => {
       const title = prompt(`Rename "${node.title}" to:`, node.title)
       if (!title || !title.trim() || title.trim() === node.title) return
       try {
@@ -105,7 +105,7 @@ export default function Tree() {
   )
 
   const handleDelete = useCallback(
-    async (node: SuperMemoNode) => {
+    async (node: KnowledgeTreeNode) => {
       if (!confirm(`Are you sure you want to delete "${node.title}"?`)) return
       try {
         await api.deleteNode(node.id)
@@ -119,8 +119,8 @@ export default function Tree() {
 
   const handleDropBranch = useCallback(
     async (
-      source: SuperMemoNode,
-      target: SuperMemoNode,
+      source: KnowledgeTreeNode,
+      target: KnowledgeTreeNode,
       position: DropPosition,
     ) => {
       try {
@@ -165,18 +165,18 @@ export default function Tree() {
         description="Everything you're learning in one hierarchy — topics, decks, articles and the extracts carved out of them. Priority flows down a branch."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {/* View Switcher: SuperMemo Contents vs Detailed Rows */}
+            {/* View Switcher: Tree Contents vs Detailed Rows */}
             <div className="flex items-center rounded-lg border border-slate-700 bg-slate-800/80 p-0.5 text-xs">
               <button
                 type="button"
                 className={`px-2 py-1 rounded transition ${
-                  viewMode === 'supermemo'
+                  viewMode === 'tree'
                     ? 'bg-sky-500/20 text-sky-200 font-semibold shadow-xs'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
-                onClick={() => setViewMode('supermemo')}
+                onClick={() => setViewMode('tree')}
               >
-                🗂️ SuperMemo Contents
+                🗂️ Tree Contents
               </button>
               <button
                 type="button"
@@ -257,10 +257,10 @@ export default function Tree() {
           <Empty title="Nothing here yet.">
             Add a deck or import something to read and it will appear in the tree.
           </Empty>
-        ) : viewMode === 'supermemo' ? (
-          <SuperMemoTree
-            nodes={superMemoNodes}
-            onStudyNode={handleStudySuperMemoNode}
+        ) : viewMode === 'tree' ? (
+          <KnowledgeTree
+            nodes={knowledgeTreeNodes}
+            onStudyNode={handleStudyTreeNode}
             onAddChild={handleAddChild}
             onRename={handleRename}
             onDelete={handleDelete}

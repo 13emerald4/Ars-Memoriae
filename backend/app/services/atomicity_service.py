@@ -1,6 +1,6 @@
 """Extreme Atomicity Linter & Sequential Overlapping Cloze Engine.
 
-Enforces the Minimum Information Principle (SuperMemo Rule 4) and provides
+Enforces the Minimum Information Principle (Rule of Atomicity) and provides
 progressive chain clozes for multi-step processes, algorithms, and formulas.
 """
 

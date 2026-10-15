@@ -1,4 +1,4 @@
-"""The knowledge tree (SuperMemo's unified hierarchy).
+"""The knowledge tree (unified hierarchy).
 
 One tree over decks, sources and extracts — see services/tree_service.py for
 why it overlays those tables instead of replacing them.
@@ -71,7 +71,7 @@ async def get_tree(
     """The whole tree, with counts rolled up through each branch.
 
     Decks, sources and extracts that predate the tree (or arrived through the
-    Anki importer, which knows nothing about it) are given nodes here on first
+    bulk importer, which knows nothing about it) are given nodes here on first
     read — see tree_service.ensure_tree.
     """
     views = await tree_service.build_tree(db, user)

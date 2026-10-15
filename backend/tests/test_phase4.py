@@ -291,7 +291,7 @@ class TestOcclusionRendering:
         assert occlusion_payload({"Shapes": SHAPES}, "o1") is None
 
     def test_imported_note_without_parsable_masks_still_renders(self):
-        """Anki occlusion notes arrive with captions but no shapes we can read."""
+        """Legacy occlusion notes arrive with captions but no shapes we can read."""
         front, back = render("image_occlusion", {"Header": "Heart", "Back Extra": "Ch. 4"}, "o1")
         assert front == "Heart"
         assert back == "Ch. 4"

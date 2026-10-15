@@ -60,7 +60,7 @@ app = FastAPI(
     version="0.1.0",
     description=(
         "Spaced repetition with FSRS scheduling, LLM-graded typed answers, "
-        "SuperMemo-style priority queue, and incremental reading."
+        "hierarchical knowledge tree, priority queue, and incremental reading."
     ),
     lifespan=lifespan,
 )

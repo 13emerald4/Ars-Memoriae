@@ -146,8 +146,8 @@ function SourceLibrary() {
         <Spinner />
       ) : sources.length === 0 ? (
         <Empty title="No reading material yet.">
-          Incremental reading is what Anki doesn't do: keep sources in the same queue as your
-          cards, and turn them into cards gradually.
+          Incremental reading keeps your long-form sources in the same priority queue as your
+          cards, turning reading extracts into atomic flashcards gradually.
         </Empty>
       ) : (
         <div className="space-y-2">

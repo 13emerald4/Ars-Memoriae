@@ -1,4 +1,4 @@
-"""Note -> card materialization (Anki-style note/card separation, §2)."""
+"""Note -> card materialization (note/card separation, §2)."""
 
 from __future__ import annotations
 
