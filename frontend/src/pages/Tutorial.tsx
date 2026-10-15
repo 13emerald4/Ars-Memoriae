@@ -4,6 +4,7 @@ import { api } from '../api/client'
 import type { Bank, LearningAnalytics, Stats } from '../api/types'
 import { ErrorNote, Section, Spinner } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
+import InteractiveTutorialModal from '../components/InteractiveTutorialModal'
 
 /** Getting Started Tutorial: the app's features in pedagogical order.
  *
@@ -162,6 +163,7 @@ export default function Tutorial() {
   const [bank, setBank] = useState<Bank | null>(null)
   const [error, setError] = useState<unknown>(null)
   const [loading, setLoading] = useState(true)
+  const [showInteractiveTour, setShowInteractiveTour] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -208,6 +210,33 @@ export default function Tutorial() {
   return (
     <div className="space-y-6">
       <ErrorNote error={error} />
+
+      {/* Interactive Walkthrough Banner */}
+      <div className="card border-sky-500/40 bg-gradient-to-r from-sky-950/40 via-ink-soft to-ink-soft p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🎓</span>
+            <h2 className="text-sm font-bold text-sky-200">Interactive Walkthrough & Feature Tour</h2>
+            <span className="chip border-sky-500/40 text-sky-300 text-[10px] font-semibold">2 min</span>
+          </div>
+          <p className="mt-1 text-xs text-slate-400 max-w-xl">
+            Step through an interactive demo of Active Recall, live local AI grading, the SuperMemo Knowledge Tree, and the Priority Queue.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowInteractiveTour(true)}
+          className="btn btn-primary whitespace-nowrap text-xs font-semibold px-4 py-2 shrink-0 shadow-lg shadow-sky-500/10"
+        >
+          Launch Interactive Tutorial ✨
+        </button>
+      </div>
+
+      <InteractiveTutorialModal
+        isOpen={showInteractiveTour}
+        onClose={() => setShowInteractiveTour(false)}
+        initialMode="tour"
+      />
 
       <Section
         title="Getting started"

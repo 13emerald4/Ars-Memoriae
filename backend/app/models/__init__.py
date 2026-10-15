@@ -82,6 +82,7 @@ class User(Base):
     show_pre_leetcode: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     show_code_lab: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     show_thematic_context: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    tutorial_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # IANA zone for the study-day boundary (app.core.timeutil). None = UTC.
     timezone: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

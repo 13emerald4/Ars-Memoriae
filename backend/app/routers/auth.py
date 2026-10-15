@@ -60,6 +60,7 @@ def user_out(user: User) -> UserOut:
         show_pre_leetcode=user.show_pre_leetcode,
         show_code_lab=user.show_code_lab,
         show_thematic_context=user.show_thematic_context,
+        tutorial_completed=user.tutorial_completed,
         timezone=user.timezone,
     )
 

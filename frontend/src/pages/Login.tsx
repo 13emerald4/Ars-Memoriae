@@ -15,8 +15,12 @@ export default function Login() {
     setBusy(true)
     setError(null)
     try {
-      if (mode === 'in') await signIn(email, password)
-      else await signUp(email, password)
+      if (mode === 'in') {
+        await signIn(email, password)
+      } else {
+        localStorage.setItem('prompt_new_user_tutorial', 'true')
+        await signUp(email, password)
+      }
     } catch (err) {
       setError(err)
     } finally {

@@ -45,6 +45,7 @@ class UserOut(BaseModel):
     show_pre_leetcode: bool = False
     show_code_lab: bool = False
     show_thematic_context: bool = True
+    tutorial_completed: bool = False
     timezone: str | None = None
 
 
@@ -78,6 +79,7 @@ class UserUpdate(BaseModel):
     show_pre_leetcode: bool | None = None
     show_code_lab: bool | None = None
     show_thematic_context: bool | None = None
+    tutorial_completed: bool | None = None
     timezone: str | None = Field(default=None, max_length=64)
 
     @field_validator("timezone")

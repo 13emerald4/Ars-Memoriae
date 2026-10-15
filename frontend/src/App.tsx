@@ -1,7 +1,8 @@
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Spinner } from './components/ui'
 import { useAuth } from './hooks/useAuth'
+import InteractiveTutorialModal from './components/InteractiveTutorialModal'
 
 const CodeLab = lazy(() => import('./pages/CodeLab'))
 const Decks = lazy(() => import('./pages/Decks'))
@@ -235,6 +236,17 @@ function AppLayout() {
   const isWide = location.pathname.startsWith('/code') || location.pathname.startsWith('/review')
   const { isFullscreen, isZenMode } = useFullscreen()
   const [headerHovered, setHeaderHovered] = useState(false)
+  const [showTutorialPrompt, setShowTutorialPrompt] = useState(false)
+
+  useEffect(() => {
+    if (user && !user.tutorial_completed) {
+      const isNewSignup = localStorage.getItem('prompt_new_user_tutorial') === 'true'
+      const isDismissed = localStorage.getItem('tutorial_prompt_dismissed') === 'true'
+      if (isNewSignup || !isDismissed) {
+        setShowTutorialPrompt(true)
+      }
+    }
+  }, [user])
 
   const hideHeader = isZenMode && !headerHovered
 
@@ -331,6 +343,12 @@ function AppLayout() {
           </Routes>
         </Suspense>
       </main>
+
+      <InteractiveTutorialModal
+        isOpen={showTutorialPrompt}
+        onClose={() => setShowTutorialPrompt(false)}
+        initialMode="prompt"
+      />
     </div>
   )
 }
