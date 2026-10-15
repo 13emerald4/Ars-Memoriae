@@ -9,11 +9,15 @@ import { FullscreenButton, useFullscreen } from '../components/FullscreenContext
 
 
 import { useTheme, THEME_REGISTRY, FONT_SIZES, type CognitiveTheme, type FontSize } from '../components/ThemeContext'
+import InteractiveTutorialModal from '../components/InteractiveTutorialModal'
 
 export default function Settings() {
   const { user, refresh, signOut } = useAuth()
   const [queueCfg, setQueueCfg] = useState<QueueConfig | null>(null)
   const [error, setError] = useState<unknown>(null)
+  const [showTutorial, setShowTutorial] = useState(false)
+  const [tutorialMode, setTutorialMode] = useState<'prompt' | 'tour'>('tour')
+  const [tutorialType, setTutorialType] = useState<'extensive' | 'brief'>('extensive')
 
   const load = useCallback(async () => {
     try {
@@ -37,6 +41,15 @@ export default function Settings() {
       <CognitiveThemePanel />
       <TypographyPanel />
       <DisplayFocusPanel />
+      <TutorialPanel
+        user={user}
+        onLaunchTutorial={(mode, type) => {
+          setTutorialMode(mode)
+          setTutorialType(type)
+          setShowTutorial(true)
+        }}
+        onChange={refresh}
+      />
       <NavigationModulesPanel user={user} onChange={refresh} />
       <SchedulingPanel user={user} onChange={refresh} />
       <QueuePanel cfg={queueCfg} onChange={load} />
@@ -47,6 +60,13 @@ export default function Settings() {
           Sign out
         </button>
       </Section>
+
+      <InteractiveTutorialModal
+        isOpen={showTutorial}
+        onClose={() => setShowTutorial(false)}
+        initialMode={tutorialMode}
+        initialType={tutorialType}
+      />
     </div>
   )
 }
@@ -802,6 +822,187 @@ function DisplayFocusPanel() {
             <span>Exit fullscreen or dismiss distraction-free Zen mode</span>
           </li>
         </ul>
+      </div>
+    </Section>
+  )
+}
+
+function TutorialPanel({
+  user,
+  onLaunchTutorial,
+  onChange,
+}: {
+  user: User
+  onLaunchTutorial: (mode: 'prompt' | 'tour', type: 'extensive' | 'brief') => void
+  onChange: () => Promise<void>
+}) {
+  const [resetting, setResetting] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+
+  const toggleCompletion = async () => {
+    setResetting(true)
+    setError(null)
+    try {
+      const nextStatus = !user.tutorial_completed
+      await api.updateMe({ tutorial_completed: nextStatus })
+      if (!nextStatus) {
+        localStorage.removeItem('tutorial_prompt_dismissed')
+        localStorage.removeItem('prompt_new_user_tutorial')
+      }
+      await onChange()
+    } catch (err) {
+      setError(err)
+    } finally {
+      setResetting(false)
+    }
+  }
+
+  return (
+    <Section
+      title="🎓 Interactive Tutorial & Onboarding Guide"
+      description="Walk through or replay the guided onboarding tour anytime. Learn the core principles: Active Recall, local AI grading with the token-by-token answer similarity checker, Knowledge Trees, and the Priority Queue."
+    >
+      <div className="space-y-4">
+        {/* Status Header Bar */}
+        <div className="rounded-xl border border-ink-line bg-ink/70 p-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🏛️</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-100">Tutorial Onboarding Status</span>
+                {user.tutorial_completed ? (
+                  <span className="chip border-emerald-500/40 text-emerald-300 bg-emerald-500/10 font-semibold text-[10px]">
+                    ✓ Completed
+                  </span>
+                ) : (
+                  <span className="chip border-amber-500/40 text-amber-300 bg-amber-500/10 font-semibold text-[10px]">
+                    ⏳ Incomplete / Not Finished
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                {user.tutorial_completed
+                  ? 'You have completed the introductory tour. You can replay either mode below at any time.'
+                  : 'You have not yet marked the introductory tutorial as finished.'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={resetting}
+            onClick={() => void toggleCompletion()}
+            className="btn text-xs py-1.5 px-3 text-slate-300 hover:text-slate-100"
+            title="Toggle tutorial completion status"
+          >
+            {resetting ? 'Updating…' : user.tutorial_completed ? '↺ Reset to Incomplete' : '✓ Mark as Completed'}
+          </button>
+        </div>
+
+        {/* Tutorial Mode Selection Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          {/* Card A: Brief High-Level Tour */}
+          <div className="rounded-xl border border-ink-line bg-ink-soft/50 p-4 flex flex-col justify-between space-y-3 hover:border-sky-500/60 transition">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sky-300 font-bold text-xs">
+                  <span className="text-base">⚡</span>
+                  <span>Brief High-Level Overview</span>
+                </div>
+                <span className="chip text-[10px] py-0.5 border-sky-500/40 text-sky-300 bg-sky-500/10 font-semibold">
+                  1 min
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                A rapid 3-slide executive overview of the core principles: Active Recall, Hierarchical Knowledge Trees with distribution bars, and the Priority Queue.
+              </p>
+              <ul className="text-[10px] text-slate-500 space-y-1 pt-1">
+                <li className="flex items-center gap-1.5">
+                  <span className="text-sky-400">✓</span>
+                  <span>Slide 1: Active Recall & Token Similarity Grading</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="text-sky-400">✓</span>
+                  <span>Slide 2: Knowledge Trees & Visual Progress Bars</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="text-sky-400">✓</span>
+                  <span>Slide 3: Priority Queue, Time Bank & Deep Mastery</span>
+                </li>
+              </ul>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onLaunchTutorial('tour', 'brief')}
+              className="btn btn-primary w-full py-2 text-xs font-semibold"
+            >
+              Start Brief Overview (1 min) →
+            </button>
+          </div>
+
+          {/* Card B: Extensive Deep-Dive Interactive Tutorial */}
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/10 p-4 flex flex-col justify-between space-y-3 hover:border-emerald-500/60 transition">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
+                  <span className="text-base">📘</span>
+                  <span>Extensive Interactive Tutorial</span>
+                </div>
+                <span className="chip text-[10px] py-0.5 border-emerald-500/40 text-emerald-300 bg-emerald-500/10 font-semibold">
+                  Recommended · 4 min
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Full hands-on interactive simulation: test-drive the FSRS retention slider, simulate live AI grading with the token-by-token similarity checker, and explore branch ordering.
+              </p>
+              <ul className="text-[10px] text-slate-500 space-y-1 pt-1">
+                <li className="flex items-center gap-1.5">
+                  <span className="text-emerald-400">✓</span>
+                  <span>Steps 0–1: FSRS Retention Simulator & Live AI Grader</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="text-emerald-400">✓</span>
+                  <span>Steps 2–3: Interactive Knowledge Tree & Time Bank</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="text-emerald-400">✓</span>
+                  <span>Steps 4–5: Incremental Reading, Code Lab & Launchpad</span>
+                </li>
+              </ul>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onLaunchTutorial('tour', 'extensive')}
+              className="btn btn-primary w-full py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 border-emerald-500/50 text-white"
+            >
+              Start Extensive Tutorial (4 min) →
+            </button>
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+          <button
+            type="button"
+            onClick={() => onLaunchTutorial('prompt', 'extensive')}
+            className="text-slate-400 hover:text-sky-300 text-xs transition cursor-pointer flex items-center gap-1.5"
+          >
+            <span>🏛️</span>
+            <span>Open Initial Welcome Chooser Modal</span>
+          </button>
+
+          <a
+            href="/tutorial"
+            className="text-slate-400 hover:text-sky-300 text-xs transition flex items-center gap-1"
+          >
+            <span>View Verified Milestone Checklist (/tutorial)</span>
+            <span>→</span>
+          </a>
+        </div>
+
+        <ErrorNote error={error} />
       </div>
     </Section>
   )

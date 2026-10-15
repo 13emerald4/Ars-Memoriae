@@ -60,6 +60,8 @@ MT3_DATE = datetime(2026, 11, 13, 14, 0, 0)
 MT3_PRIORITY = 80
 # Priority tiers inside every MT3 chapter (and the carry-forward deck). Each card JSON item carries
 # "tier": 1-3; cards are moved into the matching subdeck and given that tier's priority.
+CODING_NAME = "Coding drills"   # every code + test-writing MT3 card, one subdeck per chapter
+CODING_PRIORITY = 90
 TIERS = {
     1: ("P1 — Most likely tested", 90),
     2: ("P2 — Supporting concepts", 70),
@@ -333,7 +335,9 @@ async def ingest_mt3_json(db, user, mt3_dir: Path, chapters: dict[int, Deck], ca
         items = json.loads(path.read_text(encoding="utf-8"))
         res = await ingest_notes_list(db, user, items, deck, path.name,
                                       default_priority=MT3_PRIORITY, extra_tags=["mt3"],
-                                      seen_fronts=await subtree_fronts(db, user, deck))
+                                      seen_fronts=await subtree_fronts(db, user, deck)
+                                      | await coding_fronts(db, user)
+                                      | await la_lab_fronts(db, user))
         log.info(f"  {bare(deck.name)}: +{res.cards} cards from {path.name} ({res.skipped} already present)")
 
 
@@ -358,6 +362,54 @@ async def subtree_fronts(db, user, deck: Deck) -> set[str]:
     return {str((fv or {}).get("Front", "")).strip() for (fv,) in rows.all()}
 
 
+async def coding_deck(db, user, create: bool = False) -> Deck | None:
+    mt3 = await find_deck(db, user, MT3_NAME)
+    if mt3 is None:
+        return None
+    deck = await db.scalar(select(Deck).where(Deck.user_id == user.id, Deck.parent_id == mt3.id,
+                                              Deck.name == CODING_NAME))
+    if deck is None and create:
+        deck = Deck(user_id=user.id, parent_id=mt3.id, name=CODING_NAME, source_documents=[])
+        db.add(deck)
+        await db.flush()
+        log.info(f"  + created deck '{CODING_NAME}'")
+    if deck is not None and create:
+        deck.position = -1  # top of Midterm 3
+        deck.default_priority = CODING_PRIORITY
+        deck.target_event_title = MT3_TITLE
+        deck.target_event_date = MT3_DATE
+        deck.thematic_nature = "Coding only: implement-from-spec and write-the-tests cards for MT3."
+        deck.documentation = ("Every MT3 card that makes you write code or tests, one subdeck per chapter. "
+                              "Type the solution (or the chai tests) before revealing the answer; code cards "
+                              "can be run against their test cases.")
+    return deck
+
+
+async def coding_fronts(db, user) -> set[str]:
+    deck = await coding_deck(db, user)
+    return await subtree_fronts(db, user, deck) if deck is not None else set()
+
+
+async def la_lab_fronts(db, user) -> set[str]:
+    """Fronts in the "Lecture Activities" and "Labs" decks (build_la_lab_decks.py moves LA08/LA09
+    cards there), so re-ingesting the MT3 JSON never re-creates a card that was moved out."""
+    root = await find_deck(db, user, ROOT_NAME)
+    if root is None:
+        return set()
+    out: set[str] = set()
+    for name in ("Lecture Activities", "Labs"):
+        deck = await db.scalar(select(Deck).where(Deck.user_id == user.id, Deck.parent_id == root.id,
+                                                  Deck.name == name))
+        if deck is not None:
+            out |= await subtree_fronts(db, user, deck)
+    return out
+
+
+def _is_practice(card: Card) -> bool:
+    tags = set(card.tags or [])
+    return "code" in tags or "test-writing" in tags
+
+
 def _short(deck: Deck) -> str:
     name = bare(deck.name)
     return name.split(":")[0] if name.startswith("Ch ") else "Carry-forward"
@@ -366,6 +418,7 @@ def _short(deck: Deck) -> str:
 async def apply_tiers(db, user, mt3_dir: Path, chapters: dict[int, Deck], carry: Deck, only: int | None) -> dict:
     """Create P1/P2/P3 subdecks in each MT3 chapter and move every MT3 card into its tier."""
     moved: dict = {}
+    coding = await coding_deck(db, user, create=True)
     for path in sorted(mt3_dir.glob("cpsc210_mt3_*.json")):
         m = re.match(r"cpsc210_mt3_ch(\d+)_", path.name)
         if m:
@@ -373,10 +426,25 @@ async def apply_tiers(db, user, mt3_dir: Path, chapters: dict[int, Deck], carry:
             if num not in chapters or (only is not None and num != only):
                 continue
             parent = chapters[num]
+            order = num
         elif "carry_forward" in path.name and only is None:
             parent = carry
+            order = 0
         else:
             continue
+        code_name = f"Code · {_short(parent)}"
+        code_sub = await db.scalar(select(Deck).where(Deck.user_id == user.id, Deck.parent_id == coding.id,
+                                                      Deck.name == code_name))
+        if code_sub is None:
+            code_sub = Deck(user_id=user.id, parent_id=coding.id, name=code_name, source_documents=[])
+            db.add(code_sub)
+            await db.flush()
+        code_sub.position = order
+        code_sub.default_priority = CODING_PRIORITY
+        code_sub.target_event_title = MT3_TITLE
+        code_sub.target_event_date = MT3_DATE
+        code_sub.thematic_nature = parent.thematic_nature
+        code_sub.documentation = f"Coding and test-writing cards for {bare(parent.name)}."
         tier_of = {item["front"].strip(): item.get("tier", 2)
                    for item in json.loads(path.read_text(encoding="utf-8"))}
         subdecks: dict[int, Deck] = {}
@@ -398,13 +466,18 @@ async def apply_tiers(db, user, mt3_dir: Path, chapters: dict[int, Deck], carry:
                                  2: "Concepts that explain the P1 material and the design decisions behind it.",
                                  3: "Background, terminology and history; study only if time allows."}[t]
             subdecks[t] = sub
-        ids = await subtree_ids(db, user, parent)
+        ids = await subtree_ids(db, user, parent) + [code_sub.id]
         cards = (await db.scalars(select(Card).where(Card.deck_id.in_(ids)))).all()
         for c in cards:
             if "mt3" not in (c.tags or []):
                 continue
             t = tier_of.get(str((c.note.field_values or {}).get("Front", "")).strip())
             if t is None:
+                continue
+            if _is_practice(c):
+                c.deck_id = code_sub.id
+                c.priority = CODING_PRIORITY
+                moved["code"] = moved.get("code", 0) + 1
                 continue
             c.deck_id = subdecks[t].id
             c.priority = TIERS[t][1]
@@ -513,7 +586,8 @@ async def main(args) -> None:
                     log.info(f"Removed {n} never-reviewed pre-MT3 Ch 08/09 notes")
                 await ingest_mt3_json(db, user, mt3_dir, chapters, carry, args.chapter)
                 tiers = await apply_tiers(db, user, mt3_dir, chapters, carry, args.chapter)
-                log.info("Tiers: " + ", ".join(f"P{t}={n}" for t, n in sorted(tiers.items())))
+                log.info("Tiers: " + ", ".join(f"{'P' + str(t) if t != 'code' else 'Coding drills'}={n}"
+                                               for t, n in sorted(tiers.items(), key=str)))
                 if args.chapter is None:
                     moved, suspended = await cleanup_part1(db, user, part1)
                     log.info(f"Part 1 cleanup: moved {moved} cards into chapter decks, suspended {suspended} duplicates")

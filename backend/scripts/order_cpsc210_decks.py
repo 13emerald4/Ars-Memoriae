@@ -42,9 +42,11 @@ HIERARCHY_ORDER = {
     # Children of Root "CPSC 210 — every function has a contract"
     "cpsc 210 - every function has a contract": [
         ("midterm 3 - nov 13", 0),
-        ("part 1: foundations - keep the contract", 1),
-        ("part 2: abstraction - hide behind the contract", 2),
-        ("part 3: evolution - keep contracts stable", 3),
+        ("lecture activities", 1),
+        ("labs", 2),
+        ("part 1: foundations - keep the contract", 3),
+        ("part 2: abstraction - hide behind the contract", 4),
+        ("part 3: evolution - keep contracts stable", 5),
     ],
     # Children of "Midterm 3 — Nov 13"
     "midterm 3 - nov 13": [
