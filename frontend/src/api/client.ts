@@ -219,11 +219,14 @@ export const api = {
     name: string
     default_priority?: number
     parent_id?: string | null
+    position?: number
     documentation?: string | null
     thematic_nature?: string | null
     source_documents?: Array<Record<string, any>>
   }) => post<Deck>('/api/decks', body),
   updateDeck: (id: string, body: Record<string, unknown>) => patch<Deck>(`/api/decks/${id}`, body),
+  reorderDecks: (items: { id: string; parent_id?: string | null; position: number }[]) =>
+    post<Deck[]>('/api/decks/reorder', { items }),
   deleteDeck: (id: string, cascade: boolean = true) =>
     request<void>(`/api/decks/${id}${cascade ? '?cascade=true' : ''}`, { method: 'DELETE' }),
   deleteAllDecks: () => request<void>('/api/decks', { method: 'DELETE' }),
@@ -313,8 +316,8 @@ export const api = {
       mastery_threshold?: number
     },
   ) => patch<{ entities_updated: number }>(`/api/tree/nodes/${id}`, body),
-  moveNode: (id: string, parent_id: string | null) =>
-    post<{ id: string; parent_id: string | null }>(`/api/tree/nodes/${id}/move`, { parent_id }),
+  moveNode: (id: string, parent_id: string | null, position?: number) =>
+    post<{ id: string; parent_id: string | null }>(`/api/tree/nodes/${id}/move`, { parent_id, position }),
   deleteNode: (id: string) =>
     request<{ children_promoted: number }>(`/api/tree/nodes/${id}`, { method: 'DELETE' }),
   branchCards: (id: string) => request<Card[]>(`/api/tree/nodes/${id}/cards`),

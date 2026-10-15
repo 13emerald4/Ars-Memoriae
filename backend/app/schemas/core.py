@@ -64,6 +64,7 @@ class UserUpdate(BaseModel):
                     f"Model '{v}' is not permitted. Only quantized Qwen 2.5 Coder models in 7B, 3B, or 1.5B sizes are allowed."
                 )
         return v
+
     leech_remediation_opt_in: bool | None = None
     daily_new_limit: int | None = Field(default=None, ge=0, le=9999)
     daily_review_limit: int | None = Field(default=None, ge=0, le=99999)
@@ -114,6 +115,7 @@ class DeckCreate(BaseModel):
     parent_id: str | None = None
     desired_retention_override: float | None = Field(default=None, ge=0.7, le=0.99)
     default_priority: int = Field(default=50, ge=0, le=100)
+    position: int = 0
     target_event_date: datetime | None = None
     target_event_title: str | None = None
     documentation: str | None = None
@@ -126,6 +128,7 @@ class DeckUpdate(BaseModel):
     parent_id: str | None = None
     desired_retention_override: float | None = Field(default=None, ge=0.7, le=0.99)
     default_priority: int | None = Field(default=None, ge=0, le=100)
+    position: int | None = None
     target_event_date: datetime | None = None
     target_event_title: str | None = None
     documentation: str | None = None
@@ -133,23 +136,14 @@ class DeckUpdate(BaseModel):
     source_documents: list[dict | str] | None = None
 
 
-class DeckOut(BaseModel):
+class DeckReorderItem(BaseModel):
     id: str
-    name: str
-    parent_id: str | None
-    desired_retention_override: float | None
-    default_priority: int
-    card_count: int = 0
-    due_count: int = 0
-    new_count: int = 0
-    total_card_count: int = 0
-    total_due_count: int = 0
-    total_new_count: int = 0
-    target_event_date: datetime | None = None
-    target_event_title: str | None = None
-    documentation: str | None = None
-    thematic_nature: str | None = None
-    source_documents: list[dict | str] = Field(default_factory=list)
+    parent_id: str | None = None
+    position: int = 0
+
+
+class DeckReorderRequest(BaseModel):
+    items: list[DeckReorderItem]
 
 
 class DeckStatsOut(BaseModel):
@@ -167,6 +161,27 @@ class DeckStatsOut(BaseModel):
     rating_counts: dict[str, int] = Field(default_factory=dict)
     rating_proportions: dict[str, float] = Field(default_factory=dict)
     total_reviews: int = 0
+
+
+class DeckOut(BaseModel):
+    id: str
+    name: str
+    parent_id: str | None
+    desired_retention_override: float | None
+    default_priority: int
+    position: int = 0
+    card_count: int = 0
+    due_count: int = 0
+    new_count: int = 0
+    total_card_count: int = 0
+    total_due_count: int = 0
+    total_new_count: int = 0
+    target_event_date: datetime | None = None
+    target_event_title: str | None = None
+    documentation: str | None = None
+    thematic_nature: str | None = None
+    source_documents: list[dict | str] = Field(default_factory=list)
+    stats: DeckStatsOut | None = None
 
 
 

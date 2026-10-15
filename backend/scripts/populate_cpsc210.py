@@ -7,28 +7,32 @@ import json
 import logging
 import os
 from datetime import datetime
+import sys
 from pathlib import Path
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
 from sqlalchemy import select
 
 from app.db import SessionLocal
 from app.models import (
-    CardReference,
     Deck,
     Import,
-    Note,
     User,
 )
-from app.services.note_service import default_note_type, sync_cards
+from scripts.cpsc210_ingest import all_user_fronts
+from scripts.cpsc210_ingest import ingest_notes_list as shared_ingest
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
 USER_EMAIL = "michael.r.polley@outlook.com"
-CARDS_DOCUMENTS_DIR = r"C:\Users\micha\OneDrive\Documents\UBC BCS ICS\CPSC 210\Cards Documents"
+CARDS_DOCUMENTS_DIR = r"C:\Users\micha\OneDrive\Documents\UBC BCS ICS\CPSC 210\Cards\Cards Documents"
 CARDS_SOURCE_DIR = r"C:\Users\micha\OneDrive\Documents\UBC BCS ICS\CPSC 210\Cards\Cards"
 OBSIDIAN_SPEC = r"C:\Syncthing Obsidian\CPSC 210.md"
-MASTER_PDF_PATH = r"C:\Users\micha\OneDrive\Documents\UBC BCS ICS\CPSC 210\Cards Documents\CPSC210_2026W1_Master.pdf"
+MASTER_PDF_PATH = r"C:\Users\micha\OneDrive\Documents\UBC BCS ICS\CPSC 210\Cards\Cards Documents\CPSC210_2026W1_Master.pdf"
 
 HIERARCHY_TREE = {
     "name": "CPSC 210 — every function has a contract",
@@ -324,7 +328,7 @@ async def run_population():
         for part_info in HIERARCHY_TREE["children"]:
             part_name = part_info["name"]
             part_deck = await db.scalar(
-                select(Deck).where(Deck.user_id == user.id, Deck.name == part_name)
+                select(Deck).where(Deck.user_id == user.id, Deck.name.in_([part_name, "! " + part_name]))
             )
             if not part_deck:
                 dt = (
@@ -353,7 +357,7 @@ async def run_population():
                 ch_num = ch["num"]
                 ch_name = ch["name"]
                 ch_deck = await db.scalar(
-                    select(Deck).where(Deck.user_id == user.id, Deck.name == ch_name)
+                    select(Deck).where(Deck.user_id == user.id, Deck.name.in_([ch_name, "! " + ch_name]))
                 )
                 if not ch_deck:
                     sources = [
@@ -445,109 +449,14 @@ async def run_population():
         total_citations = 0
 
         async def ingest_notes_list(notes_raw: list[dict], target_deck: Deck, source_label: str):
+            """Thin wrapper over the shared helper (scripts/cpsc210_ingest.py); skips notes already in the deck."""
             nonlocal total_notes, total_cards, total_citations
-            imported_count = 0
-
-            for note_item in notes_raw:
-                card_type = note_item.get("card_type", "basic")
-                is_code = (
-                    card_type == "code"
-                    or bool(note_item.get("starter_code"))
-                    or bool(note_item.get("test_cases"))
-                )
-
-                front = note_item.get("front", "").strip()
-                back = note_item.get("back", "").strip()
-                if not front or not back:
-                    continue
-
-                starter_code = note_item.get("starter_code")
-                test_cases = note_item.get("test_cases")
-                quote = (note_item.get("quote") or "").strip()
-                locator = (note_item.get("locator") or "").strip()
-
-                # Build field_values
-                field_values: dict = {"Front": front, "Back": back}
-                if is_code:
-                    if starter_code:
-                        field_values["starter_code"] = starter_code
-                    if test_cases:
-                        field_values["test_cases"] = test_cases
-                    for k in ["title", "category", "difficulty", "time_complexity", "space_complexity", "edge_cases"]:
-                        if note_item.get(k):
-                            field_values[k] = note_item[k]
-
-                profile = "math_code" if is_code else "short_answer"
-                nt = await default_note_type(db, user, "basic", grading_profile=profile)
-                note_row = Note(user_id=user.id, note_type_id=nt.id, field_values=field_values)
-                db.add(note_row)
-                await db.flush()
-
-                tags = list(note_item.get("tags") or [])
-                if is_code and "code" not in tags:
-                    tags.append("code")
-                if "cpsc210" not in tags:
-                    tags.append("cpsc210")
-                if target_deck.name.startswith("Ch "):
-                    ch_tag = f"ch{target_deck.name.split(':')[0].replace('Ch ', '').strip()}"
-                    if ch_tag not in tags:
-                        tags.append(ch_tag)
-
-                # Card documentation & thematic context
-                card_doc_parts = []
-                if locator:
-                    card_doc_parts.append(f"**Locator**: {locator}")
-                if quote:
-                    card_doc_parts.append(f"**Key Quote**: \"{quote}\"")
-                if note_item.get("time_complexity") or note_item.get("space_complexity"):
-                    tc = note_item.get("time_complexity", "N/A")
-                    sc = note_item.get("space_complexity", "N/A")
-                    card_doc_parts.append(f"**Complexity**: Time `{tc}`, Space `{sc}`")
-                if note_item.get("edge_cases"):
-                    edges = ", ".join(note_item["edge_cases"])
-                    card_doc_parts.append(f"**Edge Cases**: {edges}")
-                card_documentation = "\n\n".join(card_doc_parts) if card_doc_parts else target_deck.documentation
-
-                card_theme = note_item.get("category") or target_deck.thematic_nature
-                card_sources = [
-                    {
-                        "name": "CPSC210_2026W1_Master.pdf",
-                        "locator": locator,
-                        "quote": quote,
-                        "source_file": source_label,
-                    }
-                ]
-
-                cards = await sync_cards(
-                    db,
-                    note_row,
-                    nt,
-                    target_deck.id,
-                    tags=tags,
-                    priority=note_item.get("priority", 50),
-                    origin="manual",
-                    documentation=card_documentation,
-                    thematic_nature=card_theme,
-                    source_documents=card_sources,
-                )
-                total_notes += 1
-                total_cards += len(cards)
-                imported_count += len(cards)
-
-                if quote or locator:
-                    for c in cards:
-                        db.add(
-                            CardReference(
-                                card_id=c.id,
-                                quote=quote or (f"Excerpt from {locator}" if locator else ""),
-                                quote_verified=True,
-                                locator=locator,
-                                source_title=f"CPSC 210 — {target_deck.name}",
-                            )
-                        )
-                        total_citations += 1
-
-            return imported_count
+            res = await shared_ingest(db, user, notes_raw, target_deck, source_label,
+                                      seen_fronts=await all_user_fronts(db, user))
+            total_notes += res.notes
+            total_cards += res.cards
+            total_citations += res.citations
+            return res.cards
 
         # Ingest Chapters 1 to 7
         for ch_num, file_list in ch_mapping.items():

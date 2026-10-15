@@ -251,15 +251,11 @@ async def ensure_extract_node(
     Split needs this: the child has to hang off the parent extract's node, and
     that node may not exist yet if the tree has never been opened.
     """
-    node = await db.scalar(
-        select(KnowledgeNode).where(KnowledgeNode.extract_id == extract.id)
-    )
+    node = await db.scalar(select(KnowledgeNode).where(KnowledgeNode.extract_id == extract.id))
     if node is not None:
         return node
 
-    source_node = await db.scalar(
-        select(KnowledgeNode).where(KnowledgeNode.source_id == source.id)
-    )
+    source_node = await db.scalar(select(KnowledgeNode).where(KnowledgeNode.source_id == source.id))
     if source_node is None:
         source_node = KnowledgeNode(
             user_id=user_id,
@@ -290,7 +286,8 @@ async def _next_position(
     user_id = user.id if isinstance(user, User) else user
     stmt = select(func.max(KnowledgeNode.position)).where(KnowledgeNode.user_id == user_id)
     stmt = stmt.where(
-        KnowledgeNode.parent_id.is_(None) if parent_id is None
+        KnowledgeNode.parent_id.is_(None)
+        if parent_id is None
         else KnowledgeNode.parent_id == parent_id
     )
     return int((await db.scalar(stmt)) or 0) + 1
@@ -356,13 +353,12 @@ async def move(
         deck = await db.get(Deck, node.deck_id)
         if deck is not None:
             parent_node = (
-                next((n for n in nodes if n.id == new_parent_id), None)
-                if new_parent_id
-                else None
+                next((n for n in nodes if n.id == new_parent_id), None) if new_parent_id else None
             )
             deck.parent_id = (
                 parent_node.deck_id if parent_node and parent_node.kind == "deck" else None
             )
+            deck.position = node.position
     await db.flush()
 
 
@@ -470,11 +466,7 @@ async def delete_topic(db: AsyncSession, user: User, node: KnowledgeNode) -> int
             f"this node is a {node.kind}; delete the {node.kind} itself and its node goes with it"
         )
     kids = list(
-        (
-            await db.scalars(
-                select(KnowledgeNode).where(KnowledgeNode.parent_id == node.id)
-            )
-        ).all()
+        (await db.scalars(select(KnowledgeNode).where(KnowledgeNode.parent_id == node.id))).all()
     )
     for kid in kids:
         kid.parent_id = node.parent_id
@@ -526,9 +518,7 @@ async def delete_all_tree(db: AsyncSession, user: User) -> dict[str, int]:
     deck_count = len(deck_ids)
     if deck_ids:
         note_ids = (
-            await db.scalars(
-                select(Card.note_id).where(Card.deck_id.in_(deck_ids)).distinct()
-            )
+            await db.scalars(select(Card.note_id).where(Card.deck_id.in_(deck_ids)).distinct())
         ).all()
         if note_ids:
             notes = (await db.scalars(select(Note).where(Note.id.in_(note_ids)))).all()
@@ -718,9 +708,7 @@ async def _own_counts(
     # would produce a row per distinct due *instant* — tens of thousands of
     # them on an imported collection — to answer a three-number question.
     is_new = case((Card.state == "new", 1), else_=0)
-    is_due = case(
-        (and_(Card.state != "new", Card.due.isnot(None), Card.due <= now), 1), else_=0
-    )
+    is_due = case((and_(Card.state != "new", Card.due.isnot(None), Card.due <= now), 1), else_=0)
     # "Mastered" reuses FSRS's own graduation signal (state == "review")
     # rather than re-deriving a parallel one from raw grade history: FSRS
     # already decides "has this been learned enough," it's the same state the
@@ -745,7 +733,10 @@ async def _own_counts(
         (
             await db.execute(
                 select(
-                    Card.deck_id, func.count(), func.sum(is_new), func.sum(is_due),
+                    Card.deck_id,
+                    func.count(),
+                    func.sum(is_new),
+                    func.sum(is_due),
                     func.sum(is_mastered),
                 )
                 .join(Deck, Deck.id == Card.deck_id)
@@ -765,9 +756,7 @@ async def _own_counts(
         by_extract,
         (
             await db.execute(
-                select(
-                    Card.origin_extract_id, func.count(), func.sum(is_new), func.sum(is_due)
-                )
+                select(Card.origin_extract_id, func.count(), func.sum(is_new), func.sum(is_due))
                 .join(Deck, Deck.id == Card.deck_id)
                 .where(
                     Deck.user_id == user.id,
@@ -843,7 +832,9 @@ def _apply_gating(roots: list[TreeNodeView]) -> None:
     by_id = {v.node.id: v for v in all_views}
 
     for v in all_views:
-        v.mastery_pct = min(100, round(v.counts.mastered / v.counts.cards * 100)) if v.counts.cards else 0
+        v.mastery_pct = (
+            min(100, round(v.counts.mastered / v.counts.cards * 100)) if v.counts.cards else 0
+        )
 
     for v in all_views:
         if v.node.requires_node_id:

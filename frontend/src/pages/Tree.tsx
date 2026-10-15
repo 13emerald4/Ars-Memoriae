@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Card, TreeNode } from '../api/types'
-import { SuperMemoTree, type SuperMemoNode } from '../components/SuperMemoTree'
+import { SuperMemoTree, type SuperMemoNode, type DropPosition } from '../components/SuperMemoTree'
 import { Empty, ErrorNote, PriorityBar, RichText, Section, Spinner } from '../components/ui'
 
 function toSuperMemoNodes(treeNodes: TreeNode[]): SuperMemoNode[] {
@@ -115,6 +115,40 @@ export default function Tree() {
       }
     },
     [load],
+  )
+
+  const handleDropBranch = useCallback(
+    async (
+      source: SuperMemoNode,
+      target: SuperMemoNode,
+      position: DropPosition,
+    ) => {
+      try {
+        let targetParentId: string | null = null
+        let targetPos: number | undefined = undefined
+
+        if (position === 'inside') {
+          targetParentId = target.id === '__root__' ? null : target.id
+        } else {
+          targetParentId = target.parentId ?? null
+          const siblings = nodes.filter(
+            (n) => (n.parent_id ?? null) === targetParentId && n.id !== source.id,
+          )
+          const targetIdx = siblings.findIndex((s) => s.id === target.id)
+          const insertIdx =
+            position === 'before'
+              ? (targetIdx === -1 ? 0 : targetIdx)
+              : (targetIdx === -1 ? siblings.length : targetIdx + 1)
+          targetPos = insertIdx
+        }
+
+        await api.moveNode(source.id, targetParentId, targetPos)
+        await load()
+      } catch (err) {
+        setError(err)
+      }
+    },
+    [nodes, load],
   )
 
   // Flat list of every node, for the "move to…" picker and the depth guides.
@@ -230,6 +264,7 @@ export default function Tree() {
             onAddChild={handleAddChild}
             onRename={handleRename}
             onDelete={handleDelete}
+            onDropBranch={handleDropBranch}
           />
         ) : (
           <div className="space-y-1">

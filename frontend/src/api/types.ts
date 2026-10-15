@@ -259,6 +259,7 @@ export interface Deck {
   parent_id: string | null
   desired_retention_override: number | null
   default_priority: number
+  position?: number
   card_count: number
   due_count: number
   new_count: number
@@ -270,6 +271,7 @@ export interface Deck {
   documentation?: string | null
   thematic_nature?: string | null
   source_documents?: Array<Record<string, any>>
+  stats?: DeckStats | null
 }
 
 export interface DeckStats {

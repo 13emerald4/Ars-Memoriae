@@ -95,7 +95,7 @@ html[data-oled='true'] {
   }
   body {
     @apply bg-ink text-slate-200 antialiased;
-    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-family: 'Verdana', 'Geneva', Tahoma, sans-serif;
     background-color: var(--theme-bg-canvas, #0f1117);
     transition: background-color 0.35s ease, border-color 0.35s ease;
   }

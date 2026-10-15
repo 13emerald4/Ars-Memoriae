@@ -5,6 +5,7 @@ import type { DeckStats } from '../api/types'
 interface DeckReviewStatsBarProps {
   deckId: string | null
   deckName?: string | null
+  stats?: DeckStats | null
   /** Optional trigger to force refetch when a card is submitted */
   lastUpdated?: number
   className?: string
@@ -14,9 +15,11 @@ interface DeckReviewStatsBarProps {
   onStartAllCardsRun?: (deckId: string) => void
   onExitAllCardsRun?: () => void
   isAllCardsRunActive?: boolean
+  onStudyDeck?: (deckId: string) => void
+  hideToggle?: boolean
 }
 
-const DIFFICULTY_CONFIG: Record<
+export const DIFFICULTY_CONFIG: Record<
   string,
   { label: string; color: string; bg: string; border: string; text: string; dot: string }
 > = {
@@ -54,7 +57,7 @@ const DIFFICULTY_CONFIG: Record<
   },
 }
 
-const RATING_CONFIG: Record<
+export const RATING_CONFIG: Record<
   string,
   { label: string; color: string; bg: string; border: string; text: string; dot: string }
 > = {
@@ -100,9 +103,89 @@ const RATING_CONFIG: Record<
   },
 }
 
+/**
+ * Compact inline triple distribution bars for tree nodes and list items.
+ * Shows viewed progress, difficulty breakdown, and recall rating breakdown.
+ */
+export function CompactDeckDistributionBars({
+  stats,
+  className = '',
+}: {
+  stats?: DeckStats | null
+  className?: string
+}) {
+  if (!stats || stats.total_cards === 0) return null
+
+  const viewedPct = Math.round(stats.viewed_ratio * 100)
+
+  const diffSummary = `Difficulty: Easy ${stats.difficulty_counts?.Easy || 0}, Med ${stats.difficulty_counts?.Medium || 0}, Hard ${stats.difficulty_counts?.Hard || 0}, Unrated ${stats.difficulty_counts?.Unrated || 0}`
+  const ratingSummary = `Recall: Again ${stats.rating_counts?.Again || 0}, Hard ${stats.rating_counts?.Hard || 0}, Good ${stats.rating_counts?.Good || 0}, Easy ${stats.rating_counts?.Easy || 0}, Unreviewed ${stats.rating_counts?.Unrated || 0}`
+  const tooltip = `Progress: ${stats.viewed_cards}/${stats.total_cards} viewed (${viewedPct}%)\n${diffSummary}\n${ratingSummary}`
+
+  const diffKeys = ['Easy', 'Medium', 'Hard', 'Unrated']
+  const ratingKeys = ['Again', 'Hard', 'Good', 'Easy', 'Unrated']
+
+  return (
+    <div
+      className={`inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-md bg-slate-900/60 border border-slate-700/50 select-none ${className}`}
+      title={tooltip}
+    >
+      {/* 1. Viewed mini bar */}
+      <div className="relative h-1.5 w-9 overflow-hidden rounded-full bg-slate-800" title={`Viewed: ${stats.viewed_cards}/${stats.total_cards} (${viewedPct}%)`}>
+        <div
+          className="h-full bg-gradient-to-r from-sky-500 to-emerald-400"
+          style={{ width: `${Math.min(100, Math.max(0, viewedPct))}%` }}
+        />
+      </div>
+
+      {/* 2. Difficulty mini bar */}
+      <div className="flex h-1.5 w-10 overflow-hidden rounded-full bg-slate-800" title={diffSummary}>
+        {diffKeys.map((key) => {
+          const count = stats.difficulty_counts?.[key] || 0
+          if (count === 0) return null
+          const pct = Math.max(1, Math.round(((stats.difficulty_proportions?.[key] || 0) * 100)))
+          const cfg = DIFFICULTY_CONFIG[key]
+          return (
+            <div
+              key={key}
+              style={{ width: `${pct}%` }}
+              className={`${cfg?.color || 'bg-slate-500'} h-full shrink-0`}
+            />
+          )
+        })}
+      </div>
+
+      {/* 3. Recall Ratings mini bar */}
+      {stats.rating_counts && (
+        <div className="flex h-1.5 w-10 overflow-hidden rounded-full bg-slate-800" title={ratingSummary}>
+          {ratingKeys.map((key) => {
+            const count = stats.rating_counts?.[key] || 0
+            if (count === 0) return null
+            const pct = Math.max(1, Math.round(((stats.rating_proportions?.[key] || 0) * 100)))
+            const cfg = RATING_CONFIG[key]
+            return (
+              <div
+                key={key}
+                style={{ width: `${pct}%` }}
+                className={`${cfg?.color || 'bg-slate-600'} h-full shrink-0`}
+              />
+            )
+          })}
+        </div>
+      )}
+
+      {/* Viewed percentage text */}
+      <span className="text-[10px] font-mono font-semibold text-sky-300 tabular-nums">
+        {viewedPct}%
+      </span>
+    </div>
+  )
+}
+
 export function DeckReviewStatsBar({
   deckId,
   deckName,
+  stats: propStats,
   lastUpdated,
   className = '',
   onStartPersist,
@@ -111,10 +194,13 @@ export function DeckReviewStatsBar({
   onStartAllCardsRun,
   onExitAllCardsRun,
   isAllCardsRunActive,
+  onStudyDeck,
+  hideToggle = false,
 }: DeckReviewStatsBarProps) {
-  const [stats, setStats] = useState<DeckStats | null>(null)
+  const [stats, setStats] = useState<DeckStats | null>(propStats || null)
   const [loading, setLoading] = useState(false)
   const [isExpanded, setIsExpanded] = useState<boolean>(() => {
+    if (hideToggle) return true
     if (typeof localStorage === 'undefined') return true
     return localStorage.getItem('memorization.deckStatsExpanded') !== '0'
   })
@@ -132,12 +218,16 @@ export function DeckReviewStatsBar({
   }, [])
 
   useEffect(() => {
+    if (propStats) {
+      setStats(propStats)
+      return
+    }
     if (deckId) {
       void loadStats(deckId)
     } else {
       setStats(null)
     }
-  }, [deckId, lastUpdated, loadStats])
+  }, [deckId, propStats, lastUpdated, loadStats])
 
   const toggleExpanded = () => {
     setIsExpanded((prev) => {
@@ -147,7 +237,7 @@ export function DeckReviewStatsBar({
     })
   }
 
-  if (!deckId || !stats) {
+  if ((!deckId && !propStats) || !stats) {
     if (!deckName) return null
     return (
       <div
@@ -175,6 +265,7 @@ export function DeckReviewStatsBar({
       </div>
     )
   }
+
 
   const viewedPct = Math.round(stats.viewed_ratio * 100)
   const unviewedCount = stats.total_cards - stats.viewed_cards
@@ -298,14 +389,28 @@ export function DeckReviewStatsBar({
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={toggleExpanded}
-            className="rounded px-2 py-0.5 text-[11px] font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition shrink-0"
-            title={isExpanded ? 'Collapse deck stats' : 'Expand deck stats'}
-          >
-            {isExpanded ? 'Hide Details ▲' : 'Deck Stats ▼'}
-          </button>
+          {onStudyDeck && (
+            <button
+              type="button"
+              onClick={() => onStudyDeck(deckId || stats.id)}
+              className="flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-500/30 transition shadow-sm cursor-pointer shrink-0"
+              title={`Study ${stats.name || deckName || 'deck'}`}
+            >
+              <span>⚡</span>
+              <span>Study Deck</span>
+            </button>
+          )}
+
+          {!hideToggle && (
+            <button
+              type="button"
+              onClick={toggleExpanded}
+              className="rounded px-2 py-0.5 text-[11px] font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition shrink-0"
+              title={isExpanded ? 'Collapse deck stats' : 'Expand deck stats'}
+            >
+              {isExpanded ? 'Hide Details ▲' : 'Deck Stats ▼'}
+            </button>
+          )}
         </div>
       </div>
 

@@ -3,6 +3,9 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Verdana', 'Geneva', 'Tahoma', 'sans-serif'],
+      },
       colors: {
         ink: {
           DEFAULT: 'var(--theme-bg-canvas, #0f1117)',

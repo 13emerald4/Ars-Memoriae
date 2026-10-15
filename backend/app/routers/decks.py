@@ -28,6 +28,7 @@ from app.schemas.core import (
     CardOut,
     DeckCreate,
     DeckOut,
+    DeckReorderRequest,
     DeckStatsOut,
     DeckUpdate,
     NoteCreate,
@@ -96,52 +97,176 @@ def card_out(card: Card, deck_name: str | None = None) -> CardOut:
 # ── decks ───────────────────────────────────────────────────────────────────
 
 
+class DeckStatsAccumulator:
+    """Accumulates and rolls up card difficulty and recall rating statistics for a deck."""
+
+    def __init__(self) -> None:
+        self.total_cards: int = 0
+        self.viewed_cards: int = 0
+        self.new_cards: int = 0
+        self.learning_cards: int = 0
+        self.review_cards: int = 0
+        self.due_cards: int = 0
+        self.diff_counts: dict[str, int] = {"Easy": 0, "Medium": 0, "Hard": 0, "Unrated": 0}
+        self.rating_counts: dict[str, int] = {
+            "Again": 0,
+            "Hard": 0,
+            "Good": 0,
+            "Easy": 0,
+            "Unrated": 0,
+        }
+        self.total_reviews: int = 0
+
+    def add(self, other: DeckStatsAccumulator) -> None:
+        self.total_cards += other.total_cards
+        self.viewed_cards += other.viewed_cards
+        self.new_cards += other.new_cards
+        self.learning_cards += other.learning_cards
+        self.review_cards += other.review_cards
+        self.due_cards += other.due_cards
+        for k, v in other.diff_counts.items():
+            self.diff_counts[k] = self.diff_counts.get(k, 0) + v
+        for k, v in other.rating_counts.items():
+            self.rating_counts[k] = self.rating_counts.get(k, 0) + v
+        self.total_reviews += other.total_reviews
+
+    def clone(self) -> DeckStatsAccumulator:
+        c = DeckStatsAccumulator()
+        c.total_cards = self.total_cards
+        c.viewed_cards = self.viewed_cards
+        c.new_cards = self.new_cards
+        c.learning_cards = self.learning_cards
+        c.review_cards = self.review_cards
+        c.due_cards = self.due_cards
+        c.diff_counts = dict(self.diff_counts)
+        c.rating_counts = dict(self.rating_counts)
+        c.total_reviews = self.total_reviews
+        return c
+
+    def to_out(self, deck_id: str, deck_name: str) -> DeckStatsOut:
+        total = self.total_cards
+        viewed_ratio = round(self.viewed_cards / total, 4) if total > 0 else 0.0
+        cleaned_diff = {
+            k: v for k, v in self.diff_counts.items() if v > 0 or k in ("Easy", "Medium", "Hard")
+        }
+        diff_props = {
+            k: round(v / total, 4) if total > 0 else 0.0 for k, v in cleaned_diff.items()
+        }
+        cleaned_ratings = {
+            k: v
+            for k, v in self.rating_counts.items()
+            if v > 0 or k in ("Again", "Hard", "Good", "Easy")
+        }
+        rating_props = {
+            k: round(v / total, 4) if total > 0 else 0.0 for k, v in cleaned_ratings.items()
+        }
+        return DeckStatsOut(
+            id=deck_id,
+            name=deck_name,
+            total_cards=total,
+            viewed_cards=self.viewed_cards,
+            new_cards=self.new_cards,
+            learning_cards=self.learning_cards,
+            review_cards=self.review_cards,
+            due_cards=self.due_cards,
+            viewed_ratio=viewed_ratio,
+            difficulty_counts=cleaned_diff,
+            difficulty_proportions=diff_props,
+            rating_counts=cleaned_ratings,
+            rating_proportions=rating_props,
+            total_reviews=self.total_reviews,
+        )
+
+
 @router.get("/decks", response_model=list[DeckOut])
 async def list_decks(
     user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
 ) -> list[DeckOut]:
     now = datetime.now(UTC)
-    decks = (await db.scalars(select(Deck).where(Deck.user_id == user.id).order_by(Deck.name))).all()
+    decks = (
+        await db.scalars(
+            select(Deck)
+            .where(Deck.user_id == user.id)
+            .order_by(Deck.position.asc(), Deck.name.asc())
+        )
+    ).all()
 
-    counts = {
-        row[0]: row[1]
-        for row in (
-            await db.execute(
-                select(Card.deck_id, func.count())
-                .join(Deck, Deck.id == Card.deck_id)
-                .where(Deck.user_id == user.id, Card.suspended.is_(False))
-                .group_by(Card.deck_id)
-            )
-        ).all()
-    }
-    due = {
-        row[0]: row[1]
-        for row in (
-            await db.execute(
-                select(Card.deck_id, func.count())
-                .join(Deck, Deck.id == Card.deck_id)
-                .where(
-                    Deck.user_id == user.id,
-                    Card.suspended.is_(False),
-                    Card.leech_flag.is_(False),
-                    Card.state != "new",
-                    Card.due <= now,
-                )
-                .group_by(Card.deck_id)
-            )
-        ).all()
-    }
-    new = {
-        row[0]: row[1]
-        for row in (
-            await db.execute(
-                select(Card.deck_id, func.count())
-                .join(Deck, Deck.id == Card.deck_id)
-                .where(Deck.user_id == user.id, Card.suspended.is_(False), Card.state == "new")
-                .group_by(Card.deck_id)
-            )
-        ).all()
-    }
+    # Query all active non-suspended cards and their notes for the user
+    cards_stmt = (
+        select(Card.id, Card.deck_id, Card.state, Card.difficulty, Card.due, Note.field_values)
+        .join(Note, Card.note_id == Note.id)
+        .join(Deck, Card.deck_id == Deck.id)
+        .where(Deck.user_id == user.id, Card.suspended.is_(False))
+    )
+    cards_rows = (await db.execute(cards_stmt)).all()
+
+    # Query latest review grades per card for user's decks
+    logs_stmt = (
+        select(ReviewLog.card_id, ReviewLog.final_grade)
+        .join(Card, ReviewLog.card_id == Card.id)
+        .join(Deck, Card.deck_id == Deck.id)
+        .where(Deck.user_id == user.id)
+        .order_by(ReviewLog.reviewed_at.asc())
+    )
+    logs_rows = (await db.execute(logs_stmt)).all()
+
+    latest_rating_by_card: dict[uuid.UUID, str] = dict(logs_rows)
+
+    # Count total reviews per deck
+    card_deck_map: dict[uuid.UUID, uuid.UUID] = {row[0]: row[1] for row in cards_rows}
+    deck_review_counts: dict[uuid.UUID, int] = defaultdict(int)
+    for c_id, _ in logs_rows:
+        d_id = card_deck_map.get(c_id)
+        if d_id:
+            deck_review_counts[d_id] += 1
+
+    # Accumulate direct stats for each deck
+    direct_stats: dict[uuid.UUID, DeckStatsAccumulator] = defaultdict(DeckStatsAccumulator)
+    for c_id, deck_id, c_state, c_difficulty, c_due, note_field_values in cards_rows:
+        acc = direct_stats[deck_id]
+        acc.total_cards += 1
+        if c_state == "new":
+            acc.new_cards += 1
+        else:
+            acc.viewed_cards += 1
+
+        if c_state in ("learning", "relearning"):
+            acc.learning_cards += 1
+        elif c_state == "review":
+            acc.review_cards += 1
+
+        if c_due and (c_due if c_due.tzinfo else c_due.replace(tzinfo=UTC)) <= now and c_state != "new":
+            acc.due_cards += 1
+
+        fv = note_field_values or {}
+        raw_diff = fv.get("difficulty") or fv.get("Difficulty") or fv.get("diff")
+        if raw_diff and isinstance(raw_diff, str) and raw_diff.strip():
+            label = raw_diff.strip().capitalize()
+            acc.diff_counts[label] = acc.diff_counts.get(label, 0) + 1
+        elif c_difficulty is not None:
+            if c_difficulty <= 4.0:
+                acc.diff_counts["Easy"] += 1
+            elif c_difficulty <= 7.0:
+                acc.diff_counts["Medium"] += 1
+            else:
+                acc.diff_counts["Hard"] += 1
+        else:
+            acc.diff_counts["Unrated"] += 1
+
+        grade = latest_rating_by_card.get(c_id)
+        if grade == "again":
+            acc.rating_counts["Again"] += 1
+        elif grade == "hard":
+            acc.rating_counts["Hard"] += 1
+        elif grade == "good":
+            acc.rating_counts["Good"] += 1
+        elif grade == "easy":
+            acc.rating_counts["Easy"] += 1
+        else:
+            acc.rating_counts["Unrated"] += 1
+
+    for deck_id, rev_count in deck_review_counts.items():
+        direct_stats[deck_id].total_reviews = rev_count
 
     children_map: dict[uuid.UUID | None, list[uuid.UUID]] = defaultdict(list)
     for d in decks:
@@ -150,27 +275,45 @@ async def list_decks(
     total_counts: dict[uuid.UUID, int] = {}
     total_dues: dict[uuid.UUID, int] = {}
     total_news: dict[uuid.UUID, int] = {}
+    total_stats: dict[uuid.UUID, DeckStatsAccumulator] = {}
 
-    def rollup(deck_id: uuid.UUID, seen: set[uuid.UUID] | None = None) -> tuple[int, int, int]:
+    def rollup(
+        deck_id: uuid.UUID, seen: set[uuid.UUID] | None = None
+    ) -> tuple[int, int, int, DeckStatsAccumulator]:
         if deck_id in total_counts:
-            return total_counts[deck_id], total_dues[deck_id], total_news[deck_id]
+            return (
+                total_counts[deck_id],
+                total_dues[deck_id],
+                total_news[deck_id],
+                total_stats[deck_id],
+            )
         if seen is None:
             seen = set()
         if deck_id in seen:
-            return 0, 0, 0
+            return 0, 0, 0, DeckStatsAccumulator()
         seen.add(deck_id)
-        c = counts.get(deck_id, 0)
-        du = due.get(deck_id, 0)
-        nw = new.get(deck_id, 0)
+
+        st = (
+            direct_stats[deck_id].clone()
+            if deck_id in direct_stats
+            else DeckStatsAccumulator()
+        )
+        c = st.total_cards
+        du = st.due_cards
+        nw = st.new_cards
+
         for child_id in children_map.get(deck_id, []):
-            rc, rdu, rnw = rollup(child_id, seen)
+            rc, rdu, rnw, rst = rollup(child_id, seen)
             c += rc
             du += rdu
             nw += rnw
+            st.add(rst)
+
         total_counts[deck_id] = c
         total_dues[deck_id] = du
         total_news[deck_id] = nw
-        return c, du, nw
+        total_stats[deck_id] = st
+        return c, du, nw, st
 
     for d in decks:
         if d.id not in total_counts:
@@ -183,17 +326,19 @@ async def list_decks(
             parent_id=str(d.parent_id) if d.parent_id else None,
             desired_retention_override=d.desired_retention_override,
             default_priority=d.default_priority,
-            card_count=counts.get(d.id, 0),
-            due_count=due.get(d.id, 0),
-            new_count=new.get(d.id, 0),
-            total_card_count=total_counts.get(d.id, counts.get(d.id, 0)),
-            total_due_count=total_dues.get(d.id, due.get(d.id, 0)),
-            total_new_count=total_news.get(d.id, new.get(d.id, 0)),
+            position=d.position,
+            card_count=direct_stats[d.id].total_cards if d.id in direct_stats else 0,
+            due_count=direct_stats[d.id].due_cards if d.id in direct_stats else 0,
+            new_count=direct_stats[d.id].new_cards if d.id in direct_stats else 0,
+            total_card_count=total_counts.get(d.id, 0),
+            total_due_count=total_dues.get(d.id, 0),
+            total_new_count=total_news.get(d.id, 0),
             target_event_date=d.target_event_date,
             target_event_title=d.target_event_title,
             documentation=d.documentation,
             thematic_nature=d.thematic_nature,
             source_documents=list(d.source_documents or []),
+            stats=total_stats[d.id].to_out(str(d.id), d.name) if d.id in total_stats else None,
         )
         for d in decks
     ]
@@ -213,6 +358,7 @@ async def create_deck(
         parent_id=parent_id,
         desired_retention_override=body.desired_retention_override,
         default_priority=body.default_priority,
+        position=body.position,
         target_event_date=body.target_event_date,
         target_event_title=body.target_event_title,
         documentation=body.documentation,
@@ -228,12 +374,68 @@ async def create_deck(
         parent_id=str(deck.parent_id) if deck.parent_id else None,
         desired_retention_override=deck.desired_retention_override,
         default_priority=deck.default_priority,
+        position=deck.position,
         target_event_date=deck.target_event_date,
         target_event_title=deck.target_event_title,
         documentation=deck.documentation,
         thematic_nature=deck.thematic_nature,
         source_documents=list(deck.source_documents or []),
     )
+
+
+@router.post("/decks/reorder", response_model=list[DeckOut])
+async def reorder_decks(
+    body: DeckReorderRequest,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[DeckOut]:
+    """Reorder and/or re-parent multiple decks in one batch transaction."""
+    for item in body.items:
+        deck = await _owned_deck(db, user, parse_uuid(item.id))
+        target_parent_id: uuid.UUID | None = None
+        if item.parent_id:
+            parent = await _owned_deck(db, user, parse_uuid(item.parent_id, "parent_id"))
+            if parent.id == deck.id:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, "a deck cannot be its own parent")
+            curr = parent
+            while curr.parent_id:
+                if curr.parent_id == deck.id:
+                    raise HTTPException(
+                        status.HTTP_400_BAD_REQUEST, "cannot move a deck inside its own subdeck"
+                    )
+                curr = await db.get(Deck, curr.parent_id)
+                if not curr:
+                    break
+            target_parent_id = parent.id
+
+        deck.parent_id = target_parent_id
+        deck.position = item.position
+
+        # Sync KnowledgeNode if present
+        kn = (
+            await db.execute(
+                select(KnowledgeNode).where(
+                    KnowledgeNode.user_id == user.id, KnowledgeNode.deck_id == deck.id
+                )
+            )
+        ).scalar_one_or_none()
+        if kn:
+            if deck.parent_id:
+                p_kn = (
+                    await db.execute(
+                        select(KnowledgeNode).where(
+                            KnowledgeNode.user_id == user.id,
+                            KnowledgeNode.deck_id == deck.parent_id,
+                        )
+                    )
+                ).scalar_one_or_none()
+                kn.parent_id = p_kn.id if p_kn else None
+            else:
+                kn.parent_id = None
+            kn.position = deck.position
+
+    await db.commit()
+    return await list_decks(user=user, db=db)
 
 
 @router.patch("/decks/{deck_id}", response_model=DeckOut)
@@ -245,17 +447,56 @@ async def update_deck(
 ) -> DeckOut:
     deck = await _owned_deck(db, user, parse_uuid(deck_id))
     data = body.model_dump(exclude_unset=True)
+    parent_changed = False
     if "parent_id" in data:
         raw = data.pop("parent_id")
+        parent_changed = True
         if raw:
             parent = await _owned_deck(db, user, parse_uuid(raw, "parent_id"))
             if parent.id == deck.id:
                 raise HTTPException(status.HTTP_400_BAD_REQUEST, "a deck cannot be its own parent")
+            # Walk ancestors to ensure no cycles
+            curr = parent
+            while curr.parent_id:
+                if curr.parent_id == deck.id:
+                    raise HTTPException(
+                        status.HTTP_400_BAD_REQUEST, "cannot move a deck inside its own subdeck"
+                    )
+                curr = await db.get(Deck, curr.parent_id)
+                if not curr:
+                    break
             deck.parent_id = parent.id
         else:
             deck.parent_id = None
+    if "position" in data:
+        deck.position = data.pop("position")
     for key, value in data.items():
         setattr(deck, key, value)
+
+    # Sync KnowledgeNode if present
+    kn = (
+        await db.execute(
+            select(KnowledgeNode).where(
+                KnowledgeNode.user_id == user.id, KnowledgeNode.deck_id == deck.id
+            )
+        )
+    ).scalar_one_or_none()
+    if kn:
+        if parent_changed:
+            if deck.parent_id:
+                p_kn = (
+                    await db.execute(
+                        select(KnowledgeNode).where(
+                            KnowledgeNode.user_id == user.id,
+                            KnowledgeNode.deck_id == deck.parent_id,
+                        )
+                    )
+                ).scalar_one_or_none()
+                kn.parent_id = p_kn.id if p_kn else None
+            else:
+                kn.parent_id = None
+        kn.position = deck.position
+
     await db.commit()
     await db.refresh(deck)
     return DeckOut(
@@ -264,6 +505,7 @@ async def update_deck(
         parent_id=str(deck.parent_id) if deck.parent_id else None,
         desired_retention_override=deck.desired_retention_override,
         default_priority=deck.default_priority,
+        position=deck.position,
         target_event_date=deck.target_event_date,
         target_event_title=deck.target_event_title,
         documentation=deck.documentation,
@@ -278,14 +520,38 @@ async def deck_stats(
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ) -> DeckStatsOut:
-    """Return live review progress and difficulty distribution stats for a specific deck."""
-    deck = await _owned_deck(db, user, parse_uuid(deck_id))
+    """Return live review progress and difficulty distribution stats for a specific deck or the entire collection."""
     now = datetime.now(UTC)
+    all_user_decks = (
+        await db.scalars(select(Deck).where(Deck.user_id == user.id))
+    ).all()
+
+    if deck_id in ("__root__", "all", "collection"):
+        target_ids = [d.id for d in all_user_decks]
+        deck_name = "All Decks"
+        deck_id_str = "__root__"
+    else:
+        deck = await _owned_deck(db, user, parse_uuid(deck_id))
+        deck_name = deck.name
+        deck_id_str = str(deck.id)
+
+        # Collect all descendant deck IDs
+        children_map: dict[uuid.UUID | None, list[uuid.UUID]] = defaultdict(list)
+        for d in all_user_decks:
+            children_map[d.parent_id].append(d.id)
+
+        target_ids = [deck.id]
+        queue = [deck.id]
+        while queue:
+            cur = queue.pop(0)
+            for child_id in children_map.get(cur, []):
+                target_ids.append(child_id)
+                queue.append(child_id)
 
     stmt = (
         select(Card, Note)
         .join(Note, Card.note_id == Note.id)
-        .where(Card.deck_id == deck.id, Card.suspended.is_(False))
+        .where(Card.deck_id.in_(target_ids), Card.suspended.is_(False))
     )
     rows = (await db.execute(stmt)).all()
 
@@ -295,8 +561,11 @@ async def deck_stats(
     learning_cards = sum(1 for c, _ in rows if c.state in ("learning", "relearning"))
     review_cards = sum(1 for c, _ in rows if c.state == "review")
     due_cards = sum(
-        1 for c, _ in rows
-        if c.due and (c.due if c.due.tzinfo else c.due.replace(tzinfo=UTC)) <= now and c.state != "new"
+        1
+        for c, _ in rows
+        if c.due
+        and (c.due if c.due.tzinfo else c.due.replace(tzinfo=UTC)) <= now
+        and c.state != "new"
     )
 
     viewed_ratio = round(viewed_cards / total_cards, 4) if total_cards > 0 else 0.0
@@ -325,15 +594,14 @@ async def deck_stats(
         k: v for k, v in diff_counts.items() if v > 0 or k in ("Easy", "Medium", "Hard")
     }
     diff_props = {
-        k: round(v / total_cards, 4) if total_cards > 0 else 0.0
-        for k, v in cleaned_counts.items()
+        k: round(v / total_cards, 4) if total_cards > 0 else 0.0 for k, v in cleaned_counts.items()
     }
 
     # Recall rating distribution: latest final_grade per card in this deck
     log_stmt = (
         select(ReviewLog.card_id, ReviewLog.final_grade)
         .join(Card, ReviewLog.card_id == Card.id)
-        .where(Card.deck_id == deck.id)
+        .where(Card.deck_id.in_(target_ids))
         .order_by(ReviewLog.reviewed_at.asc())
     )
     log_rows = (await db.execute(log_stmt)).all()
@@ -366,8 +634,8 @@ async def deck_stats(
     }
 
     return DeckStatsOut(
-        id=str(deck.id),
-        name=deck.name,
+        id=deck_id_str,
+        name=deck_name,
         total_cards=total_cards,
         viewed_cards=viewed_cards,
         new_cards=new_cards,
@@ -423,9 +691,7 @@ async def delete_all_decks(
         return
 
     note_ids = (
-        await db.scalars(
-            select(Card.note_id).where(Card.deck_id.in_(deck_ids)).distinct()
-        )
+        await db.scalars(select(Card.note_id).where(Card.deck_id.in_(deck_ids)).distinct())
     ).all()
 
     for deck_id in deck_ids:

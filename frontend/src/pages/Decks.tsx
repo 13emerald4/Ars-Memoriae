@@ -7,6 +7,7 @@ import type {
   AtomicityLintResult,
   Card,
   Deck,
+  DeckStats,
   DecomposedCardItem,
   DocumentUpload,
   GenerateDeckResponse,
@@ -15,10 +16,12 @@ import type {
   OcclusionShape,
   SequentialClozeItem,
 } from '../api/types'
+import { DeckReviewStatsBar, CompactDeckDistributionBars } from '../components/DeckReviewStatsBar'
 import { OcclusionEditor } from '../components/Occlusion'
 import { Empty, ErrorNote, PriorityBar, RichText, Section, Spinner } from '../components/ui'
 
 export default function Decks() {
+  const navigate = useNavigate()
   const [decks, setDecks] = useState<Deck[]>([])
   const [noteTypes, setNoteTypes] = useState<NoteType[]>([])
   const [loading, setLoading] = useState(true)
@@ -42,24 +45,109 @@ export default function Decks() {
     void load()
   }, [load])
 
-  if (loading) return <Spinner />
-
   const selectedDeck = decks.find((d) => d.id === selected) || null
+
+  const collectionStats = useMemo<DeckStats>(() => {
+    let totalCards = 0
+    let viewedCards = 0
+    let newCards = 0
+    let learningCards = 0
+    let reviewCards = 0
+    let dueCards = 0
+    let totalReviews = 0
+    const diffCounts: Record<string, number> = { Easy: 0, Medium: 0, Hard: 0, Unrated: 0 }
+    const ratingCounts: Record<string, number> = { Again: 0, Hard: 0, Good: 0, Easy: 0, Unrated: 0 }
+
+    const rootDecks = decks.filter(
+      (d) => !d.parent_id || !decks.some((other) => other.id === d.parent_id),
+    )
+    for (const d of rootDecks) {
+      if (d.stats) {
+        totalCards += d.stats.total_cards || 0
+        viewedCards += d.stats.viewed_cards || 0
+        newCards += d.stats.new_cards || 0
+        learningCards += d.stats.learning_cards || 0
+        reviewCards += d.stats.review_cards || 0
+        dueCards += d.stats.due_cards || 0
+        totalReviews += d.stats.total_reviews || 0
+        for (const [k, v] of Object.entries(d.stats.difficulty_counts || {})) {
+          diffCounts[k] = (diffCounts[k] || 0) + v
+        }
+        for (const [k, v] of Object.entries(d.stats.rating_counts || {})) {
+          ratingCounts[k] = (ratingCounts[k] || 0) + v
+        }
+      }
+    }
+
+    const round4 = (n: number) => Math.round(n * 10000) / 10000
+    const viewedRatio = totalCards > 0 ? round4(viewedCards / totalCards) : 0
+    const diffProps: Record<string, number> = {}
+    for (const [k, v] of Object.entries(diffCounts)) {
+      if (v > 0 || ['Easy', 'Medium', 'Hard'].includes(k)) {
+        diffProps[k] = totalCards > 0 ? round4(v / totalCards) : 0
+      }
+    }
+    const ratingProps: Record<string, number> = {}
+    for (const [k, v] of Object.entries(ratingCounts)) {
+      if (v > 0 || ['Again', 'Hard', 'Good', 'Easy'].includes(k)) {
+        ratingProps[k] = totalCards > 0 ? round4(v / totalCards) : 0
+      }
+    }
+
+    return {
+      id: '__root__',
+      name: 'Entire Collection (All Decks)',
+      total_cards: totalCards,
+      viewed_cards: viewedCards,
+      new_cards: newCards,
+      learning_cards: learningCards,
+      review_cards: reviewCards,
+      due_cards: dueCards,
+      viewed_ratio: viewedRatio,
+      difficulty_counts: diffCounts,
+      difficulty_proportions: diffProps,
+      rating_counts: ratingCounts,
+      rating_proportions: ratingProps,
+      total_reviews: totalReviews,
+    }
+  }, [decks])
+
+  if (loading) return <Spinner />
 
   return (
     <div className="space-y-6">
       <ErrorNote error={error} />
       <DeckList decks={decks} selected={selected} onSelect={setSelected} onChange={load} />
+
+      {/* Full Progress & Distribution Bars for Selected Deck or Entire Collection */}
+      <DeckReviewStatsBar
+        deckId={selectedDeck ? selectedDeck.id : '__root__'}
+        deckName={selectedDeck ? selectedDeck.name : 'All Decks'}
+        stats={selectedDeck ? selectedDeck.stats : collectionStats}
+        onStudyDeck={(id) => {
+          if (id === '__root__') navigate('/review')
+          else navigate(`/review?deck=${id}`)
+        }}
+        onOpenDeckViewer={
+          selectedDeck
+            ? () => {
+                const el = document.getElementById('deck-browser-section')
+                if (el) el.scrollIntoView({ behavior: 'smooth' })
+              }
+            : undefined
+        }
+      />
+
       {selectedDeck && (
         <DeckDocumentationPanel deck={selectedDeck} onChange={load} />
       )}
-      {selected && (
-        <>
-          <AddNote deckId={selected} noteTypes={noteTypes} deck={selectedDeck} onAdded={load} />
-          <SequentialClozePanel deckId={selected} onAdded={load} />
-          <AddOcclusion deckId={selected} onAdded={load} />
-          <Browser deckId={selected} deck={selectedDeck} onChange={load} />
-        </>
+      {selectedDeck && (
+        <div id="deck-browser-section" className="space-y-6">
+          <AddNote deckId={selectedDeck.id} noteTypes={noteTypes} deck={selectedDeck} onAdded={load} />
+          <SequentialClozePanel deckId={selectedDeck.id} onAdded={load} />
+          <AddOcclusion deckId={selectedDeck.id} onAdded={load} />
+          <Browser deckId={selectedDeck.id} deck={selectedDeck} onChange={load} />
+        </div>
       )}
       <DocumentDeckPanel onImported={load} />
       <JsonImportPanel onImported={load} />
@@ -678,6 +766,7 @@ function buildDeckTree(decks: Deck[]): SuperMemoNode[] {
       newCount: d.total_new_count ?? d.new_count,
       deckId: d.id,
       originalDeck: d,
+      stats: d.stats,
       children: kids,
     }
   }
@@ -1013,6 +1102,7 @@ function DeckList({
             nodes={deckTreeNodes}
             onSelectNode={(node) => {
               if (node.deckId) onSelect(node.deckId)
+              else if (node.id === '__root__') onSelect('__root__')
             }}
             onStudyNode={(node) => {
               if (node.id === '__root__') {
@@ -1071,6 +1161,53 @@ function DeckList({
               if (!node.originalDeck) return
               handleDeleteDeck(node.originalDeck)
             }}
+            onDropBranch={(source, target, position) => {
+              if (!source.deckId) return
+              void (async () => {
+                setBusy(true)
+                try {
+                  if (position === 'inside') {
+                    const newParentId = target.id === '__root__' ? null : (target.deckId ?? null)
+                    const existingChildren = decks.filter(
+                      (d) => (d.parent_id ?? null) === newParentId && d.id !== source.deckId,
+                    )
+                    const maxPos = existingChildren.reduce((max, c) => Math.max(max, c.position ?? 0), -1)
+                    await api.updateDeck(source.deckId!, {
+                      parent_id: newParentId,
+                      position: maxPos + 10,
+                    })
+                  } else {
+                    // 'before' or 'after'
+                    const newParentId = target.originalDeck?.parent_id ?? target.parentId ?? null
+                    const siblings = decks
+                      .filter((d) => (d.parent_id ?? null) === newParentId && d.id !== source.deckId)
+                      .sort((a, b) => ((a.position ?? 0) - (b.position ?? 0)) || a.name.localeCompare(b.name))
+
+                    const targetIdx = siblings.findIndex((s) => s.id === target.id)
+                    const insertIdx = position === 'before'
+                      ? (targetIdx === -1 ? 0 : targetIdx)
+                      : (targetIdx === -1 ? siblings.length : targetIdx + 1)
+
+                    const sourceDeck = decks.find((d) => d.id === source.deckId)
+                    if (!sourceDeck) return
+                    const newOrder = [...siblings]
+                    newOrder.splice(insertIdx, 0, sourceDeck)
+
+                    const items = newOrder.map((d, index) => ({
+                      id: d.id,
+                      parent_id: newParentId,
+                      position: index * 10,
+                    }))
+                    await api.reorderDecks(items)
+                  }
+                  onChange()
+                } catch (err) {
+                  alert(`Failed to move branch: ${err instanceof Error ? err.message : String(err)}`)
+                } finally {
+                  setBusy(false)
+                }
+              })()
+            }}
           />
         ) : (
           decks.map((d) => (
@@ -1089,7 +1226,7 @@ function DeckList({
                     </span>
                   )}
                 </div>
-                <p className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                   <span className="chip">{d.card_count} cards</span>
                   {d.total_card_count !== undefined && d.total_card_count !== d.card_count && (
                     <span className="chip border-sky-500/40 text-sky-300">
@@ -1098,6 +1235,9 @@ function DeckList({
                   )}
                   <span className="chip">{d.due_count} due</span>
                   <span className="chip">{d.new_count} new</span>
+                  {d.stats && d.stats.total_cards > 0 && (
+                    <CompactDeckDistributionBars stats={d.stats} />
+                  )}
                 </p>
               </button>
 

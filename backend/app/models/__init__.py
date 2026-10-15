@@ -70,8 +70,12 @@ class User(Base):
     # §4.3 per-user calibration bias (signed, in grade steps).
     grading_bias: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     # Memory Champion / Automaticity & Event Horizon fields
-    automaticity_threshold_ms: Mapped[int | None] = mapped_column(Integer, nullable=True, default=3000)
-    target_event_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    automaticity_threshold_ms: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, default=3000
+    )
+    target_event_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     target_event_title: Mapped[str | None] = mapped_column(Text, nullable=True)
     peak_retention_target: Mapped[float | None] = mapped_column(Float, nullable=True, default=0.95)
     # Module navigation visibility toggles
@@ -100,11 +104,14 @@ class Deck(Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     desired_retention_override: Mapped[float | None] = mapped_column(Float)
     default_priority: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=50)
-    target_event_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    target_event_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     target_event_title: Mapped[str | None] = mapped_column(Text, nullable=True)
     documentation: Mapped[str | None] = mapped_column(Text, nullable=True)
     thematic_nature: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_documents: Mapped[list] = mapped_column(JSONType, nullable=False, default=list)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
@@ -256,9 +263,7 @@ class KnowledgeNode(Base):
     )
 
     __table_args__ = (
-        CheckConstraint(
-            "kind IN ('topic','deck','source','extract')", name="ck_nodes_kind"
-        ),
+        CheckConstraint("kind IN ('topic','deck','source','extract')", name="ck_nodes_kind"),
         CheckConstraint("priority BETWEEN 0 AND 100", name="ck_nodes_priority"),
         Index("idx_nodes_user_parent", "user_id", "parent_id", "position"),
         # The gating check runs on every review (queue composition, §9) as a
@@ -292,9 +297,7 @@ class Note(Base):
     )
 
     note_type: Mapped[NoteType] = relationship(lazy="selectin")
-    cards: Mapped[list[Card]] = relationship(
-        back_populates="note", cascade="all, delete-orphan"
-    )
+    cards: Mapped[list[Card]] = relationship(back_populates="note", cascade="all, delete-orphan")
     media: Mapped[list[MediaAsset]] = relationship(cascade="all, delete-orphan")
 
 
@@ -329,9 +332,7 @@ class Card(Base):
     source_documents: Mapped[list] = mapped_column(JSONType, nullable=False, default=list)
 
     __table_args__ = (
-        CheckConstraint(
-            "state IN ('new','learning','review','relearning')", name="ck_cards_state"
-        ),
+        CheckConstraint("state IN ('new','learning','review','relearning')", name="ck_cards_state"),
         CheckConstraint("priority BETWEEN 0 AND 100", name="ck_cards_priority"),
         CheckConstraint("origin IN ('manual','extract','imported')", name="ck_cards_origin"),
         Index("idx_cards_due", "deck_id", "due"),
@@ -463,9 +464,7 @@ class StudySession(Base):
     distraction: Mapped[str | None] = mapped_column(Text)
     next_time_plan: Mapped[str | None] = mapped_column(Text)
 
-    __table_args__ = (
-        Index("idx_study_sessions_user", "user_id", "started_at"),
-    )
+    __table_args__ = (Index("idx_study_sessions_user", "user_id", "started_at"),)
 
     @property
     def goal_met(self) -> bool:
@@ -589,9 +588,7 @@ class LeechSuggestion(Base):
 
     __table_args__ = (
         CheckConstraint("kind IN ('rewrite','split','ambiguous')", name="ck_leech_kind"),
-        CheckConstraint(
-            "status IN ('pending','accepted','dismissed')", name="ck_leech_status"
-        ),
+        CheckConstraint("status IN ('pending','accepted','dismissed')", name="ck_leech_status"),
     )
 
 
@@ -619,9 +616,7 @@ class SisterPair(Base):
     )
 
     __table_args__ = (
-        CheckConstraint(
-            "kind IN ('interference','duplicate','convergent')", name="ck_sister_kind"
-        ),
+        CheckConstraint("kind IN ('interference','duplicate','convergent')", name="ck_sister_kind"),
         CheckConstraint("status IN ('open','dismissed')", name="ck_sister_status"),
         UniqueConstraint("note_a_id", "note_b_id", name="uq_sister_pair"),
         Index("idx_sister_user", "user_id", "status"),
@@ -637,11 +632,17 @@ class CodeProblem(Base):
     user_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=True
     )
-    kind: Mapped[str] = mapped_column(Text, nullable=False, default="problem")  # "fundamental" | "problem"
-    track: Mapped[str | None] = mapped_column(Text, nullable=True)  # track_0_python_basics, track_1_pythonic_fluency, etc.
+    kind: Mapped[str] = mapped_column(
+        Text, nullable=False, default="problem"
+    )  # "fundamental" | "problem"
+    track: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )  # track_0_python_basics, track_1_pythonic_fluency, etc.
     title: Mapped[str] = mapped_column(Text, nullable=False)
     slug: Mapped[str] = mapped_column(Text, nullable=False, index=True)
-    difficulty: Mapped[str] = mapped_column(Text, nullable=False, default="Easy")  # Easy, Medium, Hard
+    difficulty: Mapped[str] = mapped_column(
+        Text, nullable=False, default="Easy"
+    )  # Easy, Medium, Hard
     category: Mapped[str] = mapped_column(Text, nullable=False, default="General")
     tags: Mapped[list[str]] = mapped_column(JSONType, nullable=False, default=list)
     description: Mapped[str] = mapped_column(Text, nullable=False)
@@ -703,9 +704,7 @@ class LexiconCache(Base):
         DateTime(timezone=True), nullable=False, default=utcnow
     )
 
-    __table_args__ = (
-        Index("idx_lexicon_term_normalized", "term_normalized"),
-    )
+    __table_args__ = (Index("idx_lexicon_term_normalized", "term_normalized"),)
 
 
 __all__ = [

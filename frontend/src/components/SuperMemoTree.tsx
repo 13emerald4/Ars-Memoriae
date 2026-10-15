@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { Deck, TreeNode } from '../api/types'
+import type { Deck, DeckStats, TreeNode } from '../api/types'
+import { CompactDeckDistributionBars } from './DeckReviewStatsBar'
 
 export type SuperMemoTheme = 'modern' | 'classic'
+export type DropPosition = 'before' | 'inside' | 'after'
 
 export interface SuperMemoNode {
   id: string
@@ -18,6 +20,7 @@ export interface SuperMemoNode {
   children: SuperMemoNode[]
   originalNode?: TreeNode
   originalDeck?: Deck
+  stats?: DeckStats | null
 }
 
 interface SuperMemoTreeProps {
@@ -29,8 +32,22 @@ interface SuperMemoTreeProps {
   onRename?: (node: SuperMemoNode) => void
   onDelete?: (node: SuperMemoNode) => void
   onMove?: (node: SuperMemoNode) => void
+  onDropBranch?: (
+    source: SuperMemoNode,
+    target: SuperMemoNode,
+    position: DropPosition,
+  ) => void | Promise<void>
   onOpenCards?: (node: SuperMemoNode) => void
   initialSelectedId?: string | null
+}
+
+/** 6-dots drag grip icon */
+export function DragGripIcon({ className = 'w-3 h-3' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className={`${className} shrink-0`}>
+      <path d="M7 4a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM7 10a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM7 16a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM16 4a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM16 10a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM16 16a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+    </svg>
+  )
 }
 
 /** Glowing incandescent lightbulb icon matching SuperMemo's root item */
@@ -90,6 +107,7 @@ export function SuperMemoTree({
   onRename,
   onDelete,
   onMove,
+  onDropBranch,
   onOpenCards,
   initialSelectedId,
 }: SuperMemoTreeProps) {
@@ -109,10 +127,28 @@ export function SuperMemoTree({
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
 
+  // Drag and Drop state
+  const [draggingNode, setDraggingNode] = useState<SuperMemoNode | null>(null)
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null)
+  const [dropPosition, setDropPosition] = useState<DropPosition | null>(null)
+
   const toggleTheme = () => {
     setTheme((prev) => {
       const next = prev === 'modern' ? 'classic' : 'modern'
       localStorage.setItem('supermemo.treeTheme', next)
+      return next
+    })
+  }
+
+  const [showBars, setShowBars] = useState<boolean>(() => {
+    if (typeof localStorage === 'undefined') return true
+    return localStorage.getItem('supermemo.showProgressBars') !== '0'
+  })
+
+  const toggleBars = () => {
+    setShowBars((prev) => {
+      const next = !prev
+      localStorage.setItem('supermemo.showProgressBars', next ? '1' : '0')
       return next
     })
   }
@@ -134,6 +170,69 @@ export function SuperMemoTree({
     return { elements, due, newCards }
   }, [nodes])
 
+  // Rolled-up root collection stats
+  const rootStats = useMemo<DeckStats>(() => {
+    let totalCards = 0
+    let viewedCards = 0
+    let newCards = 0
+    let learningCards = 0
+    let reviewCards = 0
+    let dueCards = 0
+    let totalReviews = 0
+    const diffCounts: Record<string, number> = { Easy: 0, Medium: 0, Hard: 0, Unrated: 0 }
+    const ratingCounts: Record<string, number> = { Again: 0, Hard: 0, Good: 0, Easy: 0, Unrated: 0 }
+
+    for (const n of nodes) {
+      if (n.stats) {
+        totalCards += n.stats.total_cards || 0
+        viewedCards += n.stats.viewed_cards || 0
+        newCards += n.stats.new_cards || 0
+        learningCards += n.stats.learning_cards || 0
+        reviewCards += n.stats.review_cards || 0
+        dueCards += n.stats.due_cards || 0
+        totalReviews += n.stats.total_reviews || 0
+        for (const [k, v] of Object.entries(n.stats.difficulty_counts || {})) {
+          diffCounts[k] = (diffCounts[k] || 0) + v
+        }
+        for (const [k, v] of Object.entries(n.stats.rating_counts || {})) {
+          ratingCounts[k] = (ratingCounts[k] || 0) + v
+        }
+      }
+    }
+
+    const round4 = (n: number) => Math.round(n * 10000) / 10000
+    const viewedRatio = totalCards > 0 ? round4(viewedCards / totalCards) : 0
+    const diffProps: Record<string, number> = {}
+    for (const [k, v] of Object.entries(diffCounts)) {
+      if (v > 0 || ['Easy', 'Medium', 'Hard'].includes(k)) {
+        diffProps[k] = totalCards > 0 ? round4(v / totalCards) : 0
+      }
+    }
+    const ratingProps: Record<string, number> = {}
+    for (const [k, v] of Object.entries(ratingCounts)) {
+      if (v > 0 || ['Again', 'Hard', 'Good', 'Easy'].includes(k)) {
+        ratingProps[k] = totalCards > 0 ? round4(v / totalCards) : 0
+      }
+    }
+
+    return {
+      id: '__root__',
+      name: rootTitle,
+      total_cards: totalCards,
+      viewed_cards: viewedCards,
+      new_cards: newCards,
+      learning_cards: learningCards,
+      review_cards: reviewCards,
+      due_cards: dueCards,
+      viewed_ratio: viewedRatio,
+      difficulty_counts: diffCounts,
+      difficulty_proportions: diffProps,
+      rating_counts: ratingCounts,
+      rating_proportions: ratingProps,
+      total_reviews: totalReviews,
+    }
+  }, [nodes, rootTitle])
+
   // Lookup map
   const allNodesMap = useMemo(() => {
     const map = new Map<string, SuperMemoNode>()
@@ -145,6 +244,7 @@ export function SuperMemoTree({
       elementCount: rootTotals.elements,
       dueCount: rootTotals.due,
       newCount: rootTotals.newCards,
+      stats: rootStats,
       children: nodes,
     }
     map.set('__root__', rootNode)
@@ -159,7 +259,7 @@ export function SuperMemoTree({
     }
     walk(nodes)
     return map
-  }, [nodes, rootTitle, rootTotals])
+  }, [nodes, rootTitle, rootTotals, rootStats])
 
   const selectedNode = allNodesMap.get(selectedId) || allNodesMap.get('__root__')!
 
@@ -186,6 +286,85 @@ export function SuperMemoTree({
   const handleNodeClick = (node: SuperMemoNode) => {
     setSelectedId(node.id)
     if (onSelectNode) onSelectNode(node)
+  }
+
+  // Precompute invalid drop targets (source itself + all descendants) to prevent cyclic graphs
+  const invalidTargetIds = useMemo(() => {
+    if (!draggingNode) return new Set<string>()
+    const ids = new Set<string>([draggingNode.id])
+    const walk = (n: SuperMemoNode) => {
+      for (const child of n.children || []) {
+        ids.add(child.id)
+        walk(child)
+      }
+    }
+    walk(draggingNode)
+    return ids
+  }, [draggingNode])
+
+  const handleDragStart = (node: SuperMemoNode, e: React.DragEvent) => {
+    e.stopPropagation()
+    setDraggingNode(node)
+    e.dataTransfer.setData('text/plain', node.title)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragEnd = () => {
+    setDraggingNode(null)
+    setDropTargetId(null)
+    setDropPosition(null)
+  }
+
+  const handleDragOverNode = (node: SuperMemoNode, e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!draggingNode || invalidTargetIds.has(node.id)) {
+      e.dataTransfer.dropEffect = 'none'
+      if (dropTargetId === node.id) {
+        setDropTargetId(null)
+        setDropPosition(null)
+      }
+      return
+    }
+
+    e.dataTransfer.dropEffect = 'move'
+    if (node.id === '__root__') {
+      setDropTargetId('__root__')
+      setDropPosition('inside')
+      return
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect()
+    const relY = (e.clientY - rect.top) / rect.height
+    let pos: DropPosition = 'inside'
+    if (relY < 0.28) {
+      pos = 'before'
+    } else if (relY > 0.72) {
+      pos = 'after'
+    } else {
+      pos = 'inside'
+    }
+
+    setDropTargetId(node.id)
+    setDropPosition(pos)
+  }
+
+  const handleDropOnNode = (targetNode: SuperMemoNode, e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const source = draggingNode
+    const target = targetNode
+    const pos = dropPosition
+
+    setDraggingNode(null)
+    setDropTargetId(null)
+    setDropPosition(null)
+
+    if (!source || !pos) return
+    if (invalidTargetIds.has(target.id)) return
+    if (source.id === target.id) return
+
+    onDropBranch?.(source, target, pos)
   }
 
   const handleLearn = (targetNode = selectedNode) => {
@@ -328,6 +507,21 @@ export function SuperMemoTree({
 
           <span className="h-4 w-px bg-slate-700/60 mx-1" />
 
+          {/* Progress Bars Toggle */}
+          <button
+            type="button"
+            className={`px-2 py-0.5 rounded text-[11px] font-medium transition flex items-center gap-1 ${
+              showBars
+                ? 'bg-sky-500/20 text-sky-200 border border-sky-500/40'
+                : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800 border border-transparent'
+            }`}
+            title="Toggle compact distribution bars on each branch"
+            onClick={toggleBars}
+          >
+            <span>📊</span>
+            <span>Bars</span>
+          </button>
+
           {/* Expand / Collapse All */}
           <button
             type="button"
@@ -410,11 +604,17 @@ export function SuperMemoTree({
         {/* Root Node */}
         <div className="relative">
           <div
-            className={`group flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer transition-all duration-150 ${
+            className={`group relative flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer transition-all duration-150 ${
               selectedId === '__root__'
                 ? 'bg-sky-500/15 text-sky-100 border border-sky-500/35 shadow-xs ring-1 ring-sky-500/20'
                 : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border border-transparent'
+            } ${
+              dropTargetId === '__root__'
+                ? 'ring-2 ring-sky-400 bg-sky-500/25 border-sky-400 shadow-md'
+                : ''
             }`}
+            onDragOver={(e) => handleDragOverNode(allNodesMap.get('__root__')!, e)}
+            onDrop={(e) => handleDropOnNode(allNodesMap.get('__root__')!, e)}
             onClick={() =>
               handleNodeClick({
                 id: '__root__',
@@ -431,8 +631,9 @@ export function SuperMemoTree({
             {/* Expand / Collapse Chevron */}
             <button
               type="button"
+              draggable={false}
               onClick={(e) => toggleExpand('__root__', e)}
-              className="p-0.5 rounded hover:bg-slate-700/40 text-slate-400 hover:text-slate-200 transition"
+              className="p-0.5 rounded hover:bg-slate-700/40 text-slate-400 hover:text-slate-200 transition shrink-0"
             >
               <ChevronIcon expanded={expanded.has('__root__')} />
             </button>
@@ -448,14 +649,26 @@ export function SuperMemoTree({
               ({rootTotals.elements})
             </span>
 
+            {/* Distribution bars on Root */}
+            {showBars && rootStats.total_cards > 0 && (
+              <CompactDeckDistributionBars stats={rootStats} className="ml-2 shrink-0" />
+            )}
+
+            {/* Drop Indicator on Root */}
+            {dropTargetId === '__root__' && draggingNode && (
+              <span className="chip border-sky-400 bg-sky-500/30 text-sky-100 text-[10px] py-0 px-2 font-bold ml-auto animate-pulse">
+                ↳ Move to Top-Level (Root)
+              </span>
+            )}
+
             {/* Badges */}
             {rootTotals.due > 0 && (
-              <span className="chip border-sky-500/40 bg-sky-500/15 text-sky-300 text-[10px] py-0 px-2 font-semibold ml-1">
+              <span className="chip border-sky-500/40 bg-sky-500/15 text-sky-300 text-[10px] py-0 px-2 font-semibold ml-auto shrink-0">
                 {rootTotals.due} due
               </span>
             )}
             {rootTotals.newCards > 0 && (
-              <span className="chip border-emerald-500/40 bg-emerald-500/15 text-emerald-300 text-[10px] py-0 px-2 font-semibold">
+              <span className="chip border-emerald-500/40 bg-emerald-500/15 text-emerald-300 text-[10px] py-0 px-2 font-semibold shrink-0">
                 {rootTotals.newCards} new
               </span>
             )}
@@ -479,8 +692,17 @@ export function SuperMemoTree({
                     searchQuery={searchQuery}
                     guideLineColor={guideLineColor}
                     isClassic={isClassic}
+                    showBars={showBars}
+                    draggingNode={draggingNode}
+                    dropTargetId={dropTargetId}
+                    dropPosition={dropPosition}
+                    invalidTargetIds={invalidTargetIds}
                     onToggle={toggleExpand}
                     onSelect={handleNodeClick}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={handleDragOverNode}
+                    onDrop={handleDropOnNode}
                   />
                 ))}
             </div>
@@ -525,8 +747,17 @@ interface SuperMemoTreeNodeProps {
   searchQuery: string
   guideLineColor: string
   isClassic: boolean
+  showBars: boolean
+  draggingNode: SuperMemoNode | null
+  dropTargetId: string | null
+  dropPosition: DropPosition | null
+  invalidTargetIds: Set<string>
   onToggle: (id: string, e: React.MouseEvent) => void
   onSelect: (node: SuperMemoNode) => void
+  onDragStart: (node: SuperMemoNode, e: React.DragEvent) => void
+  onDragEnd: () => void
+  onDragOver: (node: SuperMemoNode, e: React.DragEvent) => void
+  onDrop: (node: SuperMemoNode, e: React.DragEvent) => void
 }
 
 function SuperMemoTreeNode({
@@ -537,12 +768,24 @@ function SuperMemoTreeNode({
   searchQuery,
   guideLineColor,
   isClassic,
+  showBars,
+  draggingNode,
+  dropTargetId,
+  dropPosition,
+  invalidTargetIds,
   onToggle,
   onSelect,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop,
 }: SuperMemoTreeNodeProps) {
   const isSelected = selectedId === node.id
   const hasChildren = node.children && node.children.length > 0
   const isOpen = expanded.has(node.id)
+
+  const isDraggingThis = draggingNode?.id === node.id
+  const isDropTarget = dropTargetId === node.id
 
   const renderIcon = () => {
     if (node.kind === 'source' || node.kind === 'extract') {
@@ -561,19 +804,51 @@ function SuperMemoTreeNode({
 
       {/* Node Row */}
       <div
-        className={`group flex items-center gap-1.5 py-1.5 px-2 rounded-lg cursor-pointer transition-all duration-150 ${
+        draggable={!node.locked}
+        onDragStart={(e) => onDragStart(node, e)}
+        onDragEnd={onDragEnd}
+        onDragOver={(e) => onDragOver(node, e)}
+        onDrop={(e) => onDrop(node, e)}
+        className={`group relative flex items-center gap-1.5 py-1.5 px-2 rounded-lg cursor-pointer transition-all duration-150 ${
           isSelected
             ? 'bg-sky-500/15 text-sky-100 border border-sky-500/35 shadow-xs ring-1 ring-sky-500/20'
             : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border border-transparent'
+        } ${
+          isDraggingThis ? 'opacity-35 ring-1 ring-dashed ring-slate-400 bg-slate-800/40' : ''
+        } ${
+          isDropTarget && dropPosition === 'inside'
+            ? 'ring-2 ring-sky-400 bg-sky-500/20 border-sky-400 shadow-md'
+            : ''
         }`}
         onClick={() => onSelect(node)}
       >
+        {/* Drop Indicators: Before and After insertion lines */}
+        {isDropTarget && dropPosition === 'before' && (
+          <div className="absolute -top-1 left-1 right-1 h-1 bg-sky-400 rounded-full shadow-[0_0_8px_rgba(56,189,248,0.9)] z-20 pointer-events-none flex items-center">
+            <span className="text-[9px] font-bold text-sky-950 bg-sky-300 px-1 rounded-xs ml-2 shadow-xs">▲ Insert Before</span>
+          </div>
+        )}
+        {isDropTarget && dropPosition === 'after' && (
+          <div className="absolute -bottom-1 left-1 right-1 h-1 bg-sky-400 rounded-full shadow-[0_0_8px_rgba(56,189,248,0.9)] z-20 pointer-events-none flex items-center">
+            <span className="text-[9px] font-bold text-sky-950 bg-sky-300 px-1 rounded-xs ml-2 shadow-xs">▼ Insert After</span>
+          </div>
+        )}
+
+        {/* Drag Handle Grip */}
+        <span
+          className="opacity-0 group-hover:opacity-70 hover:!opacity-100 transition-opacity p-0.5 -ml-1 text-slate-500 hover:text-slate-200 cursor-grab active:cursor-grabbing shrink-0"
+          title="Drag to reorder or re-parent branch"
+        >
+          <DragGripIcon className="w-3.5 h-3.5" />
+        </span>
+
         {/* Chevron */}
         {hasChildren ? (
           <button
             type="button"
+            draggable={false}
             onClick={(e) => onToggle(node.id, e)}
-            className="p-0.5 rounded hover:bg-slate-700/40 text-slate-400 hover:text-slate-200 transition"
+            className="p-0.5 rounded hover:bg-slate-700/40 text-slate-400 hover:text-slate-200 transition shrink-0"
           >
             <ChevronIcon expanded={isOpen} />
           </button>
@@ -593,6 +868,18 @@ function SuperMemoTreeNode({
         <span className="text-[11px] text-slate-400 font-mono tabular-nums shrink-0">
           ({node.elementCount})
         </span>
+
+        {/* Inline Compact Distribution Bars */}
+        {showBars && node.stats && node.stats.total_cards > 0 && (
+          <CompactDeckDistributionBars stats={node.stats} className="ml-1 shrink-0" />
+        )}
+
+        {/* Drop inside indicator badge */}
+        {isDropTarget && dropPosition === 'inside' && (
+          <span className="text-[10px] font-semibold text-sky-200 bg-sky-950/90 px-1.5 py-0.5 rounded border border-sky-400/60 ml-auto shrink-0 animate-pulse">
+            ↳ Move Inside
+          </span>
+        )}
 
         {/* Missing Documents Indicator Badge */}
         {(node.title.startsWith('!') || node.title.includes('[!]')) && (
@@ -633,8 +920,17 @@ function SuperMemoTreeNode({
                 searchQuery={searchQuery}
                 guideLineColor={guideLineColor}
                 isClassic={isClassic}
+                showBars={showBars}
+                draggingNode={draggingNode}
+                dropTargetId={dropTargetId}
+                dropPosition={dropPosition}
+                invalidTargetIds={invalidTargetIds}
                 onToggle={onToggle}
                 onSelect={onSelect}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
+                onDragOver={onDragOver}
+                onDrop={onDrop}
               />
             ))}
         </div>
