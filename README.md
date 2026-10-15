@@ -8,6 +8,14 @@ ergonomics of Anki, and the review-quality signals of Mnemosyne — with two str
   override is logged and fed back as a calibration bias.
 - **A priority queue, not a due-date list.** Due reviews, new cards, and Incremental Reading
   extracts are ranked by priority and filled into a daily time budget, then interleaved.
+- **SuperMemo-style Knowledge Tree.** Organize decks and knowledge nodes hierarchically with
+  intuitive drag-and-drop branch reordering and recursive progress tracking.
+- **Visual Progress & Distribution Bars.** Instantly inspect Cards Viewed, Difficulty Distribution,
+  and Recall Ratings with recursive hierarchical rollup across entire courses and subdecks.
+- **Interactive Code Lab & Socratic Tutor.** Practice live code implementations with instant
+  test suite execution and an AI coding guide.
+- **Cognitive Visual Themes & Typography.** 6 state-adaptive color schemes + pure OLED dark mode,
+  featuring clean Verdana typography.
 
 Self-hostable, imports notes from JSON, and exports everything on demand.
 
@@ -175,6 +183,18 @@ model gets the card plus your recent failed answers and proposes one of: a **rew
 into smaller cards, or a note that the card is **ambiguous** and needs your judgement. Accept,
 suspend, or keep it as-is from the Stats page. One call per leech, not per review.
 
+### Hierarchical Knowledge Tree & Drag-and-Drop Reordering
+
+Inspired by SuperMemo, knowledge is structured hierarchically into branches, topics, and subdecks. Users can dynamically reorganize the deck hierarchy via smooth drag-and-drop directly in the tree view. Custom branch ordering is maintained persistently via the deck `position` index (`POST /api/decks/reorder`), ensuring study sequences follow pedagogical syllabi rather than purely alphabetical order.
+
+### Deck Progress & Distribution Bars (Hierarchical Rollup)
+
+To give an instant, accurate picture of mastery across courses and subjects:
+- **Cards Viewed:** Breakdown between unseen (0 reviews), newly acquired (1–2 reviews), and deeply established (3+ reviews).
+- **Difficulty Distribution:** FSRS difficulty buckets: Easy (<4.0), Medium (4.0–7.0), and Hard (>7.0).
+- **Recall Ratings:** Aggregate historical performance across Again, Hard, Good, and Easy ratings.
+- **Hierarchical Rollup:** Parent decks and course roots automatically aggregate cards and metrics across all nested descendants, providing macro-level course analytics alongside micro-level chapter progress.
+
 ### Plugins
 
 The three seams the architecture was built around — note-type rendering, grading-profile
@@ -230,7 +250,7 @@ upgrades are your job.
 ## Testing
 
 ```bash
-cd backend && .venv/bin/pytest -q     # 184 tests
+cd backend && .venv/bin/pytest -q     # 430 tests
 cd frontend && npm run build          # tsc + vite build
 ```
 
@@ -343,22 +363,26 @@ Everything here was driven by how a library or API actually behaves, not prefere
 ```
 memorization-app/
 ├── .env.example
+├── start_windows.bat      # 1-click Windows native launcher
+├── start_mac.sh           # 1-click macOS / Linux launcher
+├── FRIENDS_SETUP.md       # 3-minute quickstart guide for friends
 ├── backend/
-│   ├── alembic/versions/0001_initial.py   # the §5.1 schema
-│   └── app/
-│       ├── core/          config, auth, at-rest key encryption
-│       ├── models/        ORM, 1:1 with the schema
-│       ├── schemas/       request/response contracts
-│       ├── routers/       auth keys decks queue review sources imports stats
-│       │                  export optimize media interference
-│       ├── services/      fsrs grading queue ir leech note rendering
-│       │                  registry interference plugins
-│   └── plugins.example/    a working plugin for the grading-profile seam
-│       └── jobs/          nightly FSRS refit, cache eviction, IR release
+│   ├── alembic/versions/  # database schema migrations (0001–0021)
+│   ├── app/
+│   │   ├── core/          config, auth, at-rest key encryption
+│   │   ├── models/        ORM, 1:1 with the schema
+│   │   ├── schemas/       request/response contracts
+│   │   ├── routers/       auth, decks, tree, queue, review, sources, imports,
+│   │   │                  stats, export, optimize, media, interference, code
+│   │   ├── services/      fsrs, grading, queue, ir, leech, note, rendering,
+│   │   │                  registry, interference, tree_service, plugins
+│   │   └── jobs/          nightly FSRS refit, cache eviction, IR release
+│   └── scripts/           deck study ordering, ingestion, and maintenance
 └── frontend/src/
-    ├── api/               typed client
-    ├── components/        ui, Occlusion (editor + masked card renderer)
-    └── pages/             Review Read Decks Stats Settings
+    ├── api/               typed client & models
+    ├── components/        SuperMemoTree, DeckReviewStatsBar, CodeEditor,
+    │                      CodeTestConsole, Occlusion, LexiconPopover
+    └── pages/             Review, Read, Decks, Tree, CodeLab, Stats, Settings
 ```
 
 Note-type rendering, grading-profile selection, and queue composition are resolved through a small
