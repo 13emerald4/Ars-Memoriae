@@ -86,6 +86,17 @@ cd backend
 .\.venv\Scripts\python.exe -m alembic upgrade head
 cd ..
 
+:: Optional Local AI Engine (Ollama)
+where ollama >nul 2>&1
+if not errorlevel 1 (
+    netstat -ano | findstr ":11434.*LISTENING" >nul
+    if errorlevel 1 (
+        echo   Starting local Ollama daemon...
+        start /min "Ollama" ollama serve
+        timeout /t 2 /nobreak >nul
+    )
+)
+
 :: 5. Launch Ars Memoriae & Browser
 echo [5/5] Launching Ars Memoriae...
 echo.

@@ -53,6 +53,15 @@ backend/.venv/bin/python scripts/sync_backend_deps.py
 echo "[4/5] Checking database schema..."
 (cd backend && ./.venv/bin/alembic upgrade head)
 
+# Optional Local AI Engine (Ollama)
+if command -v ollama >/dev/null 2>&1; then
+    if ! curl -s http://localhost:11434 >/dev/null 2>&1; then
+        echo "  Starting local Ollama daemon in background..."
+        ollama serve >/dev/null 2>&1 &
+        sleep 2
+    fi
+fi
+
 # 5. Launch Ars Memoriae & Browser
 echo "[5/5] Launching Ars Memoriae..."
 echo ""

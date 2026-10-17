@@ -63,8 +63,9 @@ Ars Memoriae's AI features (grading, hints, code tutor) run on **Ollama**, a fre
 1. Download and install [Ollama](https://ollama.com).
 2. Open a terminal and run:
    ```bash
-   ollama run qwen2.5-coder:7b
+   ollama pull qwen2.5-coder:3b
    ```
+   *(The 3B model is lightweight, takes only ~1.9 GB of disk space, and runs smoothly on both dedicated GPUs and standard CPUs.)*
 3. Ars Memoriae will automatically detect Ollama running on `http://localhost:11434`.
 4. In Ars Memoriae, open **Settings (⚙️)** and turn on **LLM grading**.
 
