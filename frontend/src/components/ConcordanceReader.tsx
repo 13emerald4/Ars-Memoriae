@@ -506,7 +506,7 @@ export function ConcordanceReader({
               {/* Formal MIT Definition */}
               <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 space-y-1.5">
                 <p className="font-bold text-sky-300 uppercase tracking-wider text-[10px]">
-                  📖 Formal MIT 6.0001 Definition:
+                  📖 Definition:
                 </p>
                 <p className="text-slate-200 text-sm leading-relaxed">
                   {pinnedEntry.definition}
@@ -517,7 +517,7 @@ export function ConcordanceReader({
               {pinnedEntry.notation && (
                 <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 space-y-1">
                   <p className="font-bold text-amber-300 uppercase tracking-wider text-[10px]">
-                    ✎ Formal Notation & Invariant:
+                    ✎ Notation:
                   </p>
                   <p className="font-mono text-[12px] leading-relaxed text-amber-100">
                     {pinnedEntry.notation}
@@ -528,7 +528,7 @@ export function ConcordanceReader({
               {/* LeetCode Transfer */}
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 space-y-1">
                 <p className="font-bold text-emerald-300 uppercase tracking-wider text-[10px]">
-                  🎯 LeetCode Application & Transfer:
+                  🎯 Application:
                 </p>
                 <p className="text-slate-200 leading-relaxed">
                   {pinnedEntry.leetCodeRelevance}
@@ -538,7 +538,7 @@ export function ConcordanceReader({
               {/* All Cross-Chapter References */}
               <div className="space-y-3">
                 <h4 className="font-bold text-slate-100 text-xs uppercase tracking-wider flex items-center justify-between">
-                  <span>📑 Complete Cross-Chapter Concordance ({pinnedEntry.occurrences.length} references)</span>
+                  <span>📑 Concordance ({pinnedEntry.occurrences.length} references)</span>
                 </h4>
 
                 <div className="space-y-2.5">

@@ -69,13 +69,13 @@ export default function Stats() {
         <div className="space-y-6 rounded-2xl border border-sky-500/20 bg-sky-950/10 p-4 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-line pb-4">
             <div>
-              <h2 className="text-lg font-semibold text-sky-200">Learning Sciences Analytics</h2>
+              <h2 className="text-lg font-semibold text-sky-200">Learning Analytics</h2>
               <p className="text-xs text-slate-400">
-                Statistical telemetry grounded in cognitive load, chronobiology, psychometrics, and metacognition.
+                Cognitive load, chronobiology, psychometrics, and metacognition.
               </p>
             </div>
             <span className="chip border-sky-500/40 bg-sky-500/10 text-sky-300">
-              Active Optimization Suite
+              Active
             </span>
           </div>
 
@@ -99,18 +99,18 @@ export default function Stats() {
       )}
 
       {/* ── Core Review Activity & Retention ── */}
-      <Section title="Activity" description="Reviews per day over the last year.">
+      <Section title="Activity" description="Reviews per day (1 year).">
         <Heatmap data={stats.heatmap} />
       </Section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Section title="Forecast" description="Cards coming due over the next 30 days.">
+        <Section title="Forecast" description="Upcoming cards (30 days).">
           <Bars data={stats.forecast} color="bg-sky-400/70" />
         </Section>
 
         <Section
           title="Retention"
-          description="How often you recalled a card, bucketed by how long it was left."
+          description="Recall rate by interval."
         >
           {Object.keys(stats.retention).length === 0 ? (
             <Empty title="Not enough review history yet." />
@@ -136,7 +136,7 @@ export default function Stats() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Section title="LLM grading" description="How much you agree with the model (§4.3).">
+        <Section title="LLM grading" description="Agreement with model.">
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <Row label="Answers graded" value={stats.grading.llm_graded} />
             <Row label="Agreement" value={`${Math.round(stats.grading.agreement_rate * 100)}%`} />
@@ -155,7 +155,7 @@ export default function Stats() {
           </dl>
         </Section>
 
-        <Section title="Reading throughput" description="Incremental reading progress (§8).">
+        <Section title="Reading throughput" description="Incremental reading progress.">
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <Row label="Active sources" value={stats.ir_throughput.sources_active} />
             <Row label="Extracts left" value={stats.ir_throughput.extracts_active} />
@@ -177,8 +177,8 @@ function CognitiveFatigue({ fatigue }: { fatigue: LearningAnalytics['fatigue'] }
   const curve = fatigue.curve || []
   return (
     <Section
-      title="Cognitive Fatigue & Focus Horizon"
-      description="Recall accuracy and latency decay over continuous session minutes."
+      title="Cognitive Fatigue"
+      description="Recall accuracy and latency over session duration."
     >
       <div className="mb-3 rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -237,8 +237,8 @@ function CircadianChronotype({ chronotype }: { chronotype: LearningAnalytics['ch
 
   return (
     <Section
-      title="Circadian Chronotype Efficiency"
-      description="Retrieval velocity and consolidation efficiency by hour of day (0–23)."
+      title="Circadian Chronotype"
+      description="Efficiency by hour of day (0–23)."
     >
       <div className="mb-3 rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3">
         <div className="flex items-center gap-2">
@@ -300,8 +300,8 @@ function DesirableDifficultyView({ difficulty }: { difficulty: LearningAnalytics
   const curve = difficulty.curve || []
   return (
     <Section
-      title="Desirable Difficulty & Yield Curve"
-      description="Memory stability gained (ΔS) relative to retrievability at review time."
+      title="Desirable Difficulty"
+      description="Stability gain (ΔS) relative to retrievability."
     >
       <div className="mb-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
         <div className="flex items-center gap-2">

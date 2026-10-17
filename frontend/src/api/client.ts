@@ -163,8 +163,18 @@ export const api = {
   lesson: (cardId: string) => request<Lesson>(`/api/review/${cardId}/lesson`),
   // Socratic AI Guide — one diagnostic question at a time, never the answer.
   // Stateless: the full turn history goes up with every message.
-  guide: (cardId: string, history: SocraticTurn[], message: string) =>
-    post<SocraticResponse>(`/api/review/${cardId}/guide`, { history, message }),
+  guide: (
+    cardId: string,
+    history: SocraticTurn[],
+    message: string,
+    options?: { model?: string; allow_smaller_model?: boolean },
+  ) =>
+    post<SocraticResponse>(`/api/review/${cardId}/guide`, {
+      history,
+      message,
+      model: options?.model,
+      allow_smaller_model: options?.allow_smaller_model ?? true,
+    }),
   weaknessHint: (cardId: string) =>
     post<WeaknessHintResponse>(`/api/review/${cardId}/weakness-hint`, {}),
   socraticLineHint: (cardId: string, body: SocraticLineHintRequest) =>

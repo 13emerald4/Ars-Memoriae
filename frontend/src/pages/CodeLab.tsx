@@ -413,7 +413,7 @@ export default function CodeLab() {
           <button
             onClick={handleShuffle}
             className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#333333] bg-[#262626] text-xs text-[#8a8a8a] hover:text-[#eff1f6] hover:bg-[#333333] transition"
-            title="Pick Random Problem (Shuffle)"
+            title="Random problem"
           >
             🔀
           </button>
@@ -425,7 +425,7 @@ export default function CodeLab() {
             onClick={handleRun}
             disabled={running || submitting}
             className="flex items-center gap-1.5 rounded-lg border border-[#3a3a3a] bg-[#262626] hover:bg-[#333333] px-3.5 py-1 text-xs font-semibold text-[#eff1f6] transition disabled:opacity-40"
-            title="Run Code (Ctrl+Enter)"
+            title="Run (Ctrl+Enter)"
           >
             <span className="text-xs text-[#8a8a8a]">▶</span>
             <span>{running ? 'Running…' : 'Run'}</span>
@@ -435,7 +435,7 @@ export default function CodeLab() {
             onClick={handleSubmit}
             disabled={running || submitting}
             className="flex items-center gap-1.5 rounded-lg bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 px-4 py-1 text-xs font-bold text-white shadow transition disabled:opacity-40"
-            title="Submit Code (Ctrl+Shift+Enter)"
+            title="Submit (Ctrl+Shift+Enter)"
           >
             <span>☁️</span>
             <span>{submitting ? 'Submitting…' : 'Submit'}</span>
@@ -462,7 +462,7 @@ export default function CodeLab() {
                 setViewMode('workbench')
                 setLayoutMode('split')
               }}
-              title="50/50 Split View (Problem on left, Code editor on right)"
+              title="Split view"
               className={`rounded px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1 ${
                 viewMode === 'workbench' && layoutMode === 'split'
                   ? 'bg-[#2cbb5d] text-white shadow'
@@ -470,14 +470,14 @@ export default function CodeLab() {
               }`}
             >
               <span>◫</span>
-              <span>50/50 Split</span>
+              <span>Split</span>
             </button>
             <button
               onClick={() => {
                 setViewMode('workbench')
                 setLayoutMode('code')
               }}
-              title="Full width Code Editor"
+              title="Full editor"
               className={`rounded px-2 py-1 text-xs font-semibold transition hidden sm:inline ${
                 viewMode === 'workbench' && layoutMode === 'code'
                   ? 'bg-[#2cbb5d] text-white shadow'

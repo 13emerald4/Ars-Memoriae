@@ -35,55 +35,55 @@ interface Ctx {
 
 const MILESTONES: Milestone[] = [
   {
-    title: 'Turn on local AI grading',
-    body: 'Optional. Start Ollama (ollama run qwen2.5-coder:7b), then turn on LLM grading in Settings. It unlocks grading with reasoning, Learn & Practice lessons, and the Socratic Guide. Without it, the app still functions completely via manual grading.',
+    title: 'Enable AI grading',
+    body: 'Optional. Turn on LLM grading in Settings for automated feedback and reasoning.',
     route: '/settings',
-    routeLabel: 'Go to Settings',
+    routeLabel: 'Settings',
     done: (c) => c.llmEnabled,
     optional: true,
   },
   {
-    title: 'Create or import your first cards',
-    body: 'Add a deck and write notes by hand, or bulk-import JSON notes.',
+    title: 'Create or import cards',
+    body: 'Add a deck and create cards, or import JSON.',
     route: '/decks',
-    routeLabel: 'Go to Decks',
+    routeLabel: 'Decks',
     done: (c) => c.cardCount > 0,
   },
   {
-    title: 'Add reading material or upload a document',
-    body: 'Paste an article URL, text, or upload a document. It splits into paragraph extracts with verified citations (page numbers/sections) that schedule into your queue.',
+    title: 'Add reading material',
+    body: 'Import text or documents to schedule extracts into your queue.',
     route: '/read',
-    routeLabel: 'Go to Read',
+    routeLabel: 'Read',
     done: (c) => c.sourcesActive > 0,
     optional: true,
   },
   {
-    title: 'Review with Active Recall & Metacognitive Confidence',
-    body: 'Select your pre-recall confidence level (Judgment of Learning: Guess, Unsure, Likely, Solid), type your answer, and review the LLM grade breakdown verified by the token-by-token answer similarity checker.',
+    title: 'Active recall review',
+    body: 'Select confidence, type your answer, and review AI grading. Conceptual mistakes are saved to memory to coach you on future reviews.',
     route: '/review',
-    routeLabel: 'Go to Review',
+    routeLabel: 'Review',
     done: (c) => c.reviewsLogged > 0,
   },
   {
-    title: 'Run a timed study block in the Time Bank',
-    body: 'Start a focused block with a duration and card target on the Review page. Finishing early banks remaining time to reward mastery velocity over passive seat time.',
+    title: 'Timed study block',
+    body: 'Set a duration and card target. Finish early to bank time.',
     route: '/review',
-    routeLabel: 'Go to Review',
+    routeLabel: 'Review',
     done: (c) => c.blocksFinished > 0,
   },
   {
-    title: 'Post-session reflection',
-    body: 'Answer what distracted you and your plan for the next block — closing the executive-function loop after hitting your study goal.',
+    title: 'Session reflection',
+    body: 'Log distractions and action plans after completing a block.',
     route: '/review',
-    routeLabel: 'Go to Review',
+    routeLabel: 'Review',
     done: (c) => c.hasReflected,
     optional: true,
   },
   {
-    title: 'Inspect your Learning Sciences Analytics',
-    body: 'Examine your cognitive fatigue horizon, 24-hour chronotype efficiency map, psychometric item discrimination (r_pb), desirable difficulty yield, and Brier calibration.',
+    title: 'Learning analytics',
+    body: 'View fatigue, chronotype efficiency, difficulty, and calibration.',
     route: '/stats',
-    routeLabel: 'Go to Stats',
+    routeLabel: 'Stats',
     done: (c) => c.hasAnalytics,
   },
 ]
@@ -98,59 +98,66 @@ interface Extra {
 
 const EXPLORE_WHEN_READY: Extra[] = [
   {
-    title: 'Learning Sciences Analytics Suite',
-    body: 'View your optimal focus breakpoint (e.g. 25 min), peak circadian study window, ambiguous card triage (negative r_pb correlation), and Brier calibration curve.',
+    title: 'Learning Analytics',
+    body: 'Optimal focus breakpoint, chronotype efficiency, ambiguous card triage, and calibration.',
     route: '/stats',
-    routeLabel: 'Go to Stats',
+    routeLabel: 'Stats',
     tag: 'Analytics',
   },
   {
-    title: 'Knowledge Tree & Prerequisite Gating',
-    body: 'Organize topics, decks, and sources in a unified knowledge hierarchy. Set prerequisite gates governed by EWMA health meters and Wald’s SPRT sequential hypothesis tests.',
+    title: 'Knowledge Tree',
+    body: 'Organize topics, decks, and sources in a hierarchy with prerequisite gating.',
     route: '/tree',
-    routeLabel: 'Go to Tree',
+    routeLabel: 'Tree',
     tag: 'Structure',
   },
   {
-    title: 'Learn & Practice Mode',
-    body: 'Read an AI-synthesized micro-lesson built directly from verified document citations before being tested on a card.',
+    title: 'Learn & Practice',
+    body: 'Micro-lessons built from source citations before testing each card.',
     route: '/review',
-    routeLabel: 'Go to Review',
+    routeLabel: 'Review',
     tag: 'Study Mode',
   },
   {
-    title: 'Socratic AI Guide',
-    body: 'Stuck on a challenging card? The Socratic Guide asks focused diagnostic questions to lead you to the answer without spoiling it.',
+    title: 'Socratic Guide',
+    body: 'Diagnostic questions to guide you to the answer without spoiling it.',
     route: '/review',
-    routeLabel: 'Go to Review',
+    routeLabel: 'Review',
     tag: 'Tutoring',
   },
   {
-    title: 'Confusable Card & Interference Scan',
-    body: 'Automatically detect sister cards with high prompt similarity but different answers. The review queue spaces them apart to prevent proactive interference.',
+    title: 'Past Mistake Memory',
+    body: 'Remembers your specific misconceptions across reviews and offers diagnostic hints before you answer.',
+    route: '/review',
+    routeLabel: 'Review',
+    tag: 'Memory',
+  },
+  {
+    title: 'Interference Scan',
+    body: 'Detect sister cards with similar prompts to prevent confusion.',
     route: '/stats',
-    routeLabel: 'Go to Stats',
+    routeLabel: 'Stats',
     tag: 'Interference',
   },
   {
-    title: 'Leech Triage & Auto-Remediation',
-    body: 'Cards crossing the lapse threshold are diagnosed by the LLM with proposals to rewrite, split into atomic facts, or clarify ambiguous phrasing.',
+    title: 'Leech Triage',
+    body: 'Diagnose and remediate cards with repeated lapses.',
     route: '/stats',
-    routeLabel: 'Go to Stats',
+    routeLabel: 'Stats',
     tag: 'Remediation',
   },
   {
-    title: 'Image Occlusion Studio',
-    body: 'Upload anatomical or technical diagrams, drag rectangular masks, and generate occlusion cards that highlight the target while masking surrounding labels.',
+    title: 'Image Occlusion',
+    body: 'Mask regions of diagrams to generate visual recall cards.',
     route: '/decks',
-    routeLabel: 'Go to Decks',
+    routeLabel: 'Decks',
     tag: 'Visual',
   },
   {
-    title: 'Settings: FSRS & Backlog Smoothing',
-    body: 'Configure target retention (85–90%), review time budgets, interval fuzzing (±5%), and backlog smoothing to prevent missed days from creating walls of reviews.',
+    title: 'Settings & FSRS',
+    body: 'Configure retention targets, daily budgets, and backlog smoothing.',
     route: '/settings',
-    routeLabel: 'Go to Settings',
+    routeLabel: 'Settings',
     tag: 'Configuration',
   },
 ]
@@ -217,11 +224,11 @@ export default function Tutorial() {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xl">🎓</span>
-            <h2 className="text-sm font-bold text-sky-200">Interactive Walkthrough & Feature Tour</h2>
+            <h2 className="text-sm font-bold text-sky-200">Interactive Walkthrough</h2>
             <span className="chip border-sky-500/40 text-sky-300 text-[10px] font-semibold">Self-Paced</span>
           </div>
           <p className="mt-1 text-xs text-slate-400 max-w-xl">
-            Choose between an extensive step-by-step interactive simulation or a brief high-level overview of Active Recall, token similarity grading, Knowledge Trees, and the Priority Queue.
+            Choose between an interactive simulation or a brief overview.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
@@ -233,7 +240,7 @@ export default function Tutorial() {
             }}
             className="btn text-xs font-semibold px-3.5 py-2 border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-slate-200"
           >
-            ⚡ Brief Overview (1 min)
+            ⚡ Brief (1 min)
           </button>
           <button
             type="button"
@@ -243,7 +250,7 @@ export default function Tutorial() {
             }}
             className="btn btn-primary text-xs font-semibold px-4 py-2 shadow-lg shadow-sky-500/10"
           >
-            📘 Extensive Tutorial (4 min) →
+            📘 Full Tutorial (4 min) →
           </button>
         </div>
       </div>

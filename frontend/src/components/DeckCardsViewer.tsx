@@ -3,6 +3,7 @@ import { api } from '../api/client'
 import type { QueueItem } from '../api/types'
 import { CodeEditor } from './CodeEditor'
 import { RichText } from './ui'
+import { isCodeCard, extractCleanCode, detectCodeLanguage } from '../utils/codeUtils'
 
 export interface DeckCardsViewerProps {
   isOpen: boolean
@@ -12,24 +13,6 @@ export interface DeckCardsViewerProps {
   currentCardId?: string | null
   onSelectCard?: (card: QueueItem) => void
   codeLanguage?: string
-}
-
-function isCodeCard(item: QueueItem): boolean {
-  return Boolean(
-    item.grading_profile === 'math_code' ||
-      item.starter_code ||
-      (item.test_cases && item.test_cases.length > 0)
-  )
-}
-
-function extractCleanCode(raw?: string | null): string {
-  if (!raw) return ''
-  const trimmed = raw.trim()
-  const fenceMatch = trimmed.match(/^```(?:[a-zA-Z0-9_-]+)?\r?\n([\s\S]*?)\r?\n```$/)
-  if (fenceMatch) {
-    return fenceMatch[1]
-  }
-  return trimmed
 }
 
 export function DeckCardsViewer({
@@ -140,7 +123,7 @@ export function DeckCardsViewer({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Deck cards quick browser"
+      aria-label="Deck cards browser"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
     >
       <div className="flex flex-col w-full max-w-7xl h-[92vh] max-h-[920px] rounded-2xl border border-sky-500/30 bg-[#12161f] shadow-2xl overflow-hidden text-slate-200">
@@ -151,7 +134,7 @@ export function DeckCardsViewer({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-white text-sm sm:text-base">
-                  {deckName || selectedCard?.deck_name || 'Deck Cards Browser'}
+                  {deckName || selectedCard?.deck_name || 'Cards'}
                 </h3>
                 <span className="rounded-full bg-sky-950/90 border border-sky-500/40 px-2.5 py-0.5 text-xs font-mono text-sky-200">
                   {cards.length} {cards.length === 1 ? 'card' : 'cards'}
@@ -161,7 +144,7 @@ export function DeckCardsViewer({
                 )}
               </div>
               <p className="text-[11px] text-slate-400">
-                Browse, search, and preview all problems in this deck. Press <kbd className="px-1 rounded bg-[#252f42] text-[10px] font-mono border border-ink-line">Esc</kbd> to return to active review.
+                Browse cards in this deck. <kbd className="px-1 rounded bg-[#252f42] text-[10px] font-mono border border-ink-line">Esc</kbd> to close.
               </p>
             </div>
           </div>
@@ -172,7 +155,7 @@ export function DeckCardsViewer({
                 type="button"
                 onClick={() => void loadCards(deckId)}
                 className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border border-ink-line bg-[#1f2637] hover:bg-[#283248] text-slate-300 transition cursor-pointer"
-                title="Refresh cards from server"
+                title="Refresh"
               >
                 <span>↻</span>
                 <span className="hidden sm:inline">Refresh</span>
@@ -182,7 +165,7 @@ export function DeckCardsViewer({
               type="button"
               onClick={onClose}
               className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-white hover:bg-rose-500/20 hover:border-rose-500/30 border border-transparent transition cursor-pointer"
-              title="Close browser (Esc)"
+              title="Close (Esc)"
             >
               ✕
             </button>
@@ -197,7 +180,7 @@ export function DeckCardsViewer({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by title, prompt, code keyword, complexity..."
+              placeholder="Search cards..."
               className="w-full rounded-lg border border-ink-line/80 bg-[#1b2233] pl-8 pr-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition"
               autoFocus
             />
@@ -261,7 +244,7 @@ export function DeckCardsViewer({
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                Diff: All
+                All
               </button>
               <button
                 type="button"
@@ -305,7 +288,7 @@ export function DeckCardsViewer({
           {/* ── Left Column: Cards List ── */}
           <div className="md:col-span-5 lg:col-span-4 flex flex-col h-full bg-[#10141d] min-h-0">
             <div className="p-2 border-b border-ink-line/50 text-[11px] font-medium text-slate-400 flex items-center justify-between bg-[#151a26]/70">
-              <span>Showing {filteredCards.length} of {cards.length} cards</span>
+              <span>{filteredCards.length} of {cards.length} cards</span>
               {searchQuery && (
                 <span className="text-sky-400 text-[10px]">Filtered</span>
               )}
@@ -407,7 +390,7 @@ export function DeckCardsViewer({
                   <div className="space-y-1 max-w-xl">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded bg-sky-950/80 border border-sky-500/40 px-2 py-0.5 text-xs font-mono text-sky-200">
-                        {isCodeCard(selectedCard) ? '💻 Code Problem' : '📝 Flashcard'}
+                        {isCodeCard(selectedCard) ? '💻 Code' : '📝 Flashcard'}
                       </span>
                       {selectedCard.category && (
                         <span className="rounded bg-slate-800 border border-slate-700 px-2 py-0.5 text-xs text-slate-300">
@@ -450,10 +433,10 @@ export function DeckCardsViewer({
                         type="button"
                         onClick={() => onSelectCard(selectedCard)}
                         className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-md transition cursor-pointer"
-                        title="Load and drill this card immediately in your review session"
+                        title="Study now"
                       >
                         <span>🎯</span>
-                        <span>Study This Card Now</span>
+                        <span>Study Now</span>
                       </button>
                     )}
 
@@ -462,9 +445,9 @@ export function DeckCardsViewer({
                         type="button"
                         onClick={() => void handleCopyCode(extractCleanCode(selectedCard.back))}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-ink-line bg-[#1c2333] hover:bg-[#252f44] text-slate-200 text-xs font-medium transition cursor-pointer"
-                        title="Copy solution code or answer to clipboard"
+                        title="Copy"
                       >
-                        <span>{copiedCode ? '✓ Copied!' : '📋 Copy Solution'}</span>
+                        <span>{copiedCode ? '✓ Copied' : '📋 Copy'}</span>
                       </button>
                     )}
                   </div>
@@ -475,7 +458,7 @@ export function DeckCardsViewer({
                   <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
                     <span className="flex items-center gap-1.5">
                       <span>❓</span>
-                      <span>Problem Statement &amp; Prompt</span>
+                      <span>Question</span>
                     </span>
                   </div>
                   <div className="text-xs sm:text-sm text-slate-200 leading-relaxed">
@@ -484,7 +467,7 @@ export function DeckCardsViewer({
 
                   {selectedCard.edge_cases && selectedCard.edge_cases.length > 0 && (
                     <div className="pt-2 border-t border-ink-line/50 text-xs flex flex-wrap items-center gap-2">
-                      <span className="text-amber-400 font-medium">Edge Cases to Consider:</span>
+                      <span className="text-amber-400 font-medium">Edge Cases:</span>
                       {selectedCard.edge_cases.map((ec, i) => (
                         <span
                           key={i}
@@ -502,7 +485,7 @@ export function DeckCardsViewer({
                   <div className="flex items-center justify-between px-4 py-2 border-b border-ink-line/70 bg-[#19202e] text-xs font-semibold text-slate-300">
                     <span className="flex items-center gap-1.5">
                       <span>📖</span>
-                      <span>Model Reference Solution</span>
+                      <span>Reference</span>
                     </span>
                     {selectedCard.time_complexity && (
                       <span className="font-mono text-[10px] text-sky-300">
@@ -515,9 +498,9 @@ export function DeckCardsViewer({
                     <CodeEditor
                       code={extractCleanCode(selectedCard.back)}
                       onChange={() => {}}
-                      language={codeLanguage}
+                      language={detectCodeLanguage(selectedCard.back, codeLanguage)}
                       readOnly={true}
-                      height="260px"
+                      height="auto"
                       hideHeader={true}
                       borderless={true}
                       placeholder="// Reference solution"
@@ -539,7 +522,7 @@ export function DeckCardsViewer({
                     >
                       <span className="flex items-center gap-1.5">
                         <span>🧪</span>
-                        <span>Unit Tests &amp; Test Cases Preview</span>
+                        <span>Unit Tests</span>
                         {selectedCard.test_cases && selectedCard.test_cases.length > 0 && (
                           <span className="rounded-full bg-indigo-950/80 px-2 py-0.2 text-[10px] font-mono text-indigo-300 border border-indigo-500/30">
                             {selectedCard.test_cases.length} cases
@@ -547,7 +530,7 @@ export function DeckCardsViewer({
                         )}
                       </span>
                       <span className="text-slate-400 text-xs">
-                        {showTestsSection ? 'Collapse ▲' : 'Expand ▼'}
+                        {showTestsSection ? 'Hide ▲' : 'Show ▼'}
                       </span>
                     </button>
 
@@ -557,15 +540,15 @@ export function DeckCardsViewer({
                         {selectedCard.test_cases && selectedCard.test_cases.length > 0 && (
                           <div className="space-y-1.5">
                             <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                              Defined Test Cases
+                              Test Cases
                             </h4>
                             <div className="overflow-x-auto rounded-lg border border-ink-line/60">
                               <table className="w-full text-left text-xs">
                                 <thead className="bg-[#1f2637] text-slate-400 font-mono text-[11px] border-b border-ink-line/60">
                                   <tr>
                                     <th className="px-3 py-1.5">#</th>
-                                    <th className="px-3 py-1.5">Input Parameters</th>
-                                    <th className="px-3 py-1.5">Expected Output</th>
+                                    <th className="px-3 py-1.5">Input</th>
+                                    <th className="px-3 py-1.5">Expected</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-ink-line/40 font-mono text-[11px] bg-[#141924]">
@@ -592,7 +575,7 @@ export function DeckCardsViewer({
                         {selectedCard.starter_code && (
                           <div className="space-y-1.5">
                             <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                              Starter Template
+                              Starter Code
                             </h4>
                             <CodeEditor
                               code={selectedCard.starter_code}
@@ -610,7 +593,7 @@ export function DeckCardsViewer({
                         {selectedCard.starter_tests && (
                           <div className="space-y-1.5">
                             <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                              Starter Test Suite
+                              Starter Tests
                             </h4>
                             <CodeEditor
                               code={selectedCard.starter_tests}
@@ -631,7 +614,7 @@ export function DeckCardsViewer({
             ) : (
               <div className="flex flex-col items-center justify-center h-full p-8 text-center text-slate-500 space-y-2">
                 <span className="text-3xl">🗂️</span>
-                <p className="text-sm">Select a card from the left column to preview details.</p>
+                <p className="text-sm">Select a card to preview.</p>
               </div>
             )}
           </div>

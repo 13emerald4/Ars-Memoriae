@@ -17,7 +17,7 @@ class TestLeakGuard:
     def _service(raw_response: str) -> GradingService:
         svc = GradingService("qwen2.5-coder:3b")
 
-        async def fake_generate(prompt, model, schema=None):
+        async def fake_generate(prompt, model, schema=None, **kwargs):
             return raw_response
 
         svc._generate = fake_generate
@@ -39,7 +39,7 @@ class TestLeakGuard:
         svc = self._service('{"message": "ok", "on_track": false}')
         captured = {}
 
-        async def fake_generate(prompt, model, schema=None):
+        async def fake_generate(prompt, model, schema=None, **kwargs):
             captured["prompt"] = prompt
             return '{"message": "ok", "on_track": false}'
 
@@ -131,6 +131,40 @@ class TestGuideEndpoint:
         assert body["degraded"] is False
         assert body["message"] == "What continent has Paris?"
 
+    async def test_endpoint_respects_model_override(self, auth_client, monkeypatch):
+        import app.routers.review as review_router
+
+        captured = {}
+
+        async def fake_ask(self, **kwargs):
+            captured["model"] = kwargs.get("model")
+            captured["allow_smaller_model"] = kwargs.get("allow_smaller_model")
+            return {"message": "Hint", "on_track": False}
+
+        monkeypatch.setattr(review_router.GradingService, "ask_socratic_question", fake_ask)
+        await auth_client.patch("/api/me", json={"llm_grading_consent": True, "grading_model": "qwen2.5-coder:7b"})
+
+        deck_id = (await auth_client.post("/api/decks", json={"name": "D"})).json()["id"]
+        note = (
+            await auth_client.post(
+                "/api/notes",
+                json={
+                    "deck_id": deck_id,
+                    "template_kind": "basic",
+                    "field_values": {"Front": "Q", "Back": "A"},
+                },
+            )
+        ).json()
+        card_id = note["cards"][0]["id"]
+
+        resp = await auth_client.post(
+            f"/api/review/{card_id}/guide",
+            json={"history": [], "model": "qwen2.5-coder:3b", "allow_smaller_model": True},
+        )
+        assert resp.status_code == 200, resp.text
+        assert captured["model"] == "qwen2.5-coder:3b"
+        assert captured["allow_smaller_model"] is True
+
     async def test_a_stranger_cannot_ask_about_someone_elses_card(self, auth_client, client):
         deck_id = (await auth_client.post("/api/decks", json={"name": "D"})).json()["id"]
         note = (
@@ -163,7 +197,7 @@ class TestSocraticLineHint:
     def _service(raw_response: str) -> GradingService:
         svc = GradingService("qwen2.5-coder:3b")
 
-        async def fake_generate(prompt, model, schema=None):
+        async def fake_generate(prompt, model, schema=None, **kwargs):
             return raw_response
 
         svc._generate = fake_generate

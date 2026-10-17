@@ -36,7 +36,7 @@ function LexiconNavButton() {
       type="button"
       data-lexicon-trigger="true"
       onClick={() => openLexicon('binary approximations')}
-      title="Concordance & Lexicon: Look up definitions and related technical concepts"
+      title="Lexicon"
       className="flex items-center gap-1.5 rounded-lg border border-sky-500/40 bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-500/20 hover:border-sky-400 transition-colors"
     >
       <span>📖</span>
@@ -82,7 +82,7 @@ function ThemeNavButton() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        title={`Cognitive Palette: ${activeThemeMeta.label} (${themeMode === 'dynamic' ? 'Context-Adaptive' : 'Fixed Lock'})`}
+        title={`Theme: ${activeThemeMeta.label}`}
         className="flex items-center gap-1.5 rounded-lg border border-ink-line bg-ink-soft px-2 py-1 text-xs font-semibold text-slate-300 hover:border-slate-500 hover:text-slate-100 transition-colors cursor-pointer"
       >
         <span>{themeMode === 'dynamic' ? '🔀' : activeThemeMeta.icon}</span>
@@ -100,7 +100,7 @@ function ThemeNavButton() {
             <div className="flex items-center justify-between pb-2 border-b border-ink-line text-xs">
               <span className="font-bold text-slate-200 flex items-center gap-1.5">
                 <span>🎨</span>
-                <span>Cognitive Theme</span>
+                <span>Theme</span>
               </span>
               <button
                 type="button"
@@ -121,7 +121,7 @@ function ThemeNavButton() {
                     ? 'bg-sky-600/40 text-sky-200 border border-sky-500/60 font-semibold shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
-                title="Automatically adapt colors based on cognitive state"
+                title="Adaptive palette"
               >
                 <span>🔀</span>
                 <span>Adaptive</span>
@@ -134,10 +134,10 @@ function ThemeNavButton() {
                     ? 'bg-sky-600/40 text-sky-200 border border-sky-500/60 font-semibold shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
-                title="Lock into a fixed palette across all views"
+                title="Fixed palette"
               >
                 <span>🔒</span>
-                <span>Fixed Lock</span>
+                <span>Fixed</span>
               </button>
             </div>
 
@@ -145,7 +145,7 @@ function ThemeNavButton() {
             <div className="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-ink border border-ink-line mb-2.5 text-xs">
               <span className="flex items-center gap-1.5 text-slate-300 font-medium text-[11px]">
                 <span>🌑</span>
-                <span>OLED Pitch Black Canvas</span>
+                <span>OLED Pure Black</span>
               </span>
               <button
                 type="button"

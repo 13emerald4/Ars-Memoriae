@@ -311,9 +311,9 @@ export default function SessionTimer() {
           {bankedToday > 0 && (
             <span
               className="chip border-emerald-500/40 text-emerald-300"
-              title="Time earned back today by hitting your targets early"
+              title="Time earned back today"
             >
-              🏦 {formatBanked(bankedToday)} banked today
+              🏦 {formatBanked(bankedToday)} banked
             </span>
           )}
           {idle && (
@@ -322,7 +322,7 @@ export default function SessionTimer() {
               disabled={busy}
               onClick={() => setPlanning((p) => !p)}
             >
-              {planning ? 'Cancel' : 'Start a block'}
+              {planning ? 'Cancel' : 'Start Block'}
             </button>
           )}
           {running && !finished && (
@@ -362,11 +362,11 @@ export default function SessionTimer() {
               {current.cards_reviewed}/{current.goal_cards} cards
             </span>
           ) : (
-            <span className="chip text-slate-600">no target — nothing to bank</span>
+            <span className="chip text-slate-600">no target</span>
           )}
           {current.goal_met && !finished && (
             <span className="text-emerald-300">
-              target hit — end the block now to bank {formatBanked(Math.max(0, remainingMs ?? 0) / 1000)}
+              target met — bank {formatBanked(Math.max(0, remainingMs ?? 0) / 1000)}
             </span>
           )}
         </div>
@@ -382,38 +382,37 @@ export default function SessionTimer() {
         >
           {justFinished.banked_seconds > 0 ? (
             <>
-              Target hit with time to spare — <strong>{formatBanked(justFinished.banked_seconds)}</strong>{' '}
+              Target met — <strong>{formatBanked(justFinished.banked_seconds)}</strong>{' '}
               banked. {justFinished.cards_reviewed} cards in{' '}
               {formatBanked(justFinished.active_seconds)}.
             </>
           ) : justFinished.goal_cards === 0 ? (
-            <>Block done — {justFinished.cards_reviewed} cards reviewed.</>
+            <>Done — {justFinished.cards_reviewed} cards.</>
           ) : (
             <>
-              {justFinished.cards_reviewed} of {justFinished.goal_cards} cards — target missed, so
-              nothing banked this time.
+              {justFinished.cards_reviewed}/{justFinished.goal_cards} cards — target missed.
             </>
           )}
           <button
             className="ml-2 underline hover:text-slate-200"
             onClick={() => setJustFinished(null)}
           >
-            dismiss
+            Dismiss
           </button>
 
           {reflectSaved ? (
-            <p className="mt-2 text-xs text-slate-500">Reflection saved.</p>
+            <p className="mt-2 text-xs text-slate-500">Saved.</p>
           ) : (
             <div className="mt-3 space-y-2 border-t border-ink-line/60 pt-3">
               <input
                 className="input py-1 text-xs"
-                placeholder="What distracted you? (optional)"
+                placeholder="Distractions (optional)"
                 value={reflectDistraction}
                 onChange={(e) => setReflectDistraction(e.target.value)}
               />
               <input
                 className="input py-1 text-xs"
-                placeholder="How will you fix it next time? (optional)"
+                placeholder="Action plan (optional)"
                 value={reflectPlan}
                 onChange={(e) => setReflectPlan(e.target.value)}
               />
@@ -422,7 +421,7 @@ export default function SessionTimer() {
                 disabled={reflectSaving}
                 onClick={saveReflection}
               >
-                {reflectSaving ? 'Saving…' : 'Save reflection'}
+                {reflectSaving ? 'Saving…' : 'Save'}
               </button>
             </div>
           )}
@@ -476,12 +475,12 @@ function PlanBlock({
     <div className="mt-4 space-y-4 border-t border-ink-line pt-4">
       <div>
         <label className="label" htmlFor="focus-goal">
-          What one thing will you master in this block?
+          Focus Goal
         </label>
         <input
           id="focus-goal"
           className="input"
-          placeholder="e.g. the Krebs cycle intermediates — optional"
+          placeholder="Focus goal (optional)"
           value={focusGoal}
           autoFocus
           onChange={(e) => setFocusGoal(e.target.value)}
@@ -489,7 +488,7 @@ function PlanBlock({
       </div>
 
       <div>
-        <p className="label">How long?</p>
+        <p className="label">Duration</p>
         <div className="space-y-2">
           {PRESETS.map((p) => (
             <div key={p.label} className="flex flex-wrap items-center gap-2">
@@ -511,7 +510,7 @@ function PlanBlock({
                   {m} min
                 </button>
               ))}
-              {p === preset && <span className="text-xs text-slate-600">← suggested now</span>}
+              {p === preset && <span className="text-xs text-slate-600">← suggested</span>}
             </div>
           ))}
           <div className="flex items-center gap-2 pt-1">
@@ -531,7 +530,7 @@ function PlanBlock({
 
       <div>
         <label className="label" htmlFor="goal-cards">
-          Card target — hit it early and the rest of the block is banked
+          Card Target
         </label>
         <div className="flex flex-wrap items-center gap-2">
           <input
@@ -549,10 +548,10 @@ function PlanBlock({
               className="btn px-2 py-1 text-xs"
               onClick={() => setGoalCards(String(suggested))}
             >
-              use today's {suggested}
+              Today's ({suggested})
             </button>
           )}
-          <span className="text-xs text-slate-600">0 = untimed practice, banks nothing</span>
+          <span className="text-xs text-slate-600">0 = untimed</span>
         </div>
       </div>
 
@@ -561,7 +560,7 @@ function PlanBlock({
         disabled={busy}
         onClick={() => onStart(minutes, Math.max(0, Number(goalCards) || 0), focusGoal)}
       >
-        {busy ? 'Starting…' : `Start ${minutes} min block`}
+        {busy ? 'Starting…' : `Start (${minutes}m)`}
       </button>
     </div>
   )

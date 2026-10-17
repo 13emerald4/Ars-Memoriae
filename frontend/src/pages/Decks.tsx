@@ -96,7 +96,7 @@ export default function Decks() {
 
     return {
       id: '__root__',
-      name: 'Entire Collection (All Decks)',
+      name: 'All Decks',
       total_cards: totalCards,
       viewed_cards: viewedCards,
       new_cards: newCards,
@@ -220,15 +220,15 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
 
   return (
     <Section
-      title={`Documentation & Provenance: ${deck.name}`}
-      description="Thematic scope, creation documents, and documentation attached to this deck and inherited by all its cards."
+      title={`Documentation: ${deck.name}`}
+      description="Documentation and references attached to this deck."
       actions={
         <button
           type="button"
           onClick={() => setEditing((prev) => !prev)}
           className="btn px-2.5 py-1 text-xs"
         >
-          {editing ? 'Cancel' : 'Edit Documentation & Theme'}
+          {editing ? 'Cancel' : 'Edit Documentation'}
         </button>
       }
     >
@@ -237,7 +237,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
         <div className="space-y-4 rounded-xl border border-sky-500/30 bg-sky-950/10 p-4">
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Thematic Nature
+              Theme / Subject
             </label>
             <input
               className="input w-full text-xs"
@@ -246,28 +246,28 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
               onChange={(e) => setThematicNature(e.target.value)}
             />
             <p className="mt-1 text-[11px] text-slate-500">
-              The high-level domain, discipline, or thematic context represented by this deck.
+              High-level domain or subject.
             </p>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Attached Documentation &amp; Syllabus Notes
+              Documentation
             </label>
             <textarea
               className="input w-full min-h-[6rem] text-xs font-mono"
-              placeholder="Detailed documentation, overview of concepts, syllabus alignment, or memory hooks…"
+              placeholder="Documentation, concepts, syllabus alignment, or memory hooks…"
               value={documentation}
               onChange={(e) => setDocumentation(e.target.value)}
             />
             <p className="mt-1 text-[11px] text-slate-500">
-              Markdown supported. Inherited by each card unless overridden at the card level.
+              Markdown supported. Inherited by each card unless overridden.
             </p>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Source Documents Used in Creation
+              Source Documents
             </label>
             <textarea
               className="input w-full min-h-[4rem] text-xs font-mono"
@@ -276,7 +276,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
               onChange={(e) => setSourceDocsText(e.target.value)}
             />
             <p className="mt-1 text-[11px] text-slate-500">
-              Document titles, papers, textbook chapters, or URLs used to create this deck.
+              Document titles, textbook chapters, or URLs.
             </p>
           </div>
 
@@ -295,7 +295,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
               onClick={handleSave}
               disabled={busy}
             >
-              {busy ? 'Saving…' : 'Save Documentation'}
+              {busy ? 'Saving…' : 'Save'}
             </button>
           </div>
         </div>
@@ -303,21 +303,21 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
         <div className="space-y-3">
           {/* Thematic Nature Banner */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-slate-400">Thematic Nature:</span>
+            <span className="text-xs font-semibold text-slate-400">Theme:</span>
             {deck.thematic_nature ? (
               <span className="rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-xs font-semibold text-sky-200">
                 {deck.thematic_nature}
               </span>
             ) : (
               <span className="text-xs italic text-slate-500">
-                None specified (click Edit Documentation &amp; Theme to set)
+                None specified
               </span>
             )}
           </div>
 
           {/* Source Documents */}
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-400">Documents Used in Creation:</span>
+            <span className="text-xs font-semibold text-slate-400">Source Documents:</span>
             {sourceDocs.length > 0 ? (
               <div className="flex flex-wrap items-center gap-1.5 pt-1">
                 {sourceDocs.map((doc: any, i: number) => {
@@ -334,7 +334,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
               </div>
             ) : (
               <p className="text-xs italic text-slate-500 pt-0.5">
-                No creation documents linked yet.
+                No source documents linked.
               </p>
             )}
           </div>
@@ -342,7 +342,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
           {/* Documentation Content */}
           <div className="pt-2 border-t border-ink-line">
             <span className="text-xs font-semibold text-slate-400 block mb-1">
-              Deck Documentation:
+              Documentation:
             </span>
             {deck.documentation ? (
               <div className="rounded-lg border border-ink-line bg-ink/40 p-3 text-xs leading-relaxed text-slate-300">
@@ -350,7 +350,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
               </div>
             ) : (
               <p className="text-xs italic text-slate-500">
-                No documentation added yet. Click &ldquo;Edit Documentation &amp; Theme&rdquo; to add background notes, syllabus objectives, and reference materials.
+                No documentation added yet.
               </p>
             )}
           </div>
@@ -933,7 +933,7 @@ function DeckList({
                 onChange={(e) => setParentId(e.target.value)}
                 title="Parent deck (optional for creating subdecks)"
               >
-                <option value="">(No parent / Root)</option>
+                <option value="">(Root)</option>
                 {decks.map((d) => (
                   <option key={d.id} value={d.id}>
                     Inside {d.name}
@@ -963,7 +963,7 @@ function DeckList({
           >
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-sm text-sky-200">
-                Create New Deck with Documentation &amp; Thematic Scope
+                New Deck
               </h3>
               <button
                 type="button"
@@ -990,14 +990,14 @@ function DeckList({
 
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Parent Deck (Hierarchical Tree)
+                  Parent Deck
                 </label>
                 <select
                   className="input w-full text-xs"
                   value={parentId}
                   onChange={(e) => setParentId(e.target.value)}
                 >
-                  <option value="">(Root / No parent)</option>
+                  <option value="">(Root)</option>
                   {decks.map((d) => (
                     <option key={d.id} value={d.id}>
                       Inside {d.name}
@@ -1009,7 +1009,7 @@ function DeckList({
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">
-                Thematic Nature
+                Theme / Subject
               </label>
               <input
                 className="input w-full text-xs"
@@ -1018,13 +1018,13 @@ function DeckList({
                 onChange={(e) => setDetailedTheme(e.target.value)}
               />
               <p className="mt-1 text-[11px] text-slate-400">
-                Thematic context attached to this deck and inherited by each created card.
+                Domain or subject for this deck.
               </p>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">
-                Deck Documentation &amp; Syllabus Notes
+                Documentation
               </label>
               <textarea
                 className="input w-full min-h-[5rem] text-xs font-mono"
@@ -1036,7 +1036,7 @@ function DeckList({
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">
-                Documents Used in Creation
+                Source Documents
               </label>
               <textarea
                 className="input w-full min-h-[3.5rem] text-xs font-mono"
@@ -1045,7 +1045,7 @@ function DeckList({
                 onChange={(e) => setDetailedSources(e.target.value)}
               />
               <p className="mt-1 text-[11px] text-slate-400">
-                Provenance records: which textbooks, papers, or documents were used to create this deck.
+                Textbooks, papers, or URLs used.
               </p>
             </div>
 
@@ -1063,7 +1063,7 @@ function DeckList({
                 className="btn btn-primary text-xs px-3 py-1.5"
                 disabled={busy || !name.trim()}
               >
-                {busy ? 'Creating Deck…' : 'Create Deck with Documentation'}
+                {busy ? 'Creating…' : 'Create Deck'}
               </button>
             </div>
           </form>
@@ -1074,20 +1074,20 @@ function DeckList({
           <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg border border-sky-500/30 bg-sky-500/10 mb-2">
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-sky-200 text-sm">Study Collection (All Decks)</span>
+                <span className="font-bold text-sky-200 text-sm">All Decks</span>
                 <span className="chip border-sky-400/40 text-sky-200 bg-sky-500/20">{totalCollectionCards} cards</span>
                 {totalDue > 0 && <span className="chip text-sky-300 font-semibold">{totalDue} due</span>}
                 {totalNew > 0 && <span className="chip text-emerald-300">{totalNew} new</span>}
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Study all {decks.length} deck{decks.length === 1 ? '' : 's'} in your collection all at once, interleaved by priority and FSRS schedule.
+                Study all {decks.length} deck{decks.length === 1 ? '' : 's'} interleaved by FSRS schedule.
               </p>
             </div>
             <button
               type="button"
               onClick={() => navigate('/review')}
               className="btn btn-primary text-xs font-bold px-3 py-1.5 shadow-sm"
-              title="Study all decks in the collection at once"
+              title="Study all decks"
             >
               ⚡ Study All Decks
             </button>
@@ -1512,7 +1512,7 @@ function AddNote({
         ) : (
           <textarea
             className="input min-h-[4rem]"
-            placeholder="Front (Prompt/Question)"
+            placeholder="Question"
             value={front}
             onChange={(e) => setFront(e.target.value)}
             required
@@ -1520,7 +1520,7 @@ function AddNote({
         )}
         <textarea
           className="input min-h-[4rem]"
-          placeholder={isCloze ? 'Extra (optional)' : 'Back (Answer/Recall Target)'}
+          placeholder={isCloze ? 'Extra (optional)' : 'Answer'}
           value={back}
           onChange={(e) => setBack(e.target.value)}
           required={!isCloze}
@@ -2222,7 +2222,7 @@ function JsonImportPanel({ onImported }: { onImported: () => void }) {
             title="Copy prompt for ChatGPT/Claude/Gemini"
           >
             <span>{promptCopied ? '✓' : '📋'}</span>
-            <span>{promptCopied ? 'Copied prompt!' : 'Quick copy LLM prompt'}</span>
+            <span>{promptCopied ? 'Copied' : 'Copy LLM prompt'}</span>
           </button>
         </div>
       </Section>
@@ -2332,8 +2332,8 @@ function LlmPromptPanel() {
 
   return (
     <Section
-      title="Prompts for LLM Deck & Course Creation"
-      description="Copy these prompts into ChatGPT, Claude, Gemini, or DeepSeek along with your textbook or course resources to create flashcards and LeetCode-style coding problems."
+      title="LLM Prompts"
+      description="Prompts to generate cards from textbooks and course material with an LLM."
       actions={
         <button
           onClick={handleCopy}
@@ -2341,7 +2341,7 @@ function LlmPromptPanel() {
           title="Copy selected prompt to clipboard"
         >
           <span>{copied ? '✓' : '📋'}</span>
-          <span>{copied ? 'Prompt Copied!' : 'Quick Copy Selected Prompt'}</span>
+          <span>{copied ? 'Copied' : 'Copy Prompt'}</span>
         </button>
       }
     >
@@ -2358,7 +2358,7 @@ function LlmPromptPanel() {
             }`}
           >
             <span>🎓</span>
-            <span>Textbook &amp; Course (Auto-Classifies Code vs Theory)</span>
+            <span>Course &amp; Textbook</span>
           </button>
 
           <button
@@ -2371,7 +2371,7 @@ function LlmPromptPanel() {
             }`}
           >
             <span>💻</span>
-            <span>LeetCode Coding Problems Only</span>
+            <span>Coding Problems</span>
           </button>
 
           <button
@@ -2384,7 +2384,7 @@ function LlmPromptPanel() {
             }`}
           >
             <span>🗂️</span>
-            <span>General Flashcards Only</span>
+            <span>Flashcards</span>
           </button>
         </div>
 
@@ -2392,7 +2392,7 @@ function LlmPromptPanel() {
           <div className="space-y-1">
             <span className="font-semibold text-slate-200">How to use:</span>
             <ol className="list-decimal list-inside text-slate-400 space-y-0.5">
-              <li>Click <strong>Quick Copy Selected Prompt</strong> above.</li>
+              <li>Click <strong>Copy Prompt</strong> above.</li>
               <li>Paste it into any LLM chat (ChatGPT, Claude, Gemini, DeepSeek, etc.).</li>
               <li>Paste your textbook chapter, slides, or course notes at the bottom.</li>
               <li>Paste the generated JSON directly into <strong>Import from JSON</strong> above.</li>
@@ -2402,7 +2402,7 @@ function LlmPromptPanel() {
             onClick={() => setExpanded((e) => !e)}
             className="text-xs text-sky-400 hover:text-sky-300 transition font-medium self-start sm:self-center"
           >
-            {expanded ? '▲ Hide Prompt Preview' : '▼ View Prompt Text'}
+            {expanded ? '▲ Hide' : '▼ View'}
           </button>
         </div>
 

@@ -137,7 +137,7 @@ export function SavedCardsDrawer({
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Work-in-progress code and answers shelved during review
+                Saved in-progress answers and code
               </p>
             </div>
           </div>
@@ -173,7 +173,7 @@ export function SavedCardsDrawer({
             <div className="relative flex-1">
               <input
                 type="text"
-                placeholder="Search saved cards or code..."
+                placeholder="Search…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full text-xs px-3 py-1.5 pl-8 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -347,7 +347,7 @@ export function SavedCardsDrawer({
                             }
                             className="hover:text-slate-800 dark:hover:text-slate-200 transition-colors font-medium"
                           >
-                            {isExpanded ? 'Hide Code ▲' : 'Inspect Code ▼'}
+                            {isExpanded ? 'Hide ▲' : 'Inspect ▼'}
                           </button>
                         )}
                       </div>

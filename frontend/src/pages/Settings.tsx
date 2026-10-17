@@ -103,8 +103,8 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
 
   return (
     <Section
-      title="💻 Local AI Engine (Qwen 2.5 Coder)"
-      description="Strictly utilizes quantized Qwen 2.5 Coder models (7B, 3B, 1.5B). Zero cloud costs, zero rate limits, and 100% private."
+      title="💻 Local AI Engine"
+      description="Local Qwen 2.5 Coder models (7B, 3B, 1.5B). Private with zero cloud costs."
     >
       <div className="space-y-6">
         {/* Connection status card */}
@@ -161,7 +161,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                 disabled={checking}
                 onClick={() => void checkStatus()}
               >
-                {checking ? 'Testing…' : '↻ Test Connection'}
+                {checking ? 'Testing…' : '↻ Test'}
               </button>
             </div>
           </div>
@@ -205,7 +205,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
           {/* Supported Quantized Qwen 2.5 Coder Specs */}
           <div className="mt-4 pt-3 border-t border-ink-line space-y-2">
             <span className="text-xs font-semibold text-slate-300">
-              Supported Quantized Models (Qwen 2.5 Coder):
+              Supported Models:
             </span>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
               {ALLOWED_QWEN_CODER_MODELS.map((opt) => {
@@ -239,7 +239,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                           type="button"
                           onClick={() => void navigator.clipboard.writeText(`ollama pull ${opt.id}`)}
                           className="text-[10px] text-sky-400 hover:text-sky-200 underline font-mono cursor-pointer"
-                          title={`Click to copy: ollama pull ${opt.id}`}
+                          title={`Copy: ollama pull ${opt.id}`}
                         >
                           Copy pull command
                         </button>
@@ -330,15 +330,15 @@ function MemoryChampionPanel({ user, onChange }: { user: User; onChange: () => P
 
   return (
     <Section
-      title="🧠 Memory Champion & Athlete Settings"
-      description="Competitive memory athlete protocols: reaction latency automaticity tracking and Event Horizon peak-performance taper scheduling."
+      title="🧠 Recall & Target Date"
+      description="Reaction latency tracking and target event scheduling."
     >
       <div className="space-y-6">
         {/* Automaticity Latency Threshold (§Feature 4) */}
         <div>
           <Field
-            label={`Automaticity Reaction Threshold (${thresholdSec}s)`}
-            hint="Target response pace for reflex automaticity telemetry. Informational only — your FSRS review grade and schedule are determined strictly by answer correctness."
+            label={`Reaction Threshold (${thresholdSec}s)`}
+            hint="Target response pace. Informational only — does not affect grading."
           >
             <div className="flex items-center gap-4 mt-2">
               <input
@@ -711,8 +711,8 @@ function TypographyPanel() {
 
   return (
     <Section
-      title="🔤 Typography & Font Size"
-      description="Select the application base font size (10px to 20px). The interface, buttons, inputs, and knowledge cards scale smoothly in clean Verdana font."
+      title="🔤 Typography"
+      description="Base font size (10px to 20px)."
     >
       <div className="space-y-4">
         {/* Font size pill selector */}
@@ -757,7 +757,7 @@ function TypographyPanel() {
         <div className="rounded-xl border border-ink-line bg-ink-soft/50 p-4 space-y-2">
           <div className="flex items-center justify-between text-xs text-slate-400 border-b border-ink-line/50 pb-2">
             <span className="font-semibold uppercase tracking-wider text-[11px] text-slate-300">
-              Live Verdana Preview ({fontSize}px base scale)
+              Preview ({fontSize}px)
             </span>
             <span className="font-mono text-sky-400 text-[11px]">font-family: 'Verdana', sans-serif</span>
           </div>
@@ -767,7 +767,7 @@ function TypographyPanel() {
               Active Recall & FSRS Scheduling
             </h4>
             <p className="text-slate-300 leading-relaxed" style={{ fontSize: `${fontSize}px` }}>
-              Every function has a contract. Type your answer to verify understanding with local AI reasoning and token-by-token answer similarity checking.
+              Every function has a contract. Type your answer to verify understanding with local AI reasoning and similarity checking.
             </p>
             <div className="pt-1">
               <code className="font-mono bg-ink px-2 py-0.5 rounded border border-ink-line text-emerald-300 text-xs inline-block">
@@ -786,8 +786,8 @@ function DisplayFocusPanel() {
 
   return (
     <Section
-      title="Display & Fullscreen Focus Mode"
-      description="Configure immersive, distraction-free study sessions and keyboard shortcuts."
+      title="Display & Fullscreen"
+      description="Distraction-free study and shortcuts."
     >
       <div className="flex flex-wrap items-center gap-4">
         <FullscreenButton />
@@ -796,7 +796,7 @@ function DisplayFocusPanel() {
           onClick={toggleZenMode}
           className={`btn ${isZenMode ? 'btn-primary' : 'btn-secondary'}`}
         >
-          {isZenMode ? '✓ Zen Distraction-Free Active' : 'Enable Zen Distraction-Free'}
+          {isZenMode ? '✓ Zen Mode' : 'Zen Mode'}
         </button>
       </div>
 
@@ -807,19 +807,19 @@ function DisplayFocusPanel() {
             <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-sky-300 font-mono text-[11px] border border-slate-700">
               F
             </kbd>
-            <span>Toggle fullscreen mode anywhere in the app (when not typing code or text)</span>
+            <span>Toggle fullscreen mode</span>
           </li>
           <li className="flex items-center gap-2">
             <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-sky-300 font-mono text-[11px] border border-slate-700">
               Ctrl+Shift+F
             </kbd>
-            <span>Universal fullscreen toggle shortcut</span>
+            <span>Universal fullscreen toggle</span>
           </li>
           <li className="flex items-center gap-2">
             <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-sky-300 font-mono text-[11px] border border-slate-700">
               Esc
             </kbd>
-            <span>Exit fullscreen or dismiss distraction-free Zen mode</span>
+            <span>Exit fullscreen or Zen mode</span>
           </li>
         </ul>
       </div>
@@ -859,8 +859,8 @@ function TutorialPanel({
 
   return (
     <Section
-      title="🎓 Interactive Tutorial & Onboarding Guide"
-      description="Walk through or replay the guided onboarding tour anytime. Learn the core principles: Active Recall, local AI grading with the token-by-token answer similarity checker, Knowledge Trees, and the Priority Queue."
+      title="🎓 Tutorial"
+      description="Guided onboarding and core concepts."
     >
       <div className="space-y-4">
         {/* Status Header Bar */}
@@ -869,21 +869,21 @@ function TutorialPanel({
             <span className="text-2xl">🏛️</span>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-100">Tutorial Onboarding Status</span>
+                <span className="text-xs font-bold text-slate-100">Tutorial Status</span>
                 {user.tutorial_completed ? (
                   <span className="chip border-emerald-500/40 text-emerald-300 bg-emerald-500/10 font-semibold text-[10px]">
                     ✓ Completed
                   </span>
                 ) : (
                   <span className="chip border-amber-500/40 text-amber-300 bg-amber-500/10 font-semibold text-[10px]">
-                    ⏳ Incomplete / Not Finished
+                    ⏳ Incomplete
                   </span>
                 )}
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
                 {user.tutorial_completed
-                  ? 'You have completed the introductory tour. You can replay either mode below at any time.'
-                  : 'You have not yet marked the introductory tutorial as finished.'}
+                  ? 'Tour completed. You can replay either mode below.'
+                  : 'Tutorial not yet completed.'}
               </p>
             </div>
           </div>
@@ -895,7 +895,7 @@ function TutorialPanel({
             className="btn text-xs py-1.5 px-3 text-slate-300 hover:text-slate-100"
             title="Toggle tutorial completion status"
           >
-            {resetting ? 'Updating…' : user.tutorial_completed ? '↺ Reset to Incomplete' : '✓ Mark as Completed'}
+            {resetting ? 'Updating…' : user.tutorial_completed ? '↺ Reset' : '✓ Mark Done'}
           </button>
         </div>
 
@@ -907,27 +907,27 @@ function TutorialPanel({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sky-300 font-bold text-xs">
                   <span className="text-base">⚡</span>
-                  <span>Brief High-Level Overview</span>
+                  <span>Brief Overview</span>
                 </div>
                 <span className="chip text-[10px] py-0.5 border-sky-500/40 text-sky-300 bg-sky-500/10 font-semibold">
                   1 min
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                A rapid 3-slide executive overview of the core principles: Active Recall, Hierarchical Knowledge Trees with distribution bars, and the Priority Queue.
+                A rapid 3-slide overview of the core principles: Active Recall, Knowledge Trees, and the Priority Queue.
               </p>
               <ul className="text-[10px] text-slate-500 space-y-1 pt-1">
                 <li className="flex items-center gap-1.5">
                   <span className="text-sky-400">✓</span>
-                  <span>Slide 1: Active Recall & Token Similarity Grading</span>
+                  <span>Slide 1: Active Recall & Token Similarity</span>
                 </li>
                 <li className="flex items-center gap-1.5">
                   <span className="text-sky-400">✓</span>
-                  <span>Slide 2: Knowledge Trees & Visual Progress Bars</span>
+                  <span>Slide 2: Knowledge Trees</span>
                 </li>
                 <li className="flex items-center gap-1.5">
                   <span className="text-sky-400">✓</span>
-                  <span>Slide 3: Priority Queue, Time Bank & Deep Mastery</span>
+                  <span>Slide 3: Priority Queue</span>
                 </li>
               </ul>
             </div>
@@ -937,7 +937,7 @@ function TutorialPanel({
               onClick={() => onLaunchTutorial('tour', 'brief')}
               className="btn btn-primary w-full py-2 text-xs font-semibold"
             >
-              Start Brief Overview (1 min) →
+              Start Brief (1 min) →
             </button>
           </div>
 
@@ -947,27 +947,27 @@ function TutorialPanel({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
                   <span className="text-base">📘</span>
-                  <span>Extensive Interactive Tutorial</span>
+                  <span>Full Tutorial</span>
                 </div>
                 <span className="chip text-[10px] py-0.5 border-emerald-500/40 text-emerald-300 bg-emerald-500/10 font-semibold">
                   Recommended · 4 min
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                Full hands-on interactive simulation: test-drive the FSRS retention slider, simulate live AI grading with the token-by-token similarity checker, and explore branch ordering.
+                Interactive simulation: test-drive the FSRS retention slider, AI grading, and knowledge trees.
               </p>
               <ul className="text-[10px] text-slate-500 space-y-1 pt-1">
                 <li className="flex items-center gap-1.5">
                   <span className="text-emerald-400">✓</span>
-                  <span>Steps 0–1: FSRS Retention Simulator & Live AI Grader</span>
+                  <span>Steps 0–1: FSRS Retention & AI Grader</span>
                 </li>
                 <li className="flex items-center gap-1.5">
                   <span className="text-emerald-400">✓</span>
-                  <span>Steps 2–3: Interactive Knowledge Tree & Time Bank</span>
+                  <span>Steps 2–3: Knowledge Tree & Time Bank</span>
                 </li>
                 <li className="flex items-center gap-1.5">
                   <span className="text-emerald-400">✓</span>
-                  <span>Steps 4–5: Incremental Reading, Code Lab & Launchpad</span>
+                  <span>Steps 4–5: Reading & Code Lab</span>
                 </li>
               </ul>
             </div>
@@ -977,7 +977,7 @@ function TutorialPanel({
               onClick={() => onLaunchTutorial('tour', 'extensive')}
               className="btn btn-primary w-full py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 border-emerald-500/50 text-white"
             >
-              Start Extensive Tutorial (4 min) →
+              Start Full Tutorial (4 min) →
             </button>
           </div>
         </div>
@@ -990,14 +990,14 @@ function TutorialPanel({
             className="text-slate-400 hover:text-sky-300 text-xs transition cursor-pointer flex items-center gap-1.5"
           >
             <span>🏛️</span>
-            <span>Open Initial Welcome Chooser Modal</span>
+            <span>Open Welcome Modal</span>
           </button>
 
           <a
             href="/tutorial"
             className="text-slate-400 hover:text-sky-300 text-xs transition flex items-center gap-1"
           >
-            <span>View Verified Milestone Checklist (/tutorial)</span>
+            <span>Milestone Checklist (/tutorial)</span>
             <span>→</span>
           </a>
         </div>
@@ -1056,7 +1056,7 @@ function NavigationModulesPanel({ user, onChange }: { user: User; onChange: () =
   return (
     <Section
       title="Navigation & Modules"
-      description="Toggle visibility for specialized study modules in the top navigation bar and study documentation overlays. Disabled modules remain accessible via direct URL."
+      description="Toggle module visibility in the navigation bar."
     >
       <ErrorNote error={error} />
       <div className="space-y-3">
@@ -1076,7 +1076,7 @@ function NavigationModulesPanel({ user, onChange }: { user: User; onChange: () =
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Interactive Python fundamentals, cognitive Socratic tutoring, and code execution sandbox.
+              Python fundamentals, Socratic tutoring, and code execution sandbox.
             </p>
           </div>
           <button
@@ -1115,7 +1115,7 @@ function NavigationModulesPanel({ user, onChange }: { user: User; onChange: () =
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Targeted coding practice problems, automated test suites, and memory-anchored algorithm drills.
+              Targeted coding practice problems, automated test suites, and drills.
             </p>
           </div>
           <button
@@ -1142,7 +1142,7 @@ function NavigationModulesPanel({ user, onChange }: { user: User; onChange: () =
         <div className="flex items-center justify-between gap-4 rounded-xl border border-ink-line/60 bg-ink-soft/40 p-4">
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-sm text-slate-200">Thematic Context &amp; Documentation</span>
+              <span className="font-semibold text-sm text-slate-200">Thematic Context</span>
               <span
                 className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
                   user.show_thematic_context !== false
@@ -1154,14 +1154,14 @@ function NavigationModulesPanel({ user, onChange }: { user: User; onChange: () =
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Display attached deck &amp; card documentation, creation source documents, and thematic nature during reviews and card exploration.
+              Display deck documentation, source documents, and theme during reviews.
             </p>
           </div>
           <button
             type="button"
             role="switch"
             aria-checked={user.show_thematic_context !== false}
-            aria-label="Toggle Thematic Context and Documentation visibility"
+            aria-label="Toggle Thematic Context visibility"
             disabled={savingThematicContext}
             onClick={toggleThematicContext}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 ${
@@ -1197,8 +1197,8 @@ function CognitiveThemePanel() {
 
   return (
     <Section
-      title="🎨 Cognitive State & Ergonomic Theming"
-      description="Choose how the interface adapts to your mental state: automatically transition color harmonies based on active learning, recall, and debugging phases, or lock into a fixed palette."
+      title="🎨 Themes"
+      description="Adaptive color harmonies or fixed palette."
     >
       <div className="space-y-6">
         {/* Mode Selector Cards */}

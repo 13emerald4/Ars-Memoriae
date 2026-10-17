@@ -41,9 +41,27 @@ from app.services import (
 logging.basicConfig(level=logging.INFO)
 
 
+async def _auto_migrate() -> None:
+    """Runs pending Alembic migrations on startup so fresh installs and git pulls work out of the box."""
+    def _run():
+        from alembic.config import Config
+        from alembic import command
+        alembic_ini = Path(__file__).resolve().parents[1] / "alembic.ini"
+        if alembic_ini.is_file():
+            cfg = Config(str(alembic_ini))
+            command.upgrade(cfg, "head")
+
+    try:
+        await asyncio.to_thread(_run)
+        logging.getLogger(__name__).info("Database schema is up to date.")
+    except Exception as exc:
+        logging.getLogger(__name__).warning("Automatic database migration skipped or failed: %s", exc)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Path(settings.media_root).mkdir(parents=True, exist_ok=True)
+    await _auto_migrate()
     for problem in security.insecure_defaults():
         logging.getLogger(__name__).warning("SECURITY: %s", problem)
     # Plugins load after the first-party strategies, so a plugin can override

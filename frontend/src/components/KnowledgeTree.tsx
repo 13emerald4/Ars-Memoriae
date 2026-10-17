@@ -409,7 +409,7 @@ export function KnowledgeTree({
           <button
             type="button"
             className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-700/70 hover:border-slate-500 transition shadow-xs"
-            title="Add Child Subdeck / Topic"
+            title="Add Subdeck"
             onClick={() => onAddChild?.(selectedNode)}
           >
             <span className="text-sky-400 font-bold">+</span>
@@ -424,7 +424,7 @@ export function KnowledgeTree({
             className={`p-1.5 rounded-md hover:bg-slate-800 text-slate-300 hover:text-white transition ${
               showSearch ? 'bg-sky-500/20 text-sky-300 ring-1 ring-sky-500/40' : ''
             }`}
-            title="Filter Knowledge Tree"
+            title="Filter"
             onClick={() => setShowSearch(!showSearch)}
           >
             <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
@@ -441,7 +441,7 @@ export function KnowledgeTree({
             <button
               type="button"
               className="p-1.5 rounded-md hover:bg-slate-800 text-slate-300 hover:text-white transition"
-              title="Inspect cards in selected deck"
+              title="Inspect cards"
               onClick={() => onOpenCards(selectedNode)}
             >
               <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
@@ -460,7 +460,7 @@ export function KnowledgeTree({
             <button
               type="button"
               className="p-1.5 rounded-md hover:bg-slate-800 text-slate-300 hover:text-white transition"
-              title="Rename selected deck"
+              title="Rename"
               onClick={() => onRename(selectedNode)}
             >
               <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
@@ -474,7 +474,7 @@ export function KnowledgeTree({
             <button
               type="button"
               className="p-1.5 rounded-md hover:bg-slate-800 text-slate-300 hover:text-white transition"
-              title="Move / Re-parent selected branch"
+              title="Move"
               onClick={() => onMove(selectedNode)}
             >
               <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
@@ -492,7 +492,7 @@ export function KnowledgeTree({
             <button
               type="button"
               className="p-1.5 rounded-md hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition"
-              title="Delete selected deck"
+              title="Delete"
               onClick={() => onDelete(selectedNode)}
             >
               <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
@@ -515,7 +515,7 @@ export function KnowledgeTree({
                 ? 'bg-sky-500/20 text-sky-200 border border-sky-500/40'
                 : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800 border border-transparent'
             }`}
-            title="Toggle compact distribution bars on each branch"
+            title="Toggle progress bars"
             onClick={toggleBars}
           >
             <span>📊</span>
@@ -546,7 +546,7 @@ export function KnowledgeTree({
             type="button"
             onClick={toggleTheme}
             className="text-[11px] px-2 py-0.5 rounded border border-slate-700/80 bg-slate-800/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
-            title="Toggle between Modern Seamless and Classic Win32 layout"
+            title="Toggle theme"
           >
             {isClassic ? 'Win32' : 'Modern UI'}
           </button>
@@ -558,8 +558,8 @@ export function KnowledgeTree({
             className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-semibold text-xs shadow-xs hover:scale-[1.02] active:scale-95 transition"
             title={
               selectedNode.id === '__root__'
-                ? 'Learn Entire Collection (All Decks)'
-                : `Learn Branch: ${selectedNode.title}`
+                ? 'Learn All Decks'
+                : `Learn: ${selectedNode.title}`
             }
           >
             <span>⚡ Learn</span>

@@ -71,6 +71,10 @@ export interface SocraticResponse {
   degraded: boolean
   degraded_reason: string | null
   model_used: string | null
+  vram_constrained?: boolean
+  failed_model?: string | null
+  fallback_model?: string | null
+  available_fallback_models?: string[]
 }
 
 export interface SocraticLineHintRequest {
@@ -78,6 +82,8 @@ export interface SocraticLineHintRequest {
   line_number: number
   language?: string
   test_code?: string | null
+  model?: string
+  allow_smaller_model?: boolean
 }
 
 export interface SocraticLineHintResponse {

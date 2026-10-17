@@ -247,6 +247,10 @@ export function CodeEditor({
 
   const lines = code.split('\n')
   const lineCount = Math.max(lines.length, 1)
+  const resolvedHeight =
+    height === 'auto'
+      ? `${Math.max(140, Math.min(480, lineCount * 24 + 32))}px`
+      : height
 
   const updateCursorPosition = useCallback(() => {
     const textarea = textareaRef.current
@@ -448,6 +452,9 @@ export function CodeEditor({
   const hintCurrentLineText = activeLineHint?.current_line_text ?? activeLineHint?.currentLineText
   const hintTargetConcept = activeLineHint?.target_concept ?? activeLineHint?.targetConcept
 
+  const langObj = SUPPORTED_LANGUAGES.find((l) => l.id === language)
+  const currentLangLabel = langObj ? langObj.label : language ? (language.charAt(0).toUpperCase() + language.slice(1)) : 'Code'
+
   return (
     <div
       className={`flex flex-col ${
@@ -499,7 +506,7 @@ export function CodeEditor({
                   ))}
                 </select>
               ) : (
-                <span className="text-xs font-medium text-[#eff1f6]">Python3 ∨</span>
+                <span className="text-xs font-medium text-[#eff1f6]">{currentLangLabel}</span>
               )}
 
               <span className="text-xs text-[#8a8a8a] font-mono select-none">• Auto</span>
@@ -566,7 +573,7 @@ export function CodeEditor({
       )}
 
       {/* Editor Body with LeetCode Colors and Line Numbers */}
-      <div className="relative flex font-mono text-sm bg-[#1a1a1a]" style={{ height }}>
+      <div className="relative flex font-mono text-sm bg-[#1a1a1a]" style={{ height: resolvedHeight }}>
         {/* Line Numbers Gutter */}
         <div
           ref={lineNumbersRef}

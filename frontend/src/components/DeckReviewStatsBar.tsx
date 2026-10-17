@@ -253,14 +253,14 @@ export function DeckReviewStatsBar({
               type="button"
               onClick={onOpenDeckViewer}
               className="flex items-center gap-1.5 rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/25 transition shadow-sm cursor-pointer"
-              title="Browse all cards in this deck (Alt+D)"
+              title="All cards (Alt+D)"
             >
               <span>🗂️</span>
-              <span>View All Cards</span>
+              <span>All Cards</span>
               <kbd className="rounded bg-sky-950/80 px-1 py-0.2 text-[9px] font-mono text-sky-300 border border-sky-500/30">Alt+D</kbd>
             </button>
           )}
-          {loading && <span className="text-[11px] text-slate-500 animate-pulse">Loading stats…</span>}
+          {loading && <span className="text-[11px] text-slate-500 animate-pulse">Loading…</span>}
         </div>
       </div>
     )
@@ -308,7 +308,7 @@ export function DeckReviewStatsBar({
                 {stats.name || deckName || 'Current Deck'}
               </span>
               <span className="rounded-full bg-sky-950/80 border border-sky-500/30 px-2 py-0.5 text-[10px] font-mono text-sky-200">
-                {stats.total_cards} {stats.total_cards === 1 ? 'card' : 'cards total'}
+                {stats.total_cards} {stats.total_cards === 1 ? 'card' : 'cards'}
               </span>
             </div>
           </div>
@@ -318,14 +318,14 @@ export function DeckReviewStatsBar({
           {/* Quick Metrics Chips */}
           <span
             className="chip border-emerald-500/40 bg-emerald-950/30 text-emerald-300 font-semibold shrink-0"
-            title="Cards studied at least once in this deck"
+            title="Viewed"
           >
             ✓ {stats.viewed_cards} viewed ({viewedPct}%)
           </span>
           {stats.new_cards > 0 && (
             <span
               className="chip border-sky-500/40 bg-sky-950/30 text-sky-300 font-semibold shrink-0"
-              title="Brand new cards never yet studied"
+              title="New"
             >
               ★ {stats.new_cards} new
             </span>
@@ -333,7 +333,7 @@ export function DeckReviewStatsBar({
           {stats.due_cards > 0 && (
             <span
               className="chip border-amber-500/40 bg-amber-950/30 text-amber-300 font-semibold shrink-0"
-              title="Cards currently due for review"
+              title="Due"
             >
               ⏱ {stats.due_cards} due
             </span>
@@ -344,10 +344,10 @@ export function DeckReviewStatsBar({
               type="button"
               onClick={onOpenDeckViewer}
               className="flex items-center gap-1.5 rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/25 transition shadow-sm cursor-pointer shrink-0"
-              title="Browse all cards in this deck (Alt+D)"
+              title="All cards (Alt+D)"
             >
               <span>🗂️</span>
-              <span>View All Cards</span>
+              <span>All Cards</span>
               <kbd className="rounded bg-sky-950/80 px-1 py-0.2 text-[9px] font-mono text-sky-300 border border-sky-500/30">Alt+D</kbd>
             </button>
           )}
@@ -357,9 +357,9 @@ export function DeckReviewStatsBar({
               type="button"
               onClick={() => onStartPersist(deckId)}
               className="flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/25 transition shadow-sm shrink-0"
-              title="Persist reviewing this deck until all cards are rated Easy"
+              title="Persist until cards are Easy"
             >
-              <span>⚡ Persist Deck</span>
+              <span>⚡ Persist</span>
             </button>
           )}
 
@@ -380,12 +380,12 @@ export function DeckReviewStatsBar({
               }`}
               title={
                 isAllCardsRunActive
-                  ? 'Click to exit All Cards Run and return to FSRS queue'
-                  : 'Toggle All Cards Run: review every card in this deck consecutively, starting from the easiest ones and progressing to the hardest ones seen last. Thereafter, FSRS takes over.'
+                  ? 'Exit All Cards Run'
+                  : 'Review all cards in order'
               }
             >
               <span>🏁</span>
-              <span>{isAllCardsRunActive ? 'Exit Run (FSRS)' : 'All Cards Run'}</span>
+              <span>{isAllCardsRunActive ? 'Exit Run' : 'All Cards Run'}</span>
             </button>
           )}
 
@@ -406,9 +406,9 @@ export function DeckReviewStatsBar({
               type="button"
               onClick={toggleExpanded}
               className="rounded px-2 py-0.5 text-[11px] font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition shrink-0"
-              title={isExpanded ? 'Collapse deck stats' : 'Expand deck stats'}
+              title={isExpanded ? 'Collapse' : 'Expand'}
             >
-              {isExpanded ? 'Hide Details ▲' : 'Deck Stats ▼'}
+              {isExpanded ? 'Hide ▲' : 'Stats ▼'}
             </button>
           )}
         </div>
@@ -422,7 +422,7 @@ export function DeckReviewStatsBar({
             <div className="flex items-center justify-between text-[11px]">
               <span className="text-slate-300 font-medium flex items-center gap-1.5">
                 <span>🎯</span>
-                <span>Cards Viewed out of Total:</span>
+                <span>Viewed:</span>
                 <strong className="text-white font-mono">
                   {stats.viewed_cards} / {stats.total_cards}
                 </strong>
@@ -435,12 +435,12 @@ export function DeckReviewStatsBar({
               <div
                 className="h-full bg-gradient-to-r from-sky-500 to-emerald-400 transition-all duration-500 ease-out"
                 style={{ width: `${Math.min(100, Math.max(0, viewedPct))}%` }}
-                title={`${stats.viewed_cards} of ${stats.total_cards} cards viewed (${viewedPct}%)`}
+                title={`${stats.viewed_cards}/${stats.total_cards} (${viewedPct}%)`}
               />
             </div>
             <div className="flex justify-between text-[10px] text-slate-500 font-mono">
               <span>{stats.viewed_cards} studied</span>
-              <span>{unviewedCount > 0 ? `${unviewedCount} unstudied remaining` : 'Deck 100% viewed!'}</span>
+              <span>{unviewedCount > 0 ? `${unviewedCount} remaining` : '100% viewed'}</span>
             </div>
           </div>
 
@@ -449,10 +449,10 @@ export function DeckReviewStatsBar({
             <div className="flex items-center justify-between text-[11px]">
               <span className="text-slate-300 font-medium flex items-center gap-1.5">
                 <span>📊</span>
-                <span>Card Difficulty Distribution:</span>
+                <span>Difficulty:</span>
               </span>
               <span className="text-[10px] text-slate-500">
-                {stats.total_cards} cards categorized
+                {stats.total_cards} cards
               </span>
             </div>
 
@@ -516,10 +516,10 @@ export function DeckReviewStatsBar({
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-slate-300 font-medium flex items-center gap-1.5">
                   <span>🧠</span>
-                  <span>My Recall Ratings Distribution:</span>
+                  <span>Ratings:</span>
                 </span>
                 <span className="text-[10px] text-slate-500 font-mono">
-                  {stats.total_reviews ? `${stats.total_reviews} reviews logged` : 'Latest card ratings'}
+                  {stats.total_reviews ? `${stats.total_reviews} reviews` : 'Ratings'}
                 </span>
               </div>
 

@@ -79,7 +79,7 @@ class SubmitAnswerRequest(BaseModel):
     test_code: str | None = None
     latency_ms: int
     model: str | None = None
-    allow_smaller_model: bool = False
+    allow_smaller_model: bool = True
 
     @field_validator("model")
     @classmethod
@@ -171,6 +171,20 @@ class SocraticRequest(BaseModel):
 
     history: list[SocraticTurn] = Field(default_factory=list, max_length=20)
     message: str = Field(default="", max_length=1000)
+    model: str | None = None
+    allow_smaller_model: bool = True
+
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, v: str | None) -> str | None:
+        if v is not None:
+            from app.services.grading_service import is_allowed_qwen_coder_model
+
+            if not is_allowed_qwen_coder_model(v):
+                raise ValueError(
+                    f"Model '{v}' is not permitted. Only quantized Qwen 2.5 Coder models in 7B, 3B, or 1.5B sizes are allowed."
+                )
+        return v
 
 
 class SocraticResponse(BaseModel):
@@ -179,6 +193,10 @@ class SocraticResponse(BaseModel):
     degraded: bool = False
     degraded_reason: str | None = None
     model_used: str | None = None
+    vram_constrained: bool = False
+    failed_model: str | None = None
+    fallback_model: str | None = None
+    available_fallback_models: list[str] = Field(default_factory=list)
 
 
 class SocraticLineHintRequest(BaseModel):
@@ -186,6 +204,20 @@ class SocraticLineHintRequest(BaseModel):
     line_number: int
     language: str = "typescript"
     test_code: str | None = None
+    model: str | None = None
+    allow_smaller_model: bool = True
+
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, v: str | None) -> str | None:
+        if v is not None:
+            from app.services.grading_service import is_allowed_qwen_coder_model
+
+            if not is_allowed_qwen_coder_model(v):
+                raise ValueError(
+                    f"Model '{v}' is not permitted. Only quantized Qwen 2.5 Coder models in 7B, 3B, or 1.5B sizes are allowed."
+                )
+        return v
 
 
 class SocraticLineHintResponse(BaseModel):

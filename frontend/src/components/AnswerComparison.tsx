@@ -1,4 +1,6 @@
 import React, { useMemo } from 'react'
+import { CodeEditor } from './CodeEditor'
+import { looksLikeCode, extractCleanCode, detectCodeLanguage } from '../utils/codeUtils'
 
 export interface TokenSegment {
   text: string
@@ -245,7 +247,7 @@ function RenderTokenSegments({
               <mark
                 key={i}
                 className="rounded border-b-2 border-amber-400 bg-amber-500/25 px-1 py-0.5 font-semibold text-amber-200 shadow-sm"
-                title="Missing from your answer"
+                title="Missing"
               >
                 {seg.text}
               </mark>
@@ -256,7 +258,7 @@ function RenderTokenSegments({
               <mark
                 key={i}
                 className="rounded border-b border-emerald-500/40 bg-emerald-500/20 px-1 py-0.5 text-emerald-200 font-normal"
-                title="Successfully recalled in your answer"
+                title="Recalled"
               >
                 {seg.text}
               </mark>
@@ -270,7 +272,7 @@ function RenderTokenSegments({
               <mark
                 key={i}
                 className="rounded border-b border-emerald-500/40 bg-emerald-500/20 px-1 py-0.5 text-emerald-200 font-medium"
-                title="Present in reference answer"
+                title="Matches reference"
               >
                 {seg.text}
               </mark>
@@ -307,8 +309,21 @@ export function AnswerComparison({
   className = '',
 }: AnswerComparisonProps) {
   const [activeCodeTab, setActiveCodeTab] = React.useState<'solution' | 'tests'>('solution')
+  const [refViewMode, setRefViewMode] = React.useState<'ide' | 'diff'>('ide')
   const hasUserAnswer = Boolean(userAnswer && userAnswer.trim().length > 0)
   const hasTestCode = Boolean(userTestCode && userTestCode.trim().length > 0)
+
+  const isCode = Boolean(
+    isCodeCard ||
+      looksLikeCode(referenceAnswer) ||
+      (hasUserAnswer && looksLikeCode(userAnswer))
+  )
+  const cleanRef = useMemo(() => (isCode ? extractCleanCode(referenceAnswer) : referenceAnswer), [isCode, referenceAnswer])
+  const cleanUser = useMemo(() => (isCode ? extractCleanCode(userAnswer) : userAnswer), [isCode, userAnswer])
+  const refLang = useMemo(
+    () => (isCode ? detectCodeLanguage(cleanRef, codeLanguage) : codeLanguage),
+    [isCode, cleanRef, codeLanguage]
+  )
 
   const { userSegments, refSegments, stats } = useMemo(() => {
     if (!hasUserAnswer) {
@@ -333,7 +348,7 @@ export function AnswerComparison({
       <div className="rounded-lg border border-ink-line/80 bg-ink-soft/40 p-4 transition-colors">
         <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 border-b border-ink-line/40 pb-2">
           <div className="flex items-center gap-2">
-            {isCodeCard && hasTestCode ? (
+            {isCode && hasTestCode ? (
               <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line">
                 <button
                   type="button"
@@ -360,7 +375,7 @@ export function AnswerComparison({
               </div>
             ) : (
               <span className="text-xs font-semibold tracking-wide uppercase text-slate-300">
-                {isCodeCard ? 'Your Solution' : 'Your Answer'}
+                {isCode ? 'Your Solution' : 'Your Answer'}
               </span>
             )}
             {hasUserAnswer && (
@@ -374,17 +389,26 @@ export function AnswerComparison({
             <div className="flex items-center gap-2 text-[11px]">
               <span className="flex items-center gap-1 font-medium text-emerald-300">
                 <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
-                {stats.matchedCount} of {stats.refWordCount} reference terms recalled ({stats.recallPercent}%)
+                {stats.matchedCount}/{stats.refWordCount} recalled ({stats.recallPercent}%)
               </span>
             </div>
           )}
         </div>
 
         {hasUserAnswer ? (
-          isCodeCard ? (
-            <pre className="p-3 rounded bg-[#121212] border border-ink-line/60 text-xs font-mono text-slate-200 overflow-x-auto whitespace-pre-wrap leading-relaxed">
-              <code>{activeCodeTab === 'solution' ? userAnswer : userTestCode}</code>
-            </pre>
+          isCode ? (
+            <div className="rounded-lg border border-ink-line/80 overflow-hidden shadow-xs">
+              <CodeEditor
+                code={activeCodeTab === 'solution' ? cleanUser : userTestCode}
+                onChange={() => {}}
+                language={codeLanguage || refLang}
+                readOnly={true}
+                height="auto"
+                hideHeader={true}
+                hideFooter={true}
+                borderless={true}
+              />
+            </div>
           ) : (
             <RenderTokenSegments
               segments={userSegments}
@@ -394,7 +418,7 @@ export function AnswerComparison({
           )
         ) : (
           <p className="text-sm italic text-slate-500 py-1">
-            (No answer typed — showing reference answer below)
+            (No answer entered)
           </p>
         )}
       </div>
@@ -404,11 +428,11 @@ export function AnswerComparison({
         <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 border-b border-ink-line/40 pb-2">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold tracking-wide uppercase text-slate-300">
-              {isCodeCard ? 'Reference Solution' : 'Reference Answer'}
+              {isCode ? 'Reference Solution' : 'Reference'}
             </span>
-            {isCodeCard && codeLanguage && (
+            {isCode && (codeLanguage || refLang) && (
               <span className="rounded bg-sky-500/10 px-1.5 py-0.5 text-[11px] font-mono text-sky-300 border border-sky-500/30">
-                {codeLanguage}
+                {codeLanguage || refLang}
               </span>
             )}
             {timeComplexity && (
@@ -416,18 +440,46 @@ export function AnswerComparison({
                 {timeComplexity}
               </span>
             )}
+            {isCode && hasUserAnswer && (
+              <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line text-[11px] ml-1">
+                <button
+                  type="button"
+                  onClick={() => setRefViewMode('ide')}
+                  className={`px-2 py-0.5 rounded transition ${
+                    refViewMode === 'ide'
+                      ? 'bg-sky-600/30 text-sky-200 border border-sky-500/50 font-medium'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title="IDE syntax-highlighted code format"
+                >
+                  ⧉ IDE
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRefViewMode('diff')}
+                  className={`px-2 py-0.5 rounded transition ${
+                    refViewMode === 'diff'
+                      ? 'bg-amber-600/30 text-amber-200 border border-amber-500/50 font-medium'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title="Token diff comparison"
+                >
+                  🔤 Diff
+                </button>
+              </div>
+            )}
           </div>
 
           {hasUserAnswer ? (
             <div className="flex items-center gap-3 text-[11px]">
               {stats.missingCount > 0 && (
-                <span className="flex items-center gap-1.5 font-semibold text-amber-300" title="Words present in reference answer but omitted from your answer">
+                <span className="flex items-center gap-1.5 font-semibold text-amber-300" title="Missing">
                   <span className="inline-block h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-                  Missing from your answer ({stats.missingCount})
+                  Missing ({stats.missingCount})
                 </span>
               )}
               {stats.matchedCount > 0 && (
-                <span className="flex items-center gap-1.5 font-medium text-emerald-300" title="Words present in both your answer and reference answer">
+                <span className="flex items-center gap-1.5 font-medium text-emerald-300" title="Recalled">
                   <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
                   Recalled ({stats.matchedCount})
                 </span>
@@ -439,7 +491,7 @@ export function AnswerComparison({
                 {overlookedPhrases.length > 0 && (
                   <span className="flex items-center gap-1 font-medium text-amber-300">
                     <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
-                    Overlooked in your answer
+                    Overlooked
                   </span>
                 )}
                 {matchedPhrases.length > 0 && (
@@ -453,12 +505,26 @@ export function AnswerComparison({
           )}
         </div>
 
-        {hasUserAnswer ? (
+        {isCode && (!hasUserAnswer || refViewMode === 'ide') ? (
+          <div className="rounded-lg border border-ink-line/80 overflow-hidden shadow-xs">
+            <CodeEditor
+              code={cleanRef}
+              onChange={() => {}}
+              language={codeLanguage || refLang}
+              readOnly={true}
+              height="auto"
+              hideHeader={false}
+              hideFooter={false}
+              borderless={true}
+              placeholder="// Reference solution"
+            />
+          </div>
+        ) : hasUserAnswer ? (
           <RenderTokenSegments
             segments={refSegments}
             mode="ref"
             className={
-              isCodeCard
+              isCode
                 ? 'text-slate-200 font-mono text-xs whitespace-pre-wrap leading-relaxed'
                 : 'text-slate-200 leading-relaxed text-sm'
             }
@@ -466,7 +532,7 @@ export function AnswerComparison({
         ) : (
           <div
             className={`whitespace-pre-wrap break-words ${
-              isCodeCard
+              isCode
                 ? 'text-slate-200 font-mono text-xs'
                 : 'text-slate-200 text-sm leading-relaxed'
             }`}

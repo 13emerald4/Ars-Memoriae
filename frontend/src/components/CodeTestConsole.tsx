@@ -47,7 +47,7 @@ export function CodeTestConsole({
                 : 'text-[#8a8a8a] hover:text-[#eff1f6]'
             }`}
           >
-            <span>🧪 Testcase</span>
+            <span>🧪 Testcases</span>
           </button>
 
           <button
@@ -58,7 +58,7 @@ export function CodeTestConsole({
                 : 'text-[#8a8a8a] hover:text-[#eff1f6]'
             }`}
           >
-            <span>📊 Test Result</span>
+            <span>📊 Results</span>
             {runResult && (
               <span
                 className={`h-2 w-2 rounded-full ${
@@ -135,7 +135,7 @@ export function CodeTestConsole({
 
                 <div>
                   <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                    Expected Output:
+                    Expected:
                   </p>
                   <pre className="rounded-lg border border-ink-line/60 bg-[#090d13] p-2.5 text-emerald-300 overflow-x-auto">
                     {JSON.stringify(currentCase.expected)}
@@ -151,14 +151,14 @@ export function CodeTestConsole({
             {!runResult && !running && (
               <div className="flex flex-col items-center justify-center py-8 text-slate-500">
                 <span className="text-2xl mb-1">⚡</span>
-                <p>Click "Run" to test your solution against sample testcases.</p>
+                <p>Click "Run" to test your solution.</p>
               </div>
             )}
 
             {running && (
               <div className="flex flex-col items-center justify-center py-8 text-sky-400 space-y-2">
                 <span className="h-6 w-6 rounded-full border-2 border-sky-400 border-t-transparent animate-spin" />
-                <p className="font-sans text-xs">Compiling & executing in sandbox…</p>
+                <p className="font-sans text-xs">Running…</p>
               </div>
             )}
 
@@ -177,7 +177,7 @@ export function CodeTestConsole({
                       {runResult.status}
                     </span>
                     <span className="text-[#8a8a8a] text-xs font-sans">
-                      {runResult.passed_count} / {runResult.total_count} test cases passed
+                      {runResult.passed_count}/{runResult.total_count} passed
                     </span>
                   </div>
 
@@ -189,7 +189,7 @@ export function CodeTestConsole({
                 {/* Compile Error Banner */}
                 {runResult.error && (
                   <div className="rounded-lg border border-rose-500/40 bg-rose-950/30 p-3 text-rose-300">
-                    <p className="font-bold mb-1">Execution Error:</p>
+                    <p className="font-bold mb-1">Error:</p>
                     <pre className="whitespace-pre-wrap">{runResult.error}</pre>
                   </div>
                 )}
@@ -200,10 +200,10 @@ export function CodeTestConsole({
                     <div className="flex items-center justify-between text-xs font-semibold text-sky-200">
                       <span className="flex items-center gap-1.5">
                         <span>🧪</span>
-                        <span>My Unit Tests</span>
+                        <span>Unit Tests</span>
                       </span>
                       <span className="text-[11px] font-mono text-sky-400">
-                        {runResult.student_passed_count ?? 0} / {runResult.student_total_count ?? 0} passed
+                        {runResult.student_passed_count ?? 0}/{runResult.student_total_count ?? 0} passed
                       </span>
                     </div>
 
@@ -245,7 +245,7 @@ export function CodeTestConsole({
                 {runResult.results.length > 0 && (
                   <div className="space-y-3">
                     <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                      Hidden Test Cases:
+                      Test Cases:
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
                       {runResult.results.map((res, idx) => (
@@ -274,7 +274,7 @@ export function CodeTestConsole({
                         {currentResult.error ? (
                           <div className="rounded-lg border border-rose-500/30 bg-rose-950/20 p-2.5 text-rose-300">
                             <p className="text-[10px] text-rose-400 font-bold mb-0.5">
-                              Runtime Error:
+                              Error:
                             </p>
                             <pre className="whitespace-pre-wrap">{currentResult.error}</pre>
                           </div>

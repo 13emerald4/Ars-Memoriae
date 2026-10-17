@@ -18,13 +18,13 @@ class Settings(BaseSettings):
     secret_key: str = ""
     secret_key_file: str = "./.secret_key"
 
-    # Local Qwen 2.5 Coder 7B engine via Ollama
+    # Local Qwen 2.5 Coder 3B engine via Ollama (configured for 8 GB VRAM stability)
     ollama_base_url: str = "http://localhost:11434"
-    default_grading_model: str = "qwen2.5-coder:7b"
-    escalation_grading_model: str = "qwen2.5-coder:7b"
+    default_grading_model: str = "qwen2.5-coder:3b"
+    escalation_grading_model: str = "qwen2.5-coder:3b"
     grading_confidence_threshold: float = 0.6
     # Card generation sends up to 8000 chars of passage plus instructions;
-    # 2048 tokens truncated them. 8k costs ~0.5 GB of KV cache on a 7B model.
+    # 2048 tokens truncated them. 8k costs ~0.5 GB of KV cache.
     ollama_num_ctx: int = 8192
 
     cors_origins: str = "http://localhost:5173"

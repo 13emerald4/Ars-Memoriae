@@ -78,8 +78,8 @@ function SourceLibrary() {
   return (
     <div className="space-y-6">
       <Section
-        title="Add reading material"
-        description="Paste text or a URL. It's split into extracts that resurface on a schedule — you never have to finish an article in one sitting."
+        title="Add Reading"
+        description="Paste text or a URL to split into scheduled extracts."
       >
         <form onSubmit={add} className="space-y-3">
           <div className="flex gap-2">
@@ -105,7 +105,7 @@ function SourceLibrary() {
           {mode === 'text' ? (
             <textarea
               className="input min-h-[8rem] resize-y"
-              placeholder="Paste an article, chapter, or set of notes…"
+              placeholder="Paste text, article, or chapter…"
               value={text}
               onChange={(e) => setText(e.target.value)}
               required
@@ -369,7 +369,7 @@ function ExtractWorkspace({ extractId }: { extractId: string }) {
       </div>
 
       <div className="card">
-        <p className="label">Select any passage to split it off or turn it into cards</p>
+        <p className="label">Select text to split or create cards</p>
         <div
           ref={bodyRef}
           onMouseUp={captureSelection}
@@ -386,13 +386,13 @@ function ExtractWorkspace({ extractId }: { extractId: string }) {
           <p className="text-sm italic text-slate-300">"{selection}"</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <button className="btn" onClick={split} disabled={busy === 'split'}>
-              {busy === 'split' ? 'Splitting…' : 'Split into its own extract'}
+              {busy === 'split' ? 'Splitting…' : 'Split extract'}
             </button>
             <button className="btn" onClick={makeClozeFromSelection}>
-              Make a cloze from it
+              Create cloze
             </button>
             <button className="btn btn-primary" onClick={suggest} disabled={busy === 'suggest'}>
-              {busy === 'suggest' ? 'Thinking…' : 'LLM assist: suggest cards'}
+              {busy === 'suggest' ? 'Thinking…' : 'Suggest cards'}
             </button>
             <button className="btn" onClick={() => setSelection('')}>
               Clear
@@ -436,7 +436,7 @@ function ExtractWorkspace({ extractId }: { extractId: string }) {
 
         {!selection && (
           <button className="btn btn-primary text-xs" onClick={suggest} disabled={busy === 'suggest'}>
-            {busy === 'suggest' ? 'Thinking…' : 'LLM assist: suggest cards from this whole extract'}
+            {busy === 'suggest' ? 'Thinking…' : 'Suggest cards from extract'}
           </button>
         )}
       </div>
@@ -450,8 +450,8 @@ function ExtractWorkspace({ extractId }: { extractId: string }) {
 
       {suggestions.length > 0 && (
         <Section
-          title="Proposed cards"
-          description="Nothing becomes a card until you accept it — same as grading."
+          title="Proposed Cards"
+          description="Review and accept cards below."
           actions={
             <div className="flex items-center gap-2">
               <select className="input w-auto" value={deckId} onChange={(e) => setDeckId(e.target.value)}>

@@ -32,8 +32,7 @@ export default function Login() {
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
       <h1 className="text-2xl font-semibold text-slate-100">Memorization</h1>
       <p className="mt-2 text-sm text-slate-500">
-        FSRS scheduling, LLM-graded typed answers, and a priority queue that mixes reviews with
-        what you're reading.
+        Active recall, FSRS scheduling, and AI-assisted reviews.
       </p>
 
       <form onSubmit={submit} className="card mt-8 space-y-4">
@@ -84,7 +83,7 @@ export default function Login() {
             setError(null)
           }}
         >
-          {mode === 'in' ? 'No account? Create one' : 'Already have an account? Sign in'}
+          {mode === 'in' ? 'Create an account' : 'Sign in to existing account'}
         </button>
       </form>
     </div>

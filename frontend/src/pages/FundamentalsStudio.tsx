@@ -38,15 +38,15 @@ function loadReadingMode(): ReadingMode {
 }
 
 const TRACKS = [
-  { id: 'track_0_python_basics', label: '🟢 Track 0: Python Basics & Numerics (MIT 6.0001 Lec 1–3, Pset 1)', icon: '🐍' },
-  { id: 'track_1_pythonic_fluency', label: '🔵 Track 1: Structured Types & Aliasing (MIT 6.0001 Lec 4–5, Pset 2)', icon: '⚡' },
-  { id: 'track_2_data_structures', label: '🟣 Track 2: ADTs, Hash Tables & OOP (MIT 6.0001 Lec 8–9, Pset 5)', icon: '🧱' },
-  { id: 'track_3_algorithmic_scaffolds', label: '🟡 Track 3: Recursion & Scaffolds (MIT 6.0001 Lec 6, Pset 3–4)', icon: '📐' },
-  { id: 'track_4_custom_sorting', label: '🟠 Track 4: Divide-and-Conquer Sorting (MIT 6.0001 Lec 12)', icon: '🔀' },
-  { id: 'track_5_bit_manipulation', label: '🔴 Track 5: Binary Encodings & Bits (MIT 6.0001 Numerics)', icon: '🔢' },
-  { id: 'track_6_complexity_math', label: '🟤 Track 6: Asymptotic Complexity & Efficiency (MIT 6.0001 Lec 10–11)', icon: '⏱' },
-  { id: 'track_7_testing_exceptions', label: '⚪ Track 7: Testing, Debugging & Exceptions (MIT 6.0001 Lec 7)', icon: '🧪' },
-  { id: 'track_8_graphs', label: '🟩 Track 8: Graphs & Optimization (MIT 6.0002 / 6.0001 Adv)', icon: '🕸' },
+  { id: 'track_0_python_basics', label: '🟢 Track 0: Python Basics & Numerics', icon: '🐍' },
+  { id: 'track_1_pythonic_fluency', label: '🔵 Track 1: Structured Types & Aliasing', icon: '⚡' },
+  { id: 'track_2_data_structures', label: '🟣 Track 2: ADTs, Hash Tables & OOP', icon: '🧱' },
+  { id: 'track_3_algorithmic_scaffolds', label: '🟡 Track 3: Recursion & Scaffolds', icon: '📐' },
+  { id: 'track_4_custom_sorting', label: '🟠 Track 4: Divide-and-Conquer Sorting', icon: '🔀' },
+  { id: 'track_5_bit_manipulation', label: '🔴 Track 5: Binary Encodings & Bits', icon: '🔢' },
+  { id: 'track_6_complexity_math', label: '🟤 Track 6: Asymptotic Complexity', icon: '⏱' },
+  { id: 'track_7_testing_exceptions', label: '⚪ Track 7: Testing & Exceptions', icon: '🧪' },
+  { id: 'track_8_graphs', label: '🟩 Track 8: Graphs & Optimization', icon: '🕸' },
 ]
 
 export default function FundamentalsStudio() {
@@ -336,8 +336,8 @@ export default function FundamentalsStudio() {
       aria-pressed={concordanceEnabled}
       title={
         concordanceEnabled
-          ? "Strong's Concordance is active — click to turn off inline term highlights and tooltips"
-          : "Strong's Concordance is off — click to enable inline term highlights and formal definitions"
+          ? 'Concordance highlights active'
+          : 'Concordance highlights off'
       }
       className={`flex items-center gap-1.5 rounded-lg border font-semibold transition shadow-sm ${
         size === 'md' ? 'px-3 py-1 text-xs' : 'px-2 py-0.5 text-[10px]'

@@ -26,11 +26,12 @@ export default function InteractiveTutorialModal({
   )
   const [isGrading, setIsGrading] = useState(false)
   const [gradedResult, setGradedResult] = useState<null | {
-    grade: 'good'
+    grade: 'good' | 'again'
     confidence: number
     matched: string[]
     missed: string[]
     reasoning: string
+    weaknesses?: string[]
   }>(null)
   const [selectedTreeChapter, setSelectedTreeChapter] = useState(0)
   const [retentionSlider, setRetentionSlider] = useState(90)
@@ -69,69 +70,92 @@ export default function InteractiveTutorialModal({
   const handleSimulateGrading = () => {
     setIsGrading(true)
     setGradedResult(null)
+    const isIncorrect =
+      simulatedAnswer.toLowerCase().includes('compile') ||
+      simulatedAnswer.toLowerCase().includes('faster') ||
+      simulatedAnswer.toLowerCase().includes('separate file') ||
+      simulatedAnswer.trim().length < 15
+
     setTimeout(() => {
       setIsGrading(false)
-      setGradedResult({
-        grade: 'good',
-        confidence: 0.94,
-        matched: [
-          'Bundling data and methods into a cohesive unit',
-          'Information hiding (preventing unauthorized external mutation)',
-        ],
-        missed: ['Explicit mention of access modifiers (private/protected)'],
-        reasoning:
-          'Clear, concise, and accurate conceptual explanation. Correctly identified both packaging and interface boundary contracts.',
-      })
+      if (isIncorrect) {
+        setGradedResult({
+          grade: 'again',
+          confidence: 0.95,
+          matched: [],
+          missed: [
+            'Bundling data and methods into a cohesive unit',
+            'Information hiding (preventing unauthorized external mutation)',
+          ],
+          reasoning:
+            'Confused encapsulation with compilation units or file structure. Encapsulation is an object-oriented design principle about bundling state with behavior and hiding internal implementation details behind an interface.',
+          weaknesses: [
+            'Confused encapsulation with file compilation modularity',
+          ],
+        })
+      } else {
+        setGradedResult({
+          grade: 'good',
+          confidence: 0.94,
+          matched: [
+            'Bundling data and methods into a cohesive unit',
+            'Information hiding (preventing unauthorized external mutation)',
+          ],
+          missed: ['Explicit mention of access modifiers (private/protected)'],
+          reasoning:
+            'Clear, concise, and accurate conceptual explanation. Correctly identified both packaging and interface boundary contracts.',
+        })
+      }
     }, 700)
   }
 
   const briefSteps = [
     {
-      title: 'Active Recall & Token Similarity Grading',
-      badge: 'Core Recall',
+      title: 'Active Recall & Grading',
+      badge: 'Recall',
       icon: '🧠',
     },
     {
-      title: 'Knowledge Trees & Visual Progress Bars',
-      badge: 'Structure & Progress',
+      title: 'Knowledge Trees & Progress',
+      badge: 'Hierarchy',
       icon: '🌲',
     },
     {
-      title: 'Priority Queue, Time Bank & Deep Mastery',
-      badge: 'Workflow & Habits',
+      title: 'Priority Queue & Time Bank',
+      badge: 'Workflow',
       icon: '⚡',
     },
   ]
 
   const extensiveSteps = [
     {
-      title: 'Active Recall & The FSRS Engine',
-      badge: 'Core Philosophy',
+      title: 'Active Recall & FSRS',
+      badge: 'Philosophy',
       icon: '🧠',
     },
     {
-      title: 'Live AI Grading Simulator',
-      badge: 'Active Recall',
+      title: 'AI Grading Simulator',
+      badge: 'Recall',
       icon: '🤖',
     },
     {
-      title: 'Knowledge Tree & Progress Bars',
-      badge: 'Hierarchy & Structure',
+      title: 'Knowledge Tree & Progress',
+      badge: 'Hierarchy',
       icon: '🌲',
     },
     {
       title: 'Priority Queue & Time Bank',
-      badge: 'Cognitive Load',
+      badge: 'Workflow',
       icon: '⏱️',
     },
     {
       title: 'Incremental Reading & Code Lab',
-      badge: 'Deep Mastery',
+      badge: 'Practice',
       icon: '📖',
     },
     {
-      title: "You're Ready to Master Your Mind",
-      badge: 'Next Steps',
+      title: 'Ready to Start',
+      badge: 'Launchpad',
       icon: '🚀',
     },
   ]
@@ -169,15 +193,15 @@ export default function InteractiveTutorialModal({
             </div>
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-sky-400">
-                Welcome to Ars Memoriae
+                Ars Memoriae
               </span>
-              <h2 className="text-lg font-bold text-slate-100">Choose Your Tutorial Experience</h2>
+              <h2 className="text-lg font-bold text-slate-100">Choose Tutorial</h2>
             </div>
           </div>
 
           <p className="text-xs text-slate-300 leading-relaxed">
-            Welcome, <strong className="text-sky-300">{user?.email ?? 'scholar'}</strong>! Your
-            spaced-repetition workspace is ready. Select how thoroughly you want to tour the system:
+            Welcome, <strong className="text-sky-300">{user?.email ?? 'scholar'}</strong>!
+            Select a walkthrough:
           </p>
 
           <div className="grid grid-cols-1 gap-3">
@@ -194,14 +218,14 @@ export default function InteractiveTutorialModal({
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2 text-sky-300 font-bold text-xs">
                   <span>⚡</span>
-                  <span>Brief High-Level Overview</span>
+                  <span>Brief Overview</span>
                 </div>
                 <span className="chip text-[10px] py-0.5 border-sky-500/40 text-sky-300 bg-sky-500/10 font-semibold">
                   1 min
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                A rapid 3-slide executive overview of the core architecture: Active Recall, Hierarchical Knowledge Trees with distribution bars, and the Priority Queue.
+                3-slide overview: Active Recall, Knowledge Trees, and the Priority Queue.
               </p>
             </button>
 
@@ -218,14 +242,14 @@ export default function InteractiveTutorialModal({
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
                   <span>📘</span>
-                  <span>Extensive Interactive Tutorial</span>
+                  <span>Full Tutorial</span>
                 </div>
                 <span className="chip text-[10px] py-0.5 border-emerald-500/40 text-emerald-300 bg-emerald-500/10 font-semibold">
                   Recommended · 4 min
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                Full hands-on walkthrough: test-drive the FSRS retention target slider, simulate live AI grading with the token-by-token similarity checker, explore the Knowledge Tree, and learn time-budget banking.
+                Interactive simulation: test-drive the FSRS retention slider, AI grading, Knowledge Tree, and time banking.
               </p>
             </button>
           </div>
@@ -236,10 +260,10 @@ export default function InteractiveTutorialModal({
               onClick={() => void finishTutorial()}
               className="text-slate-400 hover:text-slate-200 text-xs underline underline-offset-2 transition cursor-pointer"
             >
-              Skip tutorial for now
+              Skip
             </button>
             <span className="text-[11px] text-slate-500">
-              Relaunch anytime from <strong className="text-slate-400">Start here</strong>
+              Relaunch anytime from <strong className="text-slate-400">Settings</strong>
             </span>
           </div>
         </div>
@@ -329,47 +353,56 @@ export default function InteractiveTutorialModal({
               <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 space-y-2">
                 <h3 className="text-sm font-bold text-sky-200 flex items-center gap-2">
                   <span>✍️</span>
-                  <span>Principle 1: Active Retrieval (You Type Every Answer)</span>
+                  <span>Active Retrieval</span>
                 </h3>
                 <p className="text-slate-300 leading-relaxed">
-                  Conventional flashcard systems rely on passive recognition (flipping the card and self-grading).
-                  Ars Memoriae requires <strong className="text-emerald-300">effortful active retrieval</strong>: you type your response in full,
-                  activating deep neural pathways and eliminating illusory self-assessment.
+                  Conventional flashcards rely on passive recognition.
+                  Ars Memoriae requires <strong className="text-emerald-300">active retrieval</strong>: you type your response in full,
+                  activating deeper recall and eliminating illusory self-assessment.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-3.5 space-y-2">
                   <div className="flex items-center gap-2 font-semibold text-emerald-300 text-xs">
                     <span>🤖</span>
-                    <span>Local AI Grading Engine</span>
+                    <span>Local AI Grader</span>
                   </div>
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Powered by quantized <strong className="text-slate-200">Qwen 2.5 Coder</strong> running 100% locally in Ollama.
-                    It reads your typed answer and outputs structured feedback: grade, confidence, matched insights, missed nuances, and comprehensive reasoning.
+                    Powered by quantized <strong className="text-slate-200">Qwen 2.5 Coder</strong>.
+                    Provides grade, confidence, matched points, missed points, and reasoning.
                   </p>
                 </div>
 
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3.5 space-y-2">
                   <div className="flex items-center gap-2 font-semibold text-emerald-300 text-xs">
                     <span>🔬</span>
-                    <span>Token-by-Token Similarity Checker</span>
+                    <span>Token Similarity</span>
                   </div>
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    A fast local keyword and n-gram overlap heuristic runs alongside the AI grader. It cross-checks
-                    semantic predictions against verbatim token matches to eliminate hallucinations and reward accurate recall.
+                    A fast keyword and n-gram overlap check cross-verifies
+                    semantic predictions against verbatim token matches.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-3.5 space-y-2">
+                  <div className="flex items-center gap-2 font-semibold text-amber-300 text-xs">
+                    <span>💡</span>
+                    <span>Weakness Memory</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Incorrect answers extract your conceptual stumbling blocks into card memory, surfacing <strong className="text-amber-200">Past Mistake Hints</strong> on future reviews.
                   </p>
                 </div>
               </div>
 
               <div className="rounded-xl border border-ink-line bg-ink-soft/50 p-3.5 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-200 text-xs">FSRS Spaced Repetition Scheduling</span>
+                  <span className="font-semibold text-slate-200 text-xs">FSRS Scheduling</span>
                   <span className="chip text-[10px] text-amber-300 border-amber-500/40">Stability & Retrievability</span>
                 </div>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Intervals are calculated using modern Free Spaced Repetition Scheduling (FSRS) based on memory stability and retrievability,
-                  yielding predictable retention targets (e.g. 90%) with zero guesswork.
+                  Intervals are calculated using modern Free Spaced Repetition Scheduling (FSRS) based on memory stability and retrievability.
                 </p>
               </div>
             </div>
@@ -381,11 +414,10 @@ export default function InteractiveTutorialModal({
               <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 space-y-2">
                 <h3 className="text-sm font-bold text-sky-200 flex items-center gap-2">
                   <span>🌲</span>
-                  <span>Principle 2: Hierarchical Knowledge Architecture</span>
+                  <span>Knowledge Tree</span>
                 </h3>
                 <p className="text-slate-300 leading-relaxed">
-                  Knowledge is not a flat list of cards. Ars Memoriae organizes everything into a
-                  <strong className="text-sky-300"> unified hierarchical Knowledge Tree</strong> with parent courses, chapters, topics, and subdecks.
+                  Organize materials into a <strong className="text-sky-300">hierarchical Knowledge Tree</strong> with courses, chapters, topics, and subdecks.
                 </p>
               </div>
 
@@ -393,34 +425,33 @@ export default function InteractiveTutorialModal({
                 <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-3.5 space-y-2">
                   <div className="flex items-center gap-2 font-semibold text-sky-300 text-xs">
                     <span>🔀</span>
-                    <span>Drag-and-Drop Study Ordering</span>
+                    <span>Study Ordering</span>
                   </div>
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Drag branches directly in the Tree view to order study materials chronologically according to syllabus syllabi
-                    rather than alphabetical filenames. Custom positions are saved persistently in the database.
+                    Drag branches in the Tree view to order study materials chronologically according to course syllabi.
                   </p>
                 </div>
 
                 <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-3.5 space-y-2">
                   <div className="flex items-center gap-2 font-semibold text-emerald-300 text-xs">
                     <span>📊</span>
-                    <span>Three Real-Time Distribution Bars with Hierarchical Rollup</span>
+                    <span>Progress Bars</span>
                   </div>
                   <p className="text-[11px] text-slate-400 leading-relaxed mb-2">
-                    Every deck and course root displays three instant progress distribution bars:
+                    Every deck displays three progress distribution bars:
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px]">
                     <div className="bg-ink/80 rounded-lg p-2 border border-ink-line">
                       <span className="font-bold text-slate-300 block mb-1">👀 Cards Viewed</span>
-                      <span className="text-slate-400">Unseen (0 reviews) vs New (1-2) vs Mature (3+)</span>
+                      <span className="text-slate-400">Unseen vs New vs Mature</span>
                     </div>
                     <div className="bg-ink/80 rounded-lg p-2 border border-ink-line">
-                      <span className="font-bold text-slate-300 block mb-1">⚖️ FSRS Difficulty</span>
-                      <span className="text-slate-400">Easy (&lt;4.0) vs Medium (4.0-7.0) vs Hard (&gt;7.0)</span>
+                      <span className="font-bold text-slate-300 block mb-1">⚖️ Difficulty</span>
+                      <span className="text-slate-400">Easy vs Medium vs Hard</span>
                     </div>
                     <div className="bg-ink/80 rounded-lg p-2 border border-ink-line">
                       <span className="font-bold text-slate-300 block mb-1">🎯 Recall Ratings</span>
-                      <span className="text-slate-400">Again, Hard, Good, and Easy response telemetry</span>
+                      <span className="text-slate-400">Again, Hard, Good, Easy</span>
                     </div>
                   </div>
                 </div>
@@ -434,11 +465,10 @@ export default function InteractiveTutorialModal({
               <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4 space-y-2">
                 <h3 className="text-sm font-bold text-emerald-200 flex items-center gap-2">
                   <span>⏱️</span>
-                  <span>Principle 3: Daily Time Budgets & Deep Focus</span>
+                  <span>Daily Time Budgets</span>
                 </h3>
                 <p className="text-slate-300 leading-relaxed">
-                  Study fatigue is real. Ars Memoriae replaces infinite due-date backlogs with bounded daily time budgets
-                  and velocity rewards.
+                  Bounded daily time budgets replace infinite due-date backlogs with focused study sessions.
                 </p>
               </div>
 
@@ -446,22 +476,20 @@ export default function InteractiveTutorialModal({
                 <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-3.5 space-y-2">
                   <div className="flex items-center gap-2 font-semibold text-amber-300 text-xs">
                     <span>⏳</span>
-                    <span>Priority Queue Scheduling</span>
+                    <span>Priority Queue</span>
                   </div>
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Your daily session is composed from a prioritized stream of due cards, new concepts, and reading extracts.
-                    Missed days smoothly distribute rather than snowballing into an 800-card wall.
+                    Sessions are composed from due cards, new concepts, and reading extracts. Missed days distribute smoothly.
                   </p>
                 </div>
 
                 <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-3.5 space-y-2">
                   <div className="flex items-center gap-2 font-semibold text-sky-300 text-xs">
                     <span>🏦</span>
-                    <span>Time Bank Velocity Rewards</span>
+                    <span>Time Bank</span>
                   </div>
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Finishing a session under your target duration banks remaining focus minutes into your Time Bank,
-                    rewarding cognitive speed and focus over passive seat time.
+                    Finishing under your target duration banks focus minutes, rewarding recall velocity.
                   </p>
                 </div>
               </div>
@@ -469,18 +497,17 @@ export default function InteractiveTutorialModal({
               <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-3.5 space-y-2">
                 <div className="flex items-center gap-2 font-semibold text-purple-300 text-xs">
                   <span>💻</span>
-                  <span>Interactive Code Lab & Incremental Reading</span>
+                  <span>Code Lab & Reading</span>
                 </div>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Run automated code test suites directly in browser with a Socratic AI guide that provides progressive hints without spoiling solutions,
-                  and chunk complex textbooks into bite-sized scheduled extracts with verified citations.
+                  Automated test suites and Socratic hints for coding challenges, plus incremental reading extracts with citations.
                 </p>
               </div>
 
               {/* Quick Jump Action Grid */}
               <div className="pt-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
-                  Ready to begin? Choose your launchpad:
+                  Choose your launchpad:
                 </span>
                 <div className="grid grid-cols-3 gap-2">
                   <button
@@ -521,14 +548,13 @@ export default function InteractiveTutorialModal({
           {tutorialType === 'extensive' && step === 0 && (
             <div className="space-y-4">
               <p className="text-slate-300 leading-relaxed">
-                Conventional flashcard apps rely on <strong className="text-amber-300">passive recognition</strong>:
-                you look at the prompt, flip the card, and guess whether you knew it. But the cognitive science
-                of learning proves that true retention requires <strong className="text-emerald-300">effortful active retrieval</strong>.
+                Conventional flashcards rely on <strong className="text-amber-300">passive recognition</strong>.
+                True retention requires <strong className="text-emerald-300">active retrieval</strong>.
               </p>
 
               <div className="rounded-xl border border-ink-line bg-ink-soft/60 p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-200">Interactive FSRS Retention Target Simulator</span>
+                  <span className="font-semibold text-slate-200">FSRS Retention Target</span>
                   <span className="font-mono text-sky-300 font-bold">{retentionSlider}% Target</span>
                 </div>
                 <input
@@ -541,19 +567,19 @@ export default function InteractiveTutorialModal({
                 />
                 <div className="grid grid-cols-3 gap-2 text-center text-[11px] pt-1">
                   <div className="rounded-lg bg-black/40 p-2 border border-ink-line">
-                    <span className="block text-slate-400 text-[10px]">Optimal Review Interval</span>
+                    <span className="block text-slate-400 text-[10px]">Interval</span>
                     <span className="font-bold text-emerald-400 text-xs">
                       {Math.round(18 * ((100 - retentionSlider) / 10))} Days
                     </span>
                   </div>
                   <div className="rounded-lg bg-black/40 p-2 border border-ink-line">
-                    <span className="block text-slate-400 text-[10px]">Retention Stability</span>
+                    <span className="block text-slate-400 text-[10px]">Stability</span>
                     <span className="font-bold text-sky-400 text-xs">
                       {(retentionSlider * 0.96).toFixed(1)}% Memory
                     </span>
                   </div>
                   <div className="rounded-lg bg-black/40 p-2 border border-ink-line">
-                    <span className="block text-slate-400 text-[10px]">Daily Review Load</span>
+                    <span className="block text-slate-400 text-[10px]">Daily Load</span>
                     <span className="font-bold text-amber-300 text-xs">
                       {Math.round(20 * (retentionSlider / 85))} min/day
                     </span>
@@ -561,7 +587,7 @@ export default function InteractiveTutorialModal({
                 </div>
                 <p className="text-[11px] text-slate-400 leading-normal">
                   Ars Memoriae uses <strong className="text-slate-200">py-fsrs</strong> to track stability, difficulty,
-                  and retrievability per item, automatically smoothing your schedule so you never face sudden backlogs.
+                  and retrievability per item.
                 </p>
               </div>
             </div>
@@ -571,21 +597,20 @@ export default function InteractiveTutorialModal({
           {tutorialType === 'extensive' && step === 1 && (
             <div className="space-y-3.5">
               <p className="text-slate-300 leading-relaxed">
-                When you review a card, you type your answer. A local LLM running privately on your machine
-                grades your typed reasoning against the reference answer, verified in real-time by a
-                <strong className="text-sky-300"> token-by-token answer similarity checker</strong>.
+                When you review a card, you type your answer. A local LLM grades your reasoning,
+                verified by a <strong className="text-sky-300">token similarity checker</strong>.
               </p>
 
               {/* Sample Card */}
               <div className="rounded-xl border border-sky-500/30 bg-ink-soft/80 p-4 space-y-3">
                 <div className="flex items-center justify-between text-[11px] text-slate-400 border-b border-ink-line pb-2">
-                  <span className="font-semibold text-sky-300">Sample Active Recall Card</span>
+                  <span className="font-semibold text-sky-300">Sample Card</span>
                   <span className="chip text-[10px]">CPSC 210 · Ch 12</span>
                 </div>
 
                 <div>
                   <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                    Question:
+                    Question
                   </label>
                   <p className="text-sm font-semibold text-slate-100">
                     What is encapsulation in software engineering, and why is it important?
@@ -595,19 +620,35 @@ export default function InteractiveTutorialModal({
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Your Typed Answer:
+                      Your Answer
                     </label>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSimulatedAnswer(
-                          'Encapsulation bundles data with functions that manipulate that data, restricting direct access from outside.'
-                        )
-                      }
-                      className="text-[10px] text-sky-400 hover:text-sky-300 underline"
-                    >
-                      Fill sample answer
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSimulatedAnswer(
+                            'Encapsulation bundles data with functions that manipulate that data, restricting direct access from outside.'
+                          )
+                          setGradedResult(null)
+                        }}
+                        className="text-[10px] text-emerald-400 hover:text-emerald-300 underline cursor-pointer"
+                      >
+                        ✓ Correct Answer
+                      </button>
+                      <span className="text-slate-600">·</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSimulatedAnswer(
+                            'Encapsulation means writing classes in separate files so that the compiler compiles them faster.'
+                          )
+                          setGradedResult(null)
+                        }}
+                        className="text-[10px] text-rose-400 hover:text-rose-300 underline cursor-pointer"
+                      >
+                        ✗ Incorrect Answer
+                      </button>
+                    </div>
                   </div>
                   <textarea
                     rows={2}
@@ -624,38 +665,79 @@ export default function InteractiveTutorialModal({
                   disabled={isGrading}
                   className="btn btn-primary w-full py-1.5 text-xs font-semibold"
                 >
-                  {isGrading ? 'AI Evaluating Reasoning…' : 'Simulate AI Grading ⚡'}
+                  {isGrading ? 'Grading…' : 'Simulate Grading ⚡'}
                 </button>
 
                 {gradedResult && (
-                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-3 space-y-2.5 animate-in fade-in duration-200">
+                  <div
+                    className={`rounded-lg border p-3.5 space-y-2.5 animate-in fade-in duration-200 ${
+                      gradedResult.grade === 'again'
+                        ? 'border-rose-500/40 bg-rose-950/20'
+                        : 'border-emerald-500/30 bg-emerald-950/20'
+                    }`}
+                  >
                     <div className="flex items-center justify-between">
-                      <span className="chip border-emerald-500/40 text-emerald-300 font-bold uppercase text-[10px]">
+                      <span
+                        className={`chip font-bold uppercase text-[10px] ${
+                          gradedResult.grade === 'again'
+                            ? 'border-rose-500/50 text-rose-300 bg-rose-500/10'
+                            : 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
+                        }`}
+                      >
                         Grade: {gradedResult.grade.toUpperCase()} ({(gradedResult.confidence * 100).toFixed(0)}% Confidence)
                       </span>
                       <span className="text-[10px] text-slate-400">100% Local (Qwen 2.5 Coder)</span>
                     </div>
+
                     <p className="text-[11px] text-slate-300 italic">"{gradedResult.reasoning}"</p>
+
                     <div className="text-[10px] space-y-1 text-slate-300">
-                      <p className="text-emerald-300 font-medium">✓ Matched: {gradedResult.matched.join(', ')}</p>
-                      <p className="text-amber-300/80 font-medium">△ Missed: {gradedResult.missed.join(', ')}</p>
+                      {gradedResult.matched.length > 0 && (
+                        <p className="text-emerald-300 font-medium">✓ Matched: {gradedResult.matched.join(', ')}</p>
+                      )}
+                      {gradedResult.missed.length > 0 && (
+                        <p className="text-amber-300/90 font-medium">△ Missed: {gradedResult.missed.join(', ')}</p>
+                      )}
                     </div>
+
+                    {/* Longitudinal Weakness Memory callout for incorrect answers */}
+                    {gradedResult.weaknesses && gradedResult.weaknesses.length > 0 && (
+                      <div className="rounded-lg border border-amber-500/40 bg-amber-950/30 p-3 space-y-2">
+                        <div className="flex items-center gap-2 text-amber-300 text-xs font-bold">
+                          <span>💡</span>
+                          <span>Longitudinal Weakness Memory (Saved to Card)</span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 leading-relaxed">
+                          When you enter an incorrect answer, Ars Memoriae extracts your specific misconception and <strong className="text-amber-200">saves it to the card's memory</strong>:
+                        </p>
+                        <div className="rounded bg-black/60 px-2.5 py-1.5 border border-amber-500/30 font-mono text-[11px] text-amber-200">
+                          ⚠ Stumbling block: "{gradedResult.weaknesses[0]}"
+                        </div>
+                        <p className="text-[10px] text-slate-400 leading-normal">
+                          On your next review session for this card, a <strong className="text-amber-300">💡 Past Mistake Hint</strong> button will automatically appear before you answer, coaching you past this exact stumbling block without spoiling the solution.
+                        </p>
+                      </div>
+                    )}
 
                     {/* Token-by-token answer similarity checker highlight */}
                     <div className="rounded border border-sky-500/30 bg-black/40 p-2 space-y-1">
                       <div className="flex items-center justify-between text-[10px]">
                         <span className="font-semibold text-sky-300 flex items-center gap-1">
-                          🔍 Token-by-Token Answer Similarity Checker
+                          🔍 Token Similarity
                         </span>
-                        <span className="font-mono text-emerald-400 font-bold">88% Lexical Overlap</span>
+                        <span className="font-mono text-emerald-400 font-bold">
+                          {gradedResult.grade === 'again' ? '12% Overlap' : '88% Overlap'}
+                        </span>
                       </div>
                       <p className="text-[10px] text-slate-400 leading-tight">
-                        Runs parallel token-level Jaccard and n-gram verification against the reference answer to prevent AI grading discrepancies.
+                        Runs parallel token-level Jaccard and n-gram verification against the reference answer.
                       </p>
                     </div>
 
-                    <p className="text-[10px] text-slate-400 pt-1 border-t border-emerald-500/20">
-                      💡 You can always confirm or override the AI grade with the four standard Again/Hard/Good/Easy buttons.
+                    <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-700/50">
+                      💡 {gradedResult.grade === 'good'
+                        ? 'Try clicking "✗ Incorrect Answer" above to see how mistakes are saved to Weakness Memory.'
+                        : 'Try clicking "✓ Correct Answer" above to test a passing response.'}
                     </p>
                   </div>
                 )}
@@ -667,14 +749,13 @@ export default function InteractiveTutorialModal({
           {tutorialType === 'extensive' && step === 2 && (
             <div className="space-y-3.5">
               <p className="text-slate-300 leading-relaxed">
-                Rather than treating all flashcards as a flat list, Ars Memoriae implements a unified
-                <strong className="text-sky-300"> Knowledge Tree</strong> with drag-and-drop branch reordering and
-                hierarchical distribution metrics.
+                Ars Memoriae organizes learning in a <strong className="text-sky-300">Knowledge Tree</strong> with
+                drag-and-drop branch ordering and progress metrics.
               </p>
 
               <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-4 space-y-3">
                 <span className="text-[11px] font-semibold text-slate-200 block">
-                  Interactive Deck & Branch Hierarchy Demo
+                  Knowledge Tree Demo
                 </span>
 
                 <div className="space-y-1.5 font-sans">
@@ -722,11 +803,10 @@ export default function InteractiveTutorialModal({
                 <div className="rounded-lg bg-black/40 p-2.5 text-[11px] text-slate-300 space-y-1">
                   <p>
                     📊 <strong className="text-emerald-300">Hierarchical Rollup:</strong> Viewing a parent deck
-                    summarizes the entire course across <em>Cards Viewed</em>, <em>Difficulty</em>, and <em>Recall Ratings</em>.
+                    summarizes the course across <em>Viewed</em>, <em>Difficulty</em>, and <em>Ratings</em>.
                   </p>
                   <p>
-                    🔀 <strong className="text-sky-300">Drag & Drop:</strong> In the Tree view, you can drag branches
-                    and subdecks directly to rearrange study order according to your syllabus.
+                    🔀 <strong className="text-sky-300">Drag & Drop:</strong> In Tree view, drag branches to arrange study order.
                   </p>
                 </div>
               </div>
@@ -737,8 +817,7 @@ export default function InteractiveTutorialModal({
           {tutorialType === 'extensive' && step === 3 && (
             <div className="space-y-3.5">
               <p className="text-slate-300 leading-relaxed">
-                Backlog anxiety is the #1 reason learners abandon spaced repetition. In Ars Memoriae, you never face
-                an infinite list of overdue cards.
+                Avoid backlog anxiety with bounded daily time budgets.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -748,30 +827,27 @@ export default function InteractiveTutorialModal({
                     <h4 className="font-semibold text-slate-200">Daily Time Budget</h4>
                   </div>
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Set a daily budget (e.g. 20 or 30 minutes). The queue ranks cards by priority + overdue score
-                    and fills your time budget. You study what matters most first.
+                    Set a daily budget (e.g. 20 or 30 minutes). The queue ranks cards by priority and overdue score.
                   </p>
                 </div>
 
                 <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-3.5 space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">🏦</span>
-                    <h4 className="font-semibold text-slate-200">The Time Bank</h4>
+                    <h4 className="font-semibold text-slate-200">Time Bank</h4>
                   </div>
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Target card goals within study blocks. Finishing early deposits remaining minutes into your Time
-                    Bank, directly rewarding mastery velocity over passive seat time.
+                    Finishing early deposits remaining minutes into your Time Bank, rewarding mastery velocity.
                   </p>
                 </div>
               </div>
 
               <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-3.5 space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-amber-300 font-bold">📝 Metacognitive Reflection</span>
+                  <span className="text-amber-300 font-bold">📝 Reflection</span>
                 </div>
                 <p className="text-[11px] text-slate-300 leading-relaxed">
-                  After finishing a study block, you briefly note any external distractions and state your plan for
-                  the next block. This closes the executive-function loop and boosts cognitive retention.
+                  After a block, note distractions and plans for the next session to close the feedback loop.
                 </p>
               </div>
             </div>
@@ -781,30 +857,27 @@ export default function InteractiveTutorialModal({
           {tutorialType === 'extensive' && step === 4 && (
             <div className="space-y-3.5">
               <p className="text-slate-300 leading-relaxed">
-                Two unique pillars empower deep technical learning and comprehensive document mastery:
+                Two pillars empower deep technical learning and document mastery:
               </p>
 
               <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-4 space-y-2.5">
                 <div className="flex items-center gap-2 text-sky-300 font-semibold">
                   <span>📄</span>
-                  <span>Incremental Reading (IR)</span>
+                  <span>Incremental Reading</span>
                 </div>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Paste textbook chapters, scientific papers, or documentation URLs. Ars Memoriae chunks the text
-                  into paragraph extracts with verified source page citations, interleaving reading extracts with your
-                  flashcard queue.
+                  Paste chapters, papers, or URLs. The system chunks text into extracts with source citations,
+                  interleaved in your queue.
                 </p>
               </div>
 
               <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-4 space-y-2.5">
                 <div className="flex items-center gap-2 text-emerald-300 font-semibold">
                   <span>💻</span>
-                  <span>Interactive Code Lab & Socratic Guide</span>
+                  <span>Code Lab & Socratic Guide</span>
                 </div>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Practice coding challenges directly in your browser with automated test suite execution. Stuck?
-                  The Socratic Guide asks clarifying questions to guide you toward the algorithmic insight without spoiling
-                  the solution.
+                  Practice coding challenges with automated test execution and Socratic hints without spoiling solutions.
                 </p>
               </div>
             </div>
@@ -817,13 +890,13 @@ export default function InteractiveTutorialModal({
                 <span className="text-3xl">🎉</span>
                 <h3 className="text-sm font-bold text-emerald-200">You're All Set!</h3>
                 <p className="text-xs text-slate-300 max-w-md mx-auto">
-                  You now understand the core philosophy behind Ars Memoriae: Active Recall, FSRS scheduling,
-                  hierarchical Knowledge Trees, and local AI reasoning.
+                  You now understand the core workflow: Active Recall, FSRS scheduling,
+                  Knowledge Trees, and AI feedback.
                 </p>
               </div>
 
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-                Where would you like to start?
+                Choose launchpad:
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -838,7 +911,7 @@ export default function InteractiveTutorialModal({
                     </span>
                     <span className="text-sky-400 text-xs group-hover:translate-x-0.5 transition-transform">→</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">Create decks or import starter notes from JSON.</p>
+                  <p className="text-[11px] text-slate-400">Create decks or import starter notes.</p>
                 </button>
 
                 <button
@@ -852,7 +925,7 @@ export default function InteractiveTutorialModal({
                     </span>
                     <span className="text-sky-400 text-xs group-hover:translate-x-0.5 transition-transform">→</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">Explore knowledge branches and arrange study order.</p>
+                  <p className="text-[11px] text-slate-400">Explore branches and arrange study order.</p>
                 </button>
 
                 <button
@@ -862,11 +935,11 @@ export default function InteractiveTutorialModal({
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-semibold text-slate-200 group-hover:text-sky-300 text-xs">
-                      3. Milestone Checklist
+                      3. Milestones
                     </span>
                     <span className="text-sky-400 text-xs group-hover:translate-x-0.5 transition-transform">→</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">Track your verified learning telemetry & milestones.</p>
+                  <p className="text-[11px] text-slate-400">Track learning milestones & telemetry.</p>
                 </button>
 
                 <button
@@ -880,7 +953,7 @@ export default function InteractiveTutorialModal({
                     </span>
                     <span className="text-sky-400 text-xs group-hover:translate-x-0.5 transition-transform">→</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">Jump right into active recall review sessions.</p>
+                  <p className="text-[11px] text-slate-400">Jump right into active recall reviews.</p>
                 </button>
               </div>
             </div>
@@ -929,7 +1002,7 @@ export default function InteractiveTutorialModal({
               onClick={() => void finishTutorial('/review')}
               className="btn btn-primary px-4 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 border-emerald-500/50"
             >
-              Finish Tour ✓
+              Finish ✓
             </button>
           )}
         </div>

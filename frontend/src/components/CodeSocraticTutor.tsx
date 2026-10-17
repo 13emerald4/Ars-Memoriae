@@ -61,7 +61,7 @@ export function CodeSocraticTutor({
       <div className="grid grid-cols-2 gap-2 text-xs">
         <button
           onClick={() =>
-            sendHintRequest('conceptual', '💡 Give me a conceptual hint without spoiling code')
+            sendHintRequest('conceptual', '💡 Conceptual hint')
           }
           disabled={loading}
           className="rounded-lg border border-sky-500/30 bg-sky-900/30 p-2 text-left text-sky-200 hover:bg-sky-800/40 hover:border-sky-400 transition"
@@ -71,7 +71,7 @@ export function CodeSocraticTutor({
 
         <button
           onClick={() =>
-            sendHintRequest('edge_case', '🔍 What edge case boundary could fail?')
+            sendHintRequest('edge_case', '🔍 Edge cases')
           }
           disabled={loading}
           className="rounded-lg border border-sky-500/30 bg-sky-900/30 p-2 text-left text-sky-200 hover:bg-sky-800/40 hover:border-sky-400 transition"
@@ -81,7 +81,7 @@ export function CodeSocraticTutor({
 
         <button
           onClick={() =>
-            sendHintRequest('complexity', '⚡ How can I optimize time / space complexity?')
+            sendHintRequest('complexity', '⚡ Optimize complexity')
           }
           disabled={loading}
           className="rounded-lg border border-sky-500/30 bg-sky-900/30 p-2 text-left text-sky-200 hover:bg-sky-800/40 hover:border-sky-400 transition"
@@ -91,7 +91,7 @@ export function CodeSocraticTutor({
 
         <button
           onClick={() =>
-            sendHintRequest('debug', '🐛 Explain potential bug in my current logic')
+            sendHintRequest('debug', '🐛 Explain bug')
           }
           disabled={loading}
           className="rounded-lg border border-sky-500/30 bg-sky-900/30 p-2 text-left text-sky-200 hover:bg-sky-800/40 hover:border-sky-400 transition"

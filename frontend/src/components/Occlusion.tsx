@@ -167,8 +167,7 @@ export function OcclusionEditor({ image, shapes, onChange }: EditorProps) {
       </div>
 
       <p className="text-xs text-slate-600">
-        Drag on the image to mask a region. Each mask becomes its own card, scheduled
-        independently. Labels are optional — add them and the LLM can grade typed answers.
+        Drag to mask regions. Each mask schedules independently.
       </p>
 
       {shapes.length > 0 && (
@@ -183,7 +182,7 @@ export function OcclusionEditor({ image, shapes, onChange }: EditorProps) {
               <span className="chip w-10 justify-center">{s.id}</span>
               <input
                 className="input flex-1 py-1 text-xs"
-                placeholder="Label (optional) — e.g. “Frontal lobe”"
+                placeholder="Label (optional)"
                 value={s.label ?? ''}
                 onChange={(e) =>
                   onChange(shapes.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))

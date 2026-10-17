@@ -352,7 +352,8 @@ async def socratic_guide(
 
     if not user.llm_grading_consent:
         return SocraticResponse(message="", degraded=True, degraded_reason="consent_not_given")
-    service = GradingService(model=user.grading_model)
+    target_model = body.model or user.grading_model
+    service = GradingService(model=target_model)
     try:
         result = await service.ask_socratic_question(
             front=front,
@@ -360,12 +361,26 @@ async def socratic_guide(
             history=[(t.role, t.text) for t in body.history],
             latest=body.message,
             active_weaknesses=card.active_weaknesses or [],
+            model=target_model,
+            allow_smaller_model=body.allow_smaller_model,
+        )
+    except VramExhaustedError as exc:
+        return SocraticResponse(
+            message="",
+            degraded=True,
+            degraded_reason=f"Model '{exc.failed_model}' ran out of GPU VRAM. Switch to a smaller model (e.g. Qwen 2.5 Coder 3B).",
+            vram_constrained=True,
+            failed_model=exc.failed_model,
+            fallback_model=exc.fallback_model,
+            available_fallback_models=exc.available_models,
         )
     except GradingUnavailable as exc:
         return SocraticResponse(message="", degraded=True, degraded_reason=str(exc))
 
     return SocraticResponse(
-        message=result["message"], on_track=result["on_track"], model_used=user.grading_model
+        message=result["message"],
+        on_track=result["on_track"],
+        model_used=service.last_used_model or target_model,
     )
 
 
@@ -403,6 +418,8 @@ async def card_weakness_hint(
             front=front,
             back=back,
             active_weaknesses=card.active_weaknesses,
+            model=user.grading_model,
+            allow_smaller_model=True,
         )
         return WeaknessHintResponse(
             hint=result["hint"],
@@ -448,7 +465,8 @@ async def socratic_line_hint(
             degraded_reason="consent_not_given",
         )
 
-    service = GradingService(model=user.grading_model)
+    target_model = body.model or user.grading_model
+    service = GradingService(model=target_model)
     try:
         result = await service.ask_socratic_line_hint(
             front=front,
@@ -456,12 +474,23 @@ async def socratic_line_hint(
             code=body.code,
             line_number=clamped_line,
             language=body.language,
+            model=target_model,
+            allow_smaller_model=body.allow_smaller_model,
         )
         return SocraticLineHintResponse(
             hint=result["hint"],
             target_concept=result.get("target_concept"),
             line_number=result["line_number"],
             current_line_text=result["current_line_text"],
+        )
+    except VramExhaustedError as exc:
+        return SocraticLineHintResponse(
+            hint=f"Focus on line {clamped_line}: consider what operation or state change connects your previous setup to the expected return type.",
+            target_concept="Algorithmic Step",
+            line_number=clamped_line,
+            current_line_text=current_line_text,
+            degraded=True,
+            degraded_reason=f"Model ran out of GPU memory: {exc}",
         )
     except GradingUnavailable as exc:
         return SocraticLineHintResponse(

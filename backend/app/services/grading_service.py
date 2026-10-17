@@ -99,7 +99,27 @@ class VramExhaustedError(GradingUnavailable):
 
 def is_memory_or_vram_error(exc: Exception | str) -> bool:
     """Detects whether an Ollama error is caused by VRAM or host memory exhaustion."""
-    text = str(exc).lower()
+    parts: list[str] = []
+    if isinstance(exc, str):
+        parts.append(exc)
+    else:
+        parts.append(str(exc))
+        resp = getattr(exc, "response", None)
+        if resp is not None:
+            try:
+                parts.append(resp.text)
+            except Exception:
+                pass
+        cause = getattr(exc, "__cause__", None)
+        if cause is not None:
+            parts.append(str(cause))
+            cause_resp = getattr(cause, "response", None)
+            if cause_resp is not None:
+                try:
+                    parts.append(cause_resp.text)
+                except Exception:
+                    pass
+    text = " ".join(parts).lower()
     return any(
         phrase in text
         for phrase in (
@@ -113,6 +133,10 @@ def is_memory_or_vram_error(exc: Exception | str) -> bool:
             "exit status 1",
             "panic: unable to load model",
             "exit status -1073741819",
+            "llama runner process has terminated",
+            "wsarecv",
+            "connection was forcibly closed",
+            "cuda error",
         )
     )
 
@@ -253,14 +277,33 @@ class GradingService:
                     raise GradingUnavailable(
                         f"Model '{model}' not found in Ollama. Run: ollama pull {model}"
                     ) from exc
+                err_detail = ""
+                try:
+                    err_body = exc.response.json()
+                    err_detail = err_body.get("error") or exc.response.text
+                except Exception:
+                    err_detail = exc.response.text
+
+                # If this is a VRAM / out of memory error, don't sleep & retry the exact same failing model
+                if is_memory_or_vram_error(err_detail or exc):
+                    raise GradingUnavailable(f"Ollama generation failed: {err_detail or exc}") from exc
+
                 last_exc = exc
                 await asyncio.sleep(0.5 * (attempt + 1))
             except Exception as exc:
+                if is_memory_or_vram_error(exc):
+                    raise
                 last_exc = exc
                 await asyncio.sleep(0.5 * (attempt + 1))
 
         if last_exc:
-            raise GradingUnavailable(f"Ollama generation failed: {last_exc}") from last_exc
+            detail = str(last_exc)
+            if isinstance(last_exc, httpx.HTTPStatusError):
+                try:
+                    detail = last_exc.response.json().get("error", last_exc.response.text)
+                except Exception:
+                    detail = last_exc.response.text or str(last_exc)
+            raise GradingUnavailable(f"Ollama generation failed: {detail}") from last_exc
         return ""
 
     async def _generate(
@@ -302,8 +345,13 @@ class GradingService:
                         **kwargs,
                     )
                 else:
+                    clean_msg = str(exc)
+                    if hasattr(exc, "__cause__") and exc.__cause__:
+                        cause_str = str(exc.__cause__)
+                        if "cudaMalloc failed" in cause_str or "out of memory" in cause_str:
+                            clean_msg = cause_str
                     raise VramExhaustedError(
-                        message=f"Local model '{target_model}' ran out of GPU VRAM / host memory: {exc}",
+                        message=f"Local model '{target_model}' ran out of GPU VRAM / host memory: {clean_msg}",
                         failed_model=target_model,
                         fallback_model=next_model,
                         available_models=smaller_models,
@@ -498,6 +546,7 @@ class GradingService:
         back: str,
         active_weaknesses: list[str],
         model: str | None = None,
+        allow_smaller_model: bool = True,
     ) -> dict:
         """Generates a targeted diagnostic hint based on prior recorded weaknesses."""
         if not active_weaknesses:
@@ -515,6 +564,7 @@ class GradingService:
             ),
             model or self.model,
             schema={"type": "OBJECT", "properties": {"hint": {"type": "STRING"}}, "required": ["hint"]},
+            allow_smaller_model=allow_smaller_model,
         )
         data = parse_json(raw)
         hint = str(data.get("hint", "")).strip() if isinstance(data, dict) else ""
@@ -538,6 +588,7 @@ class GradingService:
         latest: str,
         active_weaknesses: list[str] | None = None,
         model: str | None = None,
+        allow_smaller_model: bool = True,
     ) -> dict:
         """One turn of Socratic hinting: a diagnostic question, never the answer.
 
@@ -566,6 +617,7 @@ class GradingService:
                 latest=latest.strip() or "(the student hasn't replied yet — ask an opening question)",
             ),
             model or self.model,
+            allow_smaller_model=allow_smaller_model,
         )
         data = parse_json(raw)
         message = str(data.get("message", "")).strip() if isinstance(data, dict) else ""
@@ -586,6 +638,7 @@ class GradingService:
         line_number: int,
         language: str = "typescript",
         model: str | None = None,
+        allow_smaller_model: bool = True,
     ) -> dict:
         """Generates a targeted Socratic hint for a specific line of code in the IDE.
 
@@ -614,6 +667,7 @@ class GradingService:
                 code_before=code_before,
             ),
             model or self.model,
+            allow_smaller_model=allow_smaller_model,
         )
         data = parse_json(raw)
         hint = str(data.get("hint", "")).strip() if isinstance(data, dict) else ""

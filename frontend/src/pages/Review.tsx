@@ -38,6 +38,12 @@ import {
   getDraftForCard,
   getSavedDraftsCount,
 } from '../utils/savedCardDrafts'
+import {
+  isCodeCard as checkIsCodeCard,
+  looksLikeCode,
+  extractCleanCode,
+  detectCodeLanguage,
+} from '../utils/codeUtils'
 
 const LEARN_MODE_KEY = 'memorization.learnMode'
 
@@ -186,15 +192,6 @@ ${testBlocks.join('\n\n')}
 `
 }
 
-function extractCleanCode(raw?: string | null): string {
-  if (!raw) return ''
-  const trimmed = raw.trim()
-  const fenceMatch = trimmed.match(/^```(?:[a-zA-Z0-9_-]+)?\r?\n([\s\S]*?)\r?\n```$/)
-  if (fenceMatch) {
-    return fenceMatch[1]
-  }
-  return trimmed
-}
 
 /** The unified session view (§9): one endpoint hands back cards *and* extracts,
  *  so this page routes on `kind` rather than the user picking a mode. */
@@ -222,7 +219,7 @@ export default function Review() {
   const [activeModel, setActiveModel] = useState<string>(() =>
     user?.grading_model && isAllowedQwenCoderModel(user.grading_model)
       ? user.grading_model
-      : 'qwen2.5-coder:7b',
+      : 'qwen2.5-coder:3b',
   )
   const [installedModels, setInstalledModels] = useState<string[]>([])
   const gradingAbortRef = useRef<AbortController | null>(null)
@@ -790,11 +787,7 @@ export default function Review() {
       testCode,
       codeLanguage,
       savedAt: Date.now(),
-      isCodeCard: Boolean(
-        item.grading_profile === 'math_code' ||
-          item.starter_code ||
-          (item.test_cases && item.test_cases.length > 0),
-      ),
+      isCodeCard: checkIsCodeCard(item),
       card: item,
     }
 
@@ -1002,7 +995,7 @@ export default function Review() {
     [item, answer, testCode, activeModel, user],
   )
 
-  async function grade(targetModel?: string, allowSmaller: boolean = false) {
+  async function grade(targetModel?: string, allowSmaller: boolean = true) {
     if (!item || item.kind !== 'card') return
 
     // Abort previous in-flight grading if still running
@@ -1026,8 +1019,12 @@ export default function Review() {
       if (abortController.signal.aborted) return
       setResult(graded)
       setRevealed(true)
-      if (modelToUse && modelToUse !== user?.grading_model) {
-        void api.updateMe({ grading_model: modelToUse }).then(() => refresh?.())
+      const actualModel = graded.model_used || modelToUse
+      if (actualModel && actualModel !== activeModel) {
+        setActiveModel(actualModel)
+      }
+      if (actualModel && actualModel !== user?.grading_model) {
+        void api.updateMe({ grading_model: actualModel }).then(() => refresh?.())
       }
     } catch (err: any) {
       if (abortController.signal.aborted || err?.name === 'AbortError') {
@@ -1053,11 +1050,18 @@ export default function Review() {
   async function askGuide(message: string) {
     if (!item || item.kind !== 'card') return
     setGuideLoading(true)
+    setGuideDegraded(null)
     try {
-      const resp = await api.guide(item.id, guideHistory, message)
+      const resp = await api.guide(item.id, guideHistory, message, {
+        model: activeModel,
+        allow_smaller_model: true,
+      })
       if (resp.degraded) {
         setGuideDegraded(resp.degraded_reason)
         return
+      }
+      if (resp.model_used && resp.model_used !== activeModel) {
+        setActiveModel(resp.model_used)
       }
       const turns: SocraticTurn[] = [...guideHistory]
       if (message.trim()) turns.push({ role: 'student', text: message.trim() })
@@ -1090,6 +1094,8 @@ export default function Review() {
           line_number: targetLine,
           language: codeLanguage,
           test_code: testCode || undefined,
+          model: activeModel,
+          allow_smaller_model: true,
         })
         setActiveLineHint(resp)
       } catch (err) {
@@ -1105,7 +1111,7 @@ export default function Review() {
         setLineHintLoading(false)
       }
     },
-    [item, answer, codeLanguage, testCode, editorCursorLine]
+    [item, answer, codeLanguage, testCode, editorCursorLine, activeModel]
   )
 
   async function confirm(finalGrade: Grade) {
@@ -1700,6 +1706,7 @@ export default function Review() {
             deckName={item.deck_name}
             onContinue={continueToQuestion}
             onOpenSettings={() => navigate('/settings')}
+            codeLanguage={codeLanguage}
           />
         </div>
       )
@@ -1708,9 +1715,7 @@ export default function Review() {
     const isCodeCard = Boolean(
       item &&
       item.kind === 'card' &&
-      (item.grading_profile === 'math_code' ||
-        Boolean(item.starter_code) ||
-        Boolean(item.test_cases && item.test_cases.length > 0))
+      checkIsCodeCard(item)
     )
 
     const overlookedTerms = result
@@ -2002,7 +2007,7 @@ export default function Review() {
                       type="button"
                       onClick={() => setDeckViewerOpen(true)}
                       className="chip bg-sky-950/60 border-sky-500/40 text-sky-300 hover:bg-sky-900/60 hover:text-white transition cursor-pointer flex items-center gap-1 font-semibold"
-                      title="View all cards in this deck (Alt+D)"
+                      title="Cards (Alt+D)"
                     >
                       <span>🗂️</span>
                       <span>Cards</span>
@@ -2013,7 +2018,7 @@ export default function Review() {
                       type="button"
                       onClick={() => setSavedDrawerOpen(true)}
                       className="chip bg-indigo-950/60 border-indigo-500/40 text-indigo-300 hover:bg-indigo-900/60 hover:text-white transition cursor-pointer flex items-center gap-1 font-semibold"
-                      title="Open saved cards shelf (Alt+Shift+S)"
+                      title="Saved (Alt+Shift+S)"
                     >
                       <span>💾</span>
                       <span>Saved ({savedCount})</span>
@@ -2224,6 +2229,7 @@ export default function Review() {
                       onSend={() => void askGuide(guideInput)}
                       onClose={() => setGuideOpen(false)}
                       onCommit={() => setGuideOpen(false)}
+                      onRetry={() => void askGuide(guideInput || '')}
                     />
                   )}
                 </div>
@@ -2352,7 +2358,7 @@ export default function Review() {
                         <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line shrink-0">
                           <span
                             className="px-2 py-0.5 text-xs font-semibold rounded bg-sky-600/30 text-sky-200 border border-sky-500/50 shadow-sm flex items-center gap-1.5 cursor-default select-none shrink-0"
-                            title="Tiled side-by-side workbench active (Alt+S to untile)"
+                            title="Tiled (Alt+S)"
                           >
                             <span>⧉</span>
                             <span>Tiled</span>
@@ -2361,7 +2367,7 @@ export default function Review() {
                             type="button"
                             onClick={toggleTiledTabs}
                             className="px-2 py-0.5 text-xs font-medium rounded text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition cursor-pointer shrink-0"
-                            title="Switch to single tab mode (Alt+S)"
+                            title="Single tab (Alt+S)"
                           >
                             <span>⊟</span>
                             <span>Single Tab</span>
@@ -2463,7 +2469,7 @@ export default function Review() {
                               ? 'bg-sky-600/30 text-sky-200 border border-sky-500/50 shadow-sm'
                               : 'text-slate-400 hover:text-slate-200'
                           }`}
-                          title="Edit implementation logic (Alt+T to toggle)"
+                          title="Solution (Alt+T)"
                         >
                           <span>💻</span>
                           <span>Solution</span>
@@ -2476,7 +2482,7 @@ export default function Review() {
                               ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/50 shadow-sm'
                               : 'text-slate-400 hover:text-slate-200'
                           }`}
-                          title="Write unit tests with assertions (Alt+T to toggle)"
+                          title="Unit Tests (Alt+T)"
                         >
                           <span>🧪</span>
                           <span>Unit Tests</span>
@@ -2492,7 +2498,7 @@ export default function Review() {
                               ? 'bg-emerald-600/30 text-emerald-200 border border-emerald-500/50 shadow-sm'
                               : 'text-slate-400 hover:text-slate-200'
                           }`}
-                          title="View reference model solution"
+                          title="Reference"
                         >
                           <span>📖</span>
                           <span>Reference</span>
@@ -2506,7 +2512,7 @@ export default function Review() {
                                 ? 'bg-purple-600/30 text-purple-200 border border-purple-500/50 shadow-sm'
                                 : 'text-slate-400 hover:text-slate-200'
                             }`}
-                            title="View completed reference test suite"
+                            title="Ref Tests"
                           >
                             <span>🧪</span>
                             <span>Ref Tests</span>
@@ -2516,7 +2522,7 @@ export default function Review() {
                           type="button"
                           onClick={toggleTiledTabs}
                           className="px-2.5 py-1 text-xs font-medium rounded text-sky-400 hover:text-sky-200 hover:bg-sky-500/10 flex items-center gap-1.5 transition border-l border-ink-line/60 ml-0.5 cursor-pointer"
-                          title="Tile reference solution and IDE side-by-side (Alt+S)"
+                          title="Tile side-by-side (Alt+S)"
                         >
                           <span>⧉</span>
                           <span>Tile</span>
@@ -2707,9 +2713,9 @@ export default function Review() {
                           🔒
                         </div>
                         <div className="space-y-1">
-                          <h4 className="text-sm font-semibold text-slate-200">Reference Solution Hidden</h4>
+                          <h4 className="text-sm font-semibold text-slate-200">Reference Solution</h4>
                           <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
-                            Reference solution is hidden until revealed. Commit your code or reveal below to view.
+                            Hidden until revealed.
                           </p>
                         </div>
                         <button
@@ -2717,7 +2723,7 @@ export default function Review() {
                           onClick={() => void reveal()}
                           className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 mt-2 cursor-pointer"
                         >
-                          <span>👁 Reveal Reference Solution</span>
+                          <span>👁 Reveal Solution</span>
                         </button>
                       </div>
                     )
@@ -2737,9 +2743,9 @@ export default function Review() {
                           🔒
                         </div>
                         <div className="space-y-1">
-                          <h4 className="text-sm font-semibold text-slate-200">Completed Test Suite Hidden</h4>
+                          <h4 className="text-sm font-semibold text-slate-200">Reference Tests</h4>
                           <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
-                            Completed test solutions are hidden until revealed. Commit your implementation and tests or reveal below to view.
+                            Hidden until revealed.
                           </p>
                         </div>
                         <button
@@ -2747,7 +2753,7 @@ export default function Review() {
                           onClick={() => void reveal()}
                           className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 mt-2 cursor-pointer"
                         >
-                          <span>👁 Reveal Reference Tests</span>
+                          <span>👁 Reveal Tests</span>
                         </button>
                       </div>
                     )
@@ -2794,7 +2800,7 @@ export default function Review() {
                     type="button"
                     onClick={() => setDeckViewerOpen(true)}
                     className="chip bg-sky-950/60 border-sky-500/40 text-sky-300 hover:bg-sky-900/60 hover:text-white transition cursor-pointer flex items-center gap-1 font-semibold"
-                    title="View all cards in this deck (Alt+D)"
+                    title="Cards (Alt+D)"
                   >
                     <span>🗂️</span>
                     <span>Cards</span>
@@ -2805,7 +2811,7 @@ export default function Review() {
                     type="button"
                     onClick={() => setSavedDrawerOpen(true)}
                     className="chip bg-indigo-950/60 border-indigo-500/40 text-indigo-300 hover:bg-indigo-900/60 hover:text-white transition cursor-pointer flex items-center gap-1 font-semibold"
-                    title="Open saved cards shelf (Alt+Shift+S)"
+                    title="Saved (Alt+Shift+S)"
                   >
                     <span>💾</span>
                     <span>Saved ({savedCount})</span>
@@ -2833,7 +2839,7 @@ export default function Review() {
                     type="button"
                     onClick={toggleLayoutMode}
                     className="chip cursor-pointer border-sky-500/40 text-sky-300 hover:bg-sky-500/10 transition-colors"
-                    title="Switch to LeetCode-style 50/50 Split IDE"
+                    title="Split IDE"
                   >
                     💻 Split IDE
                   </button>
@@ -2847,10 +2853,10 @@ export default function Review() {
                         ? 'border-sky-500/60 bg-sky-500/20 text-sky-200'
                         : 'border-ink-line text-slate-300 hover:text-slate-100 hover:border-slate-500'
                     }`}
-                    title="Review related source passages and primer before answering"
+                    title="Primer"
                   >
                     <span>📖</span>
-                    <span>{showPrimer ? 'Hide Related Content' : 'Review Related Content (Primer)'}</span>
+                    <span>{showPrimer ? 'Hide Primer' : 'Primer'}</span>
                   </button>
                 )}
                 {item.active_weaknesses && item.active_weaknesses.length > 0 && (
@@ -3280,9 +3286,9 @@ export default function Review() {
                                 🔒
                               </div>
                               <div className="space-y-0.5">
-                                <h4 className="text-xs font-semibold text-slate-200">Reference Solution Hidden</h4>
+                                <h4 className="text-xs font-semibold text-slate-200">Reference Solution</h4>
                                 <p className="text-[11px] text-slate-400 max-w-xs leading-relaxed">
-                                  Reference solution is hidden until revealed. Commit your code or reveal below to view.
+                                  Hidden until revealed.
                                 </p>
                               </div>
                               <button
@@ -3290,7 +3296,7 @@ export default function Review() {
                                 onClick={() => void reveal()}
                                 className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1 mt-1 cursor-pointer"
                               >
-                                <span>👁 Reveal Reference Solution</span>
+                                <span>👁 Reveal Solution</span>
                               </button>
                             </div>
                           )
@@ -3310,9 +3316,9 @@ export default function Review() {
                                 🔒
                               </div>
                               <div className="space-y-0.5">
-                                <h4 className="text-xs font-semibold text-slate-200">Completed Test Suite Hidden</h4>
+                                <h4 className="text-xs font-semibold text-slate-200">Reference Tests</h4>
                                 <p className="text-[11px] text-slate-400 max-w-xs leading-relaxed">
-                                  Completed test solutions are hidden until revealed. Commit your implementation and tests or reveal below to view.
+                                  Hidden until revealed.
                                 </p>
                               </div>
                               <button
@@ -3320,7 +3326,7 @@ export default function Review() {
                                 onClick={() => void reveal()}
                                 className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1 mt-1 cursor-pointer"
                               >
-                                <span>👁 Reveal Reference Tests</span>
+                                <span>👁 Reveal Tests</span>
                               </button>
                             </div>
                           )
@@ -3359,7 +3365,7 @@ export default function Review() {
                     className="input min-h-[7rem] resize-y"
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
-                    placeholder="Recall it from memory, then commit…"
+                    placeholder="Type your answer…"
                   />
                 )}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -3462,6 +3468,7 @@ export default function Review() {
                       setGuideOpen(false)
                       inputRef.current?.focus()
                     }}
+                    onRetry={() => void askGuide(guideInput || '')}
                   />
                 )}
               </div>
@@ -3701,6 +3708,7 @@ function SocraticGuide({
   onSend,
   onClose,
   onCommit,
+  onRetry,
 }: {
   history: SocraticTurn[]
   input: string
@@ -3711,6 +3719,7 @@ function SocraticGuide({
   onSend: () => void
   onClose: () => void
   onCommit: () => void
+  onRetry?: () => void
 }) {
   return (
     <div className="mt-3 space-y-2 rounded-lg border border-ink-line bg-ink p-3">
@@ -3722,9 +3731,23 @@ function SocraticGuide({
       </div>
 
       {degraded ? (
-        <p className="text-xs text-slate-600">
-          Guide unavailable ({degraded}).
-        </p>
+        <div className="space-y-2">
+          <p className="text-xs text-amber-300 leading-relaxed">
+            Guide unavailable ({degraded}).
+          </p>
+          {onRetry && (
+            <div className="pt-1">
+              <button
+                type="button"
+                className="btn text-xs px-2.5 py-1 border-sky-500/40 text-sky-300 hover:bg-sky-500/10"
+                onClick={onRetry}
+                disabled={loading}
+              >
+                {loading ? 'Retrying…' : '↻ Retry Guide'}
+              </button>
+            </div>
+          )}
+        </div>
       ) : (
         <>
           {history.length === 0 && loading && <p className="text-xs text-slate-600">Thinking…</p>}
@@ -3793,6 +3816,7 @@ function LessonGate({
   deckName,
   onContinue,
   onOpenSettings: _onOpenSettings,
+  codeLanguage = 'typescript',
 }: {
   item: QueueItem
   lesson: Lesson | null
@@ -3800,8 +3824,15 @@ function LessonGate({
   deckName: string | null
   onContinue: () => void
   onOpenSettings?: () => void
+  codeLanguage?: string
 }) {
   const { openLexicon } = useLexicon()
+  const isCode = checkIsCodeCard(item) || looksLikeCode(item.back)
+  const cleanCode = useMemo(() => (isCode ? extractCleanCode(item.back) : ''), [isCode, item.back])
+  const detectedLang = useMemo(
+    () => (isCode ? detectCodeLanguage(cleanCode, codeLanguage) : codeLanguage),
+    [isCode, cleanCode, codeLanguage]
+  )
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -3841,21 +3872,21 @@ function LessonGate({
           type="button"
           onClick={() => openLexicon(item.title || 'terminology', item.front || '')}
           className="flex items-center gap-1.5 rounded-full border border-sky-400/40 bg-sky-950/70 px-2.5 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-900/80 hover:border-sky-300 transition-all shadow-sm"
-          title="Open Concordance &amp; Lexicon definition lookup"
+          title="Lexicon lookup"
         >
           <span>📖</span>
-          <span>Lexicon / Concordance</span>
+          <span>Lexicon</span>
         </button>
       </div>
 
       {/* Step Indicator Banner */}
       <div className="rounded-lg bg-sky-500/10 border border-sky-500/25 p-3 text-xs text-sky-200 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-sky-300">Step 1: Priming</span>
-          <span>Study the question and the verbatim answer below. Once ready, proceed to test your memory.</span>
+          <span className="font-bold text-sky-300">Priming</span>
+          <span>Review before answering.</span>
         </div>
         <kbd className="hidden sm:inline-block px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono border border-slate-700 text-sky-300">
-          Press Enter ↵
+          Enter ↵
         </kbd>
       </div>
 
@@ -3863,7 +3894,7 @@ function LessonGate({
       <div className="space-y-2 rounded-xl border border-sky-500/30 bg-sky-950/15 p-4">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-sky-300 flex items-center gap-1.5">
-            <span>❓</span> Question Prompt (What you will be asked)
+            <span>❓</span> Question
           </span>
           {item.category && (
             <span className="chip text-[10px] text-slate-400">{item.category}</span>
@@ -3891,16 +3922,32 @@ function LessonGate({
       <div className="space-y-2 rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
-            <span>💡</span> Expected Verbatim Answer (To Be Recalled)
+            <span>💡</span> Answer
           </span>
-          <span className="chip border-emerald-500/30 bg-emerald-500/10 text-[10px] font-semibold text-emerald-300">
-            Memorize This
-          </span>
+          {isCode && (
+            <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-mono text-emerald-300 border border-emerald-500/30">
+              {detectedLang}
+            </span>
+          )}
         </div>
 
         {item.occlusion ? (
           <div className="space-y-2">
             <OcclusionCard payload={item.occlusion} revealed={true} />
+          </div>
+        ) : isCode ? (
+          <div className="rounded-lg border border-ink-line overflow-hidden shadow-sm">
+            <CodeEditor
+              code={cleanCode}
+              onChange={() => {}}
+              language={detectedLang}
+              readOnly={true}
+              height="auto"
+              hideHeader={false}
+              hideFooter={false}
+              borderless={true}
+              placeholder="// Expected answer solution"
+            />
           </div>
         ) : (
           <div className="rounded-lg border border-emerald-500/20 bg-slate-950/70 p-3.5">
@@ -3923,8 +3970,7 @@ function LessonGate({
       {(doc || hasReferences || (lesson && lesson.body)) && (
         <details className="rounded-lg border border-ink-line/80 bg-ink/40 p-3 text-xs text-slate-300 group">
           <summary className="cursor-pointer font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 select-none">
-            <span>📚 Background Reference Notes &amp; Citations</span>
-            <span className="text-[11px] text-slate-500 group-open:hidden">(Click to expand)</span>
+            <span>📚 References</span>
           </summary>
           <div className="mt-3 space-y-3 pt-2 border-t border-ink-line/60">
             {doc && (
@@ -3960,8 +4006,8 @@ function LessonGate({
           className="btn btn-primary w-full py-3 text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-sky-950/40 hover:scale-[1.01] active:scale-[0.99] transition-all"
           onClick={onContinue}
         >
-          <span>⚡ Ready — Quiz Me on This Question</span>
-          <span className="text-xs text-sky-300/80 font-normal">(Press Enter ↵)</span>
+          <span>⚡ Start Quiz</span>
+          <span className="text-xs text-sky-300/80 font-normal">Enter ↵</span>
         </button>
       </div>
     </div>
@@ -4155,9 +4201,9 @@ function VramConstraintPrompt({
           disabled={loading}
           onClick={onRetry}
           className="btn btn-secondary text-xs py-2 px-3.5 flex items-center gap-1.5 border-slate-700 hover:bg-slate-800 text-slate-200"
-          title="Close heavy background apps (e.g. browser tabs, IDEs) to free up VRAM, then click this button"
+          title="Retry AI model"
         >
-          <span>↻ Closed Apps? Retry {result.failed_model || 'Grading'}</span>
+          <span>↻ Retry {result.failed_model || 'Grading'}</span>
         </button>
 
         <button
@@ -4278,7 +4324,7 @@ function DiscreteModelSelector({
             ? 'border-amber-500/40 bg-amber-500/10 text-amber-200 hover:border-amber-400'
             : 'border-slate-700/80 bg-slate-900/80 text-slate-300 hover:border-slate-500 hover:bg-slate-800 hover:text-white'
         }`}
-        title={`Active AI Grader: ${activeModel}. Click to switch models or retry grading.`}
+        title={`Model: ${activeModel}`}
       >
         <span className="text-[12px]">{isFast ? '⚡' : '🤖'}</span>
         <span className="font-mono text-[11px] font-semibold tracking-tight">{currentInfo.short}</span>
@@ -4296,7 +4342,7 @@ function DiscreteModelSelector({
           <div className="flex items-center justify-between pb-2 border-b border-slate-800">
             <div className="flex items-center gap-1.5">
               <span className="font-semibold text-slate-100">Local AI Grader</span>
-              <span className="text-[10px] text-slate-400 font-mono">(Qwen 2.5 Coder)</span>
+              <span className="text-[10px] text-slate-400 font-mono">Qwen 2.5</span>
             </div>
             <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -4473,7 +4519,7 @@ function GradeReasoning({
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] text-slate-400">Retry with:</span>
             <DiscreteModelSelector
-              activeModel={activeModel || result.model_used || 'qwen2.5-coder:7b'}
+              activeModel={activeModel || result.model_used || 'qwen2.5-coder:3b'}
               installedModels={installedModels}
               grading={grading}
               hasAnswer={hasAnswer}
@@ -4603,8 +4649,8 @@ function PrimerDrawer({
     <div className="mb-5 rounded-lg border border-sky-500/30 bg-sky-950/20 p-4 transition-all">
       <div className="mb-3 flex items-center justify-between gap-2 border-b border-sky-500/20 pb-2.5">
         <div className="flex items-center gap-2 text-xs font-semibold text-sky-300">
-          <span>📖 Related Content &amp; Background Primer</span>
-          <span className="chip border-sky-500/30 text-[10px] text-sky-200">Pre-Answer Review</span>
+          <span>📖 Primer</span>
+          <span className="chip border-sky-500/30 text-[10px] text-sky-200">Pre-review</span>
         </div>
         <button
           type="button"
@@ -4616,7 +4662,7 @@ function PrimerDrawer({
       </div>
 
       {loading ? (
-        <Spinner label="Loading related primer…" />
+        <Spinner label="Loading primer…" />
       ) : (
         <div className="space-y-3">
           {hasLessonBody ? (
@@ -4624,7 +4670,7 @@ function PrimerDrawer({
               <RichText text={lesson!.body} className="text-sm leading-relaxed text-slate-200" />
               {lesson!.key_points && lesson!.key_points.length > 0 && (
                 <div className="pt-2">
-                  <p className="text-xs font-medium text-sky-300">Core Concepts &amp; Key Points:</p>
+                  <p className="text-xs font-medium text-sky-300">Key Points:</p>
                   <ul className="mt-1 space-y-1 text-xs text-slate-300">
                     {lesson!.key_points.map((p, i) => (
                       <li key={i}>• {p}</li>
@@ -4635,7 +4681,7 @@ function PrimerDrawer({
             </div>
           ) : hasReferences ? (
             <div className="space-y-2">
-              <p className="text-xs font-medium text-sky-300">Source Excerpts &amp; Citations:</p>
+              <p className="text-xs font-medium text-sky-300">Citations:</p>
               <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
                 {item.references!.map((ref, idx) => (
                   <div key={idx} className="rounded border border-sky-500/20 bg-ink/60 p-2.5 text-xs text-slate-300">
@@ -4658,22 +4704,21 @@ function PrimerDrawer({
           ) : (
             <div className="space-y-1 text-xs text-slate-400">
               <p>
-                <strong className="text-slate-300">Deck Context:</strong> {item.deck_name}
+                <strong className="text-slate-300">Deck:</strong> {item.deck_name}
               </p>
               <p className="text-slate-500">
-                This card has no external document citations attached. Review the question carefully, recall the key concepts, and prepare your response below.
+                No external citations attached. Recall key concepts and prepare your response below.
               </p>
             </div>
           )}
 
-          <div className="flex items-center justify-between border-t border-sky-500/20 pt-3">
-            <span className="text-xs text-slate-400">Ready to test your active recall?</span>
+          <div className="flex items-center justify-end border-t border-sky-500/20 pt-3">
             <button
               type="button"
               onClick={onReady}
               className="btn btn-primary flex items-center gap-1.5 px-3 py-1 text-xs font-semibold"
             >
-              <span>Ready to Answer</span>
+              <span>Answer</span>
               <span>➔</span>
             </button>
           </div>
@@ -4694,7 +4739,7 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
       <div className="flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3.5 text-xs text-emerald-200">
         <span className="text-base">🌟</span>
         <div>
-          <span className="font-semibold">Complete Recall:</span> You captured all key concepts and omitted no essential points!
+          <span className="font-semibold">Complete Recall:</span> All key concepts recalled.
         </div>
       </div>
     )
@@ -4706,10 +4751,10 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-amber-200">
             <span>⚠️</span>
-            <span>Overlooked / Not Considered in Your Answer</span>
+            <span>Overlooked</span>
           </div>
           <p className="mt-1 text-xs text-amber-300/80">
-            These critical points or concepts were omitted from your answer and are highlighted in the reference text above:
+            Omitted from answer:
           </p>
           {hasMissed && (
             <ul className="mt-2.5 space-y-1.5 text-sm text-amber-100">
@@ -4724,7 +4769,7 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
           {hasOverlookedPhrases && (
             <div className="mt-3 border-t border-amber-500/20 pt-2.5">
               <p className="mb-1.5 text-[11px] font-medium text-amber-300/70">
-                Omitted Key Phrases:
+                Omitted Phrases:
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {result.overlooked_phrases!.map((phrase, i) => (
@@ -4745,7 +4790,7 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
         <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-200">
             <span>✓</span>
-            <span>Successfully Recalled</span>
+            <span>Recalled</span>
           </div>
           <ul className="mt-1.5 space-y-1 text-xs text-emerald-100/90">
             {result.matched_points.map((p, i) => (
@@ -4763,10 +4808,10 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
         <div className="rounded-lg border border-emerald-500/50 bg-emerald-500/15 p-3.5">
           <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200">
             <span className="text-sm">🎉</span>
-            <span>Overcame Past Mistake!</span>
+            <span>Resolved Weakness</span>
           </div>
           <p className="mt-1 text-[11px] text-emerald-300/80">
-            You successfully addressed weaknesses that you struggled with in previous reviews:
+            Resolved from previous reviews:
           </p>
           <ul className="mt-2 space-y-1 text-xs text-emerald-100">
             {result.improvements.map((imp, i) => (
@@ -4784,10 +4829,10 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
         <div className="rounded-lg border border-rose-500/40 bg-rose-500/15 p-3.5">
           <div className="flex items-center gap-2 text-xs font-semibold text-rose-200">
             <span className="text-sm">🔁</span>
-            <span>Recurring Blind Spot (Persistent Weakness)</span>
+            <span>Recurring Weakness</span>
           </div>
           <p className="mt-1 text-[11px] text-rose-300/80">
-            This weakness was flagged in prior reviews and still was not resolved in this attempt:
+            Flagged in prior reviews:
           </p>
           <ul className="mt-2 space-y-1 text-xs text-rose-100">
             {result.persistent_weaknesses.map((pw, i) => (
@@ -4805,10 +4850,10 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
           <div className="flex items-center gap-1.5 font-semibold text-amber-200">
             <span>🧠</span>
-            <span>Saved to Memory for Future Reviews:</span>
+            <span>Saved to Memory:</span>
           </div>
           <p className="mt-1 text-[11px] text-amber-300/70">
-            The grader noted these weaknesses and stored them — you can request targeted hints on them next time:
+            Noted for future reviews:
           </p>
           <ul className="mt-1.5 space-y-1 text-xs text-amber-100">
             {result.weaknesses.map((w, i) => (
@@ -4929,7 +4974,7 @@ function HighlightedText({
                   <mark
                     key={j}
                     className="rounded border-b-2 border-amber-400 bg-amber-500/25 px-1 py-0.5 font-semibold text-amber-200 shadow-sm"
-                    title="Overlooked / not considered in your answer"
+                    title="Overlooked"
                   >
                     {seg.text}
                   </mark>
@@ -4940,7 +4985,7 @@ function HighlightedText({
                   <mark
                     key={j}
                     className="rounded border-b border-emerald-500/40 bg-emerald-500/20 px-1 py-0.5 text-emerald-200"
-                    title="Successfully recalled in your answer"
+                    title="Recalled"
                   >
                     {seg.text}
                   </mark>
