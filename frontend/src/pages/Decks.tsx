@@ -1104,11 +1104,17 @@ function DeckList({
               if (node.deckId) onSelect(node.deckId)
               else if (node.id === '__root__') onSelect('__root__')
             }}
-            onStudyNode={(node) => {
+            onStudyNode={(node, mode = 'standard') => {
               if (node.id === '__root__') {
-                navigate('/review')
+                if (mode === 'unseen') navigate('/review?persist=1&unseen=1')
+                else if (mode === 'all_run') navigate('/review?run=all')
+                else if (mode === 'persist_all') navigate('/review?persist=1')
+                else navigate('/review')
               } else if (node.deckId) {
-                navigate(`/review?deck=${node.deckId}`)
+                if (mode === 'unseen') navigate(`/review?deck=${node.deckId}&persist=1&unseen=1`)
+                else if (mode === 'all_run') navigate(`/review?deck=${node.deckId}&run=all`)
+                else if (mode === 'persist_all') navigate(`/review?deck=${node.deckId}&persist=1`)
+                else navigate(`/review?deck=${node.deckId}`)
               }
             }}
             onAddChild={(parent) => {
@@ -1264,7 +1270,21 @@ function DeckList({
                     className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-500/20 hover:border-amber-400 transition shadow-sm"
                     title={`Persist reviewing ${d.name} until all cards are rated Easy`}
                   >
-                    <span>Persist Review</span>
+                    <span>{d.new_count > 0 && d.new_count < d.card_count ? 'Persist All' : 'Persist Review'}</span>
+                  </button>
+                )}
+
+                {d.card_count > 0 && d.new_count > 0 && d.new_count < d.card_count && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/review?deck=${d.id}&persist=1&unseen=1`)
+                    }}
+                    className="flex items-center gap-1.5 rounded-lg border border-amber-500/50 bg-amber-500/20 px-2.5 py-1 text-xs font-semibold text-amber-100 hover:bg-amber-500/30 hover:border-amber-400 transition shadow-sm"
+                    title={`Persist reviewing only the ${d.new_count} unseen cards in ${d.name} until Easy`}
+                  >
+                    <span>Persist Unseen ({d.new_count})</span>
                   </button>
                 )}
 

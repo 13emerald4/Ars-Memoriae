@@ -9,7 +9,7 @@ interface DeckReviewStatsBarProps {
   /** Optional trigger to force refetch when a card is submitted */
   lastUpdated?: number
   className?: string
-  onStartPersist?: (deckId: string) => void
+  onStartPersist?: (deckId: string, unseenOnly?: boolean) => void
   isPersistActive?: boolean
   onOpenDeckViewer?: () => void
   onStartAllCardsRun?: (deckId: string) => void
@@ -349,14 +349,26 @@ export function DeckReviewStatsBar({
           )}
 
           {onStartPersist && deckId && !isPersistActive && (
-            <button
-              type="button"
-              onClick={() => onStartPersist(deckId)}
-              className="flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/25 transition shadow-sm shrink-0"
-              title="Persist until cards are Easy"
-            >
-              <span>Persist</span>
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => onStartPersist(deckId, false)}
+                className="flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/25 transition shadow-sm"
+                title="Persist until all cards in the deck are Easy"
+              >
+                <span>{stats.new_cards > 0 && stats.new_cards < stats.total_cards ? 'Persist All' : 'Persist'}</span>
+              </button>
+              {stats.new_cards > 0 && stats.new_cards < stats.total_cards && (
+                <button
+                  type="button"
+                  onClick={() => onStartPersist(deckId, true)}
+                  className="flex items-center gap-1 rounded-md border border-amber-500/50 bg-amber-500/20 px-2 py-0.5 text-[11px] font-semibold text-amber-100 hover:bg-amber-500/30 transition shadow-sm"
+                  title={`Persist review only the ${stats.new_cards} unseen cards until Easy`}
+                >
+                  <span>Persist Unseen ({stats.new_cards})</span>
+                </button>
+              )}
+            </div>
           )}
 
           {onStartAllCardsRun && deckId && (

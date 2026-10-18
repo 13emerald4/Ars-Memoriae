@@ -822,19 +822,27 @@ async def compose_deck_persist_queue(
     db: AsyncSession,
     user: User,
     deck_id: uuid.UUID,
+    unseen_only: bool = False,
 ) -> list[ComposedItem]:
-    """Load all active (non-suspended) cards in a deck formatted as ComposedItems for persist mode."""
+    """Load all active (non-suspended) cards in a deck formatted as ComposedItems for persist mode.
+    
+    If unseen_only is True, filters to only cards that have not yet been reviewed (Card.state == 'new').
+    """
     deck = await db.get(Deck, deck_id)
     if deck is None or deck.user_id != user.id:
         return []
 
+    conditions = [
+        Card.deck_id == deck.id,
+        Card.suspended.is_(False),
+    ]
+    if unseen_only:
+        conditions.append(Card.state == "new")
+
     stmt = (
         select(Card)
         .join(Deck, Deck.id == Card.deck_id)
-        .where(
-            Card.deck_id == deck.id,
-            Card.suspended.is_(False),
-        )
+        .where(*conditions)
         .order_by(
             Card.due.is_(None),
             Card.due.asc(),

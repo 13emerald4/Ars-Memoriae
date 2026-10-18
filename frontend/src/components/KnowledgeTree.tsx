@@ -27,7 +27,7 @@ interface KnowledgeTreeProps {
   rootTitle?: string
   nodes: KnowledgeTreeNode[]
   onSelectNode?: (node: KnowledgeTreeNode) => void
-  onStudyNode?: (node: KnowledgeTreeNode) => void
+  onStudyNode?: (node: KnowledgeTreeNode, mode?: 'standard' | 'unseen' | 'all_run' | 'persist_all') => void
   onAddChild?: (parent: KnowledgeTreeNode | null) => void
   onRename?: (node: KnowledgeTreeNode) => void
   onDelete?: (node: KnowledgeTreeNode) => void
@@ -367,17 +367,52 @@ export function KnowledgeTree({
     onDropBranch?.(source, target, pos)
   }
 
-  const handleLearn = (targetNode = selectedNode) => {
+  const [studyModalNode, setStudyModalNode] = useState<KnowledgeTreeNode | null>(null)
+
+  const handleStudyAction = (
+    targetNode = selectedNode,
+    mode: 'standard' | 'unseen' | 'all_run' | 'persist_all' = 'standard'
+  ) => {
     if (onStudyNode) {
-      onStudyNode(targetNode)
+      onStudyNode(targetNode, mode)
     } else {
-      if (targetNode.id === '__root__') {
-        navigate('/review')
-      } else if (targetNode.deckId) {
-        navigate(`/review?deck=${targetNode.deckId}`)
+      if (mode === 'unseen') {
+        if (targetNode.id === '__root__') {
+          navigate('/review?persist=1&unseen=1')
+        } else if (targetNode.deckId) {
+          navigate(`/review?deck=${targetNode.deckId}&persist=1&unseen=1`)
+        } else {
+          navigate(`/review?branch=${targetNode.id}&persist=1&unseen=1`)
+        }
+      } else if (mode === 'all_run') {
+        if (targetNode.deckId) {
+          navigate(`/review?deck=${targetNode.deckId}&run=all`)
+        } else {
+          navigate('/review?run=all')
+        }
+      } else if (mode === 'persist_all') {
+        if (targetNode.deckId) {
+          navigate(`/review?deck=${targetNode.deckId}&persist=1`)
+        } else {
+          navigate('/review?persist=1')
+        }
       } else {
-        navigate(`/review?branch=${targetNode.id}`)
+        if (targetNode.id === '__root__') {
+          navigate('/review')
+        } else if (targetNode.deckId) {
+          navigate(`/review?deck=${targetNode.deckId}`)
+        } else {
+          navigate(`/review?branch=${targetNode.id}`)
+        }
       }
+    }
+  }
+
+  const handleLearnClick = (targetNode = selectedNode) => {
+    if (targetNode.newCount !== undefined && targetNode.newCount > 0) {
+      setStudyModalNode(targetNode)
+    } else {
+      handleStudyAction(targetNode, 'standard')
     }
   }
 
@@ -550,10 +585,22 @@ export function KnowledgeTree({
             {isClassic ? 'Win32' : 'Modern UI'}
           </button>
 
+          {/* Direct Unseen Button */}
+          {selectedNode.newCount !== undefined && selectedNode.newCount > 0 && (
+            <button
+              type="button"
+              onClick={() => handleStudyAction(selectedNode, 'unseen')}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 font-semibold text-xs shadow-xs hover:scale-[1.02] active:scale-95 transition"
+              title={`Study only the ${selectedNode.newCount} unseen cards until all are seen`}
+            >
+              <span>Unseen ({selectedNode.newCount})</span>
+            </button>
+          )}
+
           {/* Learn Button */}
           <button
             type="button"
-            onClick={() => handleLearn(selectedNode)}
+            onClick={() => handleLearnClick(selectedNode)}
             className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-semibold text-xs shadow-xs hover:scale-[1.02] active:scale-95 transition"
             title={
               selectedNode.id === '__root__'
@@ -718,21 +765,155 @@ export function KnowledgeTree({
               ? `Entire Collection (${rootTotals.elements} cards)`
               : `${selectedNode.title} (${selectedNode.elementCount} cards)`}
           </span>
+          {selectedNode.newCount !== undefined && selectedNode.newCount > 0 && (
+            <span className="text-amber-300 font-medium font-mono">({selectedNode.newCount} unseen)</span>
+          )}
           {selectedNode.dueCount !== undefined && selectedNode.dueCount > 0 && (
-            <span className="text-sky-300 font-medium">({selectedNode.dueCount} due)</span>
+            <span className="text-sky-300 font-medium font-mono">({selectedNode.dueCount} due)</span>
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => handleLearn(selectedNode)}
-          className="btn btn-primary py-1 px-3 text-xs font-semibold shadow-xs"
-        >
-          {selectedNode.id === '__root__'
-            ? 'Study Collection'
-            : `Study Branch (${selectedNode.elementCount})`}
-        </button>
+        <div className="flex items-center gap-2">
+          {selectedNode.newCount !== undefined && selectedNode.newCount > 0 && (
+            <button
+              type="button"
+              onClick={() => handleStudyAction(selectedNode, 'unseen')}
+              className="flex items-center gap-1 rounded-md border border-amber-500/50 bg-amber-500/20 px-2.5 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-500/30 transition shadow-xs cursor-pointer"
+              title={`Study only the ${selectedNode.newCount} unseen cards until all are seen and grasped`}
+            >
+              <span>Study Unseen ({selectedNode.newCount})</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => handleLearnClick(selectedNode)}
+            className="btn btn-primary py-1 px-3 text-xs font-semibold shadow-xs"
+          >
+            {selectedNode.id === '__root__'
+              ? 'Study Collection'
+              : `Study Branch (${selectedNode.elementCount})`}
+          </button>
+        </div>
       </div>
+
+      {/* Begin Deck Mode Option Modal */}
+      {studyModalNode && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setStudyModalNode(null)}
+        >
+          <div
+            className="relative w-full max-w-md rounded-2xl border border-sky-500/30 bg-[#0d131f] p-6 shadow-2xl text-left space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-1 border-b border-ink-line/60">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
+                  Begin Deck
+                </span>
+                <h3 className="text-base font-bold text-slate-100">
+                  {studyModalNode.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStudyModalNode(null)}
+                className="text-slate-400 hover:text-white text-lg leading-none cursor-pointer p-1"
+                title="Close"
+              >
+                &times;
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400">
+              Choose how you would like to begin this deck:
+            </p>
+
+            <div className="space-y-2.5">
+              {/* Option 1: Only Unseen Cards */}
+              {studyModalNode.newCount !== undefined && studyModalNode.newCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const node = studyModalNode
+                    setStudyModalNode(null)
+                    handleStudyAction(node, 'unseen')
+                  }}
+                  className="w-full text-left p-3.5 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-400 transition group cursor-pointer"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-sm text-amber-200 group-hover:text-amber-100">
+                      Only Unseen Cards
+                    </span>
+                    <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-300">
+                      {studyModalNode.newCount} unseen
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Drill only previously unseen cards in this deck until all {studyModalNode.newCount} are introduced and rated Easy.
+                  </p>
+                </button>
+              ) : null}
+
+              {/* Option 2: Standard Review */}
+              <button
+                type="button"
+                onClick={() => {
+                  const node = studyModalNode
+                  setStudyModalNode(null)
+                  handleStudyAction(node, 'standard')
+                }}
+                className="w-full text-left p-3.5 rounded-xl border border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/20 hover:border-sky-400 transition group cursor-pointer"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-semibold text-sm text-sky-200 group-hover:text-sky-100">
+                    Standard Review
+                  </span>
+                  <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-[10px] font-mono text-sky-300">
+                    {studyModalNode.dueCount || 0} due
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Spaced repetition queue: review due cards first according to schedule before introducing new cards.
+                </p>
+              </button>
+
+              {/* Option 3: All Cards Run */}
+              <button
+                type="button"
+                onClick={() => {
+                  const node = studyModalNode
+                  setStudyModalNode(null)
+                  handleStudyAction(node, 'all_run')
+                }}
+                className="w-full text-left p-3.5 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 hover:border-purple-400 transition group cursor-pointer"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-semibold text-sm text-purple-200 group-hover:text-purple-100">
+                    All Cards Run
+                  </span>
+                  <span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-mono text-purple-300">
+                    {studyModalNode.elementCount} cards
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Review all cards consecutively from easiest to hardest, then FSRS takes over.
+                </p>
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => setStudyModalNode(null)}
+                className="btn border border-ink-line text-xs py-1.5 px-4 text-slate-400 hover:text-slate-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -893,9 +1074,19 @@ function KnowledgeTreeNodeComponent({
         {/* Locked Badge */}
         {node.locked && <span className="text-[10px] ml-1 text-amber-400 font-mono">[Locked]</span>}
 
+        {/* Unseen Count Chip */}
+        {node.newCount !== undefined && node.newCount > 0 && (
+          <span
+            className="chip border-amber-500/40 bg-amber-500/15 text-amber-300 text-[10px] py-0 px-1.5 font-semibold ml-auto shrink-0"
+            title={`${node.newCount} unseen cards`}
+          >
+            {node.newCount} new
+          </span>
+        )}
+
         {/* Due Count Chip */}
         {node.dueCount !== undefined && node.dueCount > 0 && (
-          <span className="chip border-sky-500/40 bg-sky-500/15 text-sky-300 text-[10px] py-0 px-1.5 font-semibold ml-auto shrink-0">
+          <span className={`chip border-sky-500/40 bg-sky-500/15 text-sky-300 text-[10px] py-0 px-1.5 font-semibold shrink-0 ${node.newCount ? 'ml-1' : 'ml-auto'}`}>
             {node.dueCount} due
           </span>
         )}

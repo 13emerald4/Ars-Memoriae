@@ -225,7 +225,8 @@ export const api = {
   // ── decks / notes / cards ───────────────────────────────────────────────
   decks: () => request<Deck[]>('/api/decks'),
   deckStats: (id: string) => request<DeckStats>(`/api/decks/${id}/stats`),
-  deckPersistItems: (deckId: string) => request<QueueItem[]>(`/api/decks/${deckId}/persist-items`),
+  deckPersistItems: (deckId: string, unseenOnly?: boolean) =>
+    request<QueueItem[]>(`/api/decks/${deckId}/persist-items${unseenOnly ? '?unseen_only=true' : ''}`),
   deckAllCardsRunItems: (deckId: string) => request<QueueItem[]>(`/api/decks/${deckId}/all-cards-run-items`),
   createDeck: (body: {
     name: string

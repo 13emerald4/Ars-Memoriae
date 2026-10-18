@@ -654,6 +654,7 @@ async def deck_stats(
 @router.get("/decks/{deck_id}/persist-items", response_model=list[QueueItem])
 async def deck_persist_items(
     deck_id: str,
+    unseen_only: bool = False,
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[QueueItem]:
@@ -662,7 +663,7 @@ async def deck_persist_items(
     from app.routers.queue import to_schema
     from app.services.queue_service import compose_deck_persist_queue
 
-    items = await compose_deck_persist_queue(db, user, deck.id)
+    items = await compose_deck_persist_queue(db, user, deck.id, unseen_only=unseen_only)
     return [to_schema(i) for i in items]
 
 

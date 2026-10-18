@@ -75,7 +75,7 @@ Ars Memoriae automatically inspects your computer's hardware specs (RAM, GPU, VR
 
 ## 5. Updates & Data Backups
 
-- **Automatic Updates**: If you cloned via Git, double-clicking `start_windows.bat` or running `./start_mac.sh` automatically pulls the latest bug fixes and improvements every time you start the app.
+- **Interactive Update Prompts**: If you cloned via Git, double-clicking `start_windows.bat` or running `./start_mac.sh` checks for new updates on startup. If an update has been pushed, it shows the recent changes and prompts you (`[Y/n]`) before updating.
 - **Your Data is 100% Safe**: Updating code **never** deletes your study cards, intervals, or coding progress.
 - **Backing Up Your Progress**: Your study data lives in a single file at `backend/dev.db`. To back up your progress, simply copy `backend/dev.db` to a safe location (e.g. Google Drive, OneDrive, or a USB drive).
 

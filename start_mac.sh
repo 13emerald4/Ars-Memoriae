@@ -33,12 +33,7 @@ echo "  Found Python: $($PYTHON_CMD --version)"
 
 # 2. Check for updates if git repository
 echo "[2/5] Checking for updates..."
-if [ -d ".git" ] && command -v git >/dev/null 2>&1; then
-    echo "  Fetching latest updates from GitHub..."
-    git pull --ff-only 2>/dev/null || echo "  Note: Offline or local changes detected. Continuing with current version."
-else
-    echo "  Running from standalone release package."
-fi
+$PYTHON_CMD scripts/check_update.py
 
 # 3. Setup Virtual Environment
 echo "[3/5] Checking Python virtual environment..."

@@ -42,23 +42,14 @@ if errorlevel 1 (
 )
 echo   Found Python: %PYTHON_CMD%
 
-:: 2. Auto-Update from GitHub if running in a Git repository
+:: 2. Check for Updates from GitHub
 echo [2/5] Checking for updates...
-if exist ".git" (
-    where git >nul 2>&1
-    if not errorlevel 1 (
-        echo   Fetching latest updates from GitHub...
-        git pull --ff-only 2>nul
-        if errorlevel 1 (
-            echo   Note: Continuing with current local version.
-        ) else (
-            echo   Repository is up to date.
-        )
-    ) else (
-        echo   Git not in PATH. Skipping auto-update.
-    )
-) else (
-    echo   Running from standalone release package.
+%PYTHON_CMD% scripts\check_update.py
+if errorlevel 10 (
+    echo.
+    echo   [INFO] Reloading launcher with updated files...
+    "%~f0" %*
+    exit /b
 )
 
 :: 3. Setup Virtual Environment

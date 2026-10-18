@@ -65,56 +65,9 @@ const GRADE_STYLE: Record<Grade, string> = {
 
 function buildStarterTestCode(item: QueueItem | null): string {
   if (!item) return ''
-  if (item.starter_tests) return item.starter_tests
-
-  const isCode = Boolean(item.starter_code || (item.test_cases && item.test_cases.length > 0))
-  if (!isCode) return ''
-
-  const isPython = Boolean(item.starter_code?.includes('def ') || item.starter_code?.includes('class Solution:'))
-  if (isPython) {
-    return `# Unit Testing Suite (Python)
-import unittest
-
-class TestSolution(unittest.TestCase):
-    def test_sample(self):
-        # TODO: Add assertions
-        pass
-
-    def test_boundary(self):
-        # TODO: Test boundary limits
-        pass
-`
-  }
-
-  // TypeScript / JavaScript
-  const fnMatch = item.starter_code?.match(/function\s+([a-zA-Z0-9_$]+)/)
-  const fnName = fnMatch ? fnMatch[1] : 'solution'
-
-  const sampleCase = item.test_cases && item.test_cases.length > 0 ? item.test_cases[0] : null
-  let sampleTest = ''
-  if (sampleCase && sampleCase.input && typeof sampleCase.input === 'object') {
-    const args = Object.values(sampleCase.input)
-      .map((v) => JSON.stringify(v))
-      .join(', ')
-    sampleTest = `test('sample case', checkExpect(() => ${fnName}(${args}), ${JSON.stringify(sampleCase.expected)}));`
-  } else {
-    sampleTest = `test('sample case', checkExpect(() => ${fnName}(...), expected));`
-  }
-
-  return `// CPSC 210 Unit Testing Suite
-// Use checkExpect(() => actual, expected), checkError(() => ...), assertOk(r), assertErr(r)
-
-${sampleTest}
-
-test('boundary threshold case', checkExpect(() => {
-  // TODO: test boundary limit values
-}, expected));
-
-test('edge or error case', () => {
-  // TODO: test with checkError(() => ...) or assertOk / assertErr
-});
-`
+  return item.starter_tests || ''
 }
+
 
 function buildCompletedTestCode(item: QueueItem | null): string {
   if (!item) return ''
@@ -251,7 +204,13 @@ export default function Review() {
   // Persist Mode: Drill a deck continuously until all cards in review are rated Easy
   const deckParam = params.get('deck')
   const persistParam = params.get('persist') === '1' || params.get('persist') === 'true'
+  const unseenParam =
+    params.get('unseen') === '1' ||
+    params.get('unseen') === 'true' ||
+    params.get('unseen_only') === '1' ||
+    params.get('unseen_only') === 'true'
   const [persistActive, setPersistActive] = useState<boolean>(false)
+  const [persistUnseenOnly, setPersistUnseenOnly] = useState<boolean>(false)
   const [persistDeckId, setPersistDeckId] = useState<string | null>(null)
   const activeDeckRef = useRef<string | null>(null)
   const [persistDeckName, setPersistDeckName] = useState<string>('')
@@ -264,6 +223,12 @@ export default function Review() {
   const [persistCompleted, setPersistCompleted] = useState(false)
   const [allDecks, setAllDecks] = useState<Deck[]>([])
   const [selectedPersistDeckId, setSelectedPersistDeckId] = useState<string>('')
+  const [dismissedUnseenDeckId, setDismissedUnseenDeckId] = useState<string | null>(null)
+
+  const currentDeckInfo = useMemo(() => {
+    if (!deckParam) return null
+    return allDecks.find((d) => d.id === deckParam) || null
+  }, [allDecks, deckParam])
 
   // All Cards Run Mode: Review every card in deck consecutively, easiest to hardest, then FSRS takes over
   const runParam = params.get('run') === 'all' || params.get('all_cards_run') === '1'
@@ -619,10 +584,11 @@ export default function Review() {
   }, [branch, deckParam, persistParam, runParam, initCardState])
 
   const startPersistMode = useCallback(
-    async (deckId: string, deckName?: string) => {
+    async (deckId: string, deckName?: string, unseenOnly: boolean = false) => {
       setLoading(true)
       setError(null)
       setPersistActive(true)
+      setPersistUnseenOnly(unseenOnly)
       setPersistDeckId(deckId)
       setPersistCompleted(false)
       setPersistRound(1)
@@ -631,15 +597,19 @@ export default function Review() {
       setPersistCardAttempts({})
 
       setParams((p) => {
-        if (p.get('deck') === deckId && p.get('persist') === '1') return p
         const next = new URLSearchParams(p)
         next.set('deck', deckId)
         next.set('persist', '1')
+        if (unseenOnly) {
+          next.set('unseen', '1')
+        } else {
+          next.delete('unseen')
+        }
         return next
       })
 
       try {
-        const cards = await api.deckPersistItems(deckId)
+        const cards = await api.deckPersistItems(deckId, unseenOnly)
         setPersistCards(cards)
         const dName =
           cards[0]?.deck_name ||
@@ -670,6 +640,7 @@ export default function Review() {
   const exitPersistMode = useCallback(() => {
     activeDeckRef.current = null
     setPersistActive(false)
+    setPersistUnseenOnly(false)
     setPersistDeckId(null)
     setPersistCards([])
     setPersistGraspedIds(new Set())
@@ -680,6 +651,7 @@ export default function Review() {
       const next = new URLSearchParams(p)
       next.delete('deck')
       next.delete('persist')
+      next.delete('unseen')
       return next
     })
     void load()
@@ -891,9 +863,14 @@ export default function Review() {
         void startAllCardsRun(deckParam)
       }
     } else if (persistParam && deckParam) {
-      if (activeDeckRef.current !== deckParam || !persistActive || persistDeckId !== deckParam) {
+      if (
+        activeDeckRef.current !== deckParam ||
+        !persistActive ||
+        persistDeckId !== deckParam ||
+        persistUnseenOnly !== unseenParam
+      ) {
         activeDeckRef.current = deckParam
-        void startPersistMode(deckParam)
+        void startPersistMode(deckParam, undefined, unseenParam)
       }
     } else {
       activeDeckRef.current = null
@@ -902,12 +879,14 @@ export default function Review() {
   }, [
     deckParam,
     persistParam,
+    unseenParam,
     runParam,
     load,
     startPersistMode,
     startAllCardsRun,
     persistActive,
     persistDeckId,
+    persistUnseenOnly,
     allCardsRunActive,
     allCardsRunDeckId,
   ])
@@ -1185,7 +1164,9 @@ export default function Review() {
             setPersistCompleted(true)
             setItem(null)
             setLastOutcome(
-              `Easy — card grasped! All ${persistCards.length} cards in this deck are now rated Easy!`,
+              persistUnseenOnly
+                ? `Easy — card grasped! All ${persistCards.length} unseen cards in this deck are now rated Easy!`
+                : `Easy — card grasped! All ${persistCards.length} cards in this deck are now rated Easy!`,
             )
           } else {
             const nextCard = persistCards.find((c) => c.id === nextQueue[0]) || null
@@ -1442,6 +1423,7 @@ export default function Review() {
             outcome={lastOutcome}
             persistActive={persistActive}
             persistDeckName={persistDeckName}
+            persistUnseenOnly={persistUnseenOnly}
             onExitPersist={exitPersistMode}
             persistProgress={{
               grasped: persistGraspedIds.size,
@@ -1459,10 +1441,12 @@ export default function Review() {
             </div>
             <div className="space-y-2">
               <h2 className="text-2xl font-bold text-emerald-300">
-                Deck Fully Grasped!
+                {persistUnseenOnly ? 'All Unseen Cards Grasped!' : 'Deck Fully Grasped!'}
               </h2>
               <p className="text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
-                You've successfully mastered all <strong className="text-white">{persistCards.length}</strong> cards in <strong className="text-white">{persistDeckName}</strong> — every single card has been rated <span className="font-semibold text-emerald-400">Easy</span>!
+                {persistUnseenOnly
+                  ? `You've successfully mastered all ${persistCards.length} previously unseen cards in ${persistDeckName} — every single card has been rated Easy!`
+                  : `You've successfully mastered all ${persistCards.length} cards in ${persistDeckName} — every single card has been rated Easy!`}
               </p>
             </div>
 
@@ -1486,13 +1470,21 @@ export default function Review() {
                 Would you like to continue persisting in this deck, or return to your review queue?
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-3">
+                {persistUnseenOnly && persistDeckId && (
+                  <button
+                    type="button"
+                    className="btn btn-primary bg-sky-600 hover:bg-sky-500 text-white font-bold flex items-center justify-center gap-2 py-2.5 px-5 shadow-lg shadow-sky-900/40"
+                    onClick={() => startPersistMode(persistDeckId, persistDeckName, false)}
+                  >
+                    <span>Persist All Cards in Deck</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   className="btn btn-primary bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center justify-center gap-2 py-2.5 px-5 shadow-lg shadow-emerald-900/40"
                   onClick={handleContinuePersisting}
                 >
-                  
-                  <span>Continue Persisting in this Deck</span>
+                  <span>{persistUnseenOnly ? 'Restart Unseen Drill' : 'Continue Persisting in this Deck'}</span>
                 </button>
                 <button
                   type="button"
@@ -1515,21 +1507,41 @@ export default function Review() {
             session={session}
             persistActive={persistActive}
             persistDeckName={persistDeckName}
+            persistUnseenOnly={persistUnseenOnly}
             onExitPersist={exitPersistMode}
             learnMode={learnMode}
             onToggleLearnMode={toggleLearnMode}
           />
-          <Empty title={`No cards in ${persistDeckName || 'this deck'}.`}>
-            <p>This deck doesn't have any cards to review yet. Add cards or import notes to this deck.</p>
-            <div className="mt-4 flex justify-center gap-2">
-              <button className="btn" onClick={() => navigate('/decks')}>
-                Add cards
-              </button>
-              <button className="btn border border-ink-line" onClick={exitPersistMode}>
-                Exit Persist Mode
-              </button>
-            </div>
-          </Empty>
+          {persistUnseenOnly ? (
+            <Empty title={`No unseen cards in ${persistDeckName || 'this deck'}.`}>
+              <p>All cards in this deck have already been introduced into your review rotation.</p>
+              <div className="mt-4 flex justify-center gap-2">
+                {persistDeckId && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => startPersistMode(persistDeckId, persistDeckName, false)}
+                  >
+                    Persist All Cards in Deck
+                  </button>
+                )}
+                <button className="btn border border-ink-line" onClick={exitPersistMode}>
+                  Exit Persist Mode
+                </button>
+              </div>
+            </Empty>
+          ) : (
+            <Empty title={`No cards in ${persistDeckName || 'this deck'}.`}>
+              <p>This deck doesn't have any cards to review yet. Add cards or import notes to this deck.</p>
+              <div className="mt-4 flex justify-center gap-2">
+                <button className="btn" onClick={() => navigate('/decks')}>
+                  Add cards
+                </button>
+                <button className="btn border border-ink-line" onClick={exitPersistMode}>
+                  Exit Persist Mode
+                </button>
+              </div>
+            </Empty>
+          )}
         </div>
       )
     }
@@ -1607,7 +1619,7 @@ export default function Review() {
                       <option value="">-- Choose a deck --</option>
                       {allDecks.map((d) => (
                         <option key={d.id} value={d.id}>
-                          {d.name} ({d.card_count} {d.card_count === 1 ? 'card' : 'cards'})
+                          {d.name} ({d.card_count} {d.card_count === 1 ? 'card' : 'cards'}{d.new_count > 0 ? ` · ${d.new_count} unseen` : ''})
                         </option>
                       ))}
                     </select>
@@ -1615,11 +1627,27 @@ export default function Review() {
                       <button
                         type="button"
                         disabled={!selectedPersistDeckId}
-                        onClick={() => selectedPersistDeckId && startPersistMode(selectedPersistDeckId)}
+                        onClick={() => selectedPersistDeckId && startPersistMode(selectedPersistDeckId, undefined, false)}
                         className="btn btn-primary text-xs whitespace-nowrap disabled:opacity-50"
-                        title="Persist reviewing until every card is rated Easy"
+                        title="Persist reviewing until every card in the deck is rated Easy"
                       >
-                        Persist
+                        Persist All
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!selectedPersistDeckId || (allDecks.find((d) => d.id === selectedPersistDeckId)?.new_count ?? 0) === 0}
+                        onClick={() => selectedPersistDeckId && startPersistMode(selectedPersistDeckId, undefined, true)}
+                        className="btn border border-amber-500/50 bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 text-xs whitespace-nowrap disabled:opacity-50"
+                        title={
+                          (allDecks.find((d) => d.id === selectedPersistDeckId)?.new_count ?? 0) > 0
+                            ? `Persist reviewing only the ${allDecks.find((d) => d.id === selectedPersistDeckId)?.new_count} unseen cards until Easy`
+                            : 'No unseen cards in this deck'
+                        }
+                      >
+                        Persist Unseen{' '}
+                        {(allDecks.find((d) => d.id === selectedPersistDeckId)?.new_count ?? 0) > 0
+                          ? `(${allDecks.find((d) => d.id === selectedPersistDeckId)?.new_count})`
+                          : ''}
                       </button>
                       <button
                         type="button"
@@ -1696,6 +1724,12 @@ export default function Review() {
             onClearBranch={clearBranch}
             learnMode={learnMode}
             onToggleLearnMode={toggleLearnMode}
+            persistActive={persistActive}
+            persistDeckName={persistDeckName}
+            persistUnseenOnly={persistUnseenOnly}
+            onExitPersist={exitPersistMode}
+            onStartPersist={startPersistMode}
+            allDecks={allDecks}
             savedCount={savedCount}
             onOpenSavedDrawer={() => setSavedDrawerOpen(true)}
           />
@@ -1756,6 +1790,7 @@ export default function Review() {
           onStartBlitz={startBlitz}
           persistActive={persistActive}
           persistDeckName={persistDeckName}
+          persistUnseenOnly={persistUnseenOnly}
           onExitPersist={exitPersistMode}
           persistProgress={{
             grasped: persistGraspedIds.size,
@@ -1775,6 +1810,42 @@ export default function Review() {
           savedCount={savedCount}
           onOpenSavedDrawer={() => setSavedDrawerOpen(true)}
         />
+
+        {/* Prompt to study unseen cards if reviewing a deck with unintroduced material */}
+        {deckParam &&
+          !persistActive &&
+          !allCardsRunActive &&
+          currentDeckInfo &&
+          currentDeckInfo.new_count > 0 &&
+          dismissedUnseenDeckId !== deckParam && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 via-amber-900/20 to-ink-soft p-3.5 shadow-md">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-6 px-2 items-center justify-center rounded bg-amber-500/20 text-[10px] font-bold uppercase tracking-wider text-amber-300 border border-amber-500/30">
+                  Unseen Cards Available
+                </span>
+                <span className="text-xs text-slate-200">
+                  This deck has <strong className="text-amber-300 font-mono">{currentDeckInfo.new_count}</strong> unseen {currentDeckInfo.new_count === 1 ? 'card' : 'cards'}. Would you like to study only unseen cards until you have seen all of them?
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => startPersistMode(deckParam, currentDeckInfo.name, true)}
+                  className="rounded-lg border border-amber-500/60 bg-amber-500/25 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-amber-500/40 transition shadow-xs cursor-pointer"
+                >
+                  Study Unseen Only ({currentDeckInfo.new_count})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDismissedUnseenDeckId(deckParam)}
+                  className="rounded-lg border border-slate-700 bg-ink-soft/80 px-2.5 py-1 text-xs text-slate-400 hover:text-slate-200 hover:bg-ink-soft transition cursor-pointer"
+                  title="Dismiss notice"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
 
         {blitzActive && (
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
@@ -1813,19 +1884,26 @@ export default function Review() {
             <div className="flex flex-wrap items-center justify-between gap-2.5">
               <div className="flex items-center gap-2">
                 <span className="flex h-7 px-2 items-center justify-center rounded-lg bg-sky-500/20 text-xs font-bold uppercase tracking-wider text-sky-300">
-                  Persist
+                  {persistUnseenOnly ? 'Persist · Unseen' : 'Persist'}
                 </span>
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-slate-100 text-sm">
                       Persist Review Mode: {persistDeckName || item?.deck_name || 'Active Deck'}
                     </span>
+                    {persistUnseenOnly && (
+                      <span className="rounded bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
+                        Unseen Cards Only
+                      </span>
+                    )}
                     <span className="rounded-full bg-sky-500/20 border border-sky-500/40 px-2 py-0.5 text-[10px] font-mono text-sky-200">
                       Round {persistRound}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    Drilling until <strong>all cards are rated Easy</strong>. Other ratings (Again, Hard, Good) keep the card in rotation.
+                    {persistUnseenOnly
+                      ? 'Drilling previously unseen cards until all are rated Easy. Other ratings (Again, Hard, Good) keep the card in rotation.'
+                      : 'Drilling until all cards are rated Easy. Other ratings (Again, Hard, Good) keep the card in rotation.'}
                   </p>
                 </div>
               </div>
@@ -1854,7 +1932,7 @@ export default function Review() {
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-300 flex items-center gap-2">
-                  <span>Grasped Cards:</span>
+                  <span>{persistUnseenOnly ? 'Grasped Unseen Cards:' : 'Grasped Cards:'}</span>
                   <strong className="text-emerald-400 font-mono">
                     {persistGraspedIds.size} / {persistCards.length}
                   </strong>
@@ -1962,7 +2040,7 @@ export default function Review() {
             deckId={item.deck_or_source_id}
             deckName={item.deck_name}
             lastUpdated={deckStatsTrigger}
-            onStartPersist={(id) => startPersistMode(id, item.deck_name || undefined)}
+            onStartPersist={(id, unseenOnly) => startPersistMode(id, item.deck_name || undefined, unseenOnly)}
             isPersistActive={persistActive}
             onOpenDeckViewer={() => setDeckViewerOpen(true)}
             onStartAllCardsRun={(id) => void startAllCardsRun(id, item.deck_name || undefined)}
@@ -5068,6 +5146,7 @@ function SessionHeader({
   onStartBlitz,
   persistActive,
   persistDeckName,
+  persistUnseenOnly,
   onExitPersist,
   persistProgress,
   allCardsRunActive,
@@ -5092,6 +5171,7 @@ function SessionHeader({
   onStartBlitz?: (sec: number) => void
   persistActive?: boolean
   persistDeckName?: string
+  persistUnseenOnly?: boolean
   onExitPersist?: () => void
   persistProgress?: { grasped: number; total: number; round: number }
   allCardsRunActive?: boolean
@@ -5100,10 +5180,11 @@ function SessionHeader({
   allCardsRunProgress?: { current: number; total: number }
   onStartAllCardsRun?: (deckId: string, deckName?: string) => void
   allDecks?: Deck[]
-  onStartPersist?: (deckId: string, deckName?: string) => void
+  onStartPersist?: (deckId: string, deckName?: string, unseenOnly?: boolean) => void
   savedCount?: number
   onOpenSavedDrawer?: () => void
 }) {
+  const [quickPersistUnseenOnly, setQuickPersistUnseenOnly] = useState(false)
   if (!session && !persistActive && !allCardsRunActive) return null
   const counts = session?.counts
   const caps = session?.caps
@@ -5135,7 +5216,7 @@ function SessionHeader({
 
         {persistActive && (
           <span className="chip border-amber-500/50 bg-amber-500/15 text-amber-200 font-semibold flex items-center gap-1.5 shadow-sm">
-            <span>Persist: {persistDeckName || 'Current Deck'}</span>
+            <span>Persist{persistUnseenOnly ? ' (Unseen)' : ''}: {persistDeckName || 'Current Deck'}</span>
             {persistProgress && (
               <span className="text-[10px] text-amber-300/90 font-mono">
                 ({persistProgress.grasped}/{persistProgress.total} Easy · R{persistProgress.round})
@@ -5204,13 +5285,22 @@ function SessionHeader({
         {!persistActive && !allCardsRunActive && allDecks && allDecks.filter((d) => d.card_count > 0).length > 0 && onStartPersist && (
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] text-amber-400 font-medium">Persist Deck:</span>
+            <label className="flex items-center gap-1 text-[11px] text-slate-300 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={quickPersistUnseenOnly}
+                onChange={(e) => setQuickPersistUnseenOnly(e.target.checked)}
+                className="rounded border-slate-700 bg-ink-soft text-amber-500 focus:ring-0 w-3 h-3 cursor-pointer"
+              />
+              <span className="text-[10px] text-amber-300/80">Unseen only</span>
+            </label>
             <select
               className="rounded border border-amber-500/30 bg-ink-soft/90 px-2 py-0.5 text-[11px] text-amber-200 hover:border-amber-400 focus:outline-none cursor-pointer"
               defaultValue=""
               onChange={(e) => {
                 if (e.target.value) {
                   const d = allDecks.find((deck) => deck.id === e.target.value)
-                  onStartPersist(e.target.value, d?.name)
+                  onStartPersist(e.target.value, d?.name, quickPersistUnseenOnly)
                   e.target.value = ''
                 }
               }}
@@ -5222,7 +5312,7 @@ function SessionHeader({
                 .filter((d) => d.card_count > 0)
                 .map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.name} ({d.card_count} cards)
+                    {d.name} ({d.card_count} cards{d.new_count > 0 ? ` · ${d.new_count} unseen` : ''})
                   </option>
                 ))}
             </select>

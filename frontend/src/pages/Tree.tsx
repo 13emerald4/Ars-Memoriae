@@ -60,13 +60,20 @@ export default function Tree() {
   const knowledgeTreeNodes = useMemo(() => toKnowledgeTreeNodes(nodes), [nodes])
 
   const handleStudyTreeNode = useCallback(
-    (node: KnowledgeTreeNode) => {
+    (node: KnowledgeTreeNode, mode: 'standard' | 'unseen' | 'all_run' | 'persist_all' = 'standard') => {
       if (node.id === '__root__') {
-        navigate('/review')
+        if (mode === 'unseen') navigate('/review?persist=1&unseen=1')
+        else if (mode === 'all_run') navigate('/review?run=all')
+        else if (mode === 'persist_all') navigate('/review?persist=1')
+        else navigate('/review')
       } else if (node.deckId) {
-        navigate(`/review?deck=${node.deckId}`)
+        if (mode === 'unseen') navigate(`/review?deck=${node.deckId}&persist=1&unseen=1`)
+        else if (mode === 'all_run') navigate(`/review?deck=${node.deckId}&run=all`)
+        else if (mode === 'persist_all') navigate(`/review?deck=${node.deckId}&persist=1`)
+        else navigate(`/review?deck=${node.deckId}`)
       } else {
-        navigate(`/review?branch=${node.id}`)
+        if (mode === 'unseen') navigate(`/review?branch=${node.id}&persist=1&unseen=1`)
+        else navigate(`/review?branch=${node.id}`)
       }
     },
     [navigate],
