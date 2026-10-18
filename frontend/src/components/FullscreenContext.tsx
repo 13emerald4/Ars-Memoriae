@@ -203,7 +203,23 @@ export function FullscreenButton({
           : 'border-slate-700/80 bg-slate-800/50 text-slate-300 hover:border-slate-600 hover:bg-slate-700/60 hover:text-white'
       } ${paddingClass} ${className}`}
     >
-      <span className="text-sm leading-none">{active ? '🗗' : '⛶'}</span>
+      <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {active ? (
+          <>
+            <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+            <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+            <path d="M3 16h3a2 2 0 0 1 2 2v3" />
+            <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+          </>
+        ) : (
+          <>
+            <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+            <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+            <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+            <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+          </>
+        )}
+      </svg>
       {showLabel && (
         <span>{active ? 'Exit Fullscreen' : 'Fullscreen'}</span>
       )}
@@ -229,7 +245,6 @@ export function FullscreenHud() {
       }`}
     >
       <span className="text-xs text-sky-300 font-semibold flex items-center gap-1">
-        <span>⛶</span>
         <span className="text-[11px] font-mono uppercase tracking-wider text-slate-300">
           {isFullscreen ? 'Fullscreen' : 'Zen Focus'}
         </span>
@@ -250,7 +265,6 @@ export function FullscreenHud() {
         title="Exit Fullscreen (Esc)"
         className="rounded px-2 py-0.5 text-[11px] font-bold text-rose-300 hover:bg-rose-950/60 transition flex items-center gap-1"
       >
-        <span>✕</span>
         <span>Exit</span>
         <kbd className="text-[9px] text-slate-500 font-mono ml-0.5">Esc</kbd>
       </button>

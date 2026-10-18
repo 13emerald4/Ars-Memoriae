@@ -47,7 +47,7 @@ export function CodeTestConsole({
                 : 'text-[#8a8a8a] hover:text-[#eff1f6]'
             }`}
           >
-            <span>🧪 Testcases</span>
+            <span>Testcases</span>
           </button>
 
           <button
@@ -58,7 +58,7 @@ export function CodeTestConsole({
                 : 'text-[#8a8a8a] hover:text-[#eff1f6]'
             }`}
           >
-            <span>📊 Results</span>
+            <span>Results</span>
             {runResult && (
               <span
                 className={`h-2 w-2 rounded-full ${
@@ -82,7 +82,7 @@ export function CodeTestConsole({
                 Running…
               </span>
             ) : (
-              '▶ Run'
+              'Run'
             )}
           </button>
 
@@ -91,7 +91,7 @@ export function CodeTestConsole({
             disabled={running || submitting}
             className="btn btn-primary px-4 py-1.5 text-xs font-bold shadow-lg"
           >
-            {submitting ? 'Submitting…' : '⚡ Submit'}
+            {submitting ? 'Submitting…' : 'Submit'}
           </button>
         </div>
       </div>
@@ -150,7 +150,6 @@ export function CodeTestConsole({
           <div>
             {!runResult && !running && (
               <div className="flex flex-col items-center justify-center py-8 text-slate-500">
-                <span className="text-2xl mb-1">⚡</span>
                 <p>Click "Run" to test your solution.</p>
               </div>
             )}
@@ -199,7 +198,6 @@ export function CodeTestConsole({
                   <div className="space-y-2 rounded-lg border border-sky-500/20 bg-sky-950/10 p-3">
                     <div className="flex items-center justify-between text-xs font-semibold text-sky-200">
                       <span className="flex items-center gap-1.5">
-                        <span>🧪</span>
                         <span>Unit Tests</span>
                       </span>
                       <span className="text-[11px] font-mono text-sky-400">
@@ -220,11 +218,11 @@ export function CodeTestConsole({
                           <div className="flex items-center justify-between gap-2">
                             <span className="flex items-center gap-2 font-medium">
                               <span
-                                className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold ${
+                                className={`flex h-4 px-1 items-center justify-center rounded text-[9px] font-mono font-bold uppercase ${
                                   st.passed ? 'bg-emerald-500/30 text-emerald-300' : 'bg-rose-500/30 text-rose-300'
                                 }`}
                               >
-                                {st.passed ? '✓' : '✗'}
+                                {st.passed ? 'PASS' : 'FAIL'}
                               </span>
                               <span>{st.test_name}</span>
                             </span>

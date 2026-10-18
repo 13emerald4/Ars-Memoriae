@@ -174,7 +174,6 @@ export function LexiconProvider({ children }: { children: ReactNode }) {
             }}
             className="flex items-center gap-1.5 rounded-full border border-sky-400/50 bg-sky-950/95 px-3 py-1 text-xs font-semibold text-sky-200 shadow-xl backdrop-blur hover:bg-sky-900 hover:border-sky-300 transition-all hover:scale-105 active:scale-95 cursor-pointer"
           >
-            <span>📖</span>
             <span>
               Define{' '}
               <strong className="text-white">

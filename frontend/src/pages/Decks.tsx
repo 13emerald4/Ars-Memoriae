@@ -327,7 +327,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
                       key={i}
                       className="chip border-emerald-500/40 bg-emerald-500/10 text-emerald-300 text-xs font-medium"
                     >
-                      📄 {label}
+                      {label}
                     </span>
                   )
                 })}
@@ -875,7 +875,7 @@ function DeckList({
               }`}
               onClick={() => setViewMode('tree')}
             >
-              🗂️ Knowledge Tree
+              Knowledge Tree
             </button>
             <button
               type="button"
@@ -886,7 +886,7 @@ function DeckList({
               }`}
               onClick={() => setViewMode('list')}
             >
-              📋 Flat List
+              Flat List
             </button>
           </div>
 
@@ -970,7 +970,7 @@ function DeckList({
                 className="text-xs text-slate-400 hover:text-slate-200"
                 onClick={() => setShowDetailedCreate(false)}
               >
-                ✕ Close
+                Close
               </button>
             </div>
 
@@ -1089,7 +1089,7 @@ function DeckList({
               className="btn btn-primary text-xs font-bold px-3 py-1.5 shadow-sm"
               title="Study all decks"
             >
-              ⚡ Study All Decks
+              Study All Decks
             </button>
           </div>
         )}
@@ -1264,7 +1264,7 @@ function DeckList({
                     className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-500/20 hover:border-amber-400 transition shadow-sm"
                     title={`Persist reviewing ${d.name} until all cards are rated Easy`}
                   >
-                    <span>⚡ Persist Review</span>
+                    <span>Persist Review</span>
                   </button>
                 )}
 
@@ -1278,7 +1278,7 @@ function DeckList({
                     className="flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-500/10 px-2.5 py-1 text-xs font-semibold text-purple-200 hover:bg-purple-500/20 hover:border-purple-400 transition shadow-sm"
                     title={`Run all cards in ${d.name} consecutively, easiest to hardest. Thereafter, FSRS takes over.`}
                   >
-                    <span>🏁 All Cards Run</span>
+                    <span>All Cards Run</span>
                   </button>
                 )}
 
@@ -1336,7 +1336,7 @@ function DeckList({
                   className="rounded p-1 text-xs text-slate-600 hover:bg-rose-500/15 hover:text-rose-300 transition"
                   onClick={() => handleDeleteDeck(d)}
                 >
-                  ✕
+                  &times;
                 </button>
               </div>
             </div>
@@ -1369,7 +1369,7 @@ function AddNote({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<unknown>(null)
 
-  // 🧠 Memory Champion: Extreme Atomicity Linter & AI Decomposition (§Feature 5)
+  // Memory Champion: Extreme Atomicity Linter & AI Decomposition (§Feature 5)
   const [atomicity, setAtomicity] = useState<AtomicityLintResult | null>(null)
   const [decomposedCards, setDecomposedCards] = useState<DecomposedCardItem[] | null>(null)
   const [decomposing, setDecomposing] = useState(false)
@@ -1495,7 +1495,7 @@ function AddNote({
                 }`}
               >
                 Atomicity: {atomicity.score}/100{' '}
-                {atomicity.is_atomic ? '✓ Atomic (1 Idea)' : '⚠ Compound / Complex'}
+                {atomicity.is_atomic ? 'Atomic (1 Idea)' : 'Compound / Complex'}
               </span>
             </div>
           )}
@@ -1531,7 +1531,7 @@ function AddNote({
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 space-y-2 text-xs">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-semibold text-amber-200">
-                🧠 Memory Athlete Advice: Non-atomic cards cause retrieval interference &amp; slower reaction times.
+                Memory Athlete Advice: Non-atomic cards cause retrieval interference &amp; slower reaction times.
               </p>
               <button
                 type="button"
@@ -1539,7 +1539,7 @@ function AddNote({
                 disabled={decomposing}
                 onClick={handleDecompose}
               >
-                {decomposing ? '🤖 Decomposing with AI…' : '⚡ 1-Click AI Decompose'}
+                {decomposing ? 'Decomposing with AI…' : '1-Click AI Decompose'}
               </button>
             </div>
             <ul className="space-y-1 text-amber-300/90">
@@ -1568,7 +1568,7 @@ function AddNote({
                 onClick={handleAddAllDecomposed}
                 disabled={busy}
               >
-                ✓ Add All {decomposedCards.length} Atomic Cards to Deck
+                Add All {decomposedCards.length} Atomic Cards to Deck
               </button>
             </div>
             <div className="space-y-2">
@@ -1640,7 +1640,7 @@ function AddNote({
   )
 }
 
-/** 🔗 Sequential Overlapping Chain Clozes (§Feature 5) */
+/** Sequential Overlapping Chain Clozes (§Feature 5) */
 function SequentialClozePanel({
   deckId,
   onAdded,
@@ -1700,7 +1700,7 @@ function SequentialClozePanel({
 
   return (
     <Section
-      title="🔗 Sequential Chain Clozes"
+      title="Sequential Chain Clozes"
       description="Memory athlete technique for ordered algorithms, protocols, cycles, and chronological events ($S_{k-1} \to [S_k] \to S_{k+1}$)."
     >
       <div className="space-y-3">
@@ -1743,7 +1743,7 @@ function SequentialClozePanel({
               disabled={steps.length < 2}
               onClick={handlePreview}
             >
-              👁 Preview Chain
+              Preview Chain
             </button>
             <button
               type="button"
@@ -1758,7 +1758,7 @@ function SequentialClozePanel({
 
         {successMsg && (
           <p className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs text-emerald-200">
-            ✓ {successMsg}
+            {successMsg}
           </p>
         )}
 
@@ -2021,7 +2021,7 @@ function Browser({ deckId, deck, onChange }: { deckId: string; deck?: Deck | nul
                   <span className="text-[11px] text-slate-500">Sources:</span>
                   {(c.source_documents && c.source_documents.length > 0 ? c.source_documents : deck?.source_documents || []).map((sd: any, idx: number) => (
                     <span key={idx} className="chip text-[10px] border-emerald-500/30 text-emerald-300 bg-emerald-500/5">
-                      📄 {typeof sd === 'string' ? sd : sd.title || JSON.stringify(sd)}
+                      {typeof sd === 'string' ? sd : sd.title || JSON.stringify(sd)}
                     </span>
                   ))}
                 </div>
@@ -2221,7 +2221,6 @@ function JsonImportPanel({ onImported }: { onImported: () => void }) {
             onClick={copyPrompt}
             title="Copy prompt for ChatGPT/Claude/Gemini"
           >
-            <span>{promptCopied ? '✓' : '📋'}</span>
             <span>{promptCopied ? 'Copied' : 'Copy LLM prompt'}</span>
           </button>
         </div>
@@ -2340,7 +2339,6 @@ function LlmPromptPanel() {
           className="btn btn-primary flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold"
           title="Copy selected prompt to clipboard"
         >
-          <span>{copied ? '✓' : '📋'}</span>
           <span>{copied ? 'Copied' : 'Copy Prompt'}</span>
         </button>
       }
@@ -2357,7 +2355,6 @@ function LlmPromptPanel() {
                 : 'border border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            <span>🎓</span>
             <span>Course &amp; Textbook</span>
           </button>
 
@@ -2370,7 +2367,6 @@ function LlmPromptPanel() {
                 : 'border border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            <span>💻</span>
             <span>Coding Problems</span>
           </button>
 
@@ -2383,7 +2379,6 @@ function LlmPromptPanel() {
                 : 'border border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            <span>🗂️</span>
             <span>Flashcards</span>
           </button>
         </div>
@@ -2411,16 +2406,16 @@ function LlmPromptPanel() {
             <div className="flex justify-between items-center mb-2 pb-2 border-b border-ink-line/40">
               <span className="text-[11px] text-slate-400 font-sans">
                 {promptCategory === 'course'
-                  ? '🎓 Hybrid Textbook Prompt (Auto-Classify Code vs Theory):'
+                  ? 'Hybrid Textbook Prompt (Auto-Classify Code vs Theory):'
                   : promptCategory === 'code'
-                  ? '💻 Pure LeetCode Coding Problem Prompt:'
-                  : '🗂️ Standard Flashcard Prompt:'}
+                  ? 'Pure LeetCode Coding Problem Prompt:'
+                  : 'Standard Flashcard Prompt:'}
               </span>
               <button
                 onClick={handleCopy}
                 className="btn btn-secondary px-2.5 py-0.5 text-[11px]"
               >
-                {copied ? '✓ Copied' : 'Copy'}
+                {copied ? 'Copied' : 'Copy'}
               </button>
             </div>
             <pre className="whitespace-pre-wrap leading-relaxed select-all max-h-96 overflow-y-auto pr-2">

@@ -88,7 +88,6 @@ export function TiledEditorPane({
               }`}
               title={`Edit implementation logic (${paneId} pane)`}
             >
-              <span>💻</span>
               <span>Solution</span>
             </button>
 
@@ -102,7 +101,6 @@ export function TiledEditorPane({
               }`}
               title={`Write unit tests with assertions (${paneId} pane)`}
             >
-              <span>🧪</span>
               <span>Tests</span>
               {testCode.trim() && (
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
@@ -119,7 +117,6 @@ export function TiledEditorPane({
               }`}
               title={`View reference solution (${paneId} pane)`}
             >
-              <span>📖</span>
               <span>Ref</span>
             </button>
 
@@ -134,7 +131,6 @@ export function TiledEditorPane({
                 }`}
                 title={`View completed reference test suite (${paneId} pane)`}
               >
-                <span>🧪</span>
                 <span>Ref Tests</span>
               </button>
             )}
@@ -150,7 +146,6 @@ export function TiledEditorPane({
                 }`}
                 title={`View original starter test suite (${paneId} pane)`}
               >
-                <span>📋</span>
                 <span>Starter</span>
               </button>
             )}
@@ -177,7 +172,6 @@ export function TiledEditorPane({
               }`}
               title={`Request Socratic Hint for line ${cursorLine} (Alt+H)`}
             >
-              <span>💡</span>
               <span>{lineHintLoading ? 'Thinking…' : 'Hint'}</span>
               <span className="text-[10px] text-amber-400/60 font-mono hidden xl:inline">(Alt+H)</span>
             </button>
@@ -195,7 +189,6 @@ export function TiledEditorPane({
               }`}
               title="Grade your solution with local Qwen 2.5 Coder 7B (Alt+G)"
             >
-              <span>⚡</span>
               <span>{grading ? 'Grading…' : 'Grade'}</span>
               <span className="text-[10px] text-emerald-300/70 font-mono hidden xl:inline">(Alt+G)</span>
             </button>
@@ -237,10 +230,10 @@ export function TiledEditorPane({
                   className="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-200 transition px-2 py-0.5 rounded hover:bg-[#2c2c2c] cursor-pointer shrink-0 whitespace-nowrap"
                   title="Copy reference solution to clipboard"
                 >
-                  <span>{copiedRef ? '✓ Copied' : '📋 Copy'}</span>
+                  <span>{copiedRef ? 'Copied' : 'Copy'}</span>
                 </button>
               ) : (
-                <span className="text-xs text-amber-400/80 font-mono shrink-0 whitespace-nowrap">🔒 Locked</span>
+                <span className="text-xs text-amber-400/80 font-mono shrink-0 whitespace-nowrap">Locked</span>
               )}
             </>
           )}
@@ -255,7 +248,7 @@ export function TiledEditorPane({
                     className="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-200 transition px-2 py-0.5 rounded hover:bg-[#2c2c2c] cursor-pointer shrink-0 whitespace-nowrap"
                     title="Copy completed reference tests to clipboard"
                   >
-                    <span>{copiedRefTests ? '✓ Copied' : '📋 Copy'}</span>
+                    <span>{copiedRefTests ? 'Copied' : 'Copy'}</span>
                   </button>
                   <button
                     type="button"
@@ -267,7 +260,7 @@ export function TiledEditorPane({
                   </button>
                 </>
               ) : (
-                <span className="text-xs text-purple-400/80 font-mono shrink-0 whitespace-nowrap">🔒 Locked</span>
+                <span className="text-xs text-purple-400/80 font-mono shrink-0 whitespace-nowrap">Locked</span>
               )}
             </>
           )}
@@ -280,7 +273,7 @@ export function TiledEditorPane({
                 className="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-200 transition px-2 py-0.5 rounded hover:bg-[#2c2c2c] cursor-pointer shrink-0 whitespace-nowrap"
                 title="Copy starter tests to clipboard"
               >
-                <span>{copiedStarterTests ? '✓ Copied' : '📋 Copy'}</span>
+                <span>{copiedStarterTests ? 'Copied' : 'Copy'}</span>
               </button>
               <button
                 type="button"
@@ -351,8 +344,8 @@ export function TiledEditorPane({
             className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3"
             style={{ height }}
           >
-            <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-xl text-sky-400 shadow-inner">
-              🔒
+            <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-xl text-sky-400 shadow-inner font-mono text-sm font-bold">
+              [Locked]
             </div>
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-slate-200">Reference Solution Hidden</h4>
@@ -365,7 +358,7 @@ export function TiledEditorPane({
               onClick={onReveal}
               className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 mt-2 cursor-pointer"
             >
-              <span>👁 Reveal Reference Solution</span>
+              <span>Reveal Reference Solution</span>
             </button>
           </div>
         )
@@ -388,8 +381,8 @@ export function TiledEditorPane({
             className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3"
             style={{ height }}
           >
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-xl text-purple-400 shadow-inner">
-              🔒
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-xl text-purple-400 shadow-inner font-mono text-sm font-bold">
+              [Locked]
             </div>
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-slate-200">Completed Test Suite Hidden</h4>
@@ -402,7 +395,7 @@ export function TiledEditorPane({
               onClick={onReveal}
               className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 mt-2 cursor-pointer"
             >
-              <span>👁 Reveal Reference Tests</span>
+              <span>Reveal Reference Tests</span>
             </button>
           </div>
         )

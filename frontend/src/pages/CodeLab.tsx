@@ -18,24 +18,24 @@ import { FullscreenButton } from '../components/FullscreenContext'
 import { useTheme } from '../components/ThemeContext'
 
 const BLIND75_CATEGORIES = [
-  { name: 'Arrays & Hashing', icon: '🗃️', desc: 'Hash maps, frequency counters, and prefix products' },
-  { name: 'Two Pointers', icon: '🎯', desc: 'Converging or sliding pointer pairs on arrays/strings' },
-  { name: 'Sliding Window', icon: '🪟', desc: 'Dynamic or fixed-size sub-segment optimization' },
-  { name: 'Stack', icon: '🥞', desc: 'LIFO structure, monotonic stacks, bracket matching' },
-  { name: 'Binary Search', icon: '🔍', desc: 'Logarithmic search on sorted or rotated spaces' },
-  { name: 'Linked List', icon: '🔗', desc: 'Pointer manipulation, cycle detection, reordering' },
-  { name: 'Trees', icon: '🌲', desc: 'DFS, BFS, BST invariants, LCA, and traversals' },
-  { name: 'Tries', icon: '🌿', desc: 'Prefix trees for efficient prefix search and wildcards' },
-  { name: 'Heap / Priority Queue', icon: '🏔️', desc: 'Dynamic order statistics and stream median' },
-  { name: 'Backtracking', icon: '🔄', desc: 'Combinatorial decision trees and matrix searches' },
-  { name: 'Graphs', icon: '🕸️', desc: 'Connected components, topological sort, cycle detection' },
-  { name: 'Advanced Graphs', icon: '🛰️', desc: 'Lexicographical order & alien alphabet precedence' },
-  { name: '1-D Dynamic Programming', icon: '📈', desc: 'Subproblem memoization, state transitions' },
-  { name: '2-D Dynamic Programming', icon: '📊', desc: 'Grid paths, subsequence alignments' },
-  { name: 'Greedy', icon: '⚡', desc: 'Locally optimal choices (Kadane, Jump Game)' },
-  { name: 'Intervals', icon: '⏱️', desc: 'Merging, non-overlapping scheduling, room allocation' },
-  { name: 'Math & Geometry', icon: '📐', desc: 'Matrix transpositions, spiral traversals, set zeroes' },
-  { name: 'Bit Manipulation', icon: '0️⃣1️⃣', desc: 'Bitwise XOR cancellations, Hamming weights, shifts' },
+  { name: 'Arrays & Hashing', desc: 'Hash maps, frequency counters, and prefix products' },
+  { name: 'Two Pointers', desc: 'Converging or sliding pointer pairs on arrays/strings' },
+  { name: 'Sliding Window', desc: 'Dynamic or fixed-size sub-segment optimization' },
+  { name: 'Stack', desc: 'LIFO structure, monotonic stacks, bracket matching' },
+  { name: 'Binary Search', desc: 'Logarithmic search on sorted or rotated spaces' },
+  { name: 'Linked List', desc: 'Pointer manipulation, cycle detection, reordering' },
+  { name: 'Trees', desc: 'DFS, BFS, BST invariants, LCA, and traversals' },
+  { name: 'Tries', desc: 'Prefix trees for efficient prefix search and wildcards' },
+  { name: 'Heap / Priority Queue', desc: 'Dynamic order statistics and stream median' },
+  { name: 'Backtracking', desc: 'Combinatorial decision trees and matrix searches' },
+  { name: 'Graphs', desc: 'Connected components, topological sort, cycle detection' },
+  { name: 'Advanced Graphs', desc: 'Lexicographical order & alien alphabet precedence' },
+  { name: '1-D Dynamic Programming', desc: 'Subproblem memoization, state transitions' },
+  { name: '2-D Dynamic Programming', desc: 'Grid paths, subsequence alignments' },
+  { name: 'Greedy', desc: 'Locally optimal choices (Kadane, Jump Game)' },
+  { name: 'Intervals', desc: 'Merging, non-overlapping scheduling, room allocation' },
+  { name: 'Math & Geometry', desc: 'Matrix transpositions, spiral traversals, set zeroes' },
+  { name: 'Bit Manipulation', desc: 'Bitwise XOR cancellations, Hamming weights, shifts' },
 ]
 
 export default function CodeLab() {
@@ -213,7 +213,6 @@ export default function CodeLab() {
       const solved = catProbs.filter((p) => p.last_status === 'Accepted').length
       return {
         category: cat.name,
-        icon: cat.icon,
         desc: cat.desc,
         problems: catProbs,
         total: catProbs.length,
@@ -356,7 +355,7 @@ export default function CodeLab() {
             className="flex items-center gap-1.5 text-xs font-bold text-[#eff1f6] hover:text-[#2cbb5d] transition pr-1"
             title="LeetCode Problem Studio"
           >
-            <span className="text-[#ffa116] text-base font-extrabold">⚡</span>
+            <span className="text-[#ffa116] text-xs font-bold uppercase tracking-wider">Studio</span>
           </button>
 
           {/* Categorized Dropdown Selector */}
@@ -372,7 +371,7 @@ export default function CodeLab() {
               {groupedCategories.map((group) => (
                 <optgroup
                   key={group.category}
-                  label={`${group.icon} ${group.category} (${group.solved}/${group.total})`}
+                  label={`${group.category} (${group.solved}/${group.total})`}
                   className="bg-[#1e1e1e] text-[#569cd6] font-bold"
                 >
                   {group.problems.map((p) => (
@@ -381,9 +380,7 @@ export default function CodeLab() {
                       value={p.slug}
                       className="bg-[#1a1a1a] text-[#eff1f6] font-normal"
                     >
-                      {p.last_status === 'Accepted' ? '✅' : p.has_submission ? '🟡' : '⚪'}{' '}
-                      {p.difficulty === 'Easy' ? '🟢' : p.difficulty === 'Medium' ? '🟡' : '🔴'}{' '}
-                      {p.title}
+                      [{p.difficulty}] {p.title}{p.last_status === 'Accepted' ? ' (Solved)' : ''}
                     </option>
                   ))}
                 </optgroup>
@@ -415,7 +412,13 @@ export default function CodeLab() {
             className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#333333] bg-[#262626] text-xs text-[#8a8a8a] hover:text-[#eff1f6] hover:bg-[#333333] transition"
             title="Random problem"
           >
-            🔀
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="16 3 21 3 21 8" />
+              <line x1="4" y1="20" x2="21" y2="3" />
+              <polyline points="21 16 21 21 16 21" />
+              <line x1="15" y1="15" x2="21" y2="21" />
+              <line x1="4" y1="4" x2="9" y2="9" />
+            </svg>
           </button>
         </div>
 
@@ -437,19 +440,21 @@ export default function CodeLab() {
             className="flex items-center gap-1.5 rounded-lg bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 px-4 py-1 text-xs font-bold text-white shadow transition disabled:opacity-40"
             title="Submit (Ctrl+Shift+Enter)"
           >
-            <span>☁️</span>
             <span>{submitting ? 'Submitting…' : 'Submit'}</span>
           </button>
 
           {/* Reflex Timer */}
-          <div className="hidden md:flex items-center gap-1 rounded-lg border border-[#2d2d2d] bg-[#1e1e1e] px-2.5 py-1 text-xs font-mono text-[#8a8a8a]">
-            <span>⏱</span>
+          <div className="hidden md:flex items-center gap-1.5 rounded-lg border border-[#2d2d2d] bg-[#1e1e1e] px-2.5 py-1 text-xs font-mono text-[#8a8a8a]">
+            <svg className="w-3 h-3 text-[#8a8a8a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
             <span className="font-bold text-[#eff1f6]">{formatTimer(timerSec)}</span>
             <button
               onClick={() => setTimerActive((a) => !a)}
-              className="text-[10px] text-[#8a8a8a] hover:text-[#eff1f6] ml-0.5"
+              className="text-[10px] font-bold text-[#8a8a8a] hover:text-[#eff1f6] ml-0.5"
             >
-              {timerActive ? '⏸' : '▶'}
+              {timerActive ? 'Pause' : 'Start'}
             </button>
           </div>
         </div>
@@ -523,7 +528,7 @@ export default function CodeLab() {
             className="hidden sm:flex items-center gap-1 rounded-lg border border-[#333333] bg-[#262626] px-2.5 py-1 text-xs font-semibold text-[#ffa116] hover:bg-[#333333] transition"
             title="Forge custom challenge with AI"
           >
-            ✨ Forge
+            Forge
           </button>
           <FullscreenButton size="sm" />
         </div>
@@ -549,11 +554,11 @@ export default function CodeLab() {
             <div className="flex items-center gap-1 border-b border-[#282828] bg-[#262626] px-3 py-1.5 text-xs">
               {(
                 [
-                  ['description', '📋 Description'],
-                  ['editorial', '💡 Editorial'],
-                  ['solutions', '✨ Solutions'],
-                  ['submissions', '📊 Submissions'],
-                  ['tutor', '🤖 Socratic AI'],
+                  ['description', 'Description'],
+                  ['editorial', 'Editorial'],
+                  ['solutions', 'Solutions'],
+                  ['submissions', 'Submissions'],
+                  ['tutor', 'Socratic AI'],
                 ] as const
               ).map(([tabId, label]) => (
                 <button
@@ -583,7 +588,10 @@ export default function CodeLab() {
 
                     {isCurrentSolved && (
                       <span className="flex items-center gap-1 text-xs font-semibold text-[#2cbb5d]">
-                        <span>✓</span> Solved
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        <span>Solved</span>
                       </span>
                     )}
                   </div>
@@ -606,7 +614,7 @@ export default function CodeLab() {
                       onClick={() => setShowTopics((s) => !s)}
                       className="rounded-full bg-[#282828] hover:bg-[#333333] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#8a8a8a] hover:text-[#eff1f6] transition flex items-center gap-1"
                     >
-                      <span>🏷️ Topics</span>
+                      <span>Topics</span>
                       <span className="text-[9px]">{showTopics ? '▲' : '▼'}</span>
                     </button>
 
@@ -615,7 +623,7 @@ export default function CodeLab() {
                         onClick={() => setShowHints((h) => !h)}
                         className="rounded-full bg-[#282828] hover:bg-[#333333] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#8a8a8a] hover:text-[#eff1f6] transition flex items-center gap-1"
                       >
-                        <span>💡 Hint</span>
+                        <span>Hint</span>
                         <span className="text-[9px]">{showHints ? '▲' : '▼'}</span>
                       </button>
                     )}
@@ -629,7 +637,7 @@ export default function CodeLab() {
                         className="rounded-full bg-[#282828] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#8a8a8a] focus:outline-none cursor-pointer"
                       >
                         <option value="" disabled>
-                          ➕ Add to Deck…
+                          + Add to Deck…
                         </option>
                         {decks.map((d) => (
                           <option key={d.id} value={d.id} className="bg-[#1a1a1a] text-[#eff1f6]">
@@ -716,7 +724,7 @@ export default function CodeLab() {
               {activeTab === 'editorial' && (
                 <div className="space-y-3">
                   <h3 className="text-sm font-bold text-[#00b8a3]">
-                    💡 Algorithmic Intuition & Complexity Proof
+                    Algorithmic Intuition &amp; Complexity Proof
                   </h3>
                   {problemDetail.editorial ? (
                     <div className="prose prose-invert text-xs whitespace-pre-wrap leading-relaxed text-[#eff1f6]">
@@ -732,7 +740,7 @@ export default function CodeLab() {
               {activeTab === 'solutions' && (
                 <div className="space-y-4">
                   <h3 className="text-sm font-bold text-[#2cbb5d]">
-                    ✨ Canonical Solutions
+                    Canonical Solutions
                   </h3>
                   {Object.entries(problemDetail.solutions).map(([lang, solCode]) => (
                     <div key={lang} className="space-y-1">
@@ -748,7 +756,7 @@ export default function CodeLab() {
               {/* TAB 4: SUBMISSIONS */}
               {activeTab === 'submissions' && (
                 <div className="space-y-3">
-                  <h3 className="text-sm font-bold text-[#eff1f6]">📊 Submissions History</h3>
+                  <h3 className="text-sm font-bold text-[#eff1f6]">Submissions History</h3>
                   {submissions.length === 0 ? (
                     <p className="text-[#8a8a8a] italic">No submissions recorded yet.</p>
                   ) : (
@@ -840,13 +848,13 @@ export default function CodeLab() {
                 onClick={expandAllBranches}
                 className="btn btn-secondary px-3 py-1 text-xs font-semibold text-[#eff1f6]"
               >
-                📂 Expand All Trees
+                Expand All Trees
               </button>
               <button
                 onClick={collapseAllBranches}
                 className="btn btn-secondary px-3 py-1 text-xs font-semibold text-[#eff1f6]"
               >
-                📁 Collapse All
+                Collapse All
               </button>
             </div>
 
@@ -857,9 +865,9 @@ export default function CodeLab() {
                 className="rounded-lg border border-[#333333] bg-[#262626] px-2.5 py-1 text-xs text-[#eff1f6] focus:outline-none"
               >
                 <option value="All">All Difficulties</option>
-                <option value="Easy">🟢 Easy</option>
-                <option value="Medium">🟡 Medium</option>
-                <option value="Hard">🔴 Hard</option>
+                <option value="Easy">Easy</option>
+                <option value="Medium">Medium</option>
+                <option value="Hard">Hard</option>
               </select>
 
               <select
@@ -868,8 +876,8 @@ export default function CodeLab() {
                 className="rounded-lg border border-[#333333] bg-[#262626] px-2.5 py-1 text-xs text-[#eff1f6] focus:outline-none"
               >
                 <option value="All">All Statuses</option>
-                <option value="Solved">✅ Solved Only</option>
-                <option value="Todo">⚪ Todo Only</option>
+                <option value="Solved">Solved Only</option>
+                <option value="Todo">Todo Only</option>
               </select>
             </div>
           </div>
@@ -911,7 +919,6 @@ export default function CodeLab() {
                         <span className="text-[#8a8a8a] font-mono text-sm">
                           {isLastBranch ? '└──' : '├──'}
                         </span>
-                        <span className="text-base">{branch.icon}</span>
                         <span className="font-bold text-[#eff1f6] text-sm">{branch.category}</span>
                         <span className="text-xs text-[#8a8a8a]">
                           ({branch.solved}/{branch.total} solved)
@@ -961,8 +968,14 @@ export default function CodeLab() {
                                   <span className="font-mono text-[#8a8a8a] text-xs">
                                     {isLastProblem ? '└──' : '├──'}
                                   </span>
-                                  <span className="text-xs">
-                                    {isSolved ? '✅' : p.has_submission ? '🟡' : '⚪'}
+                                  <span className="text-[10px] font-mono">
+                                    {isSolved ? (
+                                      <span className="text-[#2cbb5d] font-bold">[Solved]</span>
+                                    ) : p.has_submission ? (
+                                      <span className="text-[#ffc01e] font-bold">[Tried]</span>
+                                    ) : (
+                                      <span className="text-[#8a8a8a]">[Todo]</span>
+                                    )}
                                   </span>
                                   <span className="truncate font-semibold">{p.title}</span>
                                 </div>
@@ -980,7 +993,7 @@ export default function CodeLab() {
                                     {p.difficulty}
                                   </span>
                                   <button className="btn btn-primary px-2 py-0.5 text-[11px] bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 text-white font-medium">
-                                    Solve ➔
+                                    Solve &rarr;
                                   </button>
                                 </div>
                               </div>
@@ -1002,7 +1015,10 @@ export default function CodeLab() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#282828] bg-[#1a1a1a] p-3">
             <div className="flex flex-1 items-center gap-2 min-w-[240px]">
-              <span className="text-[#8a8a8a]">🔍</span>
+              <svg className="w-3.5 h-3.5 text-[#8a8a8a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
               <input
                 type="text"
                 placeholder="Search Blind 75 problems..."
@@ -1021,7 +1037,7 @@ export default function CodeLab() {
                 <option value="All">All Categories ({BLIND75_CATEGORIES.length})</option>
                 {BLIND75_CATEGORIES.map((c) => (
                   <option key={c.name} value={c.name}>
-                    {c.icon} {c.name}
+                    {c.name}
                   </option>
                 ))}
               </select>
@@ -1032,9 +1048,9 @@ export default function CodeLab() {
                 className="rounded-lg border border-[#333333] bg-[#262626] px-2.5 py-1 text-xs text-[#eff1f6] focus:outline-none"
               >
                 <option value="All">All Difficulties</option>
-                <option value="Easy">🟢 Easy</option>
-                <option value="Medium">🟡 Medium</option>
-                <option value="Hard">🔴 Hard</option>
+                <option value="Easy">Easy</option>
+                <option value="Medium">Medium</option>
+                <option value="Hard">Hard</option>
               </select>
             </div>
           </div>
@@ -1057,10 +1073,7 @@ export default function CodeLab() {
                 >
                   <div className="flex items-start justify-between gap-2 border-b border-[#282828] pb-2.5">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span>{cat.icon}</span>
-                        <h3 className="text-sm font-bold text-[#eff1f6]">{cat.name}</h3>
-                      </div>
+                      <h3 className="text-sm font-bold text-[#eff1f6]">{cat.name}</h3>
                       <p className="mt-0.5 text-[11px] text-[#8a8a8a]">{cat.desc}</p>
                     </div>
                     <span className="chip text-[11px] font-bold border-[#00b8a3]/30 bg-[#00b8a3]/10 text-[#00b8a3]">
@@ -1086,7 +1099,13 @@ export default function CodeLab() {
                         className="flex cursor-pointer items-center justify-between rounded-lg p-1.5 text-xs border border-[#282828] bg-[#222222]/50 hover:bg-[#262626] transition"
                       >
                         <div className="flex items-center gap-1.5 truncate pr-2">
-                          <span>{p.last_status === 'Accepted' ? '✅' : '⚪'}</span>
+                          <span className="text-[10px] font-mono">
+                            {p.last_status === 'Accepted' ? (
+                              <span className="text-[#2cbb5d] font-bold">[Solved]</span>
+                            ) : (
+                              <span className="text-[#8a8a8a]">[Todo]</span>
+                            )}
+                          </span>
                           <span className="truncate font-medium text-[#eff1f6]">{p.title}</span>
                         </div>
                         <span
@@ -1189,7 +1208,7 @@ export default function CodeLab() {
       {forgeOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-2xl border border-[#333333] bg-[#1a1a1a] p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-[#eff1f6]">✨ Forge Custom Problem with AI</h3>
+            <h3 className="text-base font-bold text-[#eff1f6]">Forge Custom Problem with AI</h3>
             <p className="text-xs text-[#8a8a8a]">
               Generate a brand new challenge or targeted drill using Qwen 2.5 Coder.
             </p>
@@ -1213,9 +1232,9 @@ export default function CodeLab() {
                   onChange={(e) => setForgeDifficulty(e.target.value)}
                   className="w-full rounded-xl border border-[#333333] bg-[#262626] px-3 py-2 text-[#eff1f6] focus:outline-none"
                 >
-                  <option value="Easy">🟢 Easy</option>
-                  <option value="Medium">🟡 Medium</option>
-                  <option value="Hard">🔴 Hard</option>
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
                 </select>
               </div>
             </div>
@@ -1397,7 +1416,7 @@ function CodingLeeches({
                   onClick={() => onSelect(l.slug)}
                   className="btn btn-primary px-3 py-1 text-xs bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 text-white font-bold"
                 >
-                  🛠️ Practice with Socratic AI
+                  Practice with Socratic AI
                 </button>
               </div>
 

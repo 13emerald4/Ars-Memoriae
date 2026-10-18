@@ -9,13 +9,13 @@ set -e
 
 echo ""
 echo "================================================================="
-echo "   🍎 UBC Library Mac M1: Local LLM Engine (Qwen 2.5 Coder)    "
+echo "   Apple Silicon Mac M1: Local LLM Engine (Qwen 2.5 Coder)    "
 echo "================================================================="
 echo ""
 
 ARCH=$(uname -m)
 if [ "$ARCH" != "arm64" ]; then
-    echo "⚠️ Warning: System architecture is $ARCH (expected arm64 for Apple Silicon M1/M2/M3)."
+    echo "Warning: System architecture is $ARCH (expected arm64 for Apple Silicon M1/M2/M3)."
 fi
 
 WORK_DIR="$HOME/Downloads"
@@ -26,9 +26,9 @@ if [ ! -f "$WORK_DIR/ollama" ]; then
     echo "[1/3] Downloading standalone Ollama binary for macOS Apple Silicon..."
     curl -L https://ollama.com/download/ollama-darwin -o "$WORK_DIR/ollama"
     chmod +x "$WORK_DIR/ollama"
-    echo "  ✓ Ollama binary downloaded and made executable."
+    echo "  Ollama binary downloaded and made executable."
 else
-    echo "  ✓ Ollama binary already present at $WORK_DIR/ollama"
+    echo "  Ollama binary already present at $WORK_DIR/ollama"
 fi
 
 # 2. Check for USB Drive model storage or local cache
@@ -46,7 +46,7 @@ if ! pgrep -x "ollama" > /dev/null; then
     "$WORK_DIR/ollama" serve > /tmp/ollama.log 2>&1 &
     sleep 3
 else
-    echo "  ✓ Ollama daemon is already active."
+    echo "  Ollama daemon is already active."
 fi
 
 # 4. Pull and warm up Qwen 2.5 Coder 7B
@@ -55,7 +55,7 @@ echo "[3/3] Pulling / verifying Qwen 2.5 Coder 7B model..."
 
 echo ""
 echo "================================================================="
-echo "  🎉 OLLAMA & QWEN 2.5 CODER 7B ARE READY ON THIS MAC M1!        "
+echo "  OLLAMA & QWEN 2.5 CODER 7B ARE READY ON THIS MAC M1!        "
 echo "================================================================="
 echo "  Port: http://localhost:11434"
 echo "  Model: qwen2.5-coder:7b"

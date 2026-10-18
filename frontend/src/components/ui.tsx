@@ -111,9 +111,10 @@ export function Modal({
           <h3 className="text-base font-bold text-slate-100">{title}</h3>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 hover:bg-ink-soft hover:text-slate-200 transition"
+            className="rounded-lg p-1 text-slate-400 hover:bg-ink-soft hover:text-slate-200 transition text-lg leading-none"
+            title="Close"
           >
-            ✕
+            &times;
           </button>
         </div>
         <div>{children}</div>

@@ -176,7 +176,7 @@ export default function Tree() {
                 }`}
                 onClick={() => setViewMode('tree')}
               >
-                🗂️ Tree Contents
+                Tree Contents
               </button>
               <button
                 type="button"
@@ -187,7 +187,7 @@ export default function Tree() {
                 }`}
                 onClick={() => setViewMode('list')}
               >
-                📋 Detailed Rows
+                Detailed Rows
               </button>
             </div>
 
@@ -203,7 +203,7 @@ export default function Tree() {
                   onClick={() => setHighestOrderOnly(!highestOrderOnly)}
                   title="Show only top-level parent subjects, documents, and decks"
                 >
-                  {highestOrderOnly ? '✓ Highest-order parents only' : 'Highest-order parents only'}
+                  {highestOrderOnly ? 'Highest-order parents only (Filtered)' : 'Highest-order parents only'}
                 </button>
                 {!highestOrderOnly && (
                   <>
@@ -295,9 +295,9 @@ export default function Tree() {
 
 const KIND_ICON: Record<TreeNode['kind'], string> = {
   topic: '▤',
-  deck: '🗂',
-  source: '📄',
-  extract: '✂',
+  deck: '▣',
+  source: '▧',
+  extract: '▢',
 }
 
 const KIND_LABEL: Record<TreeNode['kind'], string> = {
@@ -418,7 +418,7 @@ function NodeRow({
                   : 'Locked'
               }
             >
-              🔒 locked
+              Locked
             </span>
           )}
           {(node.kind === 'topic' || node.kind === 'deck') && node.card_count > 0 && (
@@ -656,7 +656,7 @@ function PriorityMenu({
         Whole branch
       </button>
       <button className="px-1 text-xs text-slate-600" onClick={() => setOpen(false)}>
-        ✕
+        &times;
       </button>
     </span>
   )
@@ -772,7 +772,7 @@ function GateMenu({
         Save
       </button>
       <button className="px-1 text-xs text-slate-600" onClick={() => setOpen(false)}>
-        ✕
+        &times;
       </button>
     </span>
   )
@@ -833,7 +833,7 @@ function NewTopic({
         className="px-1 text-xs text-slate-600"
         onClick={() => setOpen(false)}
       >
-        ✕
+        &times;
       </button>
     </form>
   )

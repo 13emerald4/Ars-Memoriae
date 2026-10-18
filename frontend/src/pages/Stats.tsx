@@ -572,10 +572,10 @@ function EWMAMasteryAndSPRT({
                     }`}
                   >
                     {v.verdict === 'mastered'
-                      ? '🏆 Mastered'
+                      ? 'Mastered'
                       : v.verdict === 'unmastered'
-                        ? '🛑 Unmastered'
-                        : '⏳ Testing'}
+                        ? 'Unmastered'
+                        : 'Testing'}
                   </span>
                 </div>
               ))}

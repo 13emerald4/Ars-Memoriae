@@ -477,7 +477,7 @@ export function CodeEditor({
                   title="Reset to boilerplate"
                   className="flex items-center gap-1 rounded px-2 py-1 text-[#8a8a8a] hover:bg-[#333333] hover:text-[#eff1f6] transition text-xs"
                 >
-                  🔄 <span className="hidden sm:inline">Reset</span>
+                  <span className="hidden sm:inline">Reset</span>
                 </button>
               )}
               <button
@@ -485,7 +485,7 @@ export function CodeEditor({
                 title="Copy code"
                 className="flex items-center gap-1 rounded px-2 py-1 text-[#8a8a8a] hover:bg-[#333333] hover:text-[#eff1f6] transition text-xs"
               >
-                📋 <span className="hidden sm:inline">Copy</span>
+                <span className="hidden sm:inline">Copy</span>
               </button>
             </div>
           </div>
@@ -527,7 +527,6 @@ export function CodeEditor({
                   }`}
                   title={`Request Socratic Hint for line ${cursorLine} (Alt+H)`}
                 >
-                  <span>💡</span>
                   <span>{lineHintLoading ? 'Thinking…' : 'Hint'}</span>
                   <span className="text-[10px] text-amber-400/60 font-mono hidden md:inline">(Alt+H)</span>
                 </button>
@@ -544,7 +543,6 @@ export function CodeEditor({
                   }`}
                   title="Grade your solution with local Qwen 2.5 Coder 7B (Alt+G)"
                 >
-                  <span>⚡</span>
                   <span>{grading || submitting ? 'Grading…' : 'Grade'}</span>
                   <span className="text-[10px] text-emerald-300/70 font-mono hidden md:inline">(Alt+G)</span>
                 </button>
@@ -613,7 +611,7 @@ export function CodeEditor({
                         : 'opacity-0 group-hover:opacity-100'
                     }`}
                   >
-                    💡
+                    ?
                   </button>
                 )}
                 <span>{lineNum}</span>
@@ -669,7 +667,6 @@ export function CodeEditor({
         <div className="border-t border-amber-500/30 bg-gradient-to-r from-[#201c13] via-[#1a1711] to-[#1c1812] px-4 py-3 text-xs text-amber-100 shadow-inner">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-2.5 min-w-0 flex-1">
-              <span className="text-base select-none mt-0.5">💡</span>
               <div className="space-y-1.5 min-w-0 flex-1">
                 <div className="flex items-center flex-wrap gap-2">
                   <span className="font-semibold text-amber-300 text-xs tracking-wide">
@@ -708,7 +705,6 @@ export function CodeEditor({
                   title="Ask for another hint or re-evaluate with current code"
                   className="rounded px-2 py-1 text-[11px] font-medium text-amber-300 hover:text-amber-100 hover:bg-amber-500/20 transition cursor-pointer flex items-center gap-1"
                 >
-                  <span>🔄</span>
                   <span className="hidden sm:inline">Another Hint</span>
                 </button>
               )}
@@ -719,7 +715,7 @@ export function CodeEditor({
                   title="Dismiss hint (Escape)"
                   className="rounded p-1 text-slate-400 hover:text-slate-200 hover:bg-white/10 transition cursor-pointer text-xs"
                 >
-                  ✕
+                  &times;
                 </button>
               )}
             </div>

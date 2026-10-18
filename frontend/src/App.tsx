@@ -39,7 +39,6 @@ function LexiconNavButton() {
       title="Lexicon"
       className="flex items-center gap-1.5 rounded-lg border border-sky-500/40 bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-500/20 hover:border-sky-400 transition-colors"
     >
-      <span>📖</span>
       <span className="hidden sm:inline">Lexicon</span>
     </button>
   )
@@ -85,8 +84,7 @@ function ThemeNavButton() {
         title={`Theme: ${activeThemeMeta.label}`}
         className="flex items-center gap-1.5 rounded-lg border border-ink-line bg-ink-soft px-2 py-1 text-xs font-semibold text-slate-300 hover:border-slate-500 hover:text-slate-100 transition-colors cursor-pointer"
       >
-        <span>{themeMode === 'dynamic' ? '🔀' : activeThemeMeta.icon}</span>
-        <span className="hidden lg:inline text-[11px]">{navLabel}</span>
+        <span className="text-[11px]">{navLabel}</span>
         <span
           className="w-2 h-2 rounded-full border border-white/20 shrink-0"
           style={{ backgroundColor: activeThemeMeta.primaryColor }}
@@ -99,7 +97,6 @@ function ThemeNavButton() {
           <div className="absolute right-0 top-full mt-2 w-80 z-50 rounded-xl border border-ink-line bg-ink-soft p-3 shadow-2xl backdrop-blur">
             <div className="flex items-center justify-between pb-2 border-b border-ink-line text-xs">
               <span className="font-bold text-slate-200 flex items-center gap-1.5">
-                <span>🎨</span>
                 <span>Theme</span>
               </span>
               <button
@@ -107,7 +104,7 @@ function ThemeNavButton() {
                 onClick={() => setOpen(false)}
                 className="text-slate-400 hover:text-slate-200 text-sm cursor-pointer"
               >
-                ✕
+                &times;
               </button>
             </div>
 
@@ -123,7 +120,6 @@ function ThemeNavButton() {
                 }`}
                 title="Adaptive palette"
               >
-                <span>🔀</span>
                 <span>Adaptive</span>
               </button>
               <button
@@ -136,7 +132,6 @@ function ThemeNavButton() {
                 }`}
                 title="Fixed palette"
               >
-                <span>🔒</span>
                 <span>Fixed</span>
               </button>
             </div>
@@ -144,7 +139,6 @@ function ThemeNavButton() {
             {/* OLED / Pure Black Toggle */}
             <div className="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-ink border border-ink-line mb-2.5 text-xs">
               <span className="flex items-center gap-1.5 text-slate-300 font-medium text-[11px]">
-                <span>🌑</span>
                 <span>OLED Pure Black</span>
               </span>
               <button
@@ -190,7 +184,6 @@ function ThemeNavButton() {
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate pr-2">
-                      <span>{meta.icon}</span>
                       <div className="truncate">
                         <span className="block truncate font-medium">{meta.label}</span>
                         <span className="block truncate text-[10px] text-slate-400">{meta.subtitle}</span>

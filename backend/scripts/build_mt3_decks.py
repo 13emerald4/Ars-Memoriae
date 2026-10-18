@@ -67,7 +67,7 @@ TIERS = {
     2: ("P2 — Supporting concepts", 70),
     3: ("P3 — Background", 40),
 }
-MISSING_MARK = "⚠ "
+MISSING_MARK = "[Missing] "
 NEEDS = re.compile(r"\[needs: ([^\]]+)\]")
 
 # chapter number -> deck name, description, textbook pages, required specs (relative to Cards Documents)

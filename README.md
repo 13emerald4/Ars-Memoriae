@@ -34,7 +34,7 @@ Ars Memoriae runs 100% locally with zero cloud dependencies and zero container o
 
 The script automatically sets up the local Python virtual environment, applies database migrations, auto-updates from GitHub, and opens your browser at **<http://localhost:8000>**.
 
-> 💡 **Sharing with Friends?** See the step-by-step **[FRIENDS_SETUP.md](FRIENDS_SETUP.md)** guide.
+> **Sharing with Friends?** See the step-by-step **[FRIENDS_SETUP.md](FRIENDS_SETUP.md)** guide.
 
 ---
 

@@ -360,7 +360,6 @@ export function ConcordanceReader({
       {isEnabled ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-500/30 bg-sky-950/20 px-3.5 py-2 text-xs">
           <div className="flex items-center gap-2">
-            <span className="text-sm">📖</span>
             <span className="font-semibold text-sky-200">
               Exhaustive MIT 6.0001 CS Concordance Active
             </span>
@@ -375,7 +374,7 @@ export function ConcordanceReader({
               className="flex items-center gap-1.5 rounded-md bg-sky-500/20 border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/30 transition shadow"
               title="Search all Strong's Concordance definitions and cross references"
             >
-              <span>🔍 Lexicon Index</span>
+              <span>Lexicon Index</span>
               <span className="font-mono text-[9px] bg-sky-500/30 text-sky-100 px-1 py-0.2 rounded">
                 {GUTTAG_CONCORDANCE_LEXICON.length}
               </span>
@@ -392,7 +391,6 @@ export function ConcordanceReader({
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-900/40 px-3.5 py-2 text-xs">
           <div className="flex items-center gap-2 text-slate-400">
-            <span className="text-sm">📖</span>
             <span>MIT 6.0001 Concordance annotations are currently disabled.</span>
           </div>
           <div className="flex items-center gap-2">
@@ -400,14 +398,14 @@ export function ConcordanceReader({
               onClick={() => setShowLexiconModal(true)}
               className="flex items-center gap-1.5 rounded-md bg-slate-800/80 border border-slate-700 px-2 py-1 text-[11px] text-slate-400 hover:text-slate-200 transition"
             >
-              <span>🔍 Browse Lexicon</span>
+              <span>Browse Lexicon</span>
             </button>
             <button
               onClick={() => handleToggle(true)}
               className="flex items-center gap-1 rounded-md bg-sky-500/20 border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-300 hover:bg-sky-500/30 hover:text-white transition shadow-sm"
               title="Turn on concordance annotations and hover definitions"
             >
-              <span>⚡ Enable Concordance</span>
+              <span>Enable Concordance</span>
             </button>
           </div>
         </div>
@@ -455,10 +453,10 @@ export function ConcordanceReader({
 
           <div className="space-y-1.5 border-t border-ink-line/60 pt-2 text-[11px]">
             <p className="text-sky-300 font-semibold">
-              📚 Primary Reference: {hoveredEntry.entry.primaryLocation}
+              Primary Reference: {hoveredEntry.entry.primaryLocation}
             </p>
             <p className="text-slate-400">
-              📑 Appears in <strong>{hoveredEntry.entry.occurrences.length} other chapters</strong> (Click term to open full cross-chapter concordance).
+              Appears in <strong>{hoveredEntry.entry.occurrences.length} other chapters</strong> (Click term to open full cross-chapter concordance).
             </p>
           </div>
         </div>
@@ -490,13 +488,13 @@ export function ConcordanceReader({
                   className="rounded-lg border border-sky-500/30 bg-sky-950/40 px-2.5 py-1 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/20 transition"
                   title="Copy definition"
                 >
-                  {copiedId === pinnedEntry.id ? '✓ Copied' : '📋 Copy'}
+                  {copiedId === pinnedEntry.id ? 'Copied' : 'Copy'}
                 </button>
                 <button
                   onClick={() => setPinnedEntry(null)}
                   className="rounded-lg p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/10"
                 >
-                  ✕
+                  &times;
                 </button>
               </div>
             </div>
@@ -506,7 +504,7 @@ export function ConcordanceReader({
               {/* Formal MIT Definition */}
               <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 space-y-1.5">
                 <p className="font-bold text-sky-300 uppercase tracking-wider text-[10px]">
-                  📖 Definition:
+                  Definition:
                 </p>
                 <p className="text-slate-200 text-sm leading-relaxed">
                   {pinnedEntry.definition}
@@ -517,7 +515,7 @@ export function ConcordanceReader({
               {pinnedEntry.notation && (
                 <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 space-y-1">
                   <p className="font-bold text-amber-300 uppercase tracking-wider text-[10px]">
-                    ✎ Notation:
+                    Notation:
                   </p>
                   <p className="font-mono text-[12px] leading-relaxed text-amber-100">
                     {pinnedEntry.notation}
@@ -528,7 +526,7 @@ export function ConcordanceReader({
               {/* LeetCode Transfer */}
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 space-y-1">
                 <p className="font-bold text-emerald-300 uppercase tracking-wider text-[10px]">
-                  🎯 Application:
+                  Application:
                 </p>
                 <p className="text-slate-200 leading-relaxed">
                   {pinnedEntry.leetCodeRelevance}
@@ -538,7 +536,7 @@ export function ConcordanceReader({
               {/* All Cross-Chapter References */}
               <div className="space-y-3">
                 <h4 className="font-bold text-slate-100 text-xs uppercase tracking-wider flex items-center justify-between">
-                  <span>📑 Concordance ({pinnedEntry.occurrences.length} references)</span>
+                  <span>Concordance ({pinnedEntry.occurrences.length} references)</span>
                 </h4>
 
                 <div className="space-y-2.5">
@@ -567,7 +565,7 @@ export function ConcordanceReader({
               {pinnedEntry.relatedIds && pinnedEntry.relatedIds.length > 0 && (
                 <div className="space-y-2 border-t border-ink-line/60 pt-4">
                   <h4 className="font-bold text-slate-100 text-xs uppercase tracking-wider">
-                    🔗 See Also
+                    See Also
                   </h4>
                   <div className="flex flex-wrap gap-1.5">
                     {pinnedEntry.relatedIds.map((rid) => {
@@ -608,7 +606,6 @@ export function ConcordanceReader({
           <div className="w-full max-w-4xl max-h-[88vh] flex flex-col rounded-2xl border border-sky-500/40 bg-[#0d131f] shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between border-b border-sky-500/30 bg-[#121927] px-6 py-4">
               <div className="flex items-center gap-2.5">
-                <span className="text-xl">📚</span>
                 <div>
                   <h3 className="text-base font-bold text-slate-100">
                     MIT 6.0001 Computational Thinking Lexicon
@@ -623,7 +620,7 @@ export function ConcordanceReader({
                 onClick={() => setShowLexiconModal(false)}
                 className="rounded-lg p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/10"
               >
-                ✕
+                &times;
               </button>
             </div>
 
@@ -688,9 +685,9 @@ export function ConcordanceReader({
 
                   <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-ink-line/40">
                     <span className="text-sky-300 font-mono">
-                      📍 {entry.primaryLocation}
+                      Primary: {entry.primaryLocation}
                     </span>
-                    <span className="text-sky-400 font-semibold">{entry.occurrences.length} cross-chapter references ➔</span>
+                    <span className="text-sky-400 font-semibold">{entry.occurrences.length} cross-chapter references &rarr;</span>
                   </div>
                 </div>
               ))}

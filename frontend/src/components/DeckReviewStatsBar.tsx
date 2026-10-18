@@ -244,7 +244,6 @@ export function DeckReviewStatsBar({
         className={`rounded-xl border border-ink-line/60 bg-ink-soft/40 px-4 py-2 text-xs text-slate-400 flex items-center justify-between ${className}`}
       >
         <div className="flex items-center gap-2">
-          <span>📚</span>
           <span className="font-semibold text-slate-200">Deck: {deckName}</span>
         </div>
         <div className="flex items-center gap-2">
@@ -255,7 +254,6 @@ export function DeckReviewStatsBar({
               className="flex items-center gap-1.5 rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/25 transition shadow-sm cursor-pointer"
               title="All cards (Alt+D)"
             >
-              <span>🗂️</span>
               <span>All Cards</span>
               <kbd className="rounded bg-sky-950/80 px-1 py-0.2 text-[9px] font-mono text-sky-300 border border-sky-500/30">Alt+D</kbd>
             </button>
@@ -301,7 +299,6 @@ export function DeckReviewStatsBar({
       {/* Top Header Row */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-ink-line/60">
         <div className="flex items-center gap-2">
-          <span className="text-base">📚</span>
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-slate-100 text-xs">
@@ -320,14 +317,14 @@ export function DeckReviewStatsBar({
             className="chip border-emerald-500/40 bg-emerald-950/30 text-emerald-300 font-semibold shrink-0"
             title="Viewed"
           >
-            ✓ {stats.viewed_cards} viewed ({viewedPct}%)
+            {stats.viewed_cards} viewed ({viewedPct}%)
           </span>
           {stats.new_cards > 0 && (
             <span
               className="chip border-sky-500/40 bg-sky-950/30 text-sky-300 font-semibold shrink-0"
               title="New"
             >
-              ★ {stats.new_cards} new
+              {stats.new_cards} new
             </span>
           )}
           {stats.due_cards > 0 && (
@@ -335,7 +332,7 @@ export function DeckReviewStatsBar({
               className="chip border-amber-500/40 bg-amber-950/30 text-amber-300 font-semibold shrink-0"
               title="Due"
             >
-              ⏱ {stats.due_cards} due
+              {stats.due_cards} due
             </span>
           )}
 
@@ -346,7 +343,6 @@ export function DeckReviewStatsBar({
               className="flex items-center gap-1.5 rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/25 transition shadow-sm cursor-pointer shrink-0"
               title="All cards (Alt+D)"
             >
-              <span>🗂️</span>
               <span>All Cards</span>
               <kbd className="rounded bg-sky-950/80 px-1 py-0.2 text-[9px] font-mono text-sky-300 border border-sky-500/30">Alt+D</kbd>
             </button>
@@ -359,7 +355,7 @@ export function DeckReviewStatsBar({
               className="flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/25 transition shadow-sm shrink-0"
               title="Persist until cards are Easy"
             >
-              <span>⚡ Persist</span>
+              <span>Persist</span>
             </button>
           )}
 
@@ -384,7 +380,6 @@ export function DeckReviewStatsBar({
                   : 'Review all cards in order'
               }
             >
-              <span>🏁</span>
               <span>{isAllCardsRunActive ? 'Exit Run' : 'All Cards Run'}</span>
             </button>
           )}
@@ -396,7 +391,6 @@ export function DeckReviewStatsBar({
               className="flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-500/30 transition shadow-sm cursor-pointer shrink-0"
               title={`Study ${stats.name || deckName || 'deck'}`}
             >
-              <span>⚡</span>
               <span>Study Deck</span>
             </button>
           )}
@@ -421,7 +415,6 @@ export function DeckReviewStatsBar({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-[11px]">
               <span className="text-slate-300 font-medium flex items-center gap-1.5">
-                <span>🎯</span>
                 <span>Viewed:</span>
                 <strong className="text-white font-mono">
                   {stats.viewed_cards} / {stats.total_cards}
@@ -448,7 +441,6 @@ export function DeckReviewStatsBar({
           <div className="space-y-1.5 pt-1 border-t border-ink-line/40">
             <div className="flex items-center justify-between text-[11px]">
               <span className="text-slate-300 font-medium flex items-center gap-1.5">
-                <span>📊</span>
                 <span>Difficulty:</span>
               </span>
               <span className="text-[10px] text-slate-500">
@@ -515,7 +507,6 @@ export function DeckReviewStatsBar({
             <div className="space-y-1.5 pt-2 border-t border-ink-line/40">
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-slate-300 font-medium flex items-center gap-1.5">
-                  <span>🧠</span>
                   <span>Ratings:</span>
                 </span>
                 <span className="text-[10px] text-slate-500 font-mono">

@@ -223,7 +223,6 @@ export default function Tutorial() {
       <div className="card border-sky-500/40 bg-gradient-to-r from-sky-950/40 via-ink-soft to-ink-soft p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xl">🎓</span>
             <h2 className="text-sm font-bold text-sky-200">Interactive Walkthrough</h2>
             <span className="chip border-sky-500/40 text-sky-300 text-[10px] font-semibold">Self-Paced</span>
           </div>
@@ -240,7 +239,7 @@ export default function Tutorial() {
             }}
             className="btn text-xs font-semibold px-3.5 py-2 border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-slate-200"
           >
-            ⚡ Brief (1 min)
+            Brief (1 min)
           </button>
           <button
             type="button"
@@ -250,7 +249,7 @@ export default function Tutorial() {
             }}
             className="btn btn-primary text-xs font-semibold px-4 py-2 shadow-lg shadow-sky-500/10"
           >
-            📘 Full Tutorial (4 min) →
+            Full Tutorial (4 min) →
           </button>
         </div>
       </div>
@@ -296,7 +295,13 @@ export default function Tutorial() {
                     : 'border border-ink-line text-slate-500'
                 }`}
               >
-                {done ? '✓' : i + 1}
+                {done ? (
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  i + 1
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

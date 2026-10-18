@@ -130,7 +130,6 @@ export function DeckCardsViewer({
         {/* ── Top Header Bar ── */}
         <div className="flex flex-wrap items-center justify-between border-b border-ink-line/80 bg-[#181e2b] px-4 py-3 gap-3">
           <div className="flex items-center gap-3">
-            <span className="text-xl">🗂️</span>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-white text-sm sm:text-base">
@@ -164,10 +163,10 @@ export function DeckCardsViewer({
             <button
               type="button"
               onClick={onClose}
-              className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-white hover:bg-rose-500/20 hover:border-rose-500/30 border border-transparent transition cursor-pointer"
+              className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-white hover:bg-rose-500/20 hover:border-rose-500/30 border border-transparent transition cursor-pointer text-lg leading-none"
               title="Close (Esc)"
             >
-              ✕
+              &times;
             </button>
           </div>
         </div>
@@ -175,13 +174,12 @@ export function DeckCardsViewer({
         {/* ── Search & Filter Controls ── */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-line/60 bg-[#141a26] px-4 py-2.5 text-xs">
           <div className="flex-1 min-w-[200px] max-w-md relative">
-            <span className="absolute left-2.5 top-2 text-slate-400 pointer-events-none">🔍</span>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search cards..."
-              className="w-full rounded-lg border border-ink-line/80 bg-[#1b2233] pl-8 pr-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition"
+              className="w-full rounded-lg border border-ink-line/80 bg-[#1b2233] px-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition"
               autoFocus
             />
             {searchQuery && (
@@ -190,7 +188,7 @@ export function DeckCardsViewer({
                 onClick={() => setSearchQuery('')}
                 className="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-200 cursor-pointer"
               >
-                ✕
+                &times;
               </button>
             )}
           </div>
@@ -218,7 +216,7 @@ export function DeckCardsViewer({
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                💻 Code ({cards.filter(isCodeCard).length})
+                Code ({cards.filter(isCodeCard).length})
               </button>
               <button
                 type="button"
@@ -229,7 +227,7 @@ export function DeckCardsViewer({
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                📝 Flashcards ({cards.filter((c) => !isCodeCard(c)).length})
+                Flashcards ({cards.filter((c) => !isCodeCard(c)).length})
               </button>
             </div>
 
@@ -333,7 +331,7 @@ export function DeckCardsViewer({
                       </div>
                       {isCurrent && (
                         <span className="shrink-0 px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-bold border border-sky-500/40 text-[9px]">
-                          📍 Active
+                          Active
                         </span>
                       )}
                     </div>
@@ -341,11 +339,11 @@ export function DeckCardsViewer({
                     <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
                       {isCode ? (
                         <span className="px-1.5 py-0.2 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-medium">
-                          💻 Code
+                          Code
                         </span>
                       ) : (
                         <span className="px-1.5 py-0.2 rounded bg-slate-700/30 text-slate-300 border border-slate-600/30 font-medium">
-                          📝 Flashcard
+                          Flashcard
                         </span>
                       )}
 
@@ -390,7 +388,7 @@ export function DeckCardsViewer({
                   <div className="space-y-1 max-w-xl">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded bg-sky-950/80 border border-sky-500/40 px-2 py-0.5 text-xs font-mono text-sky-200">
-                        {isCodeCard(selectedCard) ? '💻 Code' : '📝 Flashcard'}
+                        {isCodeCard(selectedCard) ? 'Code' : 'Flashcard'}
                       </span>
                       {selectedCard.category && (
                         <span className="rounded bg-slate-800 border border-slate-700 px-2 py-0.5 text-xs text-slate-300">
@@ -412,12 +410,12 @@ export function DeckCardsViewer({
                       )}
                       {selectedCard.time_complexity && (
                         <span className="rounded bg-sky-500/10 px-2 py-0.5 text-xs font-mono text-sky-300 border border-sky-500/30">
-                          ⏱ {selectedCard.time_complexity}
+                          {selectedCard.time_complexity}
                         </span>
                       )}
                       {selectedCard.space_complexity && (
                         <span className="rounded bg-purple-500/10 px-2 py-0.5 text-xs font-mono text-purple-300 border border-purple-500/30">
-                          💾 {selectedCard.space_complexity}
+                          {selectedCard.space_complexity}
                         </span>
                       )}
                     </div>
@@ -435,7 +433,6 @@ export function DeckCardsViewer({
                         className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-md transition cursor-pointer"
                         title="Study now"
                       >
-                        <span>🎯</span>
                         <span>Study Now</span>
                       </button>
                     )}
@@ -444,10 +441,10 @@ export function DeckCardsViewer({
                       <button
                         type="button"
                         onClick={() => void handleCopyCode(extractCleanCode(selectedCard.back))}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-ink-line bg-[#1c2333] hover:bg-[#252f44] text-slate-200 text-xs font-medium transition cursor-pointer"
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-ink-line bg-[#1c2333] hover:bg-[#252f44] text-slate-200 text-xs font-medium transition cursor-pointer"
                         title="Copy"
                       >
-                        <span>{copiedCode ? '✓ Copied' : '📋 Copy'}</span>
+                        <span>{copiedCode ? 'Copied' : 'Copy'}</span>
                       </button>
                     )}
                   </div>
@@ -457,7 +454,6 @@ export function DeckCardsViewer({
                 <div className="rounded-xl border border-ink-line/80 bg-[#161c28] p-4 space-y-2">
                   <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
                     <span className="flex items-center gap-1.5">
-                      <span>❓</span>
                       <span>Question</span>
                     </span>
                   </div>
@@ -484,7 +480,6 @@ export function DeckCardsViewer({
                 <div className="rounded-xl border border-ink-line/80 bg-[#161c28] overflow-hidden space-y-0">
                   <div className="flex items-center justify-between px-4 py-2 border-b border-ink-line/70 bg-[#19202e] text-xs font-semibold text-slate-300">
                     <span className="flex items-center gap-1.5">
-                      <span>📖</span>
                       <span>Reference</span>
                     </span>
                     {selectedCard.time_complexity && (
@@ -521,7 +516,6 @@ export function DeckCardsViewer({
                       className="w-full flex items-center justify-between px-4 py-2.5 bg-[#19202e] text-xs font-semibold text-slate-300 hover:bg-[#20293a] transition cursor-pointer"
                     >
                       <span className="flex items-center gap-1.5">
-                        <span>🧪</span>
                         <span>Unit Tests</span>
                         {selectedCard.test_cases && selectedCard.test_cases.length > 0 && (
                           <span className="rounded-full bg-indigo-950/80 px-2 py-0.2 text-[10px] font-mono text-indigo-300 border border-indigo-500/30">
@@ -530,7 +524,7 @@ export function DeckCardsViewer({
                         )}
                       </span>
                       <span className="text-slate-400 text-xs">
-                        {showTestsSection ? 'Hide ▲' : 'Show ▼'}
+                        {showTestsSection ? 'Hide' : 'Show'}
                       </span>
                     </button>
 
@@ -613,7 +607,6 @@ export function DeckCardsViewer({
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full p-8 text-center text-slate-500 space-y-2">
-                <span className="text-3xl">🗂️</span>
                 <p className="text-sm">Select a card to preview.</p>
               </div>
             )}

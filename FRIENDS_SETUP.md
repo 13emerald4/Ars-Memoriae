@@ -1,4 +1,4 @@
-# Ars Memoriae — Friend Quickstart Guide 🏛️
+# Ars Memoriae — Friend Quickstart Guide
 
 Welcome to **Ars Memoriae**! This guide will get you up and running on your own computer in under 3 minutes.
 
@@ -11,7 +11,7 @@ Welcome to **Ars Memoriae**! This guide will get you up and running on your own 
 You only need **one** requirement:
 - **Python 3.11 or higher**
   - Download from: [https://www.python.org/downloads/](https://www.python.org/downloads/)
-  - ⚠️ **CRITICAL ON WINDOWS**: Make sure to check the box: **"Add python.exe to PATH"** at the bottom of the installer window!
+  - **CRITICAL ON WINDOWS**: Make sure to check the box: **"Add python.exe to PATH"** at the bottom of the installer window!
 
 *(You do **NOT** need Docker, PostgreSQL, or Node.js!)*
 
@@ -36,10 +36,10 @@ cd Ars-Memoriae
 
 ## 3. Launching (1-Click)
 
-### 🪟 Windows
+### Windows
 Double-click **`start_windows.bat`** in the `Ars-Memoriae` folder.
 
-### 🍎 macOS / 🐧 Linux
+### macOS / Linux
 Open your Terminal, navigate to the folder, and run:
 ```bash
 chmod +x start_mac.sh
@@ -49,7 +49,7 @@ chmod +x start_mac.sh
 **What happens next?**
 - On first launch, the script automatically installs dependencies and sets up your local database (~1 minute).
 - Your default web browser will automatically open to:
-  👉 **`http://localhost:8000`**
+  **`http://localhost:8000`**
 - To stop Ars Memoriae, simply close the launcher window or press `Ctrl + C`.
 
 ---
@@ -69,7 +69,7 @@ Ars Memoriae automatically inspects your computer's hardware specs (RAM, GPU, VR
      ```bash
      python scripts/detect_hardware.py
      ```
-3. In Ars Memoriae, open **Settings (⚙️)** to view your **Hardware Profile** and switch models with 1 click.
+3. In Ars Memoriae, open **Settings** to view your **Hardware Profile** and switch models with 1 click.
 
 ---
 

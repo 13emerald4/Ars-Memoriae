@@ -518,7 +518,6 @@ export function KnowledgeTree({
             title="Toggle progress bars"
             onClick={toggleBars}
           >
-            <span>📊</span>
             <span>Bars</span>
           </button>
 
@@ -562,7 +561,7 @@ export function KnowledgeTree({
                 : `Learn: ${selectedNode.title}`
             }
           >
-            <span>⚡ Learn</span>
+            <span>Learn</span>
             {selectedNode.dueCount !== undefined && selectedNode.dueCount > 0 && (
               <span className="chip px-1.5 py-0 text-[10px] bg-emerald-500/30 border-emerald-400/50 text-white font-bold">
                 {selectedNode.dueCount}
@@ -892,7 +891,7 @@ function KnowledgeTreeNodeComponent({
         )}
 
         {/* Locked Badge */}
-        {node.locked && <span className="text-[10px] ml-1">🔒</span>}
+        {node.locked && <span className="text-[10px] ml-1 text-amber-400 font-mono">[Locked]</span>}
 
         {/* Due Count Chip */}
         {node.dueCount !== undefined && node.dueCount > 0 && (

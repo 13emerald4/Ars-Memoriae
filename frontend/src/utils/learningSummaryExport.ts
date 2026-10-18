@@ -30,7 +30,7 @@ export function buildLearningSummaryMarkdown(data: LearningSummaryData): string 
   const lines: string[] = []
 
   // Title & Metadata
-  lines.push(`# 📚 Review: ${title}`)
+  lines.push(`# Review: ${title}`)
   const metaParts: string[] = []
   if (item.deck_name) metaParts.push(`**Deck:** \`${item.deck_name}\``)
   if (item.difficulty) metaParts.push(`**Difficulty:** ${item.difficulty.toUpperCase()}`)
@@ -43,7 +43,7 @@ export function buildLearningSummaryMarkdown(data: LearningSummaryData): string 
   lines.push('')
 
   // 1. Problem / Question Prompt
-  lines.push('## ❓ Question')
+  lines.push('## Question')
   if (item.front) {
     lines.push(item.front.trim())
   } else if (item.extract_content) {
@@ -52,7 +52,7 @@ export function buildLearningSummaryMarkdown(data: LearningSummaryData): string 
   lines.push('')
 
   if (item.time_complexity || item.space_complexity || (item.edge_cases && item.edge_cases.length > 0)) {
-    lines.push('### 🎯 Constraints')
+    lines.push('### Constraints')
     if (item.time_complexity) lines.push(`- **Time Complexity:** \`${item.time_complexity}\``)
     if (item.space_complexity) lines.push(`- **Space Complexity:** \`${item.space_complexity}\``)
     if (item.edge_cases && item.edge_cases.length > 0) {
@@ -66,15 +66,14 @@ export function buildLearningSummaryMarkdown(data: LearningSummaryData): string 
 
   // 2. Student Submitted Answer
   const submittedSectionTitle = isCode
-    ? `## 💻 Submitted Answer (${codeLanguage})`
-    : '## ✍️ Submitted Answer'
+    ? `## Submitted Answer (${codeLanguage})`
+    : '## Submitted Answer'
   lines.push(submittedSectionTitle)
 
   if (answer.trim()) {
     if (isCode) {
       lines.push('```' + codeLanguage)
       lines.push(answer.trim())
-      lines.push('```')
     } else {
       lines.push(answer.trim())
     }
@@ -85,7 +84,7 @@ export function buildLearningSummaryMarkdown(data: LearningSummaryData): string 
 
   // 2b. Student Authored Unit Tests (if provided)
   if (data.testCode && data.testCode.trim()) {
-    lines.push(`## 🧪 Unit Tests (${codeLanguage})`)
+    lines.push(`## Unit Tests (${codeLanguage})`)
     lines.push('```' + codeLanguage)
     lines.push(data.testCode.trim())
     lines.push('```')
@@ -94,13 +93,13 @@ export function buildLearningSummaryMarkdown(data: LearningSummaryData): string 
 
   // 3. Test Sandbox Results (if applicable)
   if (codeRunResult) {
-    lines.push('## 🧪 Test Results')
+    lines.push('## Test Results')
     if (codeRunResult.student_tests && codeRunResult.student_tests.length > 0) {
       lines.push(
         `- **Unit Tests:** ${codeRunResult.student_passed_count ?? 0}/${codeRunResult.student_total_count ?? 0} passed`
       )
       for (const st of codeRunResult.student_tests) {
-        lines.push(`  - ${st.passed ? '✓' : '✗'} ${st.test_name}${st.error ? ` (${st.error})` : ''}`)
+        lines.push(`  - [${st.passed ? 'PASS' : 'FAIL'}] ${st.test_name}${st.error ? ` (${st.error})` : ''}`)
       }
     }
     if (codeRunResult.results && codeRunResult.results.length > 0) {
@@ -119,10 +118,10 @@ export function buildLearningSummaryMarkdown(data: LearningSummaryData): string 
   if (result) {
     lines.push('---')
     lines.push('')
-    lines.push('## 🤖 Grader Assessment')
+    lines.push('## Grader Assessment')
 
     if (result.degraded_to_manual) {
-      lines.push(`> ⚠️ **Manual Grading**: Automated evaluation was unavailable (${result.degraded_reason || 'Manual'}).`)
+      lines.push(`> **Manual Grading**: Automated evaluation was unavailable (${result.degraded_reason || 'Manual'}).`)
     } else {
       const gradeLabel = GRADE_BAND_LABELS[result.suggested_grade] || result.suggested_grade
       lines.push(`- **Grade:** ${gradeLabel}`)
@@ -136,7 +135,7 @@ export function buildLearningSummaryMarkdown(data: LearningSummaryData): string 
       lines.push('')
 
       if (result.reasoning) {
-        lines.push('### 📝 Reasoning')
+        lines.push('### Reasoning')
         lines.push(result.reasoning.trim())
         lines.push('')
       }
@@ -146,7 +145,7 @@ export function buildLearningSummaryMarkdown(data: LearningSummaryData): string 
       const combinedOverlooked = Array.from(new Set([...missed, ...overlooked])).filter(Boolean)
 
       if (combinedOverlooked.length > 0) {
-        lines.push('### ⚠️ Overlooked Points')
+        lines.push('### Overlooked Points')
         for (const pt of combinedOverlooked) {
           lines.push(`- ${pt}`)
         }
@@ -154,7 +153,7 @@ export function buildLearningSummaryMarkdown(data: LearningSummaryData): string 
       }
 
       if (result.matched_points && result.matched_points.length > 0) {
-        lines.push('### ✅ Matched Points')
+        lines.push('### Matched Points')
         for (const pt of result.matched_points) {
           lines.push(`- ${pt}`)
         }
@@ -162,7 +161,7 @@ export function buildLearningSummaryMarkdown(data: LearningSummaryData): string 
       }
 
       if (result.improvements && result.improvements.length > 0) {
-        lines.push('### 💡 Improvements')
+        lines.push('### Improvements')
         for (const imp of result.improvements) {
           lines.push(`- ${imp}`)
         }
@@ -176,7 +175,7 @@ export function buildLearningSummaryMarkdown(data: LearningSummaryData): string 
   if (refSolution && refSolution.trim()) {
     lines.push('---')
     lines.push('')
-    lines.push('## 💡 Reference')
+    lines.push('## Reference')
     if (isCode) {
       lines.push('```' + codeLanguage)
       lines.push(refSolution.trim())

@@ -125,7 +125,7 @@ export function SavedCardsDrawer({
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/60">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-base shadow-sm">
-              💾
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -217,7 +217,7 @@ export function SavedCardsDrawer({
           {draftsList.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500 dark:text-slate-400">
               <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 dark:text-indigo-400 flex items-center justify-center text-2xl mb-3 shadow-inner">
-                💾
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
               </div>
               <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1">
                 No saved drafts yet
@@ -230,15 +230,15 @@ export function SavedCardsDrawer({
               <div className="text-xs bg-slate-100 dark:bg-slate-800/80 rounded-lg p-3 text-left max-w-xs space-y-1.5 border border-slate-200 dark:border-slate-700/60">
                 <div className="font-medium text-slate-700 dark:text-slate-300">Why Save for Later?</div>
                 <div className="text-slate-500 dark:text-slate-400 flex items-start gap-1.5">
-                  <span>✓</span>
+                  <span className="text-emerald-500 font-bold">&bull;</span>
                   <span>Zero penalty to memory rating / FSRS</span>
                 </div>
                 <div className="text-slate-500 dark:text-slate-400 flex items-start gap-1.5">
-                  <span>✓</span>
+                  <span className="text-emerald-500 font-bold">&bull;</span>
                   <span>Preserves both your solution code and tests</span>
                 </div>
                 <div className="text-slate-500 dark:text-slate-400 flex items-start gap-1.5">
-                  <span>✓</span>
+                  <span className="text-emerald-500 font-bold">&bull;</span>
                   <span>Advances immediately to the next card in queue</span>
                 </div>
               </div>
@@ -284,7 +284,7 @@ export function SavedCardsDrawer({
                               : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
                           }`}
                         >
-                          {draft.isCodeCard ? '💻 Code' : '📝 Flashcard'}
+                          {draft.isCodeCard ? 'Code' : 'Flashcard'}
                         </span>
                         <span className="text-[10px] text-slate-400 dark:text-slate-500">
                           {formatRelativeTime(draft.savedAt)}
@@ -309,7 +309,6 @@ export function SavedCardsDrawer({
                       className="shrink-0 flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-md bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors"
                       title="Resume this card now"
                     >
-                      <span>▶</span>
                       <span>Resume</span>
                     </button>
                   </div>
@@ -337,7 +336,7 @@ export function SavedCardsDrawer({
                           className="hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 transition-colors"
                           title="Copy draft code"
                         >
-                          {copiedId === draft.cardId ? '✓ Copied' : '📋 Copy'}
+                          {copiedId === draft.cardId ? 'Copied' : 'Copy'}
                         </button>
                         {(hasCode || hasTests) && (
                           <button
@@ -347,7 +346,7 @@ export function SavedCardsDrawer({
                             }
                             className="hover:text-slate-800 dark:hover:text-slate-200 transition-colors font-medium"
                           >
-                            {isExpanded ? 'Hide ▲' : 'Inspect ▼'}
+                            {isExpanded ? 'Hide' : 'Inspect'}
                           </button>
                         )}
                       </div>

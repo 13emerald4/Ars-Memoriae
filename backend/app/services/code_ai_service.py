@@ -56,7 +56,7 @@ Respond with ONLY a JSON object conforming to this schema:
     "python": "class Solution:\\n    def solve(self, nums: list[int]) -> int:\\n        pass\\n",
     "typescript": "function solve(nums: number[]): number {{\\n    return 0;\\n}}\\n"
   }},
-  "starter_tests": "// 🧪 CPSC 210 Unit Testing Suite\\ntest('sample case', checkExpect(() => solve([1, 2, 3]), 3));\\n\\ntest('boundary threshold', checkExpect(() => solve([]), 0));\\n",
+  "starter_tests": "// Unit Testing Suite\\ntest('sample case', checkExpect(() => solve([1, 2, 3]), 3));\\n\\ntest('boundary threshold', checkExpect(() => solve([]), 0));\\n",
   "solutions": {{
     "python": "class Solution:\\n    def solve(self, nums: list[int]) -> int:\\n        return len(nums)\\n",
     "typescript": "function solve(nums: number[]): number {{\\n    return nums.length;\\n}}\\n"
@@ -161,4 +161,4 @@ class CodeAiService:
             return response.strip()
         except Exception as e:
             log.warning("Socratic code hint failed: %s", e)
-            return "💡 Focus on the core pattern: consider what data structure allows you to look up or store previous states in $O(1)$ time."
+            return "Focus on the core pattern: consider what data structure allows you to look up or store previous states in $O(1)$ time."

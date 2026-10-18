@@ -52,7 +52,6 @@ export function CopyLearningSummaryButton({
             : 'border-sky-500/30 bg-sky-500/10 text-sky-200 hover:bg-sky-500/20 hover:border-sky-500/50'
         } ${className}`}
       >
-        <span>{copied ? '✓' : '📋'}</span>
         <span>{copied ? 'Copied' : 'Copy'}</span>
       </button>
     )
@@ -69,7 +68,6 @@ export function CopyLearningSummaryButton({
           : 'border-sky-500/30 bg-sky-500/10 text-sky-200 hover:bg-sky-500/20 hover:border-sky-500/50 hover:text-white'
       } ${className}`}
     >
-      <span className="text-sm">{copied ? '✓' : '📋'}</span>
       <span>{copied ? 'Copied' : 'Copy Summary'}</span>
       <span className="ml-1 rounded border border-current/25 px-1 py-0.2 font-mono text-[10px] opacity-75">
         Ctrl+Shift+C

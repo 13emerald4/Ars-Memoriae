@@ -313,7 +313,7 @@ export default function SessionTimer() {
               className="chip border-emerald-500/40 text-emerald-300"
               title="Time earned back today"
             >
-              🏦 {formatBanked(bankedToday)} banked
+              {formatBanked(bankedToday)} banked
             </span>
           )}
           {idle && (
@@ -352,13 +352,13 @@ export default function SessionTimer() {
       {current && !idle && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink-line pt-3 text-xs">
           {current.focus_goal && (
-            <span className="text-slate-300">🎯 {current.focus_goal}</span>
+            <span className="text-slate-300">Goal: {current.focus_goal}</span>
           )}
           {current.goal_cards > 0 ? (
             <span
               className={`chip ${current.goal_met ? 'border-emerald-500/40 text-emerald-300' : ''}`}
             >
-              {current.goal_met ? '✓ ' : ''}
+              {current.goal_met ? '[Met] ' : ''}
               {current.cards_reviewed}/{current.goal_cards} cards
             </span>
           ) : (

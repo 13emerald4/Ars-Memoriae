@@ -72,7 +72,7 @@ function buildStarterTestCode(item: QueueItem | null): string {
 
   const isPython = Boolean(item.starter_code?.includes('def ') || item.starter_code?.includes('class Solution:'))
   if (isPython) {
-    return `# 🧪 Unit Testing Suite (Python)
+    return `# Unit Testing Suite (Python)
 import unittest
 
 class TestSolution(unittest.TestCase):
@@ -101,7 +101,7 @@ class TestSolution(unittest.TestCase):
     sampleTest = `test('sample case', checkExpect(() => ${fnName}(...), expected));`
   }
 
-  return `// 🧪 CPSC 210 Unit Testing Suite
+  return `// CPSC 210 Unit Testing Suite
 // Use checkExpect(() => actual, expected), checkError(() => ...), assertOk(r), assertErr(r)
 
 ${sampleTest}
@@ -147,7 +147,7 @@ function buildCompletedTestCode(item: QueueItem | null): string {
       })
       .join('\n\n')
 
-    return `# 🧪 Completed Reference Unit Tests (Python)
+    return `# Completed Reference Unit Tests (Python)
 import unittest
 
 class TestSolution(unittest.TestCase):
@@ -185,7 +185,7 @@ ${testMethods || '    pass'}
     return `test('${testName}', checkExpect(() => ${fnName}(${args}), ${exp}));`
   })
 
-  return `// 🧪 CPSC 210 Completed Reference Unit Tests
+  return `// CPSC 210 Completed Reference Unit Tests
 // Full suite asserting sample, boundary, and edge cases
 
 ${testBlocks.join('\n\n')}
@@ -248,7 +248,7 @@ export default function Review() {
 
   const { setCognitiveContext } = useTheme()
 
-  // ⚡ Persist Mode: Drill a deck continuously until all cards in review are rated Easy
+  // Persist Mode: Drill a deck continuously until all cards in review are rated Easy
   const deckParam = params.get('deck')
   const persistParam = params.get('persist') === '1' || params.get('persist') === 'true'
   const [persistActive, setPersistActive] = useState<boolean>(false)
@@ -265,7 +265,7 @@ export default function Review() {
   const [allDecks, setAllDecks] = useState<Deck[]>([])
   const [selectedPersistDeckId, setSelectedPersistDeckId] = useState<string>('')
 
-  // 🏁 All Cards Run Mode: Review every card in deck consecutively, easiest to hardest, then FSRS takes over
+  // All Cards Run Mode: Review every card in deck consecutively, easiest to hardest, then FSRS takes over
   const runParam = params.get('run') === 'all' || params.get('all_cards_run') === '1'
   const [allCardsRunActive, setAllCardsRunActive] = useState<boolean>(false)
   const [allCardsRunDeckId, setAllCardsRunDeckId] = useState<string | null>(null)
@@ -274,7 +274,7 @@ export default function Review() {
   const [allCardsRunIndex, setAllCardsRunIndex] = useState<number>(0)
   const [allCardsRunCompleted, setAllCardsRunCompleted] = useState<boolean>(false)
 
-  // 💻 LeetCode-Style Split IDE & Code Execution Workbench
+  // LeetCode-Style Split IDE & Code Execution Workbench
   const [layoutMode, setLayoutMode] = useState<'split' | 'classic'>(() => {
     return (localStorage.getItem('memorization.reviewLayoutMode') as 'split' | 'classic') || 'split'
   })
@@ -353,7 +353,7 @@ export default function Review() {
     }
   }, [])
 
-  // ⚡ Memory Athlete: Blitz Sprint Mode & Automaticity Telemetry (§Feature 4)
+  // Memory Athlete: Blitz Sprint Mode & Automaticity Telemetry (§Feature 4)
   const [blitzActive, setBlitzActive] = useState(false)
   const [blitzDurationSec, setBlitzDurationSec] = useState(60)
   const [blitzTimeRemainingSec, setBlitzTimeRemainingSec] = useState(60)
@@ -406,15 +406,15 @@ export default function Review() {
   const [weaknessHintLoading, setWeaknessHintLoading] = useState(false)
   const [showWeaknessHint, setShowWeaknessHint] = useState(false)
 
-  // 💡 Socratic Line-by-Line Hint in IDE (§Feature)
+  // Socratic Line-by-Line Hint in IDE (§Feature)
   const [activeLineHint, setActiveLineHint] = useState<SocraticLineHintResponse | null>(null)
   const [lineHintLoading, setLineHintLoading] = useState(false)
   const [editorCursorLine, setEditorCursorLine] = useState(1)
 
-  // 🗂️ Deck Cards Quick Browser Drawer (§Feature)
+  // Deck Cards Quick Browser Drawer (§Feature)
   const [deckViewerOpen, setDeckViewerOpen] = useState(false)
 
-  // 💾 Saved for Later Shelf Drawer (§Feature)
+  // Saved for Later Shelf Drawer (§Feature)
   const [savedDrawerOpen, setSavedDrawerOpen] = useState(false)
   const [savedCount, setSavedCount] = useState(() => getSavedDraftsCount())
   const [draftRestoredNotice, setDraftRestoredNotice] = useState<string | null>(null)
@@ -719,7 +719,7 @@ export default function Review() {
         } else {
           setItem(cards[0])
           initCardState(cards[0])
-          setLastOutcome(`🏁 All Cards Run started — Card 1 of ${cards.length} (Easiest → Hardest).`)
+          setLastOutcome(`All Cards Run started — Card 1 of ${cards.length} (Easiest → Hardest).`)
         }
       } catch (err) {
         setError(err)
@@ -793,7 +793,7 @@ export default function Review() {
 
     saveDraft(draft)
     setSavedCount(getSavedDraftsCount())
-    setLastOutcome(`💾 Saved "${cardTitle}" for later — draft preserved!`)
+    setLastOutcome(`Saved "${cardTitle}" for later — draft preserved!`)
 
     // Postpone on backend so queue advances without repeating this card immediately
     try {
@@ -1156,7 +1156,7 @@ export default function Review() {
           setAllCardsRunCompleted(true)
           setItem(null)
           setLastOutcome(
-            `🏁 All Cards Run complete! All ${allCardsRunCards.length} cards in this deck reviewed consecutively from easiest to hardest. FSRS algorithm now takes over.`,
+            `All Cards Run complete! All ${allCardsRunCards.length} cards in this deck reviewed consecutively from easiest to hardest. FSRS algorithm now takes over.`,
           )
         } else {
           const nextCard = allCardsRunCards[nextIdx]
@@ -1185,13 +1185,13 @@ export default function Review() {
             setPersistCompleted(true)
             setItem(null)
             setLastOutcome(
-              `🏆 Easy — card grasped! All ${persistCards.length} cards in this deck are now rated Easy!`,
+              `Easy — card grasped! All ${persistCards.length} cards in this deck are now rated Easy!`,
             )
           } else {
             const nextCard = persistCards.find((c) => c.id === nextQueue[0]) || null
             setItem(nextCard)
             initCardState(nextCard)
-            setLastOutcome(`✓ Easy — card grasped! ${nextQueue.length} remaining in rotation.`)
+            setLastOutcome(`Easy — card grasped! ${nextQueue.length} remaining in rotation.`)
           }
         } else {
           // 'again', 'hard', 'good': not yet easy, keep in rotation
@@ -1213,7 +1213,7 @@ export default function Review() {
         setLastOutcome(
           `${finalGrade} — next in ${formatInterval(outcome.interval_days)}${
             outcome.leech_flagged ? ' · flagged as a leech' : ''
-          }${outcome.automaticity_exceeded ? ' · ⏱️ pace notice' : ''}`,
+          }${outcome.automaticity_exceeded ? ' · pace notice' : ''}`,
         )
         await load()
       }
@@ -1352,8 +1352,8 @@ export default function Review() {
             onOpenSavedDrawer={() => setSavedDrawerOpen(true)}
           />
           <div className="rounded-3xl border border-purple-500/40 bg-gradient-to-b from-[#140b24] via-[#0d091a] to-[#0b101b] p-8 sm:p-10 text-center max-w-xl mx-auto space-y-6 shadow-2xl backdrop-blur">
-            <div className="inline-flex h-20 w-20 items-center justify-center rounded-3xl bg-purple-500/15 border border-purple-500/30 text-4xl shadow-inner animate-bounce">
-              🏁
+            <div className="inline-flex h-20 px-4 items-center justify-center rounded-3xl bg-purple-500/15 border border-purple-500/30 shadow-inner">
+              <span className="text-xs font-bold uppercase tracking-wider text-purple-300">Run Complete</span>
             </div>
             <div className="space-y-2">
               <h2 className="text-2xl font-bold text-purple-300">
@@ -1385,7 +1385,7 @@ export default function Review() {
                   className="btn btn-primary bg-purple-600 hover:bg-purple-500 text-white font-bold flex items-center justify-center gap-2 py-2.5 px-5 shadow-lg shadow-purple-900/40 cursor-pointer"
                   onClick={exitAllCardsRun}
                 >
-                  <span>⚡</span>
+                  
                   <span>Resume Standard FSRS Queue</span>
                 </button>
                 <button
@@ -1454,8 +1454,8 @@ export default function Review() {
             onOpenSavedDrawer={() => setSavedDrawerOpen(true)}
           />
           <div className="rounded-3xl border border-emerald-500/40 bg-gradient-to-b from-[#0b1b18] via-[#080d16] to-[#0b1424] p-8 sm:p-10 text-center max-w-xl mx-auto space-y-6 shadow-2xl backdrop-blur">
-            <div className="inline-flex h-20 w-20 items-center justify-center rounded-3xl bg-emerald-500/15 border border-emerald-500/30 text-4xl shadow-inner animate-bounce">
-              🏆
+            <div className="inline-flex h-20 px-4 items-center justify-center rounded-3xl bg-emerald-500/15 border border-emerald-500/30 shadow-inner">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Mastered</span>
             </div>
             <div className="space-y-2">
               <h2 className="text-2xl font-bold text-emerald-300">
@@ -1491,7 +1491,7 @@ export default function Review() {
                   className="btn btn-primary bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center justify-center gap-2 py-2.5 px-5 shadow-lg shadow-emerald-900/40"
                   onClick={handleContinuePersisting}
                 >
-                  <span>🔁</span>
+                  
                   <span>Continue Persisting in this Deck</span>
                 </button>
                 <button
@@ -1582,11 +1582,11 @@ export default function Review() {
               )}
             </div>
 
-            {/* ⚡ Persist & 🏁 All Cards Run Deck Launcher */}
+            {/* Persist & All Cards Run Deck Launcher */}
             <div className="mt-8 rounded-2xl border border-sky-500/30 bg-gradient-to-b from-sky-950/20 to-ink-soft/30 p-5 max-w-lg mx-auto text-left shadow-lg">
               <div className="flex items-center gap-2.5 mb-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/20 text-sky-300 font-bold text-sm">
-                  ⚡
+                <span className="flex h-7 px-2 items-center justify-center rounded-lg bg-sky-500/20 text-sky-300 font-bold text-xs uppercase tracking-wider">
+                  Modes
                 </span>
                 <div>
                   <h3 className="font-semibold text-slate-100 text-sm">Deck Study Modes</h3>
@@ -1619,7 +1619,7 @@ export default function Review() {
                         className="btn btn-primary text-xs whitespace-nowrap disabled:opacity-50"
                         title="Persist reviewing until every card is rated Easy"
                       >
-                        ⚡ Persist
+                        Persist
                       </button>
                       <button
                         type="button"
@@ -1628,7 +1628,7 @@ export default function Review() {
                         className="btn border border-purple-500/50 bg-purple-500/20 text-purple-200 hover:bg-purple-500/30 text-xs whitespace-nowrap disabled:opacity-50"
                         title="Review every card consecutively from easiest to hardest, then FSRS takes over"
                       >
-                        🏁 All Cards Run
+                        All Cards Run
                       </button>
                     </div>
                   </div>
@@ -1647,7 +1647,7 @@ export default function Review() {
                             className="chip border-purple-500/30 hover:border-purple-400 hover:text-purple-200 text-xs transition"
                             title="Run all cards in easiest to hardest order"
                           >
-                            🏁 {d.name} ({d.card_count})
+                            {d.name} ({d.card_count})
                           </button>
                         ))}
                     </div>
@@ -1780,7 +1780,7 @@ export default function Review() {
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-amber-200">
               <span className="flex items-center gap-1.5 text-sm">
-                ⚡ <strong>BLITZ SPRINT:</strong> {blitzTimeRemainingSec}s remaining
+                <strong>BLITZ SPRINT:</strong> {blitzTimeRemainingSec}s remaining
               </span>
               <div className="flex items-center gap-3">
                 <span>{blitzCardsAnswered} cards answered</span>
@@ -1812,8 +1812,8 @@ export default function Review() {
           <div className="rounded-xl border border-sky-500/40 bg-gradient-to-r from-sky-950/40 via-indigo-950/30 to-purple-950/20 p-4 shadow-lg backdrop-blur space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2.5">
               <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/20 text-base">
-                  ⚡
+                <span className="flex h-7 px-2 items-center justify-center rounded-lg bg-sky-500/20 text-xs font-bold uppercase tracking-wider text-sky-300">
+                  Persist
                 </span>
                 <div>
                   <div className="flex items-center gap-2">
@@ -1837,7 +1837,7 @@ export default function Review() {
                   className="rounded-md border border-slate-700 bg-slate-800/80 px-2.5 py-1 text-xs text-slate-300 hover:bg-slate-700 hover:text-white transition"
                   title="Reset current round progress and drill all cards again"
                 >
-                  🔁 Restart Round
+                  Restart Round
                 </button>
                 <button
                   type="button"
@@ -1845,7 +1845,7 @@ export default function Review() {
                   className="rounded-md border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs text-rose-300 hover:bg-rose-500/20 transition"
                   title="Exit persist review mode and return to standard queue"
                 >
-                  ✕ Exit Persist
+                  &times; Exit Persist
                 </button>
               </div>
             </div>
@@ -1854,7 +1854,7 @@ export default function Review() {
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-300 flex items-center gap-2">
-                  <span>🎯 Grasped Cards:</span>
+                  <span>Grasped Cards:</span>
                   <strong className="text-emerald-400 font-mono">
                     {persistGraspedIds.size} / {persistCards.length}
                   </strong>
@@ -1882,7 +1882,7 @@ export default function Review() {
             {/* Re-attempt Indicator for current card */}
             {item && (persistCardAttempts[item.id] || 0) > 0 && (
               <div className="flex items-center gap-2 pt-0.5 text-xs text-amber-300/90 bg-amber-500/10 rounded-lg px-2.5 py-1 border border-amber-500/20">
-                <span>🔁</span>
+                
                 <span>
                   <strong>Re-attempt #{persistCardAttempts[item.id] + 1}:</strong> This card remains in the persist queue until rated <strong>Easy</strong>.
                 </span>
@@ -1895,8 +1895,8 @@ export default function Review() {
           <div className="rounded-xl border border-purple-500/40 bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-purple-950/20 p-4 shadow-lg backdrop-blur space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2.5">
               <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/20 text-base">
-                  🏁
+                <span className="flex h-7 px-2 items-center justify-center rounded-lg bg-purple-500/20 text-xs font-bold uppercase tracking-wider text-purple-300">
+                  Run
                 </span>
                 <div>
                   <div className="flex items-center gap-2">
@@ -1920,7 +1920,7 @@ export default function Review() {
                   className="rounded-md border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-xs text-purple-300 hover:bg-purple-500/20 transition cursor-pointer"
                   title="Exit All Cards Run and return to standard FSRS queue"
                 >
-                  ✕ Exit Run (to FSRS)
+                  &times; Exit Run (to FSRS)
                 </button>
               </div>
             </div>
@@ -1929,7 +1929,7 @@ export default function Review() {
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-300 flex items-center gap-2">
-                  <span>📈 Progress:</span>
+                  <span>Progress:</span>
                   <strong className="text-purple-300 font-mono">
                     Card {allCardsRunIndex + 1} of {allCardsRunCards.length}
                   </strong>
@@ -1974,7 +1974,7 @@ export default function Review() {
         {draftRestoredNotice && (
           <div className="flex items-center justify-between rounded-lg border border-indigo-500/40 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-200 shadow-sm animate-in fade-in duration-200">
             <div className="flex items-center gap-2">
-              <span className="text-base">💾</span>
+              
               <div>
                 <span className="font-semibold">{draftRestoredNotice}</span>
                 <span className="text-indigo-300/80 ml-2 text-[11px]">— your work-in-progress solution and unit tests were restored.</span>
@@ -2009,7 +2009,7 @@ export default function Review() {
                       className="chip bg-sky-950/60 border-sky-500/40 text-sky-300 hover:bg-sky-900/60 hover:text-white transition cursor-pointer flex items-center gap-1 font-semibold"
                       title="Cards (Alt+D)"
                     >
-                      <span>🗂️</span>
+                      
                       <span>Cards</span>
                     </button>
                   )}
@@ -2020,7 +2020,7 @@ export default function Review() {
                       className="chip bg-indigo-950/60 border-indigo-500/40 text-indigo-300 hover:bg-indigo-900/60 hover:text-white transition cursor-pointer flex items-center gap-1 font-semibold"
                       title="Saved (Alt+Shift+S)"
                     >
-                      <span>💾</span>
+                      
                       <span>Saved ({savedCount})</span>
                     </button>
                   )}
@@ -2050,7 +2050,7 @@ export default function Review() {
                       }`}
                       title="Review related source passages and primer before answering"
                     >
-                      <span>📖</span>
+                      
                       <span>{showPrimer ? 'Hide Primer' : 'Primer'}</span>
                     </button>
                   )}
@@ -2064,7 +2064,7 @@ export default function Review() {
                       className="chip cursor-pointer border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition-colors font-medium"
                       title={item.active_weaknesses.join('; ')}
                     >
-                      🎯 {item.active_weaknesses.length} prior {item.active_weaknesses.length === 1 ? 'mistake' : 'mistakes'}
+                      {item.active_weaknesses.length} prior {item.active_weaknesses.length === 1 ? 'mistake' : 'mistakes'}
                     </button>
                   )}
                 </div>
@@ -2076,7 +2076,7 @@ export default function Review() {
                     className="chip cursor-pointer border-ink-line text-slate-400 hover:text-slate-200 transition-colors"
                     title="Switch to single card view"
                   >
-                    🗂️ Classic Card
+                    Classic Card
                   </button>
                 </div>
               </div>
@@ -2165,11 +2165,11 @@ export default function Review() {
                         className="btn border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/15 flex items-center gap-1.5"
                         title="Save your drafted code and advance to next card (Alt+L)"
                       >
-                        <span>💾</span>
+                        
                         <span>Save for Later</span>
                       </button>
                     </div>
-                    <span className="text-xs text-slate-500 font-mono">⌘/Ctrl + Enter</span>
+                    <span className="text-xs text-slate-500 font-mono">Cmd/Ctrl + Enter</span>
                   </div>
 
                   {/* Longitudinal Weakness Hint Box */}
@@ -2177,7 +2177,7 @@ export default function Review() {
                     <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-1.5 text-xs text-amber-200">
                       <div className="flex items-center justify-between font-semibold">
                         <span className="flex items-center gap-1.5">
-                          <span>💡</span>
+                          
                           <span>Past Mistake Diagnostic Hint:</span>
                         </span>
                         <button
@@ -2201,7 +2201,7 @@ export default function Review() {
                   <div className="flex flex-wrap items-center gap-2">
                     {llmEnabled && !guideOpen && (
                       <button className="btn text-xs" onClick={openGuide}>
-                        💬 Stuck? Ask your Socratic Guide
+                        Stuck? Ask your Socratic Guide
                       </button>
                     )}
                     {item.active_weaknesses && item.active_weaknesses.length > 0 && (
@@ -2213,7 +2213,7 @@ export default function Review() {
                           else setShowWeaknessHint((v) => !v)
                         }}
                       >
-                        💡 {showWeaknessHint ? 'Hide Past Mistake Hint' : 'Past Mistake Hint'}
+                        {showWeaknessHint ? 'Hide Past Mistake Hint' : 'Past Mistake Hint'}
                       </button>
                     )}
                   </div>
@@ -2261,7 +2261,7 @@ export default function Review() {
 
                   {result?.latency_note && (
                     <p className="text-xs text-slate-600" title="Informational only — never affects the grade">
-                      ⏱ {result.latency_note}
+                      {result.latency_note}
                     </p>
                   )}
 
@@ -2335,7 +2335,7 @@ export default function Review() {
                                     : 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
                                 }`}
                               >
-                                {g === 'easy' ? '✓ Grasps' : '↻ Re-queues'}
+                                {g === 'easy' ? 'Grasps' : 'Re-queues'}
                               </span>
                             )}
                           </button>
@@ -2389,9 +2389,9 @@ export default function Review() {
                             }`}
                             title="Classic TDD: Solution on left, Unit Tests on right"
                           >
-                            <span>💻 Sol</span>
+                            <span>Sol</span>
                             <span className="text-slate-500">↔</span>
-                            <span>🧪 Tests</span>
+                            <span>Tests</span>
                           </button>
                           <button
                             type="button"
@@ -2406,9 +2406,9 @@ export default function Review() {
                             }`}
                             title="Compare Reference Solution alongside Solution"
                           >
-                            <span>📖 Ref</span>
+                            <span>Ref</span>
                             <span className="text-slate-500">↔</span>
-                            <span>💻 Sol</span>
+                            <span>Sol</span>
                           </button>
                           <button
                             type="button"
@@ -2423,9 +2423,9 @@ export default function Review() {
                             }`}
                             title="Compare Reference Solution alongside Unit Tests"
                           >
-                            <span>📖 Ref</span>
+                            <span>Ref</span>
                             <span className="text-slate-500">↔</span>
-                            <span>🧪 Tests</span>
+                            <span>Tests</span>
                           </button>
                           <button
                             type="button"
@@ -2440,9 +2440,9 @@ export default function Review() {
                             }`}
                             title="Compare Unit Tests alongside Completed Reference Tests"
                           >
-                            <span>🧪 Tests</span>
+                            <span>Tests</span>
                             <span className="text-slate-500">↔</span>
-                            <span>🧪 Ref</span>
+                            <span>Ref Tests</span>
                           </button>
                           <button
                             type="button"
@@ -2471,7 +2471,7 @@ export default function Review() {
                           }`}
                           title="Solution (Alt+T)"
                         >
-                          <span>💻</span>
+                          <span>Sol</span>
                           <span>Solution</span>
                         </button>
                         <button
@@ -2484,7 +2484,7 @@ export default function Review() {
                           }`}
                           title="Unit Tests (Alt+T)"
                         >
-                          <span>🧪</span>
+                          <span>Tests</span>
                           <span>Unit Tests</span>
                           {testCode.trim() && (
                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
@@ -2500,7 +2500,7 @@ export default function Review() {
                           }`}
                           title="Reference"
                         >
-                          <span>📖</span>
+                          
                           <span>Reference</span>
                         </button>
                         {Boolean(cleanRefTestsCode.trim()) && (
@@ -2514,7 +2514,7 @@ export default function Review() {
                             }`}
                             title="Ref Tests"
                           >
-                            <span>🧪</span>
+                            <span>Tests</span>
                             <span>Ref Tests</span>
                           </button>
                         )}
@@ -2539,9 +2539,9 @@ export default function Review() {
                       }}
                       className="rounded border border-ink-line bg-[#282828] px-2 py-0.5 text-xs font-semibold text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer shrink-0"
                     >
-                      <option value="typescript">📘 TypeScript</option>
-                      <option value="javascript">💛 JavaScript</option>
-                      <option value="python">🐍 Python 3</option>
+                      <option value="typescript">TypeScript</option>
+                      <option value="javascript">JavaScript</option>
+                      <option value="python">Python 3</option>
                     </select>
 
                     {/* Reset buttons in Single Tab Mode */}
@@ -2573,7 +2573,7 @@ export default function Review() {
                         className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
                         title="Copy reference code to clipboard"
                       >
-                        <span>{copiedRef ? '✓ Copied' : '📋 Copy ref'}</span>
+                        <span>{copiedRef ? 'Copied' : 'Copy ref'}</span>
                       </button>
                     )}
                     {!tiledTabs && activeEditorTab === 'ref_tests' && (
@@ -2584,7 +2584,7 @@ export default function Review() {
                         className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
                         title="Copy completed reference tests to clipboard"
                       >
-                        <span>{copiedRefTests ? '✓ Copied' : '📋 Copy ref tests'}</span>
+                        <span>{copiedRefTests ? 'Copied' : 'Copy ref tests'}</span>
                       </button>
                     )}
                   </div>
@@ -2709,8 +2709,8 @@ export default function Review() {
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3 h-[460px]">
-                        <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-xl text-sky-400 shadow-inner">
-                          🔒
+                        <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shadow-inner">
+                          <svg className="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         </div>
                         <div className="space-y-1">
                           <h4 className="text-sm font-semibold text-slate-200">Reference Solution</h4>
@@ -2723,7 +2723,7 @@ export default function Review() {
                           onClick={() => void reveal()}
                           className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 mt-2 cursor-pointer"
                         >
-                          <span>👁 Reveal Solution</span>
+                          <span>Reveal Solution</span>
                         </button>
                       </div>
                     )
@@ -2739,8 +2739,8 @@ export default function Review() {
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3 h-[460px]">
-                        <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-xl text-purple-400 shadow-inner">
-                          🔒
+                        <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shadow-inner">
+                          <svg className="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         </div>
                         <div className="space-y-1">
                           <h4 className="text-sm font-semibold text-slate-200">Reference Tests</h4>
@@ -2753,7 +2753,7 @@ export default function Review() {
                           onClick={() => void reveal()}
                           className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 mt-2 cursor-pointer"
                         >
-                          <span>👁 Reveal Tests</span>
+                          <span>Reveal Tests</span>
                         </button>
                       </div>
                     )
@@ -2802,7 +2802,7 @@ export default function Review() {
                     className="chip bg-sky-950/60 border-sky-500/40 text-sky-300 hover:bg-sky-900/60 hover:text-white transition cursor-pointer flex items-center gap-1 font-semibold"
                     title="Cards (Alt+D)"
                   >
-                    <span>🗂️</span>
+                    
                     <span>Cards</span>
                   </button>
                 )}
@@ -2813,7 +2813,7 @@ export default function Review() {
                     className="chip bg-indigo-950/60 border-indigo-500/40 text-indigo-300 hover:bg-indigo-900/60 hover:text-white transition cursor-pointer flex items-center gap-1 font-semibold"
                     title="Saved (Alt+Shift+S)"
                   >
-                    <span>💾</span>
+                    
                     <span>Saved ({savedCount})</span>
                   </button>
                 )}
@@ -2841,7 +2841,7 @@ export default function Review() {
                     className="chip cursor-pointer border-sky-500/40 text-sky-300 hover:bg-sky-500/10 transition-colors"
                     title="Split IDE"
                   >
-                    💻 Split IDE
+                    Split IDE
                   </button>
                 )}
                 {!revealed && (
@@ -2855,7 +2855,7 @@ export default function Review() {
                     }`}
                     title="Primer"
                   >
-                    <span>📖</span>
+                    
                     <span>{showPrimer ? 'Hide Primer' : 'Primer'}</span>
                   </button>
                 )}
@@ -2869,7 +2869,7 @@ export default function Review() {
                     className="chip cursor-pointer border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition-colors font-medium"
                     title={item.active_weaknesses.join('; ')}
                   >
-                    🎯 {item.active_weaknesses.length} prior {item.active_weaknesses.length === 1 ? 'mistake' : 'mistakes'}
+                    {item.active_weaknesses.length} prior {item.active_weaknesses.length === 1 ? 'mistake' : 'mistakes'}
                   </button>
                 )}
               </div>
@@ -3000,9 +3000,9 @@ export default function Review() {
                                   }`}
                                   title="Classic TDD: Solution on left, Unit Tests on right"
                                 >
-                                  <span>💻 Sol</span>
+                                  <span>Sol</span>
                                   <span className="text-slate-500">↔</span>
-                                  <span>🧪 Tests</span>
+                                  <span>Tests</span>
                                 </button>
                                 <button
                                   type="button"
@@ -3017,9 +3017,9 @@ export default function Review() {
                                   }`}
                                   title="Compare Reference Solution alongside Solution"
                                 >
-                                  <span>📖 Ref</span>
+                                  <span>Ref</span>
                                   <span className="text-slate-500">↔</span>
-                                  <span>💻 Sol</span>
+                                  <span>Sol</span>
                                 </button>
                                 <button
                                   type="button"
@@ -3034,9 +3034,9 @@ export default function Review() {
                                   }`}
                                   title="Compare Reference Solution alongside Unit Tests"
                                 >
-                                  <span>📖 Ref</span>
+                                  <span>Ref</span>
                                   <span className="text-slate-500">↔</span>
-                                  <span>🧪 Tests</span>
+                                  <span>Tests</span>
                                 </button>
                                 <button
                                   type="button"
@@ -3051,9 +3051,9 @@ export default function Review() {
                                   }`}
                                   title="Compare Unit Tests alongside Completed Reference Tests"
                                 >
-                                  <span>🧪 Tests</span>
+                                  <span>Tests</span>
                                   <span className="text-slate-500">↔</span>
-                                  <span>🧪 Ref</span>
+                                  <span>Ref Tests</span>
                                 </button>
                                 <button
                                   type="button"
@@ -3082,7 +3082,7 @@ export default function Review() {
                                 }`}
                                 title="Edit implementation logic (Alt+T to toggle)"
                               >
-                                <span>💻</span>
+                                <span>Sol</span>
                                 <span>Solution</span>
                               </button>
                               <button
@@ -3095,7 +3095,7 @@ export default function Review() {
                                 }`}
                                 title="Write unit tests with assertions (Alt+T to toggle)"
                               >
-                                <span>🧪</span>
+                                <span>Tests</span>
                                 <span>Unit Tests</span>
                                 {testCode.trim() && (
                                   <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
@@ -3111,7 +3111,7 @@ export default function Review() {
                                 }`}
                                 title="View reference model solution"
                               >
-                                <span>📖</span>
+                                
                                 <span>Reference</span>
                               </button>
                               {Boolean(cleanRefTestsCode.trim()) && (
@@ -3125,7 +3125,7 @@ export default function Review() {
                                   }`}
                                   title="View completed reference test suite"
                                 >
-                                  <span>🧪</span>
+                                  <span>Tests</span>
                                   <span>Ref Tests</span>
                                 </button>
                               )}
@@ -3150,9 +3150,9 @@ export default function Review() {
                             }}
                             className="rounded border border-ink-line bg-[#282828] px-2 py-0.5 text-xs font-semibold text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer shrink-0"
                           >
-                            <option value="typescript">📘 TypeScript</option>
-                            <option value="javascript">💛 JavaScript</option>
-                            <option value="python">🐍 Python 3</option>
+                            <option value="typescript">TypeScript</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="python">Python 3</option>
                           </select>
 
                           {!tiledTabs && activeEditorTab === 'solution' && item.starter_code && (
@@ -3183,7 +3183,7 @@ export default function Review() {
                               className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
                               title="Copy reference code to clipboard"
                             >
-                              <span>{copiedRef ? '✓ Copied' : '📋 Copy ref'}</span>
+                              <span>{copiedRef ? 'Copied' : 'Copy ref'}</span>
                             </button>
                           )}
                           {!tiledTabs && activeEditorTab === 'ref_tests' && (
@@ -3194,7 +3194,7 @@ export default function Review() {
                               className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
                               title="Copy completed reference tests to clipboard"
                             >
-                              <span>{copiedRefTests ? '✓ Copied' : '📋 Copy ref tests'}</span>
+                              <span>{copiedRefTests ? 'Copied' : 'Copy ref tests'}</span>
                             </button>
                           )}
                         </div>
@@ -3282,8 +3282,8 @@ export default function Review() {
                             />
                           ) : (
                             <div className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-2 h-[320px]">
-                              <div className="w-10 h-10 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-lg text-sky-400 shadow-inner">
-                                🔒
+                              <div className="w-10 h-10 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shadow-inner">
+                                <svg className="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                               </div>
                               <div className="space-y-0.5">
                                 <h4 className="text-xs font-semibold text-slate-200">Reference Solution</h4>
@@ -3296,7 +3296,7 @@ export default function Review() {
                                 onClick={() => void reveal()}
                                 className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1 mt-1 cursor-pointer"
                               >
-                                <span>👁 Reveal Solution</span>
+                                <span>Reveal Solution</span>
                               </button>
                             </div>
                           )
@@ -3312,8 +3312,8 @@ export default function Review() {
                             />
                           ) : (
                             <div className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-2 h-[320px]">
-                              <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-lg text-purple-400 shadow-inner">
-                                🔒
+                              <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shadow-inner">
+                                <svg className="w-4 h-4 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                               </div>
                               <div className="space-y-0.5">
                                 <h4 className="text-xs font-semibold text-slate-200">Reference Tests</h4>
@@ -3326,7 +3326,7 @@ export default function Review() {
                                 onClick={() => void reveal()}
                                 className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1 mt-1 cursor-pointer"
                               >
-                                <span>👁 Reveal Tests</span>
+                                <span>Reveal Tests</span>
                               </button>
                             </div>
                           )
@@ -3397,12 +3397,12 @@ export default function Review() {
                     className="btn border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/15 flex items-center gap-1.5"
                     title="Save your work and advance to next card (Alt+L)"
                   >
-                    <span>💾</span>
+                    
                     <span>Save for Later</span>
                   </button>
                   {llmEnabled && !guideOpen && (
                     <button className="btn" onClick={openGuide}>
-                      💬 Stuck? Ask your Guide
+                      Stuck? Ask your Guide
                     </button>
                   )}
                   {item.active_weaknesses && item.active_weaknesses.length > 0 && (
@@ -3414,10 +3414,10 @@ export default function Review() {
                         else setShowWeaknessHint((v) => !v)
                       }}
                     >
-                      💡 {showWeaknessHint ? 'Hide Past Mistake Hint' : 'Past Mistake Hint'}
+                      {showWeaknessHint ? 'Hide Past Mistake Hint' : 'Past Mistake Hint'}
                     </button>
                   )}
-                  <span className="text-xs text-slate-600">⌘/Ctrl + Enter</span>
+                  <span className="text-xs text-slate-600">Cmd/Ctrl + Enter</span>
                 </div>
 
                 {/* Longitudinal Weakness Hint Box */}
@@ -3425,7 +3425,7 @@ export default function Review() {
                   <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-1.5 text-xs text-amber-200">
                     <div className="flex items-center justify-between font-semibold">
                       <span className="flex items-center gap-1.5">
-                        <span>💡</span>
+                        
                         <span>Past Mistake Diagnostic Hint:</span>
                       </span>
                       <button
@@ -3499,7 +3499,7 @@ export default function Review() {
 
                 {result?.latency_note && (
                   <p className="text-xs text-slate-600" title="Informational only — never affects the grade">
-                    ⏱ {result.latency_note}
+                    {result.latency_note}
                   </p>
                 )}
 
@@ -3573,7 +3573,7 @@ export default function Review() {
                                   : 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
                               }`}
                             >
-                              {g === 'easy' ? '✓ Grasps' : '↻ Re-queues'}
+                              {g === 'easy' ? 'Grasps' : 'Re-queues'}
                             </span>
                           )}
                         </button>
@@ -3654,7 +3654,7 @@ function StuckBanner({
 }) {
   return (
     <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-      <p>⚠ {alert.message}</p>
+      <p>{alert.message}</p>
       <div className="mt-2 flex flex-wrap gap-2">
         <button className="btn px-2.5 py-1 text-xs" onClick={onBreak}>
           Take a {alert.suggested_break_minutes}-minute break
@@ -3859,7 +3859,7 @@ function LessonGate({
         <div className="flex flex-wrap items-center gap-2">
           {deckName && <span className="chip font-semibold text-slate-300">{deckName}</span>}
           <span className="chip border-sky-500/40 bg-sky-500/15 text-sky-200 font-semibold">
-            📖 Learn &amp; Practice
+            Learn &amp; Practice
           </span>
           {thematic && (
             <span className="chip border-sky-400/30 text-sky-300">
@@ -3874,7 +3874,7 @@ function LessonGate({
           className="flex items-center gap-1.5 rounded-full border border-sky-400/40 bg-sky-950/70 px-2.5 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-900/80 hover:border-sky-300 transition-all shadow-sm"
           title="Lexicon lookup"
         >
-          <span>📖</span>
+          
           <span>Lexicon</span>
         </button>
       </div>
@@ -3894,7 +3894,7 @@ function LessonGate({
       <div className="space-y-2 rounded-xl border border-sky-500/30 bg-sky-950/15 p-4">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-sky-300 flex items-center gap-1.5">
-            <span>❓</span> Question
+            Question
           </span>
           {item.category && (
             <span className="chip text-[10px] text-slate-400">{item.category}</span>
@@ -3922,7 +3922,7 @@ function LessonGate({
       <div className="space-y-2 rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
-            <span>💡</span> Answer
+             Answer
           </span>
           {isCode && (
             <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-mono text-emerald-300 border border-emerald-500/30">
@@ -3970,7 +3970,7 @@ function LessonGate({
       {(doc || hasReferences || (lesson && lesson.body)) && (
         <details className="rounded-lg border border-ink-line/80 bg-ink/40 p-3 text-xs text-slate-300 group">
           <summary className="cursor-pointer font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 select-none">
-            <span>📚 References</span>
+            <span>References</span>
           </summary>
           <div className="mt-3 space-y-3 pt-2 border-t border-ink-line/60">
             {doc && (
@@ -3990,7 +3990,7 @@ function LessonGate({
                 <span className="text-slate-400 text-[11px]">Citations:</span>
                 {item.references.map((ref, idx) => (
                   <span key={idx} className="chip text-[10px] text-slate-400" title={ref.quote || undefined}>
-                    📄 {ref.source_title ?? ref.locator ?? 'source'}
+                    {ref.source_title ?? ref.locator ?? 'source'}
                   </span>
                 ))}
               </div>
@@ -4006,7 +4006,7 @@ function LessonGate({
           className="btn btn-primary w-full py-3 text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-sky-950/40 hover:scale-[1.01] active:scale-[0.99] transition-all"
           onClick={onContinue}
         >
-          <span>⚡ Start Quiz</span>
+          <span>Start Quiz</span>
           <span className="text-xs text-sky-300/80 font-normal">Enter ↵</span>
         </button>
       </div>
@@ -4125,8 +4125,8 @@ function VramConstraintPrompt({
   return (
     <div className="rounded-xl border border-amber-500/50 bg-amber-950/40 p-5 space-y-4 text-slate-200 shadow-xl animate-fadeIn">
       <div className="flex items-start gap-3.5">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-300 text-xl border border-amber-500/30">
-          ⚠️
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30">
+          <svg className="w-5 h-5 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </div>
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -4150,7 +4150,7 @@ function VramConstraintPrompt({
           <div className="space-y-1">
             <span className="text-slate-400 font-medium">Recommended next biggest model:</span>
             <div className="flex items-center gap-2 font-mono text-emerald-300 font-semibold text-sm">
-              <span>⚡ {chosenModel}</span>
+              <span>{chosenModel}</span>
               <span className="chip text-[10px] px-1.5 py-0.2 border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
                 {getModelInfo(chosenModel).badge || 'Smaller size'}
               </span>
@@ -4191,7 +4191,7 @@ function VramConstraintPrompt({
             </>
           ) : (
             <>
-              <span>⚡ Switch to {chosenModel} & Grade</span>
+              <span>Switch to {chosenModel} & Grade</span>
             </>
           )}
         </button>
@@ -4326,7 +4326,7 @@ function DiscreteModelSelector({
         }`}
         title={`Model: ${activeModel}`}
       >
-        <span className="text-[12px]">{isFast ? '⚡' : '🤖'}</span>
+        <span className="text-[10px] font-mono text-slate-400 uppercase">{isFast ? "Fast" : "AI"}</span>
         <span className="font-mono text-[11px] font-semibold tracking-tight">{currentInfo.short}</span>
         <span
           className={`text-[9px] text-slate-400 transition-transform duration-150 ${
@@ -4395,7 +4395,7 @@ function DiscreteModelSelector({
                         </span>
                       )}
                       {isCurrent && (
-                        <span className="text-[10px] text-sky-400 font-bold ml-auto shrink-0">✓ Active</span>
+                        <span className="text-[10px] text-sky-400 font-bold ml-auto shrink-0">Active</span>
                       )}
                     </div>
                     {info.desc && (
@@ -4416,7 +4416,7 @@ function DiscreteModelSelector({
                           setOpen(false)
                         }}
                       >
-                        {grading ? '↻ Retry' : isRevealed ? '↻ Re-grade' : '⚡ Grade'}
+                        {grading ? '↻ Retry' : isRevealed ? '↻ Re-grade' : 'Grade'}
                       </button>
                     )
                   ) : (
@@ -4542,7 +4542,7 @@ function GradeReasoning({
 
       {result.automaticity_exceeded && (
         <p className="mt-3 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-          ⚡ {result.automaticity_note || 'Reaction latency exceeded target automaticity threshold.'}
+          {result.automaticity_note || 'Reaction latency exceeded target automaticity threshold.'}
         </p>
       )}
     </div>
@@ -4615,7 +4615,7 @@ function ThematicDocumentationCard({ item }: { item: QueueItem }) {
                 className="chip border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-[11px]"
                 title={quoteText ? `Citation quote: "${quoteText}"` : undefined}
               >
-                📄 {label}
+                {label}
               </span>
             )
           })}
@@ -4649,7 +4649,7 @@ function PrimerDrawer({
     <div className="mb-5 rounded-lg border border-sky-500/30 bg-sky-950/20 p-4 transition-all">
       <div className="mb-3 flex items-center justify-between gap-2 border-b border-sky-500/20 pb-2.5">
         <div className="flex items-center gap-2 text-xs font-semibold text-sky-300">
-          <span>📖 Primer</span>
+          <span>Primer</span>
           <span className="chip border-sky-500/30 text-[10px] text-sky-200">Pre-review</span>
         </div>
         <button
@@ -4719,7 +4719,7 @@ function PrimerDrawer({
               className="btn btn-primary flex items-center gap-1.5 px-3 py-1 text-xs font-semibold"
             >
               <span>Answer</span>
-              <span>➔</span>
+              <span>&rarr;</span>
             </button>
           </div>
         </div>
@@ -4737,7 +4737,7 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
   if (isComplete) {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3.5 text-xs text-emerald-200">
-        <span className="text-base">🌟</span>
+        
         <div>
           <span className="font-semibold">Complete Recall:</span> All key concepts recalled.
         </div>
@@ -4750,7 +4750,7 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
       {(hasMissed || hasOverlookedPhrases) && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-amber-200">
-            <span>⚠️</span>
+            
             <span>Overlooked</span>
           </div>
           <p className="mt-1 text-xs text-amber-300/80">
@@ -4789,13 +4789,12 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
       {result.matched_points.length > 0 && (
         <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-200">
-            <span>✓</span>
             <span>Recalled</span>
           </div>
           <ul className="mt-1.5 space-y-1 text-xs text-emerald-100/90">
             {result.matched_points.map((p, i) => (
               <li key={i} className="flex items-start gap-1.5">
-                <span className="text-emerald-400">✓</span>
+                <svg className="w-3 h-3 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 <span>{p}</span>
               </li>
             ))}
@@ -4807,7 +4806,7 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
       {result.improvements && result.improvements.length > 0 && (
         <div className="rounded-lg border border-emerald-500/50 bg-emerald-500/15 p-3.5">
           <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200">
-            <span className="text-sm">🎉</span>
+            
             <span>Resolved Weakness</span>
           </div>
           <p className="mt-1 text-[11px] text-emerald-300/80">
@@ -4816,7 +4815,7 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
           <ul className="mt-2 space-y-1 text-xs text-emerald-100">
             {result.improvements.map((imp, i) => (
               <li key={i} className="flex items-start gap-1.5">
-                <span className="text-emerald-400 font-bold">✓</span>
+                <svg className="w-3 h-3 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 <span>{imp}</span>
               </li>
             ))}
@@ -4828,7 +4827,7 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
       {result.persistent_weaknesses && result.persistent_weaknesses.length > 0 && (
         <div className="rounded-lg border border-rose-500/40 bg-rose-500/15 p-3.5">
           <div className="flex items-center gap-2 text-xs font-semibold text-rose-200">
-            <span className="text-sm">🔁</span>
+            
             <span>Recurring Weakness</span>
           </div>
           <p className="mt-1 text-[11px] text-rose-300/80">
@@ -4849,7 +4848,7 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
       {result.weaknesses && result.weaknesses.length > 0 && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
           <div className="flex items-center gap-1.5 font-semibold text-amber-200">
-            <span>🧠</span>
+            
             <span>Saved to Memory:</span>
           </div>
           <p className="mt-1 text-[11px] text-amber-300/70">
@@ -5115,7 +5114,7 @@ function SessionHeader({
       <div className="flex flex-wrap items-center gap-2 text-xs">
         {allCardsRunActive && (
           <span className="chip border-purple-500/50 bg-purple-500/15 text-purple-200 font-semibold flex items-center gap-1.5 shadow-sm">
-            <span>🏁 Run: {allCardsRunDeckName || 'Current Deck'}</span>
+            <span>Run: {allCardsRunDeckName || 'Current Deck'}</span>
             {allCardsRunProgress && (
               <span className="text-[10px] text-purple-300/90 font-mono">
                 ({allCardsRunProgress.current}/{allCardsRunProgress.total} · Easiest → Hardest)
@@ -5136,7 +5135,7 @@ function SessionHeader({
 
         {persistActive && (
           <span className="chip border-amber-500/50 bg-amber-500/15 text-amber-200 font-semibold flex items-center gap-1.5 shadow-sm">
-            <span>⚡ Persist: {persistDeckName || 'Current Deck'}</span>
+            <span>Persist: {persistDeckName || 'Current Deck'}</span>
             {persistProgress && (
               <span className="text-[10px] text-amber-300/90 font-mono">
                 ({persistProgress.grasped}/{persistProgress.total} Easy · R{persistProgress.round})
@@ -5168,7 +5167,7 @@ function SessionHeader({
 
         {deckActive && (
           <span className="chip border-sky-500/50 bg-sky-500/10 text-sky-200 flex items-center gap-1.5 shadow-sm">
-            <span>🗂️ Deck Tree: {deckName || 'Deck + Subdecks'}</span>
+            <span>Deck Tree: {deckName || 'Deck + Subdecks'}</span>
             {onClearBranch && (
               <button
                 type="button"
@@ -5184,7 +5183,7 @@ function SessionHeader({
 
         {!branchActive && !deckActive && !persistActive && !allCardsRunActive && (
           <span className="chip border-emerald-500/40 bg-emerald-500/10 text-emerald-200 font-medium">
-            📚 Collection: All Decks
+            Collection: All Decks
           </span>
         )}
 
@@ -5201,10 +5200,10 @@ function SessionHeader({
           </>
         )}
 
-        {/* ⚡ Quick Persist Deck Selector (when not in persist mode) */}
+        {/* Quick Persist Deck Selector (when not in persist mode) */}
         {!persistActive && !allCardsRunActive && allDecks && allDecks.filter((d) => d.card_count > 0).length > 0 && onStartPersist && (
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-amber-400 font-medium">⚡ Persist Deck:</span>
+            <span className="text-[11px] text-amber-400 font-medium">Persist Deck:</span>
             <select
               className="rounded border border-amber-500/30 bg-ink-soft/90 px-2 py-0.5 text-[11px] text-amber-200 hover:border-amber-400 focus:outline-none cursor-pointer"
               defaultValue=""
@@ -5230,10 +5229,10 @@ function SessionHeader({
           </div>
         )}
 
-        {/* 🏁 Quick All Cards Run Selector */}
+        {/* Quick All Cards Run Selector */}
         {!allCardsRunActive && !persistActive && allDecks && allDecks.filter((d) => d.card_count > 0).length > 0 && onStartAllCardsRun && (
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-purple-400 font-medium">🏁 All Cards Run:</span>
+            <span className="text-[11px] text-purple-400 font-medium">All Cards Run:</span>
             <select
               className="rounded border border-purple-500/30 bg-ink-soft/90 px-2 py-0.5 text-[11px] text-purple-200 hover:border-purple-400 focus:outline-none cursor-pointer"
               defaultValue=""
@@ -5259,10 +5258,10 @@ function SessionHeader({
           </div>
         )}
 
-        {/* ⚡ Blitz Mode Sprint Triggers */}
+        {/* Blitz Mode Sprint Triggers */}
         {onStartBlitz && !blitzActive && (
           <div className="flex items-center gap-1">
-            <span className="text-[11px] text-amber-400 font-medium">⚡ Blitz Sprint:</span>
+            <span className="text-[11px] text-amber-400 font-medium">Blitz Sprint:</span>
             <button
               className="chip hover:border-amber-500/40 hover:text-amber-300"
               onClick={() => onStartBlitz(30)}
@@ -5294,7 +5293,7 @@ function SessionHeader({
             className="chip border-indigo-500/50 bg-indigo-500/15 text-indigo-200 hover:bg-indigo-500/25 hover:text-white transition cursor-pointer flex items-center gap-1.5 font-semibold shadow-xs"
             title="Open saved cards shelf (Alt+Shift+S)"
           >
-            <span>💾</span>
+            
             <span>Saved for Later ({savedCount})</span>
           </button>
         )}
@@ -5307,7 +5306,7 @@ function SessionHeader({
             onClick={onToggleLearnMode}
             title="Read a short lesson from the card's source before each question"
           >
-            📖 Learn &amp; Practice {learnMode ? 'on' : 'off'}
+            Learn &amp; Practice {learnMode ? 'on' : 'off'}
           </button>
         )}
         <FullscreenButton size="sm" className="ml-1" />
@@ -5328,7 +5327,7 @@ function SessionHeader({
   )
 }
 
-/** ⚡ Blitz Sprint Summary Scorecard Modal */
+/** Blitz Sprint Summary Scorecard Modal */
 function BlitzScorecardModal({
   stats,
   durationSec,
@@ -5352,8 +5351,8 @@ function BlitzScorecardModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm animate-fade-in">
       <div className="w-full max-w-md rounded-xl border border-amber-500/40 bg-ink-card p-6 shadow-2xl space-y-5">
         <div className="text-center space-y-1">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/20 text-2xl text-amber-400 mb-1">
-            ⚡
+          <div className="inline-flex px-3 py-1 items-center justify-center rounded-full bg-amber-500/20 text-xs font-bold uppercase tracking-wider text-amber-300 mb-1">
+            Sprint Complete
           </div>
           <h2 className="text-xl font-bold text-slate-100">Sprint Complete!</h2>
           <p className="text-xs text-slate-400">{durationSec}s Memory Athlete Speed Run</p>
@@ -5391,14 +5390,14 @@ function BlitzScorecardModal({
               className="btn btn-primary flex-1 justify-center text-xs"
               onClick={() => onRestart(durationSec)}
             >
-              🔄 Retry {durationSec}s Sprint
+              Retry {durationSec}s Sprint
             </button>
             <button
               type="button"
               className="btn flex-1 justify-center text-xs"
               onClick={() => onRestart(durationSec === 30 ? 60 : 30)}
             >
-              ⚡ Switch to {durationSec === 30 ? '60s' : '30s'}
+              Switch to {durationSec === 30 ? '60s' : '30s'}
             </button>
           </div>
           <button type="button" className="btn justify-center text-xs text-slate-400" onClick={onClose}>

@@ -205,9 +205,9 @@ def generate_sequential_clozes(
 
         if before:
             for b_idx, b_text in enumerate(before, start=start_idx + 1):
-                prompt_lines.append(f"✓ Step {b_idx}: {b_text}")
+                prompt_lines.append(f"Step {b_idx}: {b_text}")
 
-        prompt_lines.append(f"➔ **Step {i + 1}: [ ? ]**")
+        prompt_lines.append(f"-> **Step {i + 1}: [ ? ]**")
 
         if after:
             for a_idx, a_text in enumerate(after, start=i + 2):

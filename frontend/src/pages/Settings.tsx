@@ -108,7 +108,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
 
   return (
     <Section
-      title="💻 Local AI Engine"
+      title="Local AI Engine"
       description="Local Qwen 2.5 Coder models (7B, 3B, 1.5B). Private with zero cloud costs."
     >
       <div className="space-y-4">
@@ -117,10 +117,9 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
           <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-sky-500/20 pb-2.5">
               <div className="flex items-center gap-2.5">
-                <span className="text-lg">🔍</span>
                 <div>
                   <h4 className="text-xs font-bold text-sky-200 uppercase tracking-wider">
-                    Hardware Inspection & Recommendation
+                    Hardware Inspection &amp; Recommendation
                   </h4>
                   <p className="text-[11px] text-slate-300">
                     {hardware.os_name} · {hardware.ram_gb.toFixed(1)} GB RAM
@@ -135,7 +134,6 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
 
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs font-bold text-emerald-300">
-                <span>🎯</span>
                 <span>{hardware.headline}</span>
               </div>
               <p className="text-[11px] text-slate-300 leading-relaxed">
@@ -233,13 +231,15 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
             <div className="mt-4 pt-3 border-t border-ink-line text-xs">
               {status.connected && status.model_ready ? (
                 <div className="flex items-center gap-2 text-emerald-300">
-                  <span>✓</span>
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                   <span>Ollama is online and <strong>{user.grading_model || 'model'}</strong> is ready to grade solutions.</span>
                 </div>
               ) : status.connected ? (
                 <div className="space-y-2">
                   <p className="text-amber-300 font-medium">
-                    ⚠️ Ollama is running, but model <strong>{user.grading_model || hardware?.recommended_model || 'qwen2.5-coder:3b'}</strong> was not detected in your local library.
+                    Notice: Ollama is running, but model <strong>{user.grading_model || hardware?.recommended_model || 'qwen2.5-coder:3b'}</strong> was not detected in your local library.
                   </p>
                   <p className="text-slate-400">
                     Run this command in your PowerShell / Terminal to download it:
@@ -251,7 +251,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               ) : (
                 <div className="space-y-2">
                   <p className="text-rose-300 font-medium">
-                    🔴 Could not connect to Ollama at <code className="font-mono">{status.base_url}</code>.
+                    Could not connect to Ollama at <code className="font-mono">{status.base_url}</code>.
                   </p>
                   <p className="text-slate-400">
                     Make sure Ollama is installed and running on your computer. Start it with:
@@ -296,7 +296,6 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
 
                     {isRecommended && (
                       <div className="text-[10px] font-bold text-emerald-300 flex items-center gap-1">
-                        <span>🎯</span>
                         <span>Recommended for your hardware</span>
                       </div>
                     )}
@@ -306,7 +305,10 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                       {isInstalled ? (
                         <div className="flex items-center gap-2">
                           <span className="text-emerald-400 flex items-center gap-1 font-medium">
-                            ✓ Installed
+                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                            <span>Installed</span>
                           </span>
                           {!isActive && (
                             <button
@@ -418,7 +420,7 @@ function MemoryChampionPanel({ user, onChange }: { user: User; onChange: () => P
 
   return (
     <Section
-      title="🧠 Recall & Target Date"
+      title="Recall & Target Date"
       description="Reaction latency tracking and target event scheduling."
     >
       <div className="space-y-6">
@@ -450,7 +452,7 @@ function MemoryChampionPanel({ user, onChange }: { user: User; onChange: () => P
         {/* Event Horizon Peak Taper (§Feature 6) */}
         <div className="border-t border-ink-line pt-4 space-y-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            🎯 Target Event Horizon (Competition / Exam Taper)
+            Target Event Horizon (Competition / Exam Taper)
           </p>
 
           <div className="grid gap-4 sm:grid-cols-3">
@@ -799,7 +801,7 @@ function TypographyPanel() {
 
   return (
     <Section
-      title="🔤 Typography"
+      title="Typography"
       description="Base font size (10px to 20px)."
     >
       <div className="space-y-4">
@@ -836,7 +838,7 @@ function TypographyPanel() {
               className="btn text-xs py-2 px-3 text-slate-400 hover:text-slate-200"
               title="Reset font size to 16px default"
             >
-              ↺ Reset (16px)
+              Reset (16px)
             </button>
           )}
         </div>
@@ -884,7 +886,7 @@ function DisplayFocusPanel() {
           onClick={toggleZenMode}
           className={`btn ${isZenMode ? 'btn-primary' : 'btn-secondary'}`}
         >
-          {isZenMode ? '✓ Zen Mode' : 'Zen Mode'}
+          {isZenMode ? 'Zen Mode (Active)' : 'Zen Mode'}
         </button>
       </div>
 
@@ -947,24 +949,23 @@ function TutorialPanel({
 
   return (
     <Section
-      title="🎓 Tutorial"
+      title="Tutorial"
       description="Guided onboarding and core concepts."
     >
       <div className="space-y-4">
         {/* Status Header Bar */}
         <div className="rounded-xl border border-ink-line bg-ink/70 p-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🏛️</span>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-slate-100">Tutorial Status</span>
                 {user.tutorial_completed ? (
                   <span className="chip border-emerald-500/40 text-emerald-300 bg-emerald-500/10 font-semibold text-[10px]">
-                    ✓ Completed
+                    Completed
                   </span>
                 ) : (
                   <span className="chip border-amber-500/40 text-amber-300 bg-amber-500/10 font-semibold text-[10px]">
-                    ⏳ Incomplete
+                    Incomplete
                   </span>
                 )}
               </div>
@@ -983,7 +984,7 @@ function TutorialPanel({
             className="btn text-xs py-1.5 px-3 text-slate-300 hover:text-slate-100"
             title="Toggle tutorial completion status"
           >
-            {resetting ? 'Updating…' : user.tutorial_completed ? '↺ Reset' : '✓ Mark Done'}
+            {resetting ? 'Updating…' : user.tutorial_completed ? 'Reset' : 'Mark Done'}
           </button>
         </div>
 
@@ -994,7 +995,6 @@ function TutorialPanel({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sky-300 font-bold text-xs">
-                  <span className="text-base">⚡</span>
                   <span>Brief Overview</span>
                 </div>
                 <span className="chip text-[10px] py-0.5 border-sky-500/40 text-sky-300 bg-sky-500/10 font-semibold">
@@ -1006,15 +1006,21 @@ function TutorialPanel({
               </p>
               <ul className="text-[10px] text-slate-500 space-y-1 pt-1">
                 <li className="flex items-center gap-1.5">
-                  <span className="text-sky-400">✓</span>
+                  <svg className="w-3 h-3 text-sky-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                   <span>Slide 1: Active Recall & Token Similarity</span>
                 </li>
                 <li className="flex items-center gap-1.5">
-                  <span className="text-sky-400">✓</span>
+                  <svg className="w-3 h-3 text-sky-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                   <span>Slide 2: Knowledge Trees</span>
                 </li>
                 <li className="flex items-center gap-1.5">
-                  <span className="text-sky-400">✓</span>
+                  <svg className="w-3 h-3 text-sky-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                   <span>Slide 3: Priority Queue</span>
                 </li>
               </ul>
@@ -1034,7 +1040,6 @@ function TutorialPanel({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
-                  <span className="text-base">📘</span>
                   <span>Full Tutorial</span>
                 </div>
                 <span className="chip text-[10px] py-0.5 border-emerald-500/40 text-emerald-300 bg-emerald-500/10 font-semibold">
@@ -1046,15 +1051,21 @@ function TutorialPanel({
               </p>
               <ul className="text-[10px] text-slate-500 space-y-1 pt-1">
                 <li className="flex items-center gap-1.5">
-                  <span className="text-emerald-400">✓</span>
+                  <svg className="w-3 h-3 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                   <span>Steps 0–1: FSRS Retention & AI Grader</span>
                 </li>
                 <li className="flex items-center gap-1.5">
-                  <span className="text-emerald-400">✓</span>
+                  <svg className="w-3 h-3 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                   <span>Steps 2–3: Knowledge Tree & Time Bank</span>
                 </li>
                 <li className="flex items-center gap-1.5">
-                  <span className="text-emerald-400">✓</span>
+                  <svg className="w-3 h-3 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                   <span>Steps 4–5: Reading & Code Lab</span>
                 </li>
               </ul>
@@ -1077,7 +1088,6 @@ function TutorialPanel({
             onClick={() => onLaunchTutorial('prompt', 'extensive')}
             className="text-slate-400 hover:text-sky-300 text-xs transition cursor-pointer flex items-center gap-1.5"
           >
-            <span>🏛️</span>
             <span>Open Welcome Modal</span>
           </button>
 
@@ -1285,7 +1295,7 @@ function CognitiveThemePanel() {
 
   return (
     <Section
-      title="🎨 Themes"
+      title="Themes"
       description="Adaptive color harmonies or fixed palette."
     >
       <div className="space-y-6">
@@ -1302,7 +1312,6 @@ function CognitiveThemePanel() {
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className="text-xl">🔀</span>
                 <span className="font-bold text-slate-100 text-sm">Dynamic Context-Adaptive</span>
               </div>
               <span className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
@@ -1319,7 +1328,6 @@ function CognitiveThemePanel() {
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Current Active State:</span>
                   <span className="font-semibold text-sky-200 flex items-center gap-1.5">
-                    <span>{activeThemeMeta.icon}</span>
                     <span>{activeThemeMeta.label}</span>
                   </span>
                 </div>
@@ -1332,7 +1340,7 @@ function CognitiveThemePanel() {
                       className="rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500 cursor-pointer"
                     />
                     <span className="text-[11px]">
-                      🌙 Automatically shift to <strong>Circadian Candlelight</strong> after 8:00 PM
+                      Automatically shift to <strong>Circadian Candlelight</strong> after 8:00 PM
                     </span>
                   </label>
                 </div>
@@ -1345,7 +1353,7 @@ function CognitiveThemePanel() {
                       className="rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500 cursor-pointer"
                     />
                     <span className="text-[11px]">
-                      🌑 <strong>OLED Pure Black Canvas</strong>: Keep adaptive accents but force pure pitch black (<code>#000000</code>) background
+                      <strong>OLED Pure Black Canvas</strong>: Keep adaptive accents but force pure pitch black (<code>#000000</code>) background
                     </span>
                   </label>
                 </div>
@@ -1364,7 +1372,6 @@ function CognitiveThemePanel() {
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className="text-xl">🔒</span>
                 <span className="font-bold text-slate-100 text-sm">Fixed Palette Lock</span>
               </div>
               <span className="rounded-full bg-slate-800 border border-slate-700 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
@@ -1380,7 +1387,6 @@ function CognitiveThemePanel() {
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Locked Palette:</span>
                   <span className="font-semibold text-sky-200 flex items-center gap-1.5">
-                    <span>{activeThemeMeta.icon}</span>
                     <span>{activeThemeMeta.label}</span>
                   </span>
                 </div>
@@ -1393,7 +1399,7 @@ function CognitiveThemePanel() {
                       className="rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500 cursor-pointer"
                     />
                     <span className="text-[11px]">
-                      🌑 <strong>OLED Pure Black Canvas</strong>: Force pure pitch black (<code>#000000</code>) background
+                      <strong>OLED Pure Black Canvas</strong>: Force pure pitch black (<code>#000000</code>) background
                     </span>
                   </label>
                 </div>
@@ -1440,7 +1446,6 @@ function CognitiveThemePanel() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg">{meta.icon}</span>
                         <span className="font-semibold text-slate-200 text-xs">{meta.label}</span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -1458,10 +1463,10 @@ function CognitiveThemePanel() {
                     </div>
                     <p className="text-[11px] font-mono text-slate-400 mb-2">{meta.subtitle}</p>
                     <p className="text-[11px] text-slate-300 leading-snug mb-2 font-medium">
-                      🎯 <span className="text-slate-400">{meta.bestFor}</span>
+                      <span className="text-slate-400">{meta.bestFor}</span>
                     </p>
                     <p className="text-[10px] text-slate-500 leading-normal italic">
-                      🧠 {meta.psychology}
+                      {meta.psychology}
                     </p>
                   </div>
 
@@ -1477,7 +1482,7 @@ function CognitiveThemePanel() {
                           : 'bg-slate-800 text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      {isSelected ? '✓ Active' : themeMode === 'fixed' ? 'Select' : 'Preview'}
+                      {isSelected ? 'Active' : themeMode === 'fixed' ? 'Select' : 'Preview'}
                     </button>
                   </div>
                 </div>

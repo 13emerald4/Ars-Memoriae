@@ -38,15 +38,15 @@ function loadReadingMode(): ReadingMode {
 }
 
 const TRACKS = [
-  { id: 'track_0_python_basics', label: '🟢 Track 0: Python Basics & Numerics', icon: '🐍' },
-  { id: 'track_1_pythonic_fluency', label: '🔵 Track 1: Structured Types & Aliasing', icon: '⚡' },
-  { id: 'track_2_data_structures', label: '🟣 Track 2: ADTs, Hash Tables & OOP', icon: '🧱' },
-  { id: 'track_3_algorithmic_scaffolds', label: '🟡 Track 3: Recursion & Scaffolds', icon: '📐' },
-  { id: 'track_4_custom_sorting', label: '🟠 Track 4: Divide-and-Conquer Sorting', icon: '🔀' },
-  { id: 'track_5_bit_manipulation', label: '🔴 Track 5: Binary Encodings & Bits', icon: '🔢' },
-  { id: 'track_6_complexity_math', label: '🟤 Track 6: Asymptotic Complexity', icon: '⏱' },
-  { id: 'track_7_testing_exceptions', label: '⚪ Track 7: Testing & Exceptions', icon: '🧪' },
-  { id: 'track_8_graphs', label: '🟩 Track 8: Graphs & Optimization', icon: '🕸' },
+  { id: 'track_0_python_basics', label: 'Track 0: Python Basics & Numerics', icon: '' },
+  { id: 'track_1_pythonic_fluency', label: 'Track 1: Structured Types & Aliasing', icon: '' },
+  { id: 'track_2_data_structures', label: 'Track 2: ADTs, Hash Tables & OOP', icon: '' },
+  { id: 'track_3_algorithmic_scaffolds', label: 'Track 3: Recursion & Scaffolds', icon: '' },
+  { id: 'track_4_custom_sorting', label: 'Track 4: Divide-and-Conquer Sorting', icon: '' },
+  { id: 'track_5_bit_manipulation', label: 'Track 5: Binary Encodings & Bits', icon: '' },
+  { id: 'track_6_complexity_math', label: 'Track 6: Asymptotic Complexity', icon: '' },
+  { id: 'track_7_testing_exceptions', label: 'Track 7: Testing & Exceptions', icon: '' },
+  { id: 'track_8_graphs', label: 'Track 8: Graphs & Optimization', icon: '' },
 ]
 
 export default function FundamentalsStudio() {
@@ -272,7 +272,6 @@ export default function FundamentalsStudio() {
       >
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-sky-500/20 pb-2">
           <div className="flex items-center gap-2">
-            <span className="text-base">🧠</span>
             <div>
               <h3 className="font-bold text-sky-200 text-xs tracking-wide">
                 Core Questions to Ponder as You Read
@@ -347,7 +346,7 @@ export default function FundamentalsStudio() {
           : 'border-slate-700 bg-slate-800/60 text-slate-400 hover:text-slate-200 hover:border-slate-600'
       }`}
     >
-      <span>🏷️ Concordance:</span>
+      <span>Concordance:</span>
       <span
         className={`font-mono text-[9px] uppercase px-1 rounded ${
           concordanceEnabled
@@ -382,16 +381,15 @@ export default function FundamentalsStudio() {
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-ink-line pb-4">
         <div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className="text-2xl">🛠</span>
             <h1 className="text-xl font-bold tracking-tight text-slate-100">
               Pre-LeetCode Fundamentals Studio
             </h1>
             <span className="chip border-sky-500/40 bg-sky-950/40 text-sky-300 text-[11px] font-semibold">
-              🏛️ Grounded in MIT 6.0001: Intro to CS & Python (Grimson, Guttag, Bell)
+              Grounded in MIT 6.0001: Intro to CS &amp; Python (Grimson, Guttag, Bell)
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Follow the 3-step learning loop: <strong>1. MIT 6.0001 Lecture & Companion Text</strong> ➔ <strong>2. Finger Exercise / Pset Scaffold</strong> ➔ <strong>3. Socratic AI Guide</strong>.
+            Follow the 3-step learning loop: <strong>1. MIT 6.0001 Lecture &amp; Companion Text</strong> &rarr; <strong>2. Finger Exercise / Pset Scaffold</strong> &rarr; <strong>3. Socratic AI Guide</strong>.
           </p>
         </div>
 
@@ -411,7 +409,7 @@ export default function FundamentalsStudio() {
             onClick={() => setTimerRunning((r) => !r)}
             className="btn btn-secondary px-2 py-1 text-xs"
           >
-            {timerRunning ? '⏸ Pause' : '⏱ Start'}
+            {timerRunning ? 'Pause' : 'Start'}
           </button>
         </div>
       </div>
@@ -439,7 +437,7 @@ export default function FundamentalsStudio() {
           className="flex flex-shrink-0 items-center gap-2 rounded-xl border border-sky-500/40 bg-sky-950/30 px-3 py-1.5 text-xs font-bold text-sky-200 hover:bg-sky-500/20 hover:text-white transition shadow"
           title="See every question across every chapter"
         >
-          <span>📋 All Questions</span>
+          <span>All Questions</span>
           {allDrills.length > 0 && (
             <span className="chip border-sky-400/60 bg-sky-500/10 text-[10px] text-sky-300">
               {allDrills.filter((d) => d.last_status === 'Accepted').length}/{allDrills.length}
@@ -492,7 +490,7 @@ export default function FundamentalsStudio() {
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <span>📖 1. MIT 6.0001 Lesson</span>
+                  <span>1. MIT 6.0001 Lesson</span>
                 </button>
 
                 <button
@@ -503,7 +501,7 @@ export default function FundamentalsStudio() {
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <span>✍️ 2. Question</span>
+                  <span>2. Question</span>
                 </button>
 
                 <button
@@ -516,7 +514,7 @@ export default function FundamentalsStudio() {
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <span>🤖 3. Socratic Guide</span>
+                  <span>3. Socratic Guide</span>
                   {isFailed && <span className="h-2 w-2 rounded-full bg-rose-400" />}
                 </button>
               </div>
@@ -528,7 +526,7 @@ export default function FundamentalsStudio() {
                   className="flex items-center gap-1 rounded-lg border border-sky-500/30 bg-sky-950/40 px-2 py-1 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/20 hover:text-white transition shadow-sm"
                   title="Open Fullscreen Focus Reading Mode (Esc to exit)"
                 >
-                  <span>⛶ Fullscreen</span>
+                  <span>Fullscreen</span>
                 </button>
 
                 <div className="flex items-center gap-1 border-l border-ink-line/80 pl-1.5">
@@ -559,27 +557,26 @@ export default function FundamentalsStudio() {
             {isFailed && activeTab !== 'socratic' && (
               <div className="flex items-center justify-between gap-3 bg-amber-950/40 border-b border-amber-500/30 px-4 py-2 text-xs text-amber-200">
                 <div className="flex items-center gap-2">
-                  <span className="text-base">💡</span>
                   <span>Test cases failed ({runResult?.status}). Need a hint without spoilers?</span>
                 </div>
                 <button
                   onClick={() => setActiveTab('socratic')}
                   className="rounded-lg bg-amber-500/20 border border-amber-500/40 px-2.5 py-1 text-xs font-bold text-amber-100 hover:bg-amber-500/30 transition"
                 >
-                  Ask Socratic Guide ➔
+                  Ask Socratic Guide &rarr;
                 </button>
               </div>
             )}
 
             {/* Tab Body Content Area */}
             <div className="p-5 text-xs text-slate-300 leading-relaxed overflow-y-auto max-h-[580px] space-y-4">
-              {/* TAB 1: 📖 Guttag Textbook Lesson */}
+              {/* TAB 1: Guttag Textbook Lesson */}
               {activeTab === 'textbook' && (
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-line/60 pb-3">
                     <div className="flex items-center gap-2">
                       <span className="chip border-sky-500/40 bg-sky-950/30 text-sky-300 font-semibold">
-                        🏛️ MIT 6.0001 (John V. Guttag)
+                        MIT 6.0001 (John V. Guttag)
                       </span>
                       <span className="chip border-slate-700 text-slate-400">
                         {drillDetail.category}
@@ -594,10 +591,10 @@ export default function FundamentalsStudio() {
                         className="flex items-center gap-1 rounded-md border border-sky-500/40 bg-sky-950/40 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/30 hover:text-white transition shadow"
                         title="Expand to Fullscreen Focus Reading Mode"
                       >
-                        <span>⛶ Fullscreen Mode</span>
+                        <span>Fullscreen Mode</span>
                       </button>
                       <span className="text-[11px] font-mono text-slate-400">
-                        📖 {lessonReadTime}
+                        Read time: {lessonReadTime}
                       </span>
                     </div>
                   </div>
@@ -617,7 +614,7 @@ export default function FundamentalsStudio() {
                           className="w-full rounded-lg border border-dashed border-sky-500/40 bg-sky-950/20 px-4 py-2.5 text-[11px] text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 transition"
                         >
                           Showing {lessonSections.shown} of {lessonSections.total} sections —
-                          switch to <strong>Robust</strong> for the textbook reading and pitfalls ➔
+                          switch to <strong>Robust</strong> for the textbook reading and pitfalls &rarr;
                         </button>
                       )}
                     </>
@@ -645,13 +642,13 @@ export default function FundamentalsStudio() {
                       onClick={() => setActiveTab('question')}
                       className="btn btn-primary px-4 py-2 text-xs font-bold shadow-lg"
                     >
-                      Proceed to Question ➔
+                      Proceed to Question &rarr;
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* TAB 2: ✍️ Question & Finger Exercise */}
+              {/* TAB 2: Question & Finger Exercise */}
               {activeTab === 'question' && (
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -675,14 +672,14 @@ export default function FundamentalsStudio() {
                           }`}
                           title={showPeekAnswer ? 'Hide answer' : 'Peek canonical answer'}
                         >
-                          <span>{showPeekAnswer ? '🙈 Hide Answer' : '👁️ Peek Answer'}</span>
+                          <span>{showPeekAnswer ? 'Hide Answer' : 'Peek Answer'}</span>
                         </button>
                       )}
                       <button
                         onClick={() => setActiveTab('socratic')}
                         className="text-xs text-sky-400 hover:text-sky-300 underline font-medium"
                       >
-                        Need help? Ask Socratic Guide ➔
+                        Need help? Ask Socratic Guide &rarr;
                       </button>
                     </div>
                   </div>
@@ -767,7 +764,7 @@ export default function FundamentalsStudio() {
                               : 'border-slate-700 bg-slate-800/60 text-slate-300 hover:border-amber-500/30 hover:text-amber-200'
                           }`}
                         >
-                          <span>{showPeekAnswer ? '🙈 Hide Answer' : '👁️ Peek Answer'}</span>
+                          <span>{showPeekAnswer ? 'Hide Answer' : 'Peek Answer'}</span>
                         </button>
                       </div>
 
@@ -775,7 +772,6 @@ export default function FundamentalsStudio() {
                         <div className="rounded-xl border border-amber-500/40 bg-[#090d14] p-4 space-y-3 shadow-xl animate-in fade-in duration-150">
                           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-line/60 pb-2">
                             <div className="flex items-center gap-2">
-                              <span className="text-base">💡</span>
                               <span className="font-bold text-amber-300 text-xs uppercase tracking-wider">
                                 Canonical Solution (MIT 6.0001 Pattern)
                               </span>
@@ -792,7 +788,7 @@ export default function FundamentalsStudio() {
                                 className="flex items-center gap-1 rounded bg-slate-800 px-2 py-1 text-[11px] font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition"
                                 title="Copy solution to clipboard"
                               >
-                                📋 Copy
+                                Copy
                               </button>
                               <button
                                 onClick={() => {
@@ -805,7 +801,7 @@ export default function FundamentalsStudio() {
                                 className="flex items-center gap-1 rounded bg-sky-500/20 border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/30 hover:text-white transition"
                                 title="Load this solution into code editor"
                               >
-                                Load into Editor ➔
+                                Load into Editor &rarr;
                               </button>
                             </div>
                           </div>
@@ -844,7 +840,7 @@ export default function FundamentalsStudio() {
                 </div>
               )}
 
-              {/* TAB 3: 🤖 Socratic Guide */}
+              {/* TAB 3: Socratic Guide */}
               {activeTab === 'socratic' && (
                 <CodeSocraticTutor
                   problemTitle={drillDetail.title}
@@ -890,7 +886,6 @@ export default function FundamentalsStudio() {
           <div className="w-full max-w-3xl max-h-[88vh] flex flex-col rounded-2xl border border-sky-500/40 bg-[#0d131f] shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between border-b border-sky-500/30 bg-[#121927] px-6 py-4">
               <div className="flex items-center gap-2.5">
-                <span className="text-xl">📋</span>
                 <div>
                   <h3 className="text-base font-bold text-slate-100">All Questions, Every Chapter</h3>
                   <p className="text-[11px] text-slate-400">
@@ -903,7 +898,7 @@ export default function FundamentalsStudio() {
                 onClick={() => setShowAllQuestions(false)}
                 className="rounded-lg p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/10"
               >
-                ✕
+                &times;
               </button>
             </div>
 
@@ -977,7 +972,7 @@ export default function FundamentalsStudio() {
           <div className="flex flex-wrap items-center justify-between border-b border-sky-500/30 bg-[#0d131f] px-6 py-3 shadow-lg">
             <div className="flex items-center gap-3">
               <span className="chip border-sky-400 bg-sky-950 text-sky-300 font-semibold text-xs">
-                🏛️ MIT 6.0001 Focus Mode
+                MIT 6.0001 Focus Mode
               </span>
               <div>
                 <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
@@ -1021,7 +1016,7 @@ export default function FundamentalsStudio() {
                 }}
                 className="btn btn-primary px-3.5 py-1.5 text-xs font-bold shadow"
               >
-                Proceed to Question ➔
+                Proceed to Question &rarr;
               </button>
 
               <button
@@ -1029,7 +1024,7 @@ export default function FundamentalsStudio() {
                 className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition"
                 title="Exit Fullscreen (Esc)"
               >
-                <span>✕ Exit Fullscreen</span>
+                <span>Exit Fullscreen</span>
                 <kbd className="text-[10px] font-mono bg-black/40 px-1.5 py-0.5 rounded text-slate-400">Esc</kbd>
               </button>
             </div>
@@ -1053,7 +1048,7 @@ export default function FundamentalsStudio() {
                       className="w-full rounded-xl border border-dashed border-sky-500/40 bg-sky-950/20 px-4 py-3 text-xs text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 transition"
                     >
                       Showing {lessonSections.shown} of {lessonSections.total} sections —
-                      switch to <strong>Robust</strong> for the textbook reading and pitfalls ➔
+                      switch to <strong>Robust</strong> for the textbook reading and pitfalls &rarr;
                     </button>
                   )}
                 </>
@@ -1084,7 +1079,7 @@ export default function FundamentalsStudio() {
                   }}
                   className="btn btn-primary px-6 py-2.5 text-sm font-bold shadow-xl"
                 >
-                  Proceed to Question ➔
+                  Proceed to Question &rarr;
                 </button>
               </div>
             </div>

@@ -53,7 +53,7 @@ HIERARCHY_TREE = {
         {
             "name": "Part 1: Foundations — keep the contract",
             "thematic_nature": "Foundations: Keeping contracts at the function and module level using TypeScript types, assertions, equivalence partitions, and asynchronous event loops.",
-            "target_event_title": "MT1 ✔ · MT2 ✔ · Final",
+            "target_event_title": "MT1 · MT2 · Final",
             "documentation": "Chapters 01 to 09. Scope for Midterm 1, Midterm 2, and Final Exam. Focus: Keeping the contract.",
             "source_documents": [
                 {"name": "CPSC210_2026W1_Master.pdf", "path": MASTER_PDF_PATH, "type": "textbook", "pages": "11-211"},

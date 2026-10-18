@@ -37,7 +37,7 @@ export function CodeSocraticTutor({
         ...prev,
         {
           sender: 'tutor',
-          text: `⚠️ Socratic AI unavailable (${err?.message || 'Check that Ollama is running'}).`,
+          text: `Socratic AI unavailable (${err?.message || 'Check that Ollama is running'}).`,
         },
       ])
     } finally {
@@ -49,7 +49,6 @@ export function CodeSocraticTutor({
     <div className="flex flex-col rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 space-y-4 shadow-xl">
       <div className="flex items-center justify-between border-b border-sky-500/20 pb-2">
         <div className="flex items-center gap-2">
-          <span className="text-base">🤖</span>
           <h4 className="text-xs font-bold uppercase tracking-wider text-sky-300">
             Socratic AI Code Tutor
           </h4>
@@ -61,42 +60,42 @@ export function CodeSocraticTutor({
       <div className="grid grid-cols-2 gap-2 text-xs">
         <button
           onClick={() =>
-            sendHintRequest('conceptual', '💡 Conceptual hint')
+            sendHintRequest('conceptual', 'Conceptual hint')
           }
           disabled={loading}
           className="rounded-lg border border-sky-500/30 bg-sky-900/30 p-2 text-left text-sky-200 hover:bg-sky-800/40 hover:border-sky-400 transition"
         >
-          💡 <strong>Conceptual Hint</strong>
+          <strong>Conceptual Hint</strong>
         </button>
 
         <button
           onClick={() =>
-            sendHintRequest('edge_case', '🔍 Edge cases')
+            sendHintRequest('edge_case', 'Edge cases')
           }
           disabled={loading}
           className="rounded-lg border border-sky-500/30 bg-sky-900/30 p-2 text-left text-sky-200 hover:bg-sky-800/40 hover:border-sky-400 transition"
         >
-          🔍 <strong>Edge Cases</strong>
+          <strong>Edge Cases</strong>
         </button>
 
         <button
           onClick={() =>
-            sendHintRequest('complexity', '⚡ Optimize complexity')
+            sendHintRequest('complexity', 'Optimize complexity')
           }
           disabled={loading}
           className="rounded-lg border border-sky-500/30 bg-sky-900/30 p-2 text-left text-sky-200 hover:bg-sky-800/40 hover:border-sky-400 transition"
         >
-          ⚡ <strong>Optimize Complexity</strong>
+          <strong>Optimize Complexity</strong>
         </button>
 
         <button
           onClick={() =>
-            sendHintRequest('debug', '🐛 Explain bug')
+            sendHintRequest('debug', 'Explain bug')
           }
           disabled={loading}
           className="rounded-lg border border-sky-500/30 bg-sky-900/30 p-2 text-left text-sky-200 hover:bg-sky-800/40 hover:border-sky-400 transition"
         >
-          🐛 <strong>Explain Bug</strong>
+          <strong>Explain Bug</strong>
         </button>
       </div>
 

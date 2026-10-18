@@ -359,7 +359,7 @@ export function AnswerComparison({
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  💻 Solution
+                  Solution
                 </button>
                 <button
                   type="button"
@@ -370,7 +370,7 @@ export function AnswerComparison({
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  🧪 Unit Tests
+                  Unit Tests
                 </button>
               </div>
             ) : (
@@ -452,7 +452,7 @@ export function AnswerComparison({
                   }`}
                   title="IDE syntax-highlighted code format"
                 >
-                  ⧉ IDE
+                  IDE
                 </button>
                 <button
                   type="button"
@@ -464,7 +464,7 @@ export function AnswerComparison({
                   }`}
                   title="Token diff comparison"
                 >
-                  🔤 Diff
+                  Diff
                 </button>
               </div>
             )}

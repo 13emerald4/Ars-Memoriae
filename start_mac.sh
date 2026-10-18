@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 echo "==================================================================="
-echo "   🏛️  Ars Memoriae — Zero-Docker Self-Hosted Launcher"
+echo "   Ars Memoriae — Zero-Docker Self-Hosted Launcher"
 echo "==================================================================="
 echo ""
 
