@@ -2,7 +2,7 @@
 
 **Ars Memoriae** is an active-recall and knowledge mastery workbench designed to eliminate two pervasive flaws in modern learning tools: the illusion of competence fostered by passive flashcards, and the compounding debt of rigid review schedules.
 
-Ars Memoriae runs entirely on your local machine with zero Docker containers, zero external database servers, zero cloud subscriptions, and zero tracking.
+Ars Memoriae runs entirely on your local machine using an embedded SQLite database, a FastAPI backend, a React web interface, and local Ollama model inference.
 
 ---
 
@@ -20,13 +20,13 @@ Calendar-bound review schedules confuse time elapsed with memory decay. When lif
 *Can programming principles be mastered through verbal abstraction alone?*  
 Software construction requires syntactic fluency, invariant preservation, and algorithmic reasoning under constraints. Verbal definitions decay without executable feedback. Ars Memoriae embeds an interactive Code Lab directly into spaced repetition: live execution sandboxes (Python & TypeScript), automated unit test runners, dynamic resizable panels, and an adaptive tutor that surfaces diagnostic hints without revealing the solution.
 
-### IV. Clean, Self-Contained Architecture
-*Why mandate multi-container orchestration and cloud dependencies for personal study?*  
-Operational complexity reduces the longevity and reliability of a learning system. Ars Memoriae is self-contained by design:
+### IV. Architecture
+*How can a personal study system remain durable, fast, and simple to operate?*  
+Ars Memoriae uses a focused, self-contained stack:
 - **Embedded Storage**: A single SQLite file (`backend/dev.db`) contains your entire knowledge base.
-- **Precompiled Interface**: The production web interface is served directly from FastAPI; running the application requires no Node.js runtime.
-- **Local Intelligence**: AI grading runs through an offline Ollama instance on your machine, eliminating latency, API keys, and recurring costs.
-- **Native 1-Click Launchers**: Windows (`start.bat`) and macOS/Linux (`start.sh`) scripts detect hardware, apply migrations, and launch your browser automatically.
+- **Unified Delivery**: FastAPI serves the precompiled interface directly alongside the application API.
+- **Local Intelligence**: Ollama executes model inference directly on your machine for semantic evaluation and diagnostic hints.
+- **Native Launchers**: Windows (`start.bat`) and macOS/Linux (`start.sh`) scripts detect hardware, apply migrations, and open your browser automatically.
 
 ---
 
@@ -98,4 +98,4 @@ npm run build                             # TypeScript verification and asset bu
 
 - **Complete Ownership**: All decks, cards, logs, and settings reside in `backend/dev.db`. Moving or backing up your data requires only copying that file.
 - **Portability**: Full export to JSON and CSV available at any time via `GET /api/export` and `GET /api/export/review-logs.csv`.
-- **Zero Lock-In**: Transparent schemas, standard SQL, and zero proprietary database formats.
+- **Standard Formats**: Transparent schemas and standard SQL ensure direct access and long-term durability.

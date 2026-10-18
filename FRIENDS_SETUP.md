@@ -2,7 +2,7 @@
 
 Welcome to **Ars Memoriae**! This guide will get you up and running on your own computer in under 3 minutes.
 
-> **Zero Cloud Fees & 100% Private**: Ars Memoriae runs entirely on your machine. Your flashcards, coding progress, and study data are stored locally in an encrypted SQLite database on your own computer.
+> **100% Private & Local**: Ars Memoriae runs entirely on your machine. Your flashcards, coding progress, and study data are stored locally in an SQLite database on your own computer.
 
 ---
 
@@ -12,10 +12,10 @@ Welcome to **Ars Memoriae**! This guide will get you up and running on your own 
   - Download from: [https://www.python.org/downloads/](https://www.python.org/downloads/)
   - **CRITICAL ON WINDOWS**: Check the box **"Add python.exe to PATH"** at the bottom of the installer window!
 - **Ollama** (Recommended)
-  - Download from: [https://ollama.com](https://ollama.com) for private, offline AI answer grading and Socratic tutoring.
-- *(Optional)* **Node.js**: Only needed if you plan to write and run TypeScript or JavaScript exercises in the Code Lab (Python code works out of the box with zero setup).
+  - Download from: [https://ollama.com](https://ollama.com) for private, offline AI answer grading and tutoring.
+- *(Optional)* **Node.js**: Needed for executing TypeScript or JavaScript exercises in the Code Lab (Python code runs out of the box).
 
-*(You do **NOT** need Docker or PostgreSQL! Everything runs locally with an embedded SQLite database and precompiled frontend.)*
+*(The application runs locally with an embedded SQLite database and precompiled frontend.)*
 
 ---
 
