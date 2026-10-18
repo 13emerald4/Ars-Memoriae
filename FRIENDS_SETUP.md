@@ -8,12 +8,14 @@ Welcome to **Ars Memoriae**! This guide will get you up and running on your own 
 
 ## 1. Prerequisites
 
-You only need **one** requirement:
-- **Python 3.11 or higher**
+- **Python 3.11 or higher** (Required)
   - Download from: [https://www.python.org/downloads/](https://www.python.org/downloads/)
-  - **CRITICAL ON WINDOWS**: Make sure to check the box: **"Add python.exe to PATH"** at the bottom of the installer window!
+  - **CRITICAL ON WINDOWS**: Check the box **"Add python.exe to PATH"** at the bottom of the installer window!
+- **Ollama** (Recommended)
+  - Download from: [https://ollama.com](https://ollama.com) for private, offline AI answer grading and Socratic tutoring.
+- *(Optional)* **Node.js**: Only needed if you plan to write and run TypeScript or JavaScript exercises in the Code Lab (Python code works out of the box with zero setup).
 
-*(You do **NOT** need Docker, PostgreSQL, or Node.js!)*
+*(You do **NOT** need Docker or PostgreSQL! Everything runs locally with an embedded SQLite database and precompiled frontend.)*
 
 ---
 
@@ -22,11 +24,11 @@ You only need **one** requirement:
 Choose whichever method you prefer:
 
 ### Option A: Download the ZIP (Simplest)
-1. Download **`Ars-Memoriae-Release.zip`** from GitHub.
+1. On GitHub (`https://github.com/13emerald4/Ars-Memoriae`), click the green **Code** button and select **Download ZIP**.
 2. Right-click and extract the `.zip` file anywhere (e.g. your Documents or Desktop).
 
-### Option B: Clone via Git (Recommended for Auto-Updates)
-Open Terminal / PowerShell and run:
+### Option B: Clone via Git (Recommended for Automatic Updates)
+Open Terminal or PowerShell and run:
 ```bash
 git clone https://github.com/13emerald4/Ars-Memoriae.git
 cd Ars-Memoriae
