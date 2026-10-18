@@ -16,6 +16,7 @@ from app.services.grading_service import (
     heuristic_overlap,
     parse_json,
     parse_score,
+    sanitize_prompt_for_ollama,
 )
 
 
@@ -680,5 +681,47 @@ class TestWeaknessMemory:
         )
         assert resp.status_code == 200
         assert captured.get("test_code") == "assertEquals(0, clamp(-1, 0, 5));"
+
+
+class TestPromptSanitization:
+    def test_unicode_arrows_and_dashes_sanitized(self):
+        raw = 'score >= 80 → "A" — threshold: 50 … “note”'
+        sanitized = sanitize_prompt_for_ollama(raw)
+        assert "→" not in sanitized
+        assert "->" in sanitized
+        assert "—" not in sanitized
+        assert "--" in sanitized
+        assert "…" not in sanitized
+        assert "..." in sanitized
+        assert "“" not in sanitized and "”" not in sanitized
+        assert '"note"' in sanitized
+
+    async def test_ollama_payload_prompt_is_sanitized(self, monkeypatch):
+        import httpx
+
+        sent = []
+
+        async def fake_post(self, url, json=None, **kwargs):
+            sent.append(json)
+            return httpx.Response(
+                200,
+                json={"response": '{"score":100,"confidence":1.0,"reasoning":"great"}'},
+                request=httpx.Request("POST", url),
+            )
+
+        monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+        svc = GradingService("qwen2.5-coder:3b")
+        await svc.grade(
+            front='80 and above → "A" — check edge cases',
+            back='return "A";',
+            user_answer='return "A";',
+        )
+        assert sent
+        payload_prompt = sent[0]["prompt"]
+        assert "→" not in payload_prompt
+        assert "->" in payload_prompt
+        assert "—" not in payload_prompt
+        assert "--" in payload_prompt
+
 
 

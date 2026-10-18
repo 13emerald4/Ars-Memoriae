@@ -134,6 +134,9 @@ def is_memory_or_vram_error(exc: Exception | str) -> bool:
             "panic: unable to load model",
             "exit status -1073741819",
             "llama runner process has terminated",
+            "model runner has unexpectedly stopped",
+            "unexpectedly stopped",
+            "resource limitations or an internal error",
             "wsarecv",
             "connection was forcibly closed",
             "cuda error",
@@ -219,6 +222,36 @@ async def find_local_fallback_models(
     return next_biggest, smaller
 
 
+UNICODE_PROMPT_REPLACEMENTS: tuple[tuple[str, str], ...] = (
+    ("→", "->"),
+    ("←", "<-"),
+    ("⇒", "=>"),
+    ("⇐", "<="),
+    ("↔", "<->"),
+    ("—", "--"),
+    ("–", "-"),
+    ("“", '"'),
+    ("”", '"'),
+    ("‘", "'"),
+    ("’", "'"),
+    ("…", "..."),
+    ("•", "*"),
+    ("≤", "<="),
+    ("≥", ">="),
+    ("≠", "!="),
+    ("≈", "~="),
+)
+
+
+def sanitize_prompt_for_ollama(text: str) -> str:
+    """Normalizes Unicode characters that can cause Ollama's model runner on Windows to crash."""
+    if not text:
+        return text
+    for old, new in UNICODE_PROMPT_REPLACEMENTS:
+        text = text.replace(old, new)
+    return text
+
+
 class GradingService:
     def __init__(
         self,
@@ -240,14 +273,15 @@ class GradingService:
         schema: dict | None = None,
         **kwargs: Any,
     ) -> str:
+        num_ctx = kwargs.get("num_ctx") or settings.ollama_num_ctx
         payload: dict[str, Any] = {
             "model": model,
-            "prompt": prompt,
+            "prompt": sanitize_prompt_for_ollama(prompt),
             "stream": False,
             "options": {
                 # Ollama silently drops the *start* of an over-long prompt —
                 # the instructions — so this must fit the longest prompt.
-                "num_ctx": settings.ollama_num_ctx,
+                "num_ctx": num_ctx,
                 # Greedy decoding on every call: Ollama's default temperature
                 # samples, so the same answer could get a different grade.
                 "temperature": 0,
@@ -259,7 +293,7 @@ class GradingService:
         last_exc = None
         for attempt in range(2):
             try:
-                async with httpx.AsyncClient(timeout=45.0) as client:
+                async with httpx.AsyncClient(timeout=60.0) as client:
                     resp = await client.post(
                         f"{self.base_url}/api/generate",
                         json=payload,
@@ -371,6 +405,7 @@ class GradingService:
         previous_weaknesses: list[str] | None = None,
         model: str | None = None,
         allow_smaller_model: bool = False,
+        num_ctx: int | None = None,
     ) -> dict:
         prompt = build_prompt(
             profile,
@@ -382,10 +417,13 @@ class GradingService:
             previous_weaknesses=previous_weaknesses,
         )
         target_model = model or self.model
+        extra_kwargs: dict[str, Any] = {}
+        if num_ctx is not None:
+            extra_kwargs["num_ctx"] = num_ctx
         if allow_smaller_model:
-            raw = await self._generate(prompt, target_model, SCORE_SCHEMA, allow_smaller_model=True)
+            raw = await self._generate(prompt, target_model, SCORE_SCHEMA, allow_smaller_model=True, **extra_kwargs)
         else:
-            raw = await self._generate(prompt, target_model, SCORE_SCHEMA)
+            raw = await self._generate(prompt, target_model, SCORE_SCHEMA, **extra_kwargs)
         return _normalize_result(parse_json(raw))
 
     async def grade_with_escalation(
@@ -400,6 +438,7 @@ class GradingService:
         model: str | None = None,
         allow_smaller_model: bool = False,
         force_escalate: bool = False,
+        num_ctx: int | None = None,
     ) -> dict:
         """§4.2 escalation: a disputed card or a math/code profile goes straight
         to the escalation model; a low-confidence grade is retried on it.
@@ -421,6 +460,7 @@ class GradingService:
                 previous_weaknesses=previous_weaknesses,
                 model=m,
                 allow_smaller_model=allow_smaller_model,
+                num_ctx=num_ctx,
             )
             result["model_used"] = self.last_used_model or m
             result["escalated"] = m != primary_model
