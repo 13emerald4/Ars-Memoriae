@@ -525,6 +525,17 @@ export default function InteractiveTutorialModal({
                   </button>
                 </div>
               </div>
+
+              <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-2.5 flex items-center justify-between text-xs text-slate-300">
+                <span>Have an idea or feature request? Submit it in <strong className="text-slate-100">Settings → Feature Requests</strong>.</span>
+                <button
+                  type="button"
+                  onClick={() => void finishTutorial('/settings')}
+                  className="text-sky-400 hover:text-sky-200 underline font-medium ml-2 shrink-0 cursor-pointer text-[11px]"
+                >
+                  Settings →
+                </button>
+              </div>
             </div>
           )}
 
@@ -931,6 +942,20 @@ export default function InteractiveTutorialModal({
                     <span className="text-sky-400 text-xs group-hover:translate-x-0.5 transition-transform">→</span>
                   </div>
                   <p className="text-[11px] text-slate-400">Jump right into active recall reviews.</p>
+                </button>
+              </div>
+
+              <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-slate-300">
+                <div className="flex items-center gap-2">
+                  <span className="text-sky-400 font-semibold text-xs">Have an idea or feature request?</span>
+                  <span className="text-slate-400 text-[11px]">Submit requests directly in Settings.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void finishTutorial('/settings')}
+                  className="text-sky-400 hover:text-sky-200 underline font-medium shrink-0 cursor-pointer text-xs"
+                >
+                  Settings → Feature Requests
                 </button>
               </div>
             </div>

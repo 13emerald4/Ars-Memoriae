@@ -346,6 +346,26 @@ export default function Tutorial() {
           ))}
         </div>
       </Section>
+
+      {/* Feature Request & Feedback Callout */}
+      <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sky-400 font-semibold text-sm">Have a feature request or feedback?</span>
+            <span className="chip text-[10px] border-sky-500/40 text-sky-300">Feedback</span>
+          </div>
+          <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
+            Ars Memoriae is actively developed! You can submit ideas, suggest adjustments, or request new features anytime directly from <strong className="text-slate-100">Settings → Feature Requests & Feedback</strong>.
+          </p>
+        </div>
+        <button
+          onClick={() => navigate('/settings')}
+          className="btn btn-secondary text-xs font-semibold px-3.5 py-1.5 shrink-0 flex items-center gap-1.5 cursor-pointer"
+        >
+          <span>Feature Requests</span>
+          <span>→</span>
+        </button>
+      </div>
     </div>
   )
 }

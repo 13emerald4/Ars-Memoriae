@@ -54,6 +54,7 @@ export default function Settings() {
       <SchedulingPanel user={user} onChange={refresh} />
       <QueuePanel cfg={queueCfg} onChange={load} />
       <DataPanel />
+      <FeatureRequestPanel />
 
       <Section title="Account" description={user.email}>
         <button className="btn btn-danger" onClick={signOut}>
@@ -1494,5 +1495,232 @@ function CognitiveThemePanel() {
     </Section>
   )
 }
+
+function FeatureRequestPanel() {
+  const [title, setTitle] = useState('')
+  const [category, setCategory] = useState('Feature Request')
+  const [description, setDescription] = useState('')
+  const [includeSystemInfo, setIncludeSystemInfo] = useState(true)
+  const [copied, setCopied] = useState(false)
+  const [history, setHistory] = useState<
+    Array<{ id: string; title: string; category: string; description: string; date: string }>
+  >(() => {
+    try {
+      const saved = localStorage.getItem('memorization.featureRequests')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+
+  const getSystemInfo = () => {
+    const ua = navigator.userAgent
+    const platform = navigator.platform || 'Unknown OS'
+    const screenRes = typeof window !== 'undefined' ? `${window.screen.width}x${window.screen.height}` : 'unknown'
+    return `\n\n---\n**Environment Details:**\n- **OS / Platform**: ${platform}\n- **Browser / User Agent**: ${ua}\n- **Screen Resolution**: ${screenRes}\n- **App Version**: Ars Memoriae v0.1.0`
+  }
+
+  const formatPayload = () => {
+    let body = `### Description\n${description.trim() || '_No description provided._'}`
+    if (includeSystemInfo) {
+      body += getSystemInfo()
+    }
+    return body
+  }
+
+  const saveToHistory = () => {
+    if (!title.trim()) return
+    const entry = {
+      id: Date.now().toString(),
+      title: title.trim(),
+      category,
+      description: description.trim(),
+      date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+    }
+    const updated = [entry, ...history.filter((h) => h.title !== title.trim()).slice(0, 9)]
+    setHistory(updated)
+    try {
+      localStorage.setItem('memorization.featureRequests', JSON.stringify(updated))
+    } catch {
+      // ignore
+    }
+  }
+
+  const handleGitHubSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!title.trim()) return
+
+    const issueTitle = `[${category}] ${title.trim()}`
+    const issueBody = formatPayload()
+    const url = `https://github.com/13emerald4/Ars-Memoriae/issues/new?title=${encodeURIComponent(
+      issueTitle,
+    )}&body=${encodeURIComponent(issueBody)}`
+
+    saveToHistory()
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  const handleCopy = () => {
+    if (!title.trim() && !description.trim()) return
+    const formatted = `[Feature Request: ${category}] ${title.trim()}\n\n${formatPayload()}`
+    void navigator.clipboard.writeText(formatted)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2200)
+    saveToHistory()
+  }
+
+  const handleClearHistory = () => {
+    setHistory([])
+    try {
+      localStorage.removeItem('memorization.featureRequests')
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <Section
+      title="Feature Requests & Feedback"
+      description="Have an idea for a feature, adjustment, or improvement? Submit it directly to the developer."
+    >
+      <form onSubmit={handleGitHubSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="sm:col-span-2 space-y-1">
+            <label className="text-xs font-semibold text-slate-300">Request Title</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Vim keybindings in editor, dark contrast slider, audio cues..."
+              className="w-full rounded-lg border border-ink-line bg-[#1c1c1c] px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-slate-300">Category</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full rounded-lg border border-ink-line bg-[#1c1c1c] px-3 py-2 text-xs text-slate-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer"
+            >
+              <option value="Feature Request">Feature Request</option>
+              <option value="UI & Visual Ergonomics">UI & Visual Ergonomics</option>
+              <option value="Active Recall & Review">Active Recall & Review</option>
+              <option value="Code Practice & Execution">Code Practice & Execution</option>
+              <option value="FSRS & Scheduling">FSRS & Scheduling</option>
+              <option value="Performance & Hardware">Performance & Hardware</option>
+              <option value="Bug Report / Issue">Bug Report / Issue</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-slate-300">Details & Rationale</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={4}
+            placeholder="Describe what feature you would like to see, why it is useful, or how you envision it working..."
+            className="w-full rounded-lg border border-ink-line bg-[#1c1c1c] p-3 text-xs text-slate-200 placeholder:text-slate-600 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 font-sans leading-relaxed"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={includeSystemInfo}
+              onChange={(e) => setIncludeSystemInfo(e.target.checked)}
+              className="rounded border-ink-line bg-[#1c1c1c] text-sky-500 focus:ring-sky-500 cursor-pointer"
+            />
+            <span>Include client platform details (OS, browser, resolution)</span>
+          </label>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCopy}
+              disabled={!title.trim() && !description.trim()}
+              className="btn btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
+              title="Copy formatted request to paste in Discord, email, or messaging"
+            >
+              {copied ? (
+                <>
+                  <span className="text-emerald-400">✓</span>
+                  <span className="text-emerald-300 font-medium">Copied to Clipboard!</span>
+                </>
+              ) : (
+                <>
+                  <span>📋</span>
+                  <span>Copy Formatted Request</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="submit"
+              disabled={!title.trim()}
+              className="btn btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5 font-semibold disabled:opacity-40 shadow-md cursor-pointer"
+              title="Open GitHub Issues pre-filled with this feature request"
+            >
+              <span>Submit on GitHub Issues</span>
+              <span className="text-xs">↗</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Local History */}
+        {history.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-ink-line/60 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
+                Your Recent Requests ({history.length})
+              </span>
+              <button
+                type="button"
+                onClick={handleClearHistory}
+                className="text-[11px] text-slate-500 hover:text-slate-300 transition cursor-pointer"
+              >
+                Clear History
+              </button>
+            </div>
+            <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+              {history.map((h) => (
+                <div
+                  key={h.id}
+                  className="rounded-lg border border-ink-line/50 bg-[#161616] p-2.5 flex items-center justify-between text-xs gap-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="chip text-[10px] py-0 px-1.5 border-sky-500/30 text-sky-300 font-mono">
+                        {h.category}
+                      </span>
+                      <span className="text-slate-500 text-[10px]">{h.date}</span>
+                    </div>
+                    <p className="text-slate-200 font-medium truncate text-xs">{h.title}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTitle(h.title)
+                      setCategory(h.category)
+                      setDescription(h.description)
+                    }}
+                    className="text-slate-400 hover:text-slate-200 text-[11px] underline shrink-0 cursor-pointer"
+                    title="Reload into form"
+                  >
+                    Load
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </form>
+    </Section>
+  )
+}
+
 
 
