@@ -29,6 +29,8 @@ import { CopyLearningSummaryButton } from '../components/CopyLearningSummaryButt
 import { AnswerComparison } from '../components/AnswerComparison'
 import { copyLearningSummaryToClipboard } from '../utils/learningSummaryExport'
 import TiledEditorPane, { type TilePaneTab } from '../components/TiledEditorPane'
+import { ResizableSplitter } from '../components/ResizableSplitter'
+import { useWorkbenchLayout } from '../hooks/useWorkbenchLayout'
 import DeckCardsViewer from '../components/DeckCardsViewer'
 import SavedCardsDrawer from '../components/SavedCardsDrawer'
 import {
@@ -284,6 +286,11 @@ export default function Review() {
       return next
     })
   }, [])
+
+  const workbenchLayout = useWorkbenchLayout()
+  const workbenchContainerRef = useRef<HTMLDivElement>(null)
+  const tiledContainerRef = useRef<HTMLDivElement>(null)
+  const workbenchRowRef = useRef<HTMLDivElement>(null)
 
   const handleCopyReferenceCode = useCallback(async (refCode: string) => {
     if (!refCode) return
@@ -2074,90 +2081,147 @@ export default function Review() {
              Left: Problem specs, primer, guide, solution, LLM rubric & grades
              Right: Python editor and interactive sandbox testcase console
              ════════════════════════════════════════════════════════════════════ */
-          <div className={`grid grid-cols-1 gap-6 items-start ${tiledTabs ? 'xl:grid-cols-12' : 'lg:grid-cols-2'}`}>
+          <div
+            ref={workbenchContainerRef}
+            className={`w-full min-w-0 transition-all ${
+              workbenchLayout.isStacked
+                ? 'flex flex-col gap-4'
+                : 'flex flex-col lg:flex-row items-stretch gap-0 relative'
+            }`}
+          >
             {/* Left Column: Problem & Review Pane */}
-            <div className={`card space-y-4 ${tiledTabs ? 'xl:col-span-4' : ''}`}>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="chip">{item.deck_name}</span>
-                  {(item.deck_or_source_id || deckParam) && (
-                    <button
-                      type="button"
-                      onClick={() => setDeckViewerOpen(true)}
-                      className="chip bg-sky-950/60 border-sky-500/40 text-sky-300 hover:bg-sky-900/60 hover:text-white transition cursor-pointer flex items-center gap-1 font-semibold"
-                      title="Cards (Alt+D)"
-                    >
-                      
-                      <span>Cards</span>
-                    </button>
-                  )}
-                  {savedCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setSavedDrawerOpen(true)}
-                      className="chip bg-indigo-950/60 border-indigo-500/40 text-indigo-300 hover:bg-indigo-900/60 hover:text-white transition cursor-pointer flex items-center gap-1 font-semibold"
-                      title="Saved (Alt+Shift+S)"
-                    >
-                      
-                      <span>Saved ({savedCount})</span>
-                    </button>
-                  )}
-                  {item.difficulty && (
-                    <span
-                      className={`chip font-semibold ${
-                        item.difficulty === 'Easy'
-                          ? 'border-emerald-500/40 text-emerald-300'
-                          : item.difficulty === 'Medium'
-                          ? 'border-amber-500/40 text-amber-300'
-                          : 'border-rose-500/40 text-rose-300'
-                      }`}
-                    >
-                      {item.difficulty}
-                    </span>
-                  )}
-                  {item.category && <span className="chip text-sky-300">{item.category}</span>}
-                  <span className="chip">Code Exercise</span>
-                  {!revealed && (
-                    <button
-                      type="button"
-                      onClick={togglePrimer}
-                      className={`chip cursor-pointer transition-colors flex items-center gap-1.5 font-medium ${
-                        showPrimer
-                          ? 'border-sky-500/60 bg-sky-500/20 text-sky-200'
-                          : 'border-ink-line text-slate-300 hover:text-slate-100 hover:border-slate-500'
-                      }`}
-                      title="Review related source passages and primer before answering"
-                    >
-                      
-                      <span>{showPrimer ? 'Hide Primer' : 'Primer'}</span>
-                    </button>
-                  )}
-                  {item.active_weaknesses && item.active_weaknesses.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!weaknessHint) void handleRequestWeaknessHint()
-                        else setShowWeaknessHint((v) => !v)
-                      }}
-                      className="chip cursor-pointer border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition-colors font-medium"
-                      title={item.active_weaknesses.join('; ')}
-                    >
-                      {item.active_weaknesses.length} prior {item.active_weaknesses.length === 1 ? 'mistake' : 'mistakes'}
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={toggleLayoutMode}
-                    className="chip cursor-pointer border-ink-line text-slate-400 hover:text-slate-200 transition-colors"
-                    title="Switch to single card view"
+            {workbenchLayout.leftCollapsed ? (
+              <div
+                className={`hidden lg:flex flex-col items-center py-4 px-2 bg-[#161a22] border border-ink-line rounded-xl cursor-pointer hover:bg-[#1c2230] hover:border-sky-500/50 transition-all select-none shrink-0 self-stretch my-0.5 mx-1 shadow-md group ${
+                  workbenchLayout.columnsSwapped ? 'order-3' : 'order-1'
+                }`}
+                style={{ width: '42px' }}
+                onClick={workbenchLayout.toggleLeftCollapsed}
+                title="Click to expand Problem Description"
+              >
+                <button
+                  type="button"
+                  className="w-6 h-6 rounded-full bg-sky-950 border border-sky-500/50 text-sky-300 flex items-center justify-center text-xs font-bold shadow group-hover:scale-110 transition-transform mb-3"
+                >
+                  {workbenchLayout.columnsSwapped ? '‹' : '›'}
+                </button>
+                <div className="flex-1 flex items-center justify-center">
+                  <span
+                    className="text-[11px] font-semibold text-slate-400 group-hover:text-sky-200 tracking-wider uppercase whitespace-nowrap"
+                    style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
                   >
-                    Classic Card
-                  </button>
+                    Problem Description
+                  </span>
                 </div>
+                <span className="text-[10px] text-slate-500 mt-2 font-mono">
+                  {item.difficulty || 'Code'}
+                </span>
               </div>
+            ) : (
+              <div
+                style={
+                  workbenchLayout.isStacked ? undefined : { width: `${workbenchLayout.leftWidthPercent}%` }
+                }
+                className={`card space-y-4 min-w-[260px] flex-shrink-0 ${
+                  workbenchLayout.columnsSwapped ? 'order-3' : 'order-1'
+                } ${workbenchLayout.isStacked ? 'w-full' : 'overflow-y-auto max-h-[calc(100vh-140px)]'}`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="chip">{item.deck_name}</span>
+                    {(item.deck_or_source_id || deckParam) && (
+                      <button
+                        type="button"
+                        onClick={() => setDeckViewerOpen(true)}
+                        className="chip bg-sky-950/60 border-sky-500/40 text-sky-300 hover:bg-sky-900/60 hover:text-white transition cursor-pointer flex items-center gap-1 font-semibold"
+                        title="Cards (Alt+D)"
+                      >
+                        <span>Cards</span>
+                      </button>
+                    )}
+                    {savedCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSavedDrawerOpen(true)}
+                        className="chip bg-indigo-950/60 border-indigo-500/40 text-indigo-300 hover:bg-indigo-900/60 hover:text-white transition cursor-pointer flex items-center gap-1 font-semibold"
+                        title="Saved (Alt+Shift+S)"
+                      >
+                        <span>Saved ({savedCount})</span>
+                      </button>
+                    )}
+                    {item.difficulty && (
+                      <span
+                        className={`chip font-semibold ${
+                          item.difficulty === 'Easy'
+                            ? 'border-emerald-500/40 text-emerald-300'
+                            : item.difficulty === 'Medium'
+                            ? 'border-amber-500/40 text-amber-300'
+                            : 'border-rose-500/40 text-rose-300'
+                        }`}
+                      >
+                        {item.difficulty}
+                      </span>
+                    )}
+                    {item.category && <span className="chip text-sky-300">{item.category}</span>}
+                    <span className="chip">Code Exercise</span>
+                    {!revealed && (
+                      <button
+                        type="button"
+                        onClick={togglePrimer}
+                        className={`chip cursor-pointer transition-colors flex items-center gap-1.5 font-medium ${
+                          showPrimer
+                            ? 'border-sky-500/60 bg-sky-500/20 text-sky-200'
+                            : 'border-ink-line text-slate-300 hover:text-slate-100 hover:border-slate-500'
+                        }`}
+                        title="Review related source passages and primer before answering"
+                      >
+                        <span>{showPrimer ? 'Hide Primer' : 'Primer'}</span>
+                      </button>
+                    )}
+                    {item.active_weaknesses && item.active_weaknesses.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!weaknessHint) void handleRequestWeaknessHint()
+                          else setShowWeaknessHint((v) => !v)
+                        }}
+                        className="chip cursor-pointer border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition-colors font-medium"
+                        title={item.active_weaknesses.join('; ')}
+                      >
+                        {item.active_weaknesses.length} prior {item.active_weaknesses.length === 1 ? 'mistake' : 'mistakes'}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={toggleLayoutMode}
+                      className="chip cursor-pointer border-ink-line text-slate-400 hover:text-slate-200 transition-colors"
+                      title="Switch to single card view"
+                    >
+                      Classic Card
+                    </button>
+                    <button
+                      type="button"
+                      onClick={workbenchLayout.toggleLeftCollapsed}
+                      className="chip cursor-pointer border-ink-line text-slate-400 hover:text-sky-300 hover:border-sky-500/40 transition-colors flex items-center gap-1"
+                      title="Collapse problem description (Focus mode)"
+                    >
+                      <span>{workbenchLayout.columnsSwapped ? '›' : '‹'}</span>
+                      <span className="hidden sm:inline">Collapse</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={workbenchLayout.toggleColumnsSwapped}
+                      className="chip cursor-pointer border-ink-line text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1"
+                      title="Move problem panel to other side"
+                    >
+                      <span>⇄</span>
+                      <span className="hidden sm:inline">Swap</span>
+                    </button>
+                  </div>
+                </div>
 
               {/* Related Content Drawer / Primer */}
               {!revealed && showPrimer && (
@@ -2424,10 +2488,64 @@ export default function Review() {
                 </div>
               )}
             </div>
+            )}
+
+            {/* Splitter between Problem Column & Workbench Column */}
+            {!workbenchLayout.leftCollapsed && !workbenchLayout.isStacked && (
+              <div className="order-2 flex items-stretch">
+                <ResizableSplitter
+                  direction="horizontal"
+                  onResize={(delta) => {
+                    const width = workbenchContainerRef.current?.getBoundingClientRect().width || 1200
+                    workbenchLayout.handleMainResize(delta, width)
+                  }}
+                  onDoubleClick={workbenchLayout.resetMainSplit}
+                  onToggleCollapse={workbenchLayout.toggleLeftCollapsed}
+                  isCollapsed={workbenchLayout.leftCollapsed}
+                  collapseTooltip="Drag to resize Problem panel / Double-click to reset / Click chevron to collapse"
+                />
+              </div>
+            )}
 
             {/* Right Column: Code Editor & Test Console */}
-            <div className={`space-y-4 ${tiledTabs ? 'xl:col-span-8' : ''}`}>
-              <div className="card p-0 overflow-hidden border border-ink-line">
+            <div
+              style={
+                workbenchLayout.isStacked
+                  ? undefined
+                  : {
+                      width: workbenchLayout.leftCollapsed
+                        ? 'calc(100% - 48px)'
+                        : `${100 - workbenchLayout.leftWidthPercent}%`,
+                    }
+              }
+              className={`min-w-[320px] flex-1 min-w-0 ${
+                workbenchLayout.columnsSwapped ? 'order-1' : 'order-3'
+              } ${workbenchLayout.isStacked ? 'w-full' : ''}`}
+            >
+              <div
+                ref={workbenchLayout.consoleDockPosition === 'right' ? workbenchRowRef : undefined}
+                className={
+                  workbenchLayout.consoleDockPosition === 'right' && !workbenchLayout.isStacked
+                    ? 'flex flex-col lg:flex-row items-stretch gap-2 w-full min-w-0'
+                    : 'flex flex-col gap-2 w-full min-w-0'
+                }
+              >
+                {/* Editor Container */}
+                <div
+                  style={
+                    workbenchLayout.consoleDockPosition === 'right' && !workbenchLayout.isStacked
+                      ? workbenchLayout.consoleCollapsed
+                        ? { width: 'calc(100% - 48px)' }
+                        : { width: `calc(${100 - workbenchLayout.consoleWidthPercent}% - 8px)` }
+                      : undefined
+                  }
+                  className={
+                    workbenchLayout.consoleDockPosition === 'right' && !workbenchLayout.isStacked
+                      ? 'flex-1 min-w-[280px]'
+                      : 'w-full'
+                  }
+                >
+                  <div className="card p-0 overflow-hidden border border-ink-line">
                 <div className="flex flex-wrap items-center justify-between border-b border-ink-line bg-[#1e1e1e] px-4 py-2 text-xs gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     {/* View mode / Tabs selector */}
@@ -2690,6 +2808,65 @@ export default function Review() {
                         </button>
                       ))}
                     </div>
+                    {/* Workbench Layout Toolbar */}
+                    <div className="inline-flex items-center rounded-md bg-[#161616] p-0.5 border border-ink-line text-xs gap-0.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={workbenchLayout.toggleColumnsSwapped}
+                        className={`px-1.5 py-0.5 text-[11px] font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                          workbenchLayout.columnsSwapped
+                            ? 'bg-sky-600/30 text-sky-200 border border-sky-500/40'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title="Swap Problem and Workbench columns"
+                      >
+                        <span>⇄ Swap Col</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          workbenchLayout.setConsoleDockPosition(
+                            workbenchLayout.consoleDockPosition === 'bottom' ? 'right' : 'bottom',
+                          )
+                        }
+                        className={`px-1.5 py-0.5 text-[11px] font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                          workbenchLayout.consoleDockPosition === 'right'
+                            ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/40'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title={
+                          workbenchLayout.consoleDockPosition === 'bottom'
+                            ? 'Dock testcases on right (3-column layout)'
+                            : 'Dock testcases at bottom'
+                        }
+                      >
+                        <span>{workbenchLayout.consoleDockPosition === 'bottom' ? '⊞ Dock Right' : '⊟ Dock Bottom'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={workbenchLayout.toggleStacked}
+                        className={`px-1.5 py-0.5 text-[11px] font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                          workbenchLayout.isStacked
+                            ? 'bg-amber-600/30 text-amber-200 border border-amber-500/40'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title={workbenchLayout.isStacked ? 'Switch to side-by-side split' : 'Switch to stacked top/bottom layout'}
+                      >
+                        <span>{workbenchLayout.isStacked ? '⧉ Split' : '☰ Stack'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={workbenchLayout.resetLayout}
+                        className="px-1.5 py-0.5 text-[11px] font-medium rounded text-slate-500 hover:text-slate-300 transition cursor-pointer"
+                        title="Reset layout dimensions and positions to default"
+                      >
+                        <span>↺ Reset</span>
+                      </button>
+                    </div>
+
                     {revealed && (
                       <CopyLearningSummaryButton
                         item={item}
@@ -2707,71 +2884,105 @@ export default function Review() {
 
                 {/* Body: Tiled Side-by-Side View vs Single Tab View */}
                 {tiledTabs ? (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-ink-line bg-[#161616]">
-                    <TiledEditorPane
-                      paneId="left"
-                      currentTab={tileLeftTab}
-                      onTabChange={setTileLeftTab}
-                      answer={answer}
-                      onAnswerChange={setAnswer}
-                      testCode={testCode}
-                      onTestCodeChange={setTestCode}
-                      cleanRefCode={cleanRefCode}
-                      starterTestsCode={starterTestsCode}
-                      cleanRefTestsCode={cleanRefTestsCode}
-                      codeLanguage={codeLanguage}
-                      revealed={revealed}
-                      onReveal={() => void reveal()}
-                      item={item}
-                      copiedRef={copiedRef}
-                      onCopyRef={handleCopyReferenceCode}
-                      copiedStarterTests={copiedStarterTests}
-                      onCopyStarterTests={handleCopyStarterTests}
-                      copiedRefTests={copiedRefTests}
-                      onCopyRefTests={handleCopyReferenceTests}
-                      height="460px"
-                      onRun={() => void handleRunReviewCode()}
-                      onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
-                      activeLineHint={activeLineHint}
-                      lineHintLoading={lineHintLoading}
-                      onRequestLineHint={handleRequestLineHint}
-                      onDismissLineHint={() => setActiveLineHint(null)}
-                      onCursorChange={(l) => setEditorCursorLine(l)}
-                      onGradeSolution={() => void (answer.trim() ? grade() : reveal())}
-                      grading={grading}
-                    />
-                    <TiledEditorPane
-                      paneId="right"
-                      currentTab={tileRightTab}
-                      onTabChange={setTileRightTab}
-                      answer={answer}
-                      onAnswerChange={setAnswer}
-                      testCode={testCode}
-                      onTestCodeChange={setTestCode}
-                      cleanRefCode={cleanRefCode}
-                      starterTestsCode={starterTestsCode}
-                      cleanRefTestsCode={cleanRefTestsCode}
-                      codeLanguage={codeLanguage}
-                      revealed={revealed}
-                      onReveal={() => void reveal()}
-                      item={item}
-                      copiedRef={copiedRef}
-                      onCopyRef={handleCopyReferenceCode}
-                      copiedStarterTests={copiedStarterTests}
-                      onCopyStarterTests={handleCopyStarterTests}
-                      copiedRefTests={copiedRefTests}
-                      onCopyRefTests={handleCopyReferenceTests}
-                      height="460px"
-                      onRun={() => void handleRunReviewCode()}
-                      onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
-                      activeLineHint={activeLineHint}
-                      lineHintLoading={lineHintLoading}
-                      onRequestLineHint={handleRequestLineHint}
-                      onDismissLineHint={() => setActiveLineHint(null)}
-                      onCursorChange={(l) => setEditorCursorLine(l)}
-                      onGradeSolution={() => void (answer.trim() ? grade() : reveal())}
-                      grading={grading}
-                    />
+                  <div
+                    ref={tiledContainerRef}
+                    className="flex flex-col lg:flex-row bg-[#161616] relative overflow-hidden w-full divide-y lg:divide-y-0 divide-ink-line"
+                  >
+                    <div
+                      style={
+                        typeof window !== 'undefined' && window.innerWidth < 1024
+                          ? undefined
+                          : { width: `${workbenchLayout.tiledLeftWidthPercent}%` }
+                      }
+                      className="w-full lg:w-auto min-w-0 lg:min-w-[200px] shrink-0"
+                    >
+                      <TiledEditorPane
+                        paneId="left"
+                        currentTab={tileLeftTab}
+                        onTabChange={setTileLeftTab}
+                        answer={answer}
+                        onAnswerChange={setAnswer}
+                        testCode={testCode}
+                        onTestCodeChange={setTestCode}
+                        cleanRefCode={cleanRefCode}
+                        starterTestsCode={starterTestsCode}
+                        cleanRefTestsCode={cleanRefTestsCode}
+                        codeLanguage={codeLanguage}
+                        revealed={revealed}
+                        onReveal={() => void reveal()}
+                        item={item}
+                        copiedRef={copiedRef}
+                        onCopyRef={handleCopyReferenceCode}
+                        copiedStarterTests={copiedStarterTests}
+                        onCopyStarterTests={handleCopyStarterTests}
+                        copiedRefTests={copiedRefTests}
+                        onCopyRefTests={handleCopyReferenceTests}
+                        height={`${workbenchLayout.editorHeight}px`}
+                        onRun={() => void handleRunReviewCode()}
+                        onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
+                        activeLineHint={activeLineHint}
+                        lineHintLoading={lineHintLoading}
+                        onRequestLineHint={handleRequestLineHint}
+                        onDismissLineHint={() => setActiveLineHint(null)}
+                        onCursorChange={(l) => setEditorCursorLine(l)}
+                        onGradeSolution={() => void (answer.trim() ? grade() : reveal())}
+                        grading={grading}
+                      />
+                    </div>
+
+                    <div className="hidden lg:flex items-stretch">
+                      <ResizableSplitter
+                        direction="horizontal"
+                        onResize={(delta) => {
+                          const width = tiledContainerRef.current?.getBoundingClientRect().width || 800
+                          workbenchLayout.handleTiledResize(delta, width)
+                        }}
+                        onDoubleClick={workbenchLayout.resetTiledSplit}
+                        collapseTooltip="Drag to resize panes (Double-click to reset 50/50)"
+                      />
+                    </div>
+
+                    <div
+                      style={
+                        typeof window !== 'undefined' && window.innerWidth < 1024
+                          ? undefined
+                          : { width: `calc(${100 - workbenchLayout.tiledLeftWidthPercent}% - 8px)` }
+                      }
+                      className="w-full lg:w-auto min-w-0 lg:min-w-[200px] flex-1"
+                    >
+                      <TiledEditorPane
+                        paneId="right"
+                        currentTab={tileRightTab}
+                        onTabChange={setTileRightTab}
+                        answer={answer}
+                        onAnswerChange={setAnswer}
+                        testCode={testCode}
+                        onTestCodeChange={setTestCode}
+                        cleanRefCode={cleanRefCode}
+                        starterTestsCode={starterTestsCode}
+                        cleanRefTestsCode={cleanRefTestsCode}
+                        codeLanguage={codeLanguage}
+                        revealed={revealed}
+                        onReveal={() => void reveal()}
+                        item={item}
+                        copiedRef={copiedRef}
+                        onCopyRef={handleCopyReferenceCode}
+                        copiedStarterTests={copiedStarterTests}
+                        onCopyStarterTests={handleCopyStarterTests}
+                        copiedRefTests={copiedRefTests}
+                        onCopyRefTests={handleCopyReferenceTests}
+                        height={`${workbenchLayout.editorHeight}px`}
+                        onRun={() => void handleRunReviewCode()}
+                        onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
+                        activeLineHint={activeLineHint}
+                        lineHintLoading={lineHintLoading}
+                        onRequestLineHint={handleRequestLineHint}
+                        onDismissLineHint={() => setActiveLineHint(null)}
+                        onCursorChange={(l) => setEditorCursorLine(l)}
+                        onGradeSolution={() => void (answer.trim() ? grade() : reveal())}
+                        grading={grading}
+                      />
+                    </div>
                   </div>
                 ) : (
                   /* Single Tab View */
@@ -2782,11 +2993,14 @@ export default function Review() {
                         onChange={() => {}}
                         language={codeLanguage}
                         readOnly={true}
-                        height="460px"
+                        height={`${workbenchLayout.editorHeight}px`}
                         placeholder="// Reference solution"
                       />
                     ) : (
-                      <div className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3 h-[460px]">
+                      <div
+                        style={{ height: `${workbenchLayout.editorHeight}px` }}
+                        className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3"
+                      >
                         <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shadow-inner">
                           <svg className="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         </div>
@@ -2812,11 +3026,14 @@ export default function Review() {
                         onChange={() => {}}
                         language={codeLanguage}
                         readOnly={true}
-                        height="460px"
+                        height={`${workbenchLayout.editorHeight}px`}
                         placeholder="// Completed reference test suite"
                       />
                     ) : (
-                      <div className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3 h-[460px]">
+                      <div
+                        style={{ height: `${workbenchLayout.editorHeight}px` }}
+                        className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3"
+                      >
                         <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shadow-inner">
                           <svg className="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         </div>
@@ -2840,7 +3057,7 @@ export default function Review() {
                       code={activeEditorTab === 'solution' ? answer : testCode}
                       onChange={activeEditorTab === 'solution' ? setAnswer : setTestCode}
                       language={codeLanguage}
-                      height="460px"
+                      height={`${workbenchLayout.editorHeight}px`}
                       onRun={() => void handleRunReviewCode()}
                       onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
                       activeLineHint={activeEditorTab === 'solution' ? activeLineHint : null}
@@ -2854,17 +3071,136 @@ export default function Review() {
                   )
                 )}
               </div>
-
-              <CodeTestConsole
-                testCases={item.test_cases || []}
-                runResult={codeRunResult}
-                running={codeRunning}
-                onRun={handleRunReviewCode}
-                onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
-                submitting={grading}
-              />
             </div>
+
+            {/* Splitter between Editor and Console */}
+            {!workbenchLayout.consoleCollapsed && (
+              workbenchLayout.consoleDockPosition === 'right' && !workbenchLayout.isStacked ? (
+                <div className="hidden lg:flex items-stretch">
+                  <ResizableSplitter
+                    direction="horizontal"
+                    onResize={(delta) => {
+                      const width = workbenchRowRef.current?.getBoundingClientRect().width || 900
+                      workbenchLayout.handleConsoleWidthResize(delta, width)
+                    }}
+                    onDoubleClick={workbenchLayout.resetConsoleWidth}
+                    onToggleCollapse={workbenchLayout.toggleConsoleCollapsed}
+                    isCollapsed={workbenchLayout.consoleCollapsed}
+                    collapseTooltip="Drag to resize Console width / Double-click to reset / Click to collapse"
+                  />
+                </div>
+              ) : (
+                <ResizableSplitter
+                  direction="vertical"
+                  onResize={workbenchLayout.handleEditorHeightResize}
+                  onDoubleClick={workbenchLayout.resetEditorHeight}
+                  onToggleCollapse={workbenchLayout.toggleConsoleCollapsed}
+                  isCollapsed={workbenchLayout.consoleCollapsed}
+                  collapseTooltip="Drag to resize editor & console height / Double-click to reset / Click to collapse"
+                />
+              )
+            )}
+
+            {/* Console Section (Docked Right vs Docked Bottom) */}
+            {workbenchLayout.consoleDockPosition === 'right' && !workbenchLayout.isStacked ? (
+              workbenchLayout.consoleCollapsed ? (
+                <div
+                  onClick={workbenchLayout.toggleConsoleCollapsed}
+                  className="hidden lg:flex w-10 rounded-xl border border-ink-line bg-[#161616] hover:bg-[#202020] cursor-pointer flex-col items-center py-4 text-slate-400 hover:text-white transition gap-3 select-none shrink-0"
+                  title="Expand Testcases Console (Click to expand)"
+                >
+                  <span className="text-xs">◀</span>
+                  <span className="text-[11px] font-mono [writing-mode:vertical-rl] tracking-wider font-semibold">
+                    Testcases Console
+                  </span>
+                  {codeRunResult && (
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        codeRunResult.status === 'Accepted' ? 'bg-emerald-400' : 'bg-rose-400'
+                      }`}
+                      title={codeRunResult.status === 'Accepted' ? 'Tests Passed' : 'Tests Failed'}
+                    />
+                  )}
+                </div>
+              ) : (
+                <div
+                  style={{ width: `${workbenchLayout.consoleWidthPercent}%` }}
+                  className="w-full lg:w-auto min-w-[280px] shrink-0"
+                >
+                  <CodeTestConsole
+                    testCases={item.test_cases || []}
+                    runResult={codeRunResult}
+                    running={codeRunning}
+                    onRun={handleRunReviewCode}
+                    onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
+                    submitting={grading}
+                    dockPosition="right"
+                    onToggleCollapse={workbenchLayout.toggleConsoleCollapsed}
+                  />
+                </div>
+              )
+            ) : (
+              /* Bottom Dock Console */
+              workbenchLayout.consoleCollapsed ? (
+                <div className="flex items-center justify-between px-3.5 py-2 bg-[#1a1a1a] border border-ink-line rounded-xl text-xs text-slate-400">
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={workbenchLayout.toggleConsoleCollapsed}
+                      className="flex items-center gap-1.5 text-slate-200 hover:text-white font-medium cursor-pointer"
+                      title="Expand Testcases Console"
+                    >
+                      <span className="text-sky-400">▲</span>
+                      <span className="font-semibold">Testcases Console</span>
+                      <span className="text-slate-500 text-[11px]">(Collapsed)</span>
+                    </button>
+                    {codeRunResult && (
+                      <span
+                        className={`text-[11px] px-2 py-0.5 rounded font-semibold ${
+                          codeRunResult.status === 'Accepted'
+                            ? 'bg-emerald-500/20 text-emerald-300'
+                            : 'bg-rose-500/20 text-rose-300'
+                        }`}
+                      >
+                        {codeRunResult.status === 'Accepted' ? 'Passed' : 'Failed'} ({codeRunResult.passed_count}/
+                        {codeRunResult.total_count})
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleRunReviewCode()}
+                      disabled={codeRunning}
+                      className="btn btn-secondary text-xs py-1 px-3 cursor-pointer"
+                    >
+                      {codeRunning ? 'Running…' : 'Run Tests'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={workbenchLayout.toggleConsoleCollapsed}
+                      className="text-xs text-sky-400 hover:text-sky-300 cursor-pointer font-medium"
+                    >
+                      Expand ▲
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <CodeTestConsole
+                  testCases={item.test_cases || []}
+                  runResult={codeRunResult}
+                  running={codeRunning}
+                  onRun={handleRunReviewCode}
+                  onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
+                  submitting={grading}
+                  dockPosition="bottom"
+                  onToggleCollapse={workbenchLayout.toggleConsoleCollapsed}
+                />
+              )
+            )}
           </div>
+        </div>
+      </div>
         ) : (
           /* ════════════════════════════════════════════════════════════════════
              CLASSIC CARD VIEW

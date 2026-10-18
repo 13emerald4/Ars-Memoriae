@@ -8,6 +8,8 @@ export interface CodeTestConsoleProps {
   onRun: (customCases?: Array<{ input: any; expected: any }>) => void
   onSubmit: () => void
   submitting: boolean
+  dockPosition?: 'bottom' | 'right'
+  onToggleCollapse?: () => void
 }
 
 export function CodeTestConsole({
@@ -17,6 +19,8 @@ export function CodeTestConsole({
   onRun,
   onSubmit,
   submitting,
+  dockPosition = 'bottom',
+  onToggleCollapse,
 }: CodeTestConsoleProps) {
   const [activeTab, setActiveTab] = useState<'cases' | 'result'>('cases')
   const [selectedCaseIdx, setSelectedCaseIdx] = useState(0)
@@ -35,7 +39,11 @@ export function CodeTestConsole({
   const currentResult: TestCaseResult | undefined = runResult?.results?.[selectedCaseIdx]
 
   return (
-    <div className="flex flex-col rounded-xl border border-[#282828] bg-[#1a1a1a] text-[#eff1f6] overflow-hidden shadow-2xl">
+    <div
+      className={`flex flex-col rounded-xl border border-[#282828] bg-[#1a1a1a] text-[#eff1f6] overflow-hidden shadow-2xl ${
+        dockPosition === 'right' ? 'h-full flex-1 min-h-[380px]' : ''
+      }`}
+    >
       {/* Console Tab Header */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#282828] bg-[#262626] px-4 py-2 text-xs">
         <div className="flex items-center gap-2">
@@ -69,12 +77,12 @@ export function CodeTestConsole({
           </button>
         </div>
 
-        {/* Action Run & Submit Buttons */}
+        {/* Action Run & Submit Buttons + Collapse */}
         <div className="flex items-center gap-2">
           <button
             onClick={handleRunClick}
             disabled={running || submitting}
-            className="btn btn-secondary px-3 py-1.5 text-xs font-semibold"
+            className="btn btn-secondary px-3 py-1.5 text-xs font-semibold cursor-pointer"
           >
             {running ? (
               <span className="flex items-center gap-1.5">
@@ -89,15 +97,36 @@ export function CodeTestConsole({
           <button
             onClick={onSubmit}
             disabled={running || submitting}
-            className="btn btn-primary px-4 py-1.5 text-xs font-bold shadow-lg"
+            className="btn btn-primary px-4 py-1.5 text-xs font-bold shadow-lg cursor-pointer"
           >
             {submitting ? 'Submitting…' : 'Submit'}
           </button>
+
+          {onToggleCollapse && (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className="rounded p-1 text-slate-400 hover:text-slate-200 hover:bg-[#333] transition cursor-pointer ml-1"
+              title={dockPosition === 'right' ? 'Collapse console to side' : 'Collapse console to bottom'}
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                {dockPosition === 'right' ? (
+                  <polyline points="9 18 15 12 9 6" />
+                ) : (
+                  <polyline points="6 9 12 15 18 9" />
+                )}
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Console Content Area */}
-      <div className="p-4 text-xs font-mono min-h-[160px] max-h-[260px] overflow-y-auto">
+      <div
+        className={`p-4 text-xs font-mono overflow-y-auto ${
+          dockPosition === 'right' ? 'flex-1 min-h-[220px]' : 'min-h-[160px] max-h-[260px]'
+        }`}
+      >
         {activeTab === 'cases' && (
           <div className="space-y-4">
             {/* Case Buttons */}
