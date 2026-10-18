@@ -2,7 +2,7 @@
 
 **Ars Memoriae** is an active-recall and knowledge mastery workbench designed to eliminate two pervasive flaws in modern learning tools: the illusion of competence fostered by passive flashcards, and the compounding debt of rigid review schedules.
 
-The system adheres to a single design constraint: **radical parsimony**. It runs entirely on your local machine with zero Docker containers, zero external database servers, zero cloud subscriptions, and zero tracking.
+Ars Memoriae runs entirely on your local machine with zero Docker containers, zero external database servers, zero cloud subscriptions, and zero tracking.
 
 ---
 
@@ -18,11 +18,11 @@ Calendar-bound review schedules confuse time elapsed with memory decay. When lif
 
 ### III. Why Code in the Review Loop?
 *Can programming principles be mastered through verbal abstraction alone?*  
-Software construction requires syntactic fluency, invariant preservation, and algorithmic reasoning under constraints. Verbal definitions decay without executable feedback. Ars Memoriae embeds an interactive Code Lab directly into spaced repetition: live execution sandboxes (Python & TypeScript), automated unit test runners, dynamic resizable panels, and a Socratic guide that surfaces diagnostic hints without revealing the solution.
+Software construction requires syntactic fluency, invariant preservation, and algorithmic reasoning under constraints. Verbal definitions decay without executable feedback. Ars Memoriae embeds an interactive Code Lab directly into spaced repetition: live execution sandboxes (Python & TypeScript), automated unit test runners, dynamic resizable panels, and an adaptive tutor that surfaces diagnostic hints without revealing the solution.
 
-### IV. Architecture Without Extraneous Entities
+### IV. Clean, Self-Contained Architecture
 *Why mandate multi-container orchestration and cloud dependencies for personal study?*  
-Every layer of unnecessary operational complexity reduces the longevity and reliability of a learning system:
+Operational complexity reduces the longevity and reliability of a learning system. Ars Memoriae is self-contained by design:
 - **Embedded Storage**: A single SQLite file (`backend/dev.db`) contains your entire knowledge base.
 - **Precompiled Interface**: The production web interface is served directly from FastAPI; running the application requires no Node.js runtime.
 - **Local Intelligence**: AI grading runs through an offline Ollama instance on your machine, eliminating latency, API keys, and recurring costs.
@@ -35,7 +35,7 @@ Every layer of unnecessary operational complexity reduces the longevity and reli
 ### Prerequisites
 1. **Python 3.11+** ([python.org](https://www.python.org/downloads/))  
    *(Windows: Ensure **"Add python.exe to PATH"** is checked during installation).*
-2. **Ollama** ([ollama.com](https://ollama.com)) for local evaluation and Socratic hints.
+2. **Ollama** ([ollama.com](https://ollama.com)) for local evaluation and diagnostic hints.
 
 ### 1-Click Launch
 - **Windows**: Double-click `start.bat` (or `start_windows.bat`).
