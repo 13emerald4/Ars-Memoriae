@@ -86,7 +86,7 @@ cd backend
 .\.venv\Scripts\python.exe -m alembic upgrade head
 cd ..
 
-:: Optional Local AI Engine (Ollama)
+:: Optional Local AI Engine (Ollama) & Hardware Model Sizing
 where ollama >nul 2>&1
 if not errorlevel 1 (
     netstat -ano | findstr ":11434.*LISTENING" >nul
@@ -94,6 +94,19 @@ if not errorlevel 1 (
         echo   Starting local Ollama daemon...
         start /min "Ollama" ollama serve
         timeout /t 2 /nobreak >nul
+    )
+
+    :: If no Qwen 2.5 Coder model is present yet, inspect hardware and pull the recommended size
+    ollama list | findstr /i "qwen2.5-coder" >nul 2>&1
+    if errorlevel 1 (
+        echo.
+        echo [Hardware Inspection] Analyzing your system specs for the optimal AI model...
+        backend\.venv\Scripts\python.exe scripts\detect_hardware.py
+        for /f "tokens=*" %%m in ('backend\.venv\Scripts\python.exe scripts\detect_hardware.py --model-only') do set "REC_MODEL=%%m"
+        if not "!REC_MODEL!"=="" (
+            echo   Downloading recommended model: !REC_MODEL! ...
+            ollama pull !REC_MODEL!
+        )
     )
 )
 

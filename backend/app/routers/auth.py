@@ -85,7 +85,14 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) ->
     if existing:
         raise HTTPException(status.HTTP_409_CONFLICT, "email already registered")
 
-    user = User(email=email, password_hash=hash_password(body.password))
+    from app.services.hardware_service import detect_hardware
+
+    hw_profile = detect_hardware()
+    user = User(
+        email=email,
+        password_hash=hash_password(body.password),
+        grading_model=hw_profile.recommended_model,
+    )
     db.add(user)
     await db.flush()
 

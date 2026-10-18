@@ -53,12 +53,22 @@ backend/.venv/bin/python scripts/sync_backend_deps.py
 echo "[4/5] Checking database schema..."
 (cd backend && ./.venv/bin/alembic upgrade head)
 
-# Optional Local AI Engine (Ollama)
+# Optional Local AI Engine (Ollama) & Hardware Model Sizing
 if command -v ollama >/dev/null 2>&1; then
     if ! curl -s http://localhost:11434 >/dev/null 2>&1; then
         echo "  Starting local Ollama daemon in background..."
         ollama serve >/dev/null 2>&1 &
         sleep 2
+    fi
+
+    # If no Qwen 2.5 Coder model is present yet, inspect hardware and pull the recommended size
+    if ! ollama list 2>/dev/null | grep -qi "qwen2.5-coder"; then
+        echo ""
+        echo "[Hardware Inspection] Analyzing your system specs for the optimal AI model..."
+        backend/.venv/bin/python scripts/detect_hardware.py
+        REC_MODEL=$(backend/.venv/bin/python scripts/detect_hardware.py --model-only 2>/dev/null || echo "qwen2.5-coder:3b")
+        echo "  Downloading recommended model: $REC_MODEL..."
+        ollama pull "$REC_MODEL"
     fi
 fi
 

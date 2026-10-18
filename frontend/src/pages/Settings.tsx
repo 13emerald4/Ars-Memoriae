@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
-import type { EventReadiness, QueueConfig, User } from '../api/types'
+import type { EventReadiness, HardwareProfile, QueueConfig, User } from '../api/types'
 import { isAllowedQwenCoderModel, ALLOWED_QWEN_CODER_MODELS } from '../api/types'
 import { ErrorNote, Section, Spinner } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
@@ -81,6 +81,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
     model_ready: boolean
     error?: string | null
   } | null>(null)
+  const [hardware, setHardware] = useState<HardwareProfile | null>(null)
   const [checking, setChecking] = useState(false)
   const [error, setError] = useState<unknown>(null)
 
@@ -88,8 +89,12 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
     setChecking(true)
     setError(null)
     try {
-      const s = await api.llmStatus()
+      const [s, h] = await Promise.all([
+        api.llmStatus(),
+        api.hardwareSpecs().catch(() => null),
+      ])
       setStatus(s)
+      if (h) setHardware(h)
     } catch (err) {
       setError(err)
     } finally {
@@ -106,7 +111,59 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
       title="💻 Local AI Engine"
       description="Local Qwen 2.5 Coder models (7B, 3B, 1.5B). Private with zero cloud costs."
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
+        {/* Hardware Inspection & Recommendation Card */}
+        {hardware && (
+          <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-sky-500/20 pb-2.5">
+              <div className="flex items-center gap-2.5">
+                <span className="text-lg">🔍</span>
+                <div>
+                  <h4 className="text-xs font-bold text-sky-200 uppercase tracking-wider">
+                    Hardware Inspection & Recommendation
+                  </h4>
+                  <p className="text-[11px] text-slate-300">
+                    {hardware.os_name} · {hardware.ram_gb.toFixed(1)} GB RAM
+                    {hardware.gpu_name ? ` · ${hardware.gpu_name}${hardware.vram_gb ? ` (${hardware.vram_gb.toFixed(1)} GB VRAM)` : ''}` : ' · Integrated / CPU'}
+                  </p>
+                </div>
+              </div>
+              <span className="chip text-[10px] uppercase font-bold border-sky-500/40 text-sky-300 bg-sky-500/10">
+                {hardware.hardware_tier} tier
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-300">
+                <span>🎯</span>
+                <span>{hardware.headline}</span>
+              </div>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                {hardware.rationale}
+              </p>
+            </div>
+
+            {user.grading_model !== hardware.recommended_model && (
+              <div className="pt-2 flex flex-wrap items-center justify-between gap-3 text-xs border-t border-sky-500/10">
+                <span className="text-[11px] text-slate-400">
+                  Active model (<code className="font-mono text-slate-300">{user.grading_model || 'none'}</code>) differs from hardware-tailored recommendation.
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await api.updateMe({ grading_model: hardware.recommended_model })
+                    await onChange()
+                    void checkStatus()
+                  }}
+                  className="btn btn-primary text-xs py-1 px-3 whitespace-nowrap cursor-pointer"
+                >
+                  Switch to Recommended ({hardware.recommended_size.toUpperCase()})
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Connection status card */}
         <div className="rounded-xl border border-ink-line bg-ink/60 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -122,10 +179,15 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               />
               <div>
                 <h4 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-                  <span>{user.grading_model || 'qwen2.5-coder:7b'}</span>
+                  <span>{user.grading_model || hardware?.recommended_model || 'qwen2.5-coder:3b'}</span>
                   <span className="chip text-[10px] px-1.5 py-0.2 border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
                     Active Grader
                   </span>
+                  {hardware && user.grading_model === hardware.recommended_model && (
+                    <span className="chip text-[9px] px-1 py-0.2 border-sky-500/40 text-sky-300 bg-sky-500/10">
+                      Hardware Matched
+                    </span>
+                  )}
                 </h4>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Endpoint: <code className="font-mono text-slate-300">{status?.base_url || 'http://localhost:11434'}</code>
@@ -177,13 +239,13 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               ) : status.connected ? (
                 <div className="space-y-2">
                   <p className="text-amber-300 font-medium">
-                    ⚠️ Ollama is running, but model <strong>qwen2.5-coder:7b</strong> was not detected in your local library.
+                    ⚠️ Ollama is running, but model <strong>{user.grading_model || hardware?.recommended_model || 'qwen2.5-coder:3b'}</strong> was not detected in your local library.
                   </p>
                   <p className="text-slate-400">
                     Run this command in your PowerShell / Terminal to download it:
                   </p>
                   <pre className="rounded bg-black/40 p-2 font-mono text-amber-200 text-xs select-all">
-                    ollama run qwen2.5-coder:7b
+                    ollama pull {user.grading_model || hardware?.recommended_model || 'qwen2.5-coder:3b'}
                   </pre>
                 </div>
               ) : (
@@ -195,7 +257,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                     Make sure Ollama is installed and running on your computer. Start it with:
                   </p>
                   <pre className="rounded bg-black/40 p-2 font-mono text-sky-200 text-xs select-all">
-                    ollama run qwen2.5-coder:7b
+                    ollama serve
                   </pre>
                 </div>
               )}
@@ -212,13 +274,16 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                 const isInstalled = status?.models_installed?.some(
                   (im) => im.toLowerCase() === opt.id.toLowerCase() || im.toLowerCase().startsWith(opt.id.toLowerCase())
                 )
-                const isActive = (user.grading_model || 'qwen2.5-coder:7b') === opt.id
+                const isActive = (user.grading_model || 'qwen2.5-coder:3b') === opt.id
+                const isRecommended = hardware?.recommended_size.toLowerCase() === opt.size.toLowerCase()
                 return (
                   <div
                     key={opt.id}
                     className={`rounded-lg border p-2.5 space-y-1.5 transition text-xs ${
                       isActive
                         ? 'border-sky-500/60 bg-sky-950/40'
+                        : isRecommended
+                        ? 'border-emerald-500/40 bg-emerald-950/20'
                         : isInstalled
                         ? 'border-slate-800 bg-slate-900/50'
                         : 'border-slate-800/60 bg-slate-900/20 text-slate-500'
@@ -228,12 +293,35 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                       <span className="font-semibold text-slate-200">{opt.name}</span>
                       <span className="text-[10px] font-mono text-slate-400">{opt.vramApprox}</span>
                     </div>
+
+                    {isRecommended && (
+                      <div className="text-[10px] font-bold text-emerald-300 flex items-center gap-1">
+                        <span>🎯</span>
+                        <span>Recommended for your hardware</span>
+                      </div>
+                    )}
+
                     <p className="text-[11px] text-slate-400 leading-tight">{opt.desc}</p>
                     <div className="pt-1 flex items-center justify-between text-[11px]">
                       {isInstalled ? (
-                        <span className="text-emerald-400 flex items-center gap-1 font-medium">
-                          ✓ Installed
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-emerald-400 flex items-center gap-1 font-medium">
+                            ✓ Installed
+                          </span>
+                          {!isActive && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await api.updateMe({ grading_model: opt.id })
+                                await onChange()
+                                void checkStatus()
+                              }}
+                              className="text-[10px] text-sky-400 hover:text-sky-300 underline cursor-pointer"
+                            >
+                              Activate
+                            </button>
+                          )}
+                        </div>
                       ) : (
                         <button
                           type="button"

@@ -54,20 +54,22 @@ chmod +x start_mac.sh
 
 ---
 
-## 4. Setting Up AI (Hints, Grading & Code Tutor)
+## 4. Automatic Hardware Inspection & AI Sizing
 
-Ars Memoriae's AI features (grading, hints, code tutor) run on **Ollama**, a free program that runs the model on your own computer. Nothing is sent online, and no API key is needed.
+Ars Memoriae automatically inspects your computer's hardware specs (RAM, GPU, VRAM) on first download and selects the best model size:
+- **1.5B (~986 MB)**: Recommended for laptops with 8 GB RAM or modest CPUs.
+- **3B (~1.9 GB)**: The sweet spot for gaming laptops (6-8 GB VRAM), Apple Silicon (8 GB), or 16 GB+ PCs.
+- **7B (~4.7 GB)**: For desktop GPUs with 12 GB+ VRAM or Apple Silicon with 16 GB+ unified memory.
 
-*Best on Apple Silicon (M1/M2/M3) or a PC with a gaming GPU. On a slower laptop it still works, just slowly. Without Ollama, the app still works fully with manual grading.*
-
+### Setup Steps:
 1. Download and install [Ollama](https://ollama.com).
-2. Open a terminal and run:
-   ```bash
-   ollama pull qwen2.5-coder:3b
-   ```
-   *(The 3B model is lightweight, takes only ~1.9 GB of disk space, and runs smoothly on both dedicated GPUs and standard CPUs.)*
-3. Ars Memoriae will automatically detect Ollama running on `http://localhost:11434`.
-4. In Ars Memoriae, open **Settings (⚙️)** and turn on **LLM grading**.
+2. Start Ars Memoriae using `start.bat` (Windows) or `./start.sh` (macOS/Linux).
+   - The launcher will automatically inspect your specs, recommend the ideal size, and pull it for you!
+   - You can also inspect your specs manually at any time by running:
+     ```bash
+     python scripts/detect_hardware.py
+     ```
+3. In Ars Memoriae, open **Settings (⚙️)** to view your **Hardware Profile** and switch models with 1 click.
 
 ---
 

@@ -369,7 +369,7 @@ export default function InteractiveTutorialModal({
                     <span>Local AI Grader</span>
                   </div>
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Powered by quantized <strong className="text-slate-200">Qwen 2.5 Coder</strong>.
+                    Powered by quantized <strong className="text-slate-200">Qwen 2.5 Coder</strong>, auto-sized to your machine's RAM and GPU specs.
                     Provides grade, confidence, matched points, missed points, and reasoning.
                   </p>
                 </div>
@@ -686,7 +686,7 @@ export default function InteractiveTutorialModal({
                       >
                         Grade: {gradedResult.grade.toUpperCase()} ({(gradedResult.confidence * 100).toFixed(0)}% Confidence)
                       </span>
-                      <span className="text-[10px] text-slate-400">100% Local (Qwen 2.5 Coder)</span>
+                      <span className="text-[10px] text-slate-400">100% Local (Hardware-Sized Qwen 2.5 Coder)</span>
                     </div>
 
                     <p className="text-[11px] text-slate-300 italic">"{gradedResult.reasoning}"</p>

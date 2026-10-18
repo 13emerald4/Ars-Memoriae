@@ -18,6 +18,7 @@ import type {
   GenerateCardsResponse,
   GenerateDeckResponse,
   Grade,
+  HardwareProfile,
   ImportRecord,
   JsonImportNote,
   JsonImportRequest,
@@ -121,6 +122,7 @@ export const api = {
       model_ready: boolean
       error?: string | null
     }>('/api/llm/status'),
+  hardwareSpecs: () => request<HardwareProfile>('/api/llm/hardware'),
 
   // ── queue (§9) ──────────────────────────────────────────────────────────
   // `branch` scopes the session to one knowledge-tree subtree;

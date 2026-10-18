@@ -849,3 +849,32 @@ export function isAllowedQwenCoderModel(modelName: string): boolean {
   if (m.includes('embed') || m.includes('rerank')) return false
   return /(?:^|[:\-_])(7b|3b|1\.5b)(?:[:\-_]|$)/i.test(m)
 }
+
+export interface HardwareModelOption {
+  id: string
+  name: string
+  size: string
+  vram_approx: string
+  status: 'recommended' | 'supported' | 'heavy' | 'too_large'
+  suitability: string
+}
+
+export interface HardwareProfile {
+  os_name: string
+  os_release: string
+  architecture: string
+  cpu_name: string
+  cpu_cores: number
+  ram_gb: number
+  gpu_name: string | null
+  vram_gb: number | null
+  is_apple_silicon: boolean
+  has_cuda: boolean
+  hardware_tier: 'budget' | 'mid-range' | 'high-end'
+  recommended_model: string
+  recommended_size: string
+  headline: string
+  rationale: string
+  models: HardwareModelOption[]
+}
+

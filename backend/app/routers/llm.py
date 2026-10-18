@@ -48,3 +48,12 @@ async def llm_status(user: User = Depends(current_user)) -> dict:
             "model_ready": False,
             "error": str(exc),
         }
+
+
+@router.get("/llm/hardware")
+async def hardware_specs(_user: User = Depends(current_user)) -> dict:
+    """Returns detected host hardware specifications and recommended Qwen 2.5 Coder model size."""
+    from app.services.hardware_service import detect_hardware
+
+    return detect_hardware().to_dict()
+
