@@ -36,6 +36,8 @@ export interface TiledEditorPaneProps {
   onCursorChange?: (line: number, col: number) => void
   onGradeSolution?: () => void
   grading?: boolean
+  learnMode?: boolean
+  onUnlockTests?: () => void
 }
 
 export function TiledEditorPane({
@@ -69,6 +71,8 @@ export function TiledEditorPane({
   onCursorChange,
   onGradeSolution,
   grading,
+  learnMode = false,
+  onUnlockTests,
 }: TiledEditorPaneProps) {
   const [cursorLine, setCursorLine] = useState(1)
 
@@ -240,7 +244,7 @@ export function TiledEditorPane({
 
           {currentTab === 'ref_tests' && (
             <>
-              {revealed ? (
+              {revealed || learnMode ? (
                 <>
                   <button
                     type="button"
@@ -260,7 +264,14 @@ export function TiledEditorPane({
                   </button>
                 </>
               ) : (
-                <span className="text-xs text-purple-400/80 font-mono shrink-0 whitespace-nowrap">Locked</span>
+                <button
+                  type="button"
+                  onClick={onUnlockTests || onReveal}
+                  className="text-xs text-purple-400/90 hover:text-purple-300 underline font-mono shrink-0 whitespace-nowrap cursor-pointer"
+                  title="Unlock and view completed test suite"
+                >
+                  Unlock Tests
+                </button>
               )}
             </>
           )}
@@ -365,7 +376,7 @@ export function TiledEditorPane({
       )}
 
       {currentTab === 'ref_tests' && (
-        revealed ? (
+        revealed || learnMode ? (
           <CodeEditor
             code={cleanRefTestsCode || ''}
             onChange={() => {}}
@@ -390,13 +401,15 @@ export function TiledEditorPane({
                 Completed test solutions are hidden until revealed. Commit your implementation and tests or reveal below to view.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={onReveal}
-              className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 mt-2 cursor-pointer"
-            >
-              <span>Reveal Reference Tests</span>
-            </button>
+            <div className="flex items-center gap-2 mt-2">
+              <button
+                type="button"
+                onClick={onUnlockTests || onReveal}
+                className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 cursor-pointer"
+              >
+                <span>View Reference Tests</span>
+              </button>
+            </div>
           </div>
         )
       )}

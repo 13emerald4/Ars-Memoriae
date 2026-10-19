@@ -76,14 +76,25 @@ function buildCompletedTestCode(item: QueueItem | null): string {
   if ((item as any).reference_tests) return (item as any).reference_tests
   if ((item as any).test_solution) return (item as any).test_solution
 
-  const isCode = Boolean(item.starter_code || (item.test_cases && item.test_cases.length > 0))
+  const isCode = Boolean(
+    item.starter_code ||
+      (item.test_cases && item.test_cases.length > 0) ||
+      item.starter_tests ||
+      checkIsCodeCard(item) ||
+      looksLikeCode(item.back)
+  )
   if (!isCode) return ''
 
-  const isPython = Boolean(item.starter_code?.includes('def ') || item.starter_code?.includes('class Solution:'))
   const cases = item.test_cases || []
+  if (cases.length === 0 && item.starter_tests) {
+    return item.starter_tests
+  }
+
+  const codeToScan = item.starter_code || item.back || ''
+  const isPython = Boolean(codeToScan.includes('def ') || codeToScan.includes('class Solution:'))
 
   if (isPython) {
-    const fnMatch = item.starter_code?.match(/def\s+([a-zA-Z0-9_]+)/)
+    const fnMatch = codeToScan.match(/def\s+([a-zA-Z0-9_]+)/)
     const fnName = fnMatch ? fnMatch[1] : 'solution'
 
     const testMethods = cases
@@ -111,8 +122,10 @@ ${testMethods || '    pass'}
   }
 
   // TypeScript / JavaScript
-  const fnMatch = item.starter_code?.match(/function\s+([a-zA-Z0-9_$]+)/)
-  const fnName = fnMatch ? fnMatch[1] : 'solution'
+  const fnName =
+    codeToScan.match(/(?:function\s+|const\s+|let\s+|var\s+)?([a-zA-Z0-9_$]+)\s*(?:=\s*(?:async\s*)?\([^)]*\)\s*=>|\()/)?.[1] ||
+    codeToScan.match(/function\s+([a-zA-Z0-9_$]+)/)?.[1] ||
+    'solution'
   const edgeNotes = item.edge_cases || []
 
   const testBlocks = cases.map((tc, idx) => {
@@ -514,7 +527,9 @@ export default function Review() {
     } else {
       setDraftRestoredNotice(null)
       setAnswer(next?.starter_code || '')
-      setTestCode(buildStarterTestCode(next))
+      const starterTests = buildStarterTestCode(next)
+      const refTests = buildCompletedTestCode(next)
+      setTestCode(starterTests.trim() ? starterTests : (learnMode ? refTests : ''))
       if (next?.starter_code) {
         if (next.starter_code.includes('def ') || next.starter_code.includes('class Solution:')) {
           setCodeLanguage('python')
@@ -554,7 +569,7 @@ export default function Review() {
     setEditorCursorLine(1)
     shownAt.current = Date.now()
     setDeckStatsTrigger((prev) => prev + 1)
-  }, [])
+  }, [learnMode])
 
   const handleJumpToCard = useCallback(
     (selectedCard: QueueItem) => {
@@ -2752,14 +2767,26 @@ export default function Review() {
                       </button>
                     )}
                     {!tiledTabs && activeEditorTab === 'tests' && (
-                      <button
-                        type="button"
-                        onClick={() => setTestCode(buildStarterTestCode(item))}
-                        className="text-slate-400 hover:text-slate-200 text-[11px] underline cursor-pointer"
-                        title="Reset unit tests to starter assertions"
-                      >
-                        Reset tests
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {!testCode.trim() && Boolean(cleanRefTestsCode) && (
+                          <button
+                            type="button"
+                            onClick={() => setTestCode(cleanRefTestsCode)}
+                            className="text-purple-300 hover:text-purple-200 text-[11px] underline cursor-pointer"
+                            title="Load completed reference tests into unit tests editor"
+                          >
+                            Load reference tests
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setTestCode(buildStarterTestCode(item) || cleanRefTestsCode)}
+                          className="text-slate-400 hover:text-slate-200 text-[11px] underline cursor-pointer"
+                          title="Reset unit tests to starter assertions"
+                        >
+                          Reset tests
+                        </button>
+                      </div>
                     )}
                     {!tiledTabs && activeEditorTab === 'reference' && (
                       <button
@@ -2773,15 +2800,30 @@ export default function Review() {
                       </button>
                     )}
                     {!tiledTabs && activeEditorTab === 'ref_tests' && (
-                      <button
-                        type="button"
-                        onClick={() => void handleCopyReferenceTests(cleanRefTestsCode)}
-                        disabled={!cleanRefTestsCode}
-                        className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
-                        title="Copy completed reference tests to clipboard"
-                      >
-                        <span>{copiedRefTests ? 'Copied' : 'Copy ref tests'}</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {Boolean(cleanRefTestsCode) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTestCode(cleanRefTestsCode)
+                              setActiveEditorTab('tests')
+                            }}
+                            className="text-purple-300 hover:text-purple-200 text-[11px] underline cursor-pointer"
+                            title="Load reference tests into editable Unit Tests editor"
+                          >
+                            Load to tests
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => void handleCopyReferenceTests(cleanRefTestsCode)}
+                          disabled={!cleanRefTestsCode}
+                          className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
+                          title="Copy completed reference tests to clipboard"
+                        >
+                          <span>{copiedRefTests ? 'Copied' : 'Copy ref tests'}</span>
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -2927,6 +2969,7 @@ export default function Review() {
                         onCursorChange={(l) => setEditorCursorLine(l)}
                         onGradeSolution={() => void (answer.trim() ? grade() : reveal())}
                         grading={grading}
+                        learnMode={learnMode}
                       />
                     </div>
 
@@ -2981,6 +3024,7 @@ export default function Review() {
                         onCursorChange={(l) => setEditorCursorLine(l)}
                         onGradeSolution={() => void (answer.trim() ? grade() : reveal())}
                         grading={grading}
+                        learnMode={learnMode}
                       />
                     </div>
                   </div>
@@ -3020,7 +3064,7 @@ export default function Review() {
                       </div>
                     )
                   ) : activeEditorTab === 'ref_tests' ? (
-                    revealed ? (
+                    revealed || learnMode ? (
                       <CodeEditor
                         code={cleanRefTestsCode}
                         onChange={() => {}}
@@ -3035,7 +3079,7 @@ export default function Review() {
                         className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3"
                       >
                         <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shadow-inner">
-                          <svg className="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                          <svg className="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         </div>
                         <div className="space-y-1">
                           <h4 className="text-sm font-semibold text-slate-200">Reference Tests</h4>
@@ -3043,13 +3087,15 @@ export default function Review() {
                             Hidden until revealed.
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => void reveal()}
-                          className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 mt-2 cursor-pointer"
-                        >
-                          <span>Reveal Tests</span>
-                        </button>
+                        <div className="flex items-center gap-2 mt-2">
+                          <button
+                            type="button"
+                            onClick={() => void reveal()}
+                            className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 cursor-pointer"
+                          >
+                            <span>Reveal Tests</span>
+                          </button>
+                        </div>
                       </div>
                     )
                   ) : (
@@ -3580,14 +3626,26 @@ export default function Review() {
                             </button>
                           )}
                           {!tiledTabs && activeEditorTab === 'tests' && (
-                            <button
-                              type="button"
-                              onClick={() => setTestCode(buildStarterTestCode(item))}
-                              className="text-slate-400 hover:text-slate-200 text-[11px] underline cursor-pointer"
-                              title="Reset unit tests to starter assertions"
-                            >
-                              Reset tests
-                            </button>
+                            <div className="flex items-center gap-2">
+                              {!testCode.trim() && Boolean(cleanRefTestsCode) && (
+                                <button
+                                  type="button"
+                                  onClick={() => setTestCode(cleanRefTestsCode)}
+                                  className="text-purple-300 hover:text-purple-200 text-[11px] underline cursor-pointer"
+                                  title="Load completed reference tests into unit tests editor"
+                                >
+                                  Load reference tests
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setTestCode(buildStarterTestCode(item) || cleanRefTestsCode)}
+                                className="text-slate-400 hover:text-slate-200 text-[11px] underline cursor-pointer"
+                                title="Reset unit tests to starter assertions"
+                              >
+                                Reset tests
+                              </button>
+                            </div>
                           )}
                           {!tiledTabs && activeEditorTab === 'reference' && (
                             <button
@@ -3601,15 +3659,30 @@ export default function Review() {
                             </button>
                           )}
                           {!tiledTabs && activeEditorTab === 'ref_tests' && (
-                            <button
-                              type="button"
-                              onClick={() => void handleCopyReferenceTests(cleanRefTestsCode)}
-                              disabled={!cleanRefTestsCode}
-                              className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
-                              title="Copy completed reference tests to clipboard"
-                            >
-                              <span>{copiedRefTests ? 'Copied' : 'Copy ref tests'}</span>
-                            </button>
+                            <div className="flex items-center gap-2">
+                              {Boolean(cleanRefTestsCode) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTestCode(cleanRefTestsCode)
+                                    setActiveEditorTab('tests')
+                                  }}
+                                  className="text-purple-300 hover:text-purple-200 text-[11px] underline cursor-pointer"
+                                  title="Load reference tests into editable Unit Tests editor"
+                                >
+                                  Load to tests
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => void handleCopyReferenceTests(cleanRefTestsCode)}
+                                disabled={!cleanRefTestsCode}
+                                className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
+                                title="Copy completed reference tests to clipboard"
+                              >
+                                <span>{copiedRefTests ? 'Copied' : 'Copy ref tests'}</span>
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -3648,6 +3721,7 @@ export default function Review() {
                             onCursorChange={(l) => setEditorCursorLine(l)}
                             onGradeSolution={() => void (answer.trim() ? grade() : reveal())}
                             grading={grading}
+                            learnMode={learnMode}
                           />
                           <TiledEditorPane
                             paneId="right"
@@ -3680,6 +3754,7 @@ export default function Review() {
                             onCursorChange={(l) => setEditorCursorLine(l)}
                             onGradeSolution={() => void (answer.trim() ? grade() : reveal())}
                             grading={grading}
+                            learnMode={learnMode}
                           />
                         </div>
                       ) : (
@@ -3715,7 +3790,7 @@ export default function Review() {
                             </div>
                           )
                         ) : activeEditorTab === 'ref_tests' ? (
-                          revealed ? (
+                          revealed || learnMode ? (
                             <CodeEditor
                               code={cleanRefTestsCode}
                               onChange={() => {}}
@@ -3735,13 +3810,15 @@ export default function Review() {
                                   Hidden until revealed.
                                 </p>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => void reveal()}
-                                className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1 mt-1 cursor-pointer"
-                              >
-                                <span>Reveal Tests</span>
-                              </button>
+                              <div className="flex items-center gap-2 mt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => void reveal()}
+                                  className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1 cursor-pointer"
+                                >
+                                  <span>Reveal Tests</span>
+                                </button>
+                              </div>
                             </div>
                           )
                         ) : (
@@ -4248,6 +4325,44 @@ function LessonGate({
     [isCode, cleanCode, codeLanguage]
   )
 
+  const refTestsCode = useMemo(() => (isCode ? buildCompletedTestCode(item) : ''), [isCode, item])
+  const starterTestsCode = useMemo(() => (isCode ? buildStarterTestCode(item) : ''), [isCode, item])
+  const displayTestsCode = refTestsCode.trim() ? refTestsCode : starterTestsCode
+  const testCases = item.test_cases || []
+  const edgeCases = item.edge_cases || []
+  const hasTests = Boolean(displayTestsCode.trim() || testCases.length > 0)
+
+  const [codeLayout, setCodeLayout] = useState<'stacked' | 'split'>(() => {
+    return (localStorage.getItem('memorization.learnGateCodeLayout') as 'stacked' | 'split') || 'stacked'
+  })
+  const [testsTab, setTestsTab] = useState<'all' | 'code' | 'cases'>('all')
+  const [showTestsSection, setShowTestsSection] = useState(true)
+  const [copiedAnswer, setCopiedAnswer] = useState(false)
+  const [copiedTests, setCopiedTests] = useState(false)
+
+  const handleCopyAnswer = async () => {
+    if (!cleanCode) return
+    try {
+      await navigator.clipboard.writeText(cleanCode)
+      setCopiedAnswer(true)
+      setTimeout(() => setCopiedAnswer(false), 1800)
+    } catch {
+      // ignore
+    }
+  }
+
+  const handleCopyTests = async () => {
+    const textToCopy = displayTestsCode.trim() || JSON.stringify(testCases, null, 2)
+    if (!textToCopy) return
+    try {
+      await navigator.clipboard.writeText(textToCopy)
+      setCopiedTests(true)
+      setTimeout(() => setCopiedTests(false), 1800)
+    } catch {
+      // ignore
+    }
+  }
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
@@ -4265,6 +4380,212 @@ function LessonGate({
   const hasReferences = Boolean(item.references && item.references.length > 0)
   const thematic = item.card_thematic_nature || item.deck_thematic_nature
   const doc = item.card_documentation || item.deck_documentation
+
+  const renderAnswerCard = () => (
+    <div className="space-y-2 rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+            Answer · Solution
+          </span>
+          <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-mono text-emerald-300 border border-emerald-500/30">
+            {detectedLang}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {cleanCode && (
+            <button
+              type="button"
+              onClick={() => void handleCopyAnswer()}
+              className="flex items-center gap-1 rounded border border-ink-line bg-[#161b24] hover:bg-[#1f2633] px-2 py-0.5 text-xs text-slate-300 hover:text-white transition cursor-pointer"
+              title="Copy solution code to clipboard"
+            >
+              <span>{copiedAnswer ? 'Copied' : 'Copy'}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-ink-line overflow-hidden shadow-sm">
+        <CodeEditor
+          code={cleanCode}
+          onChange={() => {}}
+          language={detectedLang}
+          readOnly={true}
+          height="auto"
+          hideHeader={false}
+          hideFooter={false}
+          borderless={true}
+          placeholder="// Expected answer solution"
+        />
+      </div>
+
+      {(item.time_complexity || item.space_complexity) && (
+        <div className="flex items-center gap-3 pt-1 text-xs text-emerald-400/90 font-mono">
+          {item.time_complexity && <span>Time: {item.time_complexity}</span>}
+          {item.space_complexity && <span>Space: {item.space_complexity}</span>}
+        </div>
+      )}
+    </div>
+  )
+
+  const renderTestsCard = () => {
+    if (!hasTests) return null
+
+    return (
+      <div className="space-y-3 rounded-xl border border-indigo-500/40 bg-indigo-950/20 p-4">
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-500/20 pb-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
+              <span>Tests &amp; Verification</span>
+            </span>
+            {testCases.length > 0 && (
+              <span className="rounded-full bg-indigo-500/15 border border-indigo-500/30 px-2 py-0.5 text-[10px] font-mono text-indigo-200">
+                {testCases.length} {testCases.length === 1 ? 'case' : 'cases'}
+              </span>
+            )}
+            {/* View Sub-Tabs if both unit test code and test cases exist */}
+            {displayTestsCode.trim() && testCases.length > 0 && (
+              <div className="inline-flex rounded-md bg-[#121622] p-0.5 border border-ink-line text-[11px] ml-1">
+                <button
+                  type="button"
+                  onClick={() => setTestsTab('all')}
+                  className={`px-2 py-0.5 rounded transition cursor-pointer ${
+                    testsTab === 'all'
+                      ? 'bg-indigo-600/40 text-indigo-100 border border-indigo-500/50 font-semibold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTestsTab('code')}
+                  className={`px-2 py-0.5 rounded transition cursor-pointer ${
+                    testsTab === 'code'
+                      ? 'bg-indigo-600/40 text-indigo-100 border border-indigo-500/50 font-semibold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Unit Tests
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTestsTab('cases')}
+                  className={`px-2 py-0.5 rounded transition cursor-pointer ${
+                    testsTab === 'cases'
+                      ? 'bg-indigo-600/40 text-indigo-100 border border-indigo-500/50 font-semibold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Cases ({testCases.length})
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void handleCopyTests()}
+              className="flex items-center gap-1 rounded border border-ink-line bg-[#161b24] hover:bg-[#1f2633] px-2 py-0.5 text-xs text-slate-300 hover:text-white transition cursor-pointer"
+              title="Copy unit tests to clipboard"
+            >
+              <span>{copiedTests ? 'Copied' : 'Copy Tests'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowTestsSection((prev) => !prev)}
+              className="rounded border border-ink-line/60 bg-[#161b24] hover:bg-[#1f2633] px-2 py-0.5 text-xs text-slate-400 hover:text-slate-200 transition cursor-pointer"
+              title={showTestsSection ? 'Collapse tests' : 'Expand tests'}
+            >
+              <span>{showTestsSection ? 'Hide' : 'Show'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Content Body */}
+        {showTestsSection && (
+          <div className="space-y-4">
+            {/* 1. Unit Tests Code */}
+            {(testsTab === 'all' || testsTab === 'code') && displayTestsCode.trim() && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span className="font-semibold text-slate-200">Unit Test Suite</span>
+                  <span className="font-mono text-[11px] text-indigo-300">{detectedLang}</span>
+                </div>
+                <div className="rounded-lg border border-ink-line overflow-hidden shadow-sm">
+                  <CodeEditor
+                    code={displayTestsCode}
+                    onChange={() => {}}
+                    language={detectedLang}
+                    readOnly={true}
+                    height="auto"
+                    hideHeader={false}
+                    hideFooter={false}
+                    borderless={true}
+                    placeholder="// Completed unit test suite"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 2. Structured Test Cases Table */}
+            {(testsTab === 'all' || testsTab === 'cases') && testCases.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span className="font-semibold text-slate-200">Test Cases ({testCases.length})</span>
+                </div>
+                <div className="overflow-x-auto rounded-lg border border-ink-line/80">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#182030] text-slate-300 font-mono text-[11px] border-b border-ink-line/80">
+                      <tr>
+                        <th className="px-3 py-2 w-10 text-slate-400">#</th>
+                        <th className="px-3 py-2">Input</th>
+                        <th className="px-3 py-2">Expected Output</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-ink-line/40 font-mono text-[11px] bg-[#10141f]">
+                      {testCases.map((tc, idx) => (
+                        <tr key={idx} className="hover:bg-[#161c2b] transition-colors">
+                          <td className="px-3 py-2 text-slate-500 font-bold">{idx + 1}</td>
+                          <td className="px-3 py-2 text-sky-200">
+                            {typeof tc.input === 'object' && tc.input !== null
+                              ? Object.entries(tc.input)
+                                  .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+                                  .join(', ')
+                              : JSON.stringify(tc.input)}
+                          </td>
+                          <td className="px-3 py-2 text-emerald-300 font-semibold">
+                            {JSON.stringify(tc.expected)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* 3. Edge Cases */}
+            {edgeCases.length > 0 && (
+              <div className="rounded-lg bg-[#121622] border border-indigo-500/30 p-2.5 text-xs text-slate-300 space-y-1">
+                <span className="font-semibold text-indigo-300 text-[11px] uppercase tracking-wider block">
+                  Target Edge Cases &amp; Boundaries:
+                </span>
+                <ul className="list-disc list-inside space-y-0.5 text-slate-300 text-[11px]">
+                  {edgeCases.map((ec, i) => (
+                    <li key={i}>{ec}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="card space-y-5">
@@ -4288,7 +4609,6 @@ function LessonGate({
           className="flex items-center gap-1.5 rounded-full border border-sky-400/40 bg-sky-950/70 px-2.5 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-900/80 hover:border-sky-300 transition-all shadow-sm"
           title="Lexicon lookup"
         >
-          
           <span>Lexicon</span>
         </button>
       </div>
@@ -4332,53 +4652,91 @@ function LessonGate({
         )}
       </div>
 
-      {/* ── 2. The Answer to the Question (Verbatim) ── */}
-      <div className="space-y-2 rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4">
-        <div className="flex items-center justify-between">
+      {/* ── 2. The Answer to the Question (Verbatim) & Tests ── */}
+      {item.occlusion ? (
+        <div className="space-y-2 rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4">
           <span className="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
-             Answer
+            Answer
           </span>
-          {isCode && (
-            <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-mono text-emerald-300 border border-emerald-500/30">
-              {detectedLang}
-            </span>
+          <OcclusionCard payload={item.occlusion} revealed={true} />
+        </div>
+      ) : isCode ? (
+        <div className="space-y-3">
+          {/* Layout Switcher if tests exist */}
+          {hasTests && (
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs px-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Layout:</span>
+                <div className="inline-flex rounded-lg bg-[#141822] p-0.5 border border-ink-line/60">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCodeLayout('stacked')
+                      localStorage.setItem('memorization.learnGateCodeLayout', 'stacked')
+                    }}
+                    className={`px-2.5 py-0.5 rounded text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                      codeLayout === 'stacked'
+                        ? 'bg-slate-700/70 text-white border border-slate-500/50 shadow-sm font-semibold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="Stacked cards view"
+                  >
+                    <span>Stacked</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCodeLayout('split')
+                      localStorage.setItem('memorization.learnGateCodeLayout', 'split')
+                    }}
+                    className={`hidden sm:flex px-2.5 py-0.5 rounded text-xs font-medium transition cursor-pointer items-center gap-1.5 ${
+                      codeLayout === 'split'
+                        ? 'bg-sky-600/40 text-sky-100 border border-sky-500/50 shadow-sm font-semibold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="Side-by-side solution and tests view"
+                  >
+                    <span>⧉ Side-by-Side</span>
+                  </button>
+                </div>
+              </div>
+              <span className="text-[11px] text-slate-400">
+                Solution and tests primed before practice phase
+              </span>
+            </div>
+          )}
+
+          {codeLayout === 'split' && hasTests ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+              {renderAnswerCard()}
+              {renderTestsCard()}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {renderAnswerCard()}
+              {renderTestsCard()}
+            </div>
           )}
         </div>
-
-        {item.occlusion ? (
-          <div className="space-y-2">
-            <OcclusionCard payload={item.occlusion} revealed={true} />
-          </div>
-        ) : isCode ? (
-          <div className="rounded-lg border border-ink-line overflow-hidden shadow-sm">
-            <CodeEditor
-              code={cleanCode}
-              onChange={() => {}}
-              language={detectedLang}
-              readOnly={true}
-              height="auto"
-              hideHeader={false}
-              hideFooter={false}
-              borderless={true}
-              placeholder="// Expected answer solution"
-            />
-          </div>
-        ) : (
+      ) : (
+        <div className="space-y-2 rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4">
+          <span className="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+            Answer
+          </span>
           <div className="rounded-lg border border-emerald-500/20 bg-slate-950/70 p-3.5">
             <RichText
               text={item.back || 'No answer specified'}
               className="text-xs md:text-sm text-emerald-100 leading-relaxed font-mono whitespace-pre-wrap"
             />
           </div>
-        )}
-
-        {(item.time_complexity || item.space_complexity) && (
-          <div className="flex items-center gap-3 pt-1 text-xs text-emerald-400/90 font-mono">
-            {item.time_complexity && <span>Time: {item.time_complexity}</span>}
-            {item.space_complexity && <span>Space: {item.space_complexity}</span>}
-          </div>
-        )}
-      </div>
+          {(item.time_complexity || item.space_complexity) && (
+            <div className="flex items-center gap-3 pt-1 text-xs text-emerald-400/90 font-mono">
+              {item.time_complexity && <span>Time: {item.time_complexity}</span>}
+              {item.space_complexity && <span>Space: {item.space_complexity}</span>}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── 3. Supporting Context / Citations / Lesson Notes ── */}
       {(doc || hasReferences || (lesson && lesson.body)) && (
