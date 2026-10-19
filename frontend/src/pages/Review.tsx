@@ -180,6 +180,7 @@ export default function Review() {
   const [result, setResult] = useState<SubmitAnswerResponse | null>(null)
   const [vramDismissed, setVramDismissed] = useState(false)
   const [revealed, setRevealed] = useState(false)
+  const [skipReviewRecording, setSkipReviewRecording] = useState(false)
   const [lastOutcome, setLastOutcome] = useState<string | null>(null)
   const [confidence, setConfidence] = useState<number | null>(null)
   const [deckStatsTrigger, setDeckStatsTrigger] = useState(0)
@@ -548,6 +549,7 @@ export default function Review() {
     setResult(null)
     setVramDismissed(false)
     setRevealed(false)
+    setSkipReviewRecording(false)
     setConfidence(null)
     setLesson(null)
     setTaught(false)
@@ -576,6 +578,7 @@ export default function Review() {
       setItem(selectedCard)
       initCardState(selectedCard)
       setRevealed(false)
+      setSkipReviewRecording(false)
       setResult(null)
       setLastOutcome(`Switched to card: ${selectedCard.title || 'Selected card'}`)
       if (persistActive) {
@@ -832,6 +835,7 @@ export default function Review() {
       setCodeLanguage(draft.codeLanguage)
     }
     setRevealed(false)
+    setSkipReviewRecording(false)
     setResult(null)
     setDraftRestoredNotice(`Resumed draft saved at ${new Date(draft.savedAt).toLocaleTimeString()}`)
     setLastOutcome(`Resumed saved card: ${draft.title}`)
@@ -1228,6 +1232,80 @@ export default function Review() {
     }
   }
 
+  const advanceWithoutReview = useCallback(async () => {
+    if (!item || item.kind !== 'card') return
+    removeDraft(item.id)
+    setSavedCount(getSavedDraftsCount())
+    setResult(null)
+    setRevealed(false)
+    setSkipReviewRecording(false)
+    setLastOutcome('Card skipped — no review recorded.')
+
+    if (allCardsRunActive) {
+      const nextIdx = allCardsRunIndex + 1
+      setAllCardsRunIndex(nextIdx)
+      if (nextIdx >= allCardsRunCards.length) {
+        setAllCardsRunCompleted(true)
+        setItem(null)
+        setLastOutcome(
+          `All Cards Run complete! All ${allCardsRunCards.length} cards in this deck completed.`,
+        )
+      } else {
+        const nextCard = allCardsRunCards[nextIdx]
+        setItem(nextCard)
+        initCardState(nextCard)
+        setLastOutcome(`Card ${nextIdx + 1} of ${allCardsRunCards.length} in run (Unrecorded skip).`)
+      }
+    } else if (persistActive) {
+      if (persistPendingQueue.length > 1) {
+        const rest = persistPendingQueue.filter((id) => id !== item.id)
+        const nextQueue = [...rest, item.id]
+        setPersistPendingQueue(nextQueue)
+        const nextCard = persistCards.find((c) => c.id === nextQueue[0]) || null
+        setItem(nextCard)
+        initCardState(nextCard)
+      } else {
+        initCardState(item)
+      }
+    } else {
+      try {
+        await api.postponeCard(item.id, 1)
+      } catch (err) {
+        console.warn('Could not postpone skipped card:', err)
+      }
+      await load()
+    }
+  }, [
+    item,
+    allCardsRunActive,
+    allCardsRunIndex,
+    allCardsRunCards,
+    persistActive,
+    persistPendingQueue,
+    persistCards,
+    initCardState,
+    load,
+  ])
+
+  const handleSkipGrading = useCallback(() => {
+    if (!skipReviewRecording) {
+      setSkipReviewRecording(true)
+      if (answer.trim()) {
+        void grade()
+      } else {
+        inputRef.current?.focus()
+      }
+    } else {
+      if (revealed) {
+        void advanceWithoutReview()
+      } else if (answer.trim()) {
+        void grade()
+      } else {
+        void advanceWithoutReview()
+      }
+    }
+  }, [skipReviewRecording, answer, revealed, grade, advanceWithoutReview])
+
   // Keyboard: 1-4 grade after reveal, Space or Ctrl/Cmd+Enter submits/reveals answer.
   useEffect(() => {
     function isTypingTarget(target: EventTarget | null): boolean {
@@ -1251,10 +1329,17 @@ export default function Review() {
       const isTyping = isTypingTarget(e.target) || isTypingTarget(document.activeElement)
       const isEditorTyping = isTyping && document.activeElement !== inputRef.current
 
-      // 1-4 rating shortcuts: Only allowed when NOT typing in an editor or text field
+      // 1-4 rating shortcuts: Only allowed when NOT typing in an editor or text field, and NOT in skipReviewRecording mode
       if (revealed && e.key >= '1' && e.key <= '4' && !isTyping && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!skipReviewRecording) {
+          e.preventDefault()
+          void confirm(GRADES[Number(e.key) - 1])
+        }
+      }
+      // Space or Enter after reveal in skipReviewRecording mode: advance to next card without recording
+      if (revealed && skipReviewRecording && (e.key === 'Enter' || e.key === ' ') && !isTyping && !isEditorTyping && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault()
-        void confirm(GRADES[Number(e.key) - 1])
+        void advanceWithoutReview()
       }
       if (revealed && (e.key === 'c' || e.key === 'C') && (e.metaKey || e.ctrlKey) && e.shiftKey) {
         e.preventDefault()
@@ -2292,6 +2377,23 @@ export default function Review() {
               {/* Pre-reveal action & Socratic guide */}
               {!revealed && (
                 <div className="space-y-3 pt-2">
+                  {skipReviewRecording && (
+                    <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 shadow-sm flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold uppercase tracking-wider text-[11px] bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30">
+                          ⚡ Skip Grading Active
+                        </span>
+                        <span>Type your solution and test/grade it. Your grade will not be recorded as a card review.</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="text-[11px] underline text-amber-400 hover:text-amber-100 ml-2 shrink-0 cursor-pointer"
+                        onClick={() => setSkipReviewRecording(false)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink-line/60 pt-3">
                     <div className="flex items-center gap-2">
                       {llmEnabled && (
@@ -2306,13 +2408,22 @@ export default function Review() {
                       )}
                       {llmEnabled ? (
                         <button
-                          className="btn btn-primary"
+                          className={`btn ${skipReviewRecording ? 'btn-secondary border-amber-500/50 text-amber-200' : 'btn-primary'}`}
                           onClick={() => void grade()}
                           disabled={grading || !answer.trim()}
                         >
-                          {grading ? 'Evaluating…' : 'Submit for LLM Rubric'}
+                          {grading ? 'Evaluating…' : skipReviewRecording ? 'Grade for Rubric (Unrecorded)' : 'Submit for LLM Rubric'}
                         </button>
                       ) : null}
+                      <button
+                        type="button"
+                        className={`btn ${skipReviewRecording ? 'border-amber-500/60 text-amber-300 bg-amber-500/15 font-semibold' : ''}`}
+                        onClick={handleSkipGrading}
+                        disabled={grading}
+                        title={skipReviewRecording ? 'Advance to next card without recording review' : 'Type code and grade with LLM rubric without recording a card review'}
+                      >
+                        <span>{skipReviewRecording ? 'Skip card (Unrecorded)' : 'Skip grading'}</span>
+                      </button>
                       <button className="btn" onClick={reveal} disabled={grading}>
                         {llmEnabled ? 'Show Reference Solution' : 'Show solution'}
                       </button>
@@ -2459,47 +2570,103 @@ export default function Review() {
                     </div>
                   ) : null}
 
-                  <div>
-                    <p className="label">
-                      {result && !result.degraded_to_manual
-                        ? result.needs_confirmation
-                          ? 'Confirm or correct the grade'
-                          : 'Accept the suggestion, or override'
-                        : 'How well did you recall it?'}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {GRADES.map((g, i) => {
-                        const suggested =
-                          result && !result.degraded_to_manual && result.suggested_grade === g
-                        return (
-                          <button
-                            key={g}
-                            onClick={() => confirm(g)}
-                            disabled={confirming}
-                            className={`btn ${GRADE_STYLE[g]} ${
-                              suggested ? 'ring-1 ring-inset ring-current' : ''
-                            }`}
-                          >
-                            <span className="capitalize">{g}</span>
-                            <span className="text-xs opacity-50">{GRADE_BAND[g]}</span>
-                            <span className="text-xs opacity-50">{i + 1}</span>
-                            {suggested && <span className="text-xs opacity-70">· suggested</span>}
-                            {persistActive && (
-                              <span
-                                className={`text-[10px] ml-1 px-1.5 py-0.5 rounded font-semibold ${
-                                  g === 'easy'
-                                    ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-500/50'
-                                    : 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
-                                }`}
-                              >
-                                {g === 'easy' ? 'Grasps' : 'Re-queues'}
-                              </span>
-                            )}
-                          </button>
-                        )
-                      })}
+                  {skipReviewRecording ? (
+                    <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                          ⚡ Unrecorded Practice Mode
+                        </span>
+                        <span className="chip border-amber-500/30 text-amber-300 bg-amber-500/20 text-[10px]">
+                          Review Not Recorded
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-300 leading-relaxed">
+                        You typed and graded your solution without recording a card review. Your review queue and spaced repetition schedule are unaffected.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          className="btn btn-primary text-xs px-4 py-2 font-bold shadow-sm cursor-pointer"
+                          onClick={() => void advanceWithoutReview()}
+                          title="Advance to next card (Space / Enter)"
+                        >
+                          <span>Next Card (No review recorded) →</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn text-xs px-3 py-2 cursor-pointer"
+                          onClick={() => {
+                            setRevealed(false)
+                          }}
+                          title="Edit your code and grade again"
+                        >
+                          <span>Edit &amp; Re-grade</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn text-xs px-2.5 py-1 text-slate-400 hover:text-slate-200 cursor-pointer"
+                          onClick={() => {
+                            setSkipReviewRecording(false)
+                          }}
+                          title="Enable standard grade buttons to record this review"
+                        >
+                          <span>Record this review anyway</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <p className="label">
+                          {result && !result.degraded_to_manual
+                            ? result.needs_confirmation
+                              ? 'Confirm or correct the grade'
+                              : 'Accept the suggestion, or override'
+                            : 'How well did you recall it?'}
+                        </p>
+                        <button
+                          type="button"
+                          className="text-[11px] text-slate-500 hover:text-amber-300 underline cursor-pointer"
+                          onClick={() => setSkipReviewRecording(true)}
+                          title="Don't record this card review"
+                        >
+                          Skip recording this review
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {GRADES.map((g, i) => {
+                          const suggested =
+                            result && !result.degraded_to_manual && result.suggested_grade === g
+                          return (
+                            <button
+                              key={g}
+                              onClick={() => confirm(g)}
+                              disabled={confirming}
+                              className={`btn ${GRADE_STYLE[g]} ${
+                                suggested ? 'ring-1 ring-inset ring-current' : ''
+                              }`}
+                            >
+                              <span className="capitalize">{g}</span>
+                              <span className="text-xs opacity-50">{GRADE_BAND[g]}</span>
+                              <span className="text-xs opacity-50">{i + 1}</span>
+                              {suggested && <span className="text-xs opacity-70">· suggested</span>}
+                              {persistActive && (
+                                <span
+                                  className={`text-[10px] ml-1 px-1.5 py-0.5 rounded font-semibold ${
+                                    g === 'easy'
+                                      ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-500/50'
+                                      : 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
+                                  }`}
+                                >
+                                  {g === 'easy' ? 'Grasps' : 'Re-queues'}
+                                </span>
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -3850,14 +4017,36 @@ export default function Review() {
                     />
                   </div>
                 ) : (
-                  <textarea
-                    id="answer"
-                    ref={inputRef}
-                    className="input min-h-[7rem] resize-y"
-                    value={answer}
-                    onChange={(e) => setAnswer(e.target.value)}
-                    placeholder="Type your answer…"
-                  />
+                  <>
+                    {skipReviewRecording && (
+                      <div className="mb-2 flex items-center justify-between rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 shadow-sm animate-fadeIn">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-bold uppercase tracking-wider text-[11px] bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30 shrink-0">
+                            ⚡ Skip Grading Active
+                          </span>
+                          <span className="truncate">
+                            Type your answer and grade it below. Your grade will not be recorded as a card review.
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="text-[11px] underline text-amber-400 hover:text-amber-100 ml-2 shrink-0 cursor-pointer"
+                          onClick={() => setSkipReviewRecording(false)}
+                          title="Return to standard review mode"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                    <textarea
+                      id="answer"
+                      ref={inputRef}
+                      className="input min-h-[7rem] resize-y"
+                      value={answer}
+                      onChange={(e) => setAnswer(e.target.value)}
+                      placeholder="Type your answer…"
+                    />
+                  </>
                 )}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {llmEnabled && (
@@ -3872,15 +4061,25 @@ export default function Review() {
                   )}
                   {llmEnabled ? (
                     <button
-                      className="btn btn-primary"
+                      className={`btn ${skipReviewRecording ? 'btn-secondary border-amber-500/50 text-amber-200' : 'btn-primary'}`}
                       onClick={() => void grade()}
                       disabled={grading || !answer.trim()}
+                      title={skipReviewRecording ? 'Grade answer without recording a review' : 'Submit answer and prepare to record review'}
                     >
-                      {grading ? 'Grading…' : 'Submit answer'}
+                      {grading ? 'Grading…' : skipReviewRecording ? 'Grade answer (Unrecorded)' : 'Submit answer'}
                     </button>
                   ) : null}
-                  <button className="btn" onClick={reveal} disabled={grading}>
-                    {llmEnabled ? 'Skip grading, just show me' : 'Show answer'}
+                  <button
+                    type="button"
+                    className={`btn ${skipReviewRecording ? 'border-amber-500/60 text-amber-300 bg-amber-500/15 font-semibold' : ''}`}
+                    onClick={handleSkipGrading}
+                    disabled={grading}
+                    title={skipReviewRecording ? 'Advance to next card without recording review' : 'Type and grade an answer without recording the grade as a card review'}
+                  >
+                    <span>{skipReviewRecording ? 'Skip card (Unrecorded)' : 'Skip grading'}</span>
+                  </button>
+                  <button className="btn" onClick={reveal} disabled={grading} title="Show reference answer immediately">
+                    Show answer
                   </button>
                   <button
                     type="button"
@@ -4031,47 +4230,103 @@ export default function Review() {
                   </div>
                 ) : null}
 
-                <div>
-                  <p className="label">
-                    {result && !result.degraded_to_manual
-                      ? result.needs_confirmation
-                        ? 'Confirm or correct the grade'
-                        : 'Accept the suggestion, or override'
-                      : 'How well did you recall it?'}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {GRADES.map((g, i) => {
-                      const suggested =
-                        result && !result.degraded_to_manual && result.suggested_grade === g
-                      return (
-                        <button
-                          key={g}
-                          onClick={() => confirm(g)}
-                          disabled={confirming}
-                          className={`btn ${GRADE_STYLE[g]} ${
-                            suggested ? 'ring-1 ring-inset ring-current' : ''
-                          }`}
-                        >
-                          <span className="capitalize">{g}</span>
-                          <span className="text-xs opacity-50">{GRADE_BAND[g]}</span>
-                          <span className="text-xs opacity-50">{i + 1}</span>
-                          {suggested && <span className="text-xs opacity-70">· suggested</span>}
-                          {persistActive && (
-                            <span
-                              className={`text-[10px] ml-1 px-1.5 py-0.5 rounded font-semibold ${
-                                g === 'easy'
-                                  ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-500/50'
-                                  : 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
-                              }`}
-                            >
-                              {g === 'easy' ? 'Grasps' : 'Re-queues'}
-                            </span>
-                          )}
-                        </button>
-                      )
-                    })}
+                {skipReviewRecording ? (
+                  <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                        ⚡ Unrecorded Practice Mode
+                      </span>
+                      <span className="chip border-amber-500/30 text-amber-300 bg-amber-500/20 text-[10px]">
+                        Review Not Recorded
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      You typed and graded your answer without recording a card review. Your review queue and spaced repetition schedule are unaffected.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        className="btn btn-primary text-xs px-4 py-2 font-bold shadow-sm cursor-pointer"
+                        onClick={() => void advanceWithoutReview()}
+                        title="Advance to next card (Space / Enter)"
+                      >
+                        <span>Next Card (No review recorded) →</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn text-xs px-3 py-2 cursor-pointer"
+                        onClick={() => {
+                          setRevealed(false)
+                        }}
+                        title="Edit your answer and grade again"
+                      >
+                        <span>Edit &amp; Re-grade</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn text-xs px-2.5 py-1 text-slate-400 hover:text-slate-200 cursor-pointer"
+                        onClick={() => {
+                          setSkipReviewRecording(false)
+                        }}
+                        title="Enable standard grade buttons to record this review"
+                      >
+                        <span>Record this review anyway</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <p className="label">
+                        {result && !result.degraded_to_manual
+                          ? result.needs_confirmation
+                            ? 'Confirm or correct the grade'
+                            : 'Accept the suggestion, or override'
+                          : 'How well did you recall it?'}
+                      </p>
+                      <button
+                        type="button"
+                        className="text-[11px] text-slate-500 hover:text-amber-300 underline cursor-pointer"
+                        onClick={() => setSkipReviewRecording(true)}
+                        title="Don't record this card review"
+                      >
+                        Skip recording this review
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {GRADES.map((g, i) => {
+                        const suggested =
+                          result && !result.degraded_to_manual && result.suggested_grade === g
+                        return (
+                          <button
+                            key={g}
+                            onClick={() => confirm(g)}
+                            disabled={confirming}
+                            className={`btn ${GRADE_STYLE[g]} ${
+                              suggested ? 'ring-1 ring-inset ring-current' : ''
+                            }`}
+                          >
+                            <span className="capitalize">{g}</span>
+                            <span className="text-xs opacity-50">{GRADE_BAND[g]}</span>
+                            <span className="text-xs opacity-50">{i + 1}</span>
+                            {suggested && <span className="text-xs opacity-70">· suggested</span>}
+                            {persistActive && (
+                              <span
+                                className={`text-[10px] ml-1 px-1.5 py-0.5 rounded font-semibold ${
+                                  g === 'easy'
+                                    ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-500/50'
+                                    : 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
+                                }`}
+                              >
+                                {g === 'easy' ? 'Grasps' : 'Re-queues'}
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
