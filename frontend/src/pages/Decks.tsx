@@ -16,6 +16,7 @@ import type {
   OcclusionShape,
   SequentialClozeItem,
 } from '../api/types'
+import { CardAnalyticsModal } from '../components/CardAnalyticsModal'
 import { DeckReviewStatsBar, CompactDeckDistributionBars } from '../components/DeckReviewStatsBar'
 import { OcclusionEditor } from '../components/Occlusion'
 import { Empty, ErrorNote, PriorityBar, RichText, Section, Spinner } from '../components/ui'
@@ -1935,6 +1936,7 @@ function Browser({ deckId, deck, onChange }: { deckId: string; deck?: Deck | nul
   const [cards, setCards] = useState<Card[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [selectedCardForAnalytics, setSelectedCardForAnalytics] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -1959,7 +1961,7 @@ function Browser({ deckId, deck, onChange }: { deckId: string; deck?: Deck | nul
   return (
     <Section
       title={`Cards (${cards.length})`}
-      description="Everything in this deck, including what the queue isn't showing today."
+      description="Everything in this deck, including what the queue isn't showing today. Click any card or Analytics to inspect memory dynamics & weak points."
       actions={
         <input
           className="input w-56"
@@ -1976,13 +1978,28 @@ function Browser({ deckId, deck, onChange }: { deckId: string; deck?: Deck | nul
       ) : (
         <div className="space-y-2">
           {shown.map((c) => (
-            <div key={c.id} className="rounded-lg border border-ink-line p-3">
+            <div key={c.id} className="rounded-lg border border-ink-line p-3 hover:border-slate-700 transition">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <RichText text={c.front} className="text-sm text-slate-200" />
+                <div
+                  className="min-w-0 flex-1 cursor-pointer group"
+                  onClick={() => setSelectedCardForAnalytics(c.id)}
+                  title="Click to inspect card analytics, memory retention dynamics, and weak points"
+                >
+                  <div className="group-hover:text-sky-300 transition">
+                    <RichText text={c.front} className="text-sm text-slate-200" />
+                  </div>
                   <RichText text={c.back} className="mt-1 text-sm text-slate-500" />
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn px-2.5 py-1 text-xs font-semibold border-sky-500/40 bg-sky-500/10 text-sky-200 hover:bg-sky-500/20 transition flex items-center gap-1.5 cursor-pointer"
+                    onClick={() => setSelectedCardForAnalytics(c.id)}
+                    title="View card analytics, memory dynamics, and weak points"
+                  >
+                    <span>📊</span>
+                    <span>Analytics</span>
+                  </button>
                   <button
                     className="btn px-2 py-1 text-xs"
                     onClick={async () => {
@@ -2050,6 +2067,16 @@ function Browser({ deckId, deck, onChange }: { deckId: string; deck?: Deck | nul
           ))}
         </div>
       )}
+
+      <CardAnalyticsModal
+        cardId={selectedCardForAnalytics}
+        isOpen={Boolean(selectedCardForAnalytics)}
+        onClose={() => setSelectedCardForAnalytics(null)}
+        onCardUpdated={() => {
+          void load()
+          onChange()
+        }}
+      />
     </Section>
   )
 }

@@ -3,6 +3,7 @@ import type {
   AtomicityLintResult,
   Bank,
   Card,
+  CardAnalytics,
   CitedCard,
   CodeProblemOut,
   CodeProblemSummary,
@@ -272,6 +273,9 @@ export const api = {
     post<Card>(`/api/cards/${id}/suspend?suspended=${suspended}`),
   postponeCard: (id: string, hours: number = 4) =>
     post<{ card_id: string; due: string; postponed_hours: number }>(`/api/cards/${id}/postpone?hours=${hours}`),
+  cardAnalytics: (cardId: string) => request<CardAnalytics>(`/api/cards/${cardId}/analytics`),
+  updateCardMemoryNote: (cardId: string, memory_note: string) =>
+    patch<Card>(`/api/cards/${cardId}/memory-note`, { memory_note }),
   setPriority: (target: 'deck' | 'card' | 'source' | 'extract', id: string, priority: number) =>
     patch<{ priority: number }>('/api/priority', { target, id, priority }),
 
@@ -476,7 +480,18 @@ export const api = {
       `/api/code/submissions?limit=${limit}${problemId ? `&problem_id=${problemId}` : ''}`,
     ),
   getCodeStats: () => request<CodeProgressionStats>('/api/code/stats'),
-  lookupLexicon: (term: string, context?: string | null, cardId?: string | null) =>
-    post<LexiconEntry>('/api/lexicon/lookup', { term, context, card_id: cardId }),
+  lookupLexicon: (
+    term: string,
+    context?: string | null,
+    cardId?: string | null,
+    options?: { deckName?: string | null; thematicNature?: string | null },
+  ) =>
+    post<LexiconEntry>('/api/lexicon/lookup', {
+      term,
+      context,
+      card_id: cardId,
+      deck_name: options?.deckName,
+      thematic_nature: options?.thematicNature,
+    }),
   getRecentLexicon: () => request<RecentLexiconItem[]>('/api/lexicon/recent'),
 }

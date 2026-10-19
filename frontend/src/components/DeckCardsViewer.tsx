@@ -4,6 +4,7 @@ import type { QueueItem } from '../api/types'
 import { CodeEditor } from './CodeEditor'
 import { RichText } from './ui'
 import { isCodeCard, extractCleanCode, detectCodeLanguage } from '../utils/codeUtils'
+import { CardAnalyticsModal } from './CardAnalyticsModal'
 
 export interface DeckCardsViewerProps {
   isOpen: boolean
@@ -28,6 +29,7 @@ export function DeckCardsViewer({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
+  const [analyticsCardId, setAnalyticsCardId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterType, setFilterType] = useState<'all' | 'code' | 'flashcard'>('all')
   const [filterDifficulty, setFilterDifficulty] = useState<'all' | 'easy' | 'medium' | 'hard'>('all')
@@ -426,6 +428,16 @@ export function DeckCardsViewer({
 
                   {/* Action Buttons */}
                   <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAnalyticsCardId(selectedCard.id)}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-sky-500/40 bg-sky-500/15 hover:bg-sky-500/25 text-sky-200 text-xs font-semibold transition cursor-pointer"
+                      title="View card analytics, memory retention dynamics, and weak points"
+                    >
+                      <span>📊</span>
+                      <span>Analytics</span>
+                    </button>
+
                     {onSelectCard && (
                       <button
                         type="button"
@@ -613,6 +625,15 @@ export function DeckCardsViewer({
           </div>
         </div>
       </div>
+
+      <CardAnalyticsModal
+        cardId={analyticsCardId}
+        isOpen={Boolean(analyticsCardId)}
+        onClose={() => setAnalyticsCardId(null)}
+        onCardUpdated={() => {
+          if (deckId) void loadCards(deckId)
+        }}
+      />
     </div>
   )
 }

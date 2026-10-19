@@ -242,6 +242,51 @@ class CardOut(BaseModel):
     source_documents: list[dict | str] = Field(default_factory=list)
 
 
+class CardReviewLogItemOut(BaseModel):
+    id: int
+    reviewed_at: datetime
+    final_grade: str
+    typed_answer: str | None = None
+    latency_ms: int | None = None
+    llm_grade: str | None = None
+    llm_reasoning: str | None = None
+    llm_confidence: float | None = None
+    overridden: bool = False
+    user_confidence: int | None = None
+    is_blitz: bool = False
+    weaknesses: list[str] = Field(default_factory=list)
+    improvements: list[str] = Field(default_factory=list)
+
+
+class CardNextIntervalsOut(BaseModel):
+    again: str
+    hard: str
+    good: str
+    easy: str
+
+
+class CardAnalyticsOut(BaseModel):
+    card: CardOut
+    retrievability: float | None = None
+    next_intervals: CardNextIntervalsOut | None = None
+    total_reviews: int = 0
+    recall_rate: float = 0.0
+    rating_counts: dict[str, int] = Field(default_factory=dict)
+    rating_percentages: dict[str, float] = Field(default_factory=dict)
+    avg_latency_ms: int | None = None
+    fastest_latency_ms: int | None = None
+    slowest_latency_ms: int | None = None
+    automaticity_achieved: bool | None = None
+    total_overridden: int = 0
+    active_weaknesses: list[str] = Field(default_factory=list)
+    weakness_history: list[dict] = Field(default_factory=list)
+    review_logs: list[CardReviewLogItemOut] = Field(default_factory=list)
+
+
+class CardMemoryNoteIn(BaseModel):
+    memory_note: str
+
+
 class NoteOut(BaseModel):
     id: str
     note_type_id: str

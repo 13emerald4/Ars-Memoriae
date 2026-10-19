@@ -69,3 +69,62 @@ async def test_lookup_custom_term_with_mocked_llm(auth_client: AsyncClient, monk
     assert recent_resp.status_code == 200
     terms = [item["term"] for item in recent_resp.json()]
     assert "amortized analysis" in terms
+
+
+@pytest.mark.asyncio
+async def test_lookup_non_cs_deck_does_not_force_programming(auth_client: AsyncClient, monkeypatch):
+    from app.services.grading_service import GradingService
+
+    captured_prompts = []
+
+    async def mock_generate(self, prompt, model=None, thinking_budget=None):
+        captured_prompts.append(prompt)
+        return json.dumps({
+            "definition": "Un asentamiento es un lugar donde se establece una persona o una comunidad.",
+            "context_explanation": "En el contexto de la historia y la geografía española e hispanoamericana, los asentamientos coloniales determinaron la distribución urbana y territorial.",
+            "example": "El asentamiento de Santa Fe fue fundado a orillas del río en 1573.",
+            "domain": "Historia y Lengua Española",
+            "related_terms": ["colonia", "encomienda", "urbanización", "población"],
+        })
+
+    monkeypatch.setattr(GradingService, "_generate", mock_generate)
+
+    # Create a non-CS deck (e.g. Spanish 321)
+    deck_resp = await auth_client.post(
+        "/api/decks",
+        json={"name": "SPAN 321 - Cultura y Civilización", "thematic_nature": "Spanish Colonial History"},
+    )
+    assert deck_resp.status_code == 201
+    deck_id = deck_resp.json()["id"]
+
+    note_resp = await auth_client.post(
+        "/api/notes",
+        json={
+            "deck_id": deck_id,
+            "template_kind": "basic",
+            "field_values": {"Front": "¿Qué es un asentamiento?", "Back": "Un lugar donde se establece una comunidad."},
+        },
+    )
+    card_id = note_resp.json()["cards"][0]["id"]
+
+    resp = await auth_client.post(
+        "/api/lexicon/lookup",
+        json={
+            "term": "asentamiento",
+            "card_id": card_id,
+            "deck_name": "SPAN 321 - Cultura y Civilización",
+            "context": "Durante el siglo XVI, los primeros asentamientos españoles en América se organizaron siguiendo el modelo de cuadrícula.",
+        },
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["term"] == "asentamiento"
+    assert "programming" not in data["definition"].lower()
+    assert "python" not in (data["example"] or "").lower()
+    assert "Historia" in data["domain"]
+
+    # Verify the system prompt captured had non-CS instructions and deck name
+    assert len(captured_prompts) == 1
+    prompt = captured_prompts[0]
+    assert "CRITICAL DOMAIN & RELEVANCE RULES" in prompt
+    assert "SPAN 321" in prompt

@@ -411,6 +411,47 @@ export interface Card {
   source_documents?: Array<Record<string, any>>
 }
 
+export interface CardReviewLogItem {
+  id: number
+  reviewed_at: string
+  final_grade: string
+  typed_answer?: string | null
+  latency_ms?: number | null
+  llm_grade?: string | null
+  llm_reasoning?: string | null
+  llm_confidence?: number | null
+  overridden: boolean
+  user_confidence?: number | null
+  is_blitz: boolean
+  weaknesses: string[]
+  improvements: string[]
+}
+
+export interface CardNextIntervals {
+  again: string
+  hard: string
+  good: string
+  easy: string
+}
+
+export interface CardAnalytics {
+  card: Card
+  retrievability?: number | null
+  next_intervals?: CardNextIntervals | null
+  total_reviews: number
+  recall_rate: number
+  rating_counts: Record<string, number>
+  rating_percentages: Record<string, number>
+  avg_latency_ms?: number | null
+  fastest_latency_ms?: number | null
+  slowest_latency_ms?: number | null
+  automaticity_achieved?: boolean | null
+  total_overridden: number
+  active_weaknesses: string[]
+  weakness_history: Array<Record<string, any>>
+  review_logs: CardReviewLogItem[]
+}
+
 export interface Source {
   id: string
   title: string
@@ -785,6 +826,8 @@ export interface LexiconLookupRequest {
   term: string
   context?: string | null
   card_id?: string | null
+  deck_name?: string | null
+  thematic_nature?: string | null
 }
 
 export interface LexiconEntry {

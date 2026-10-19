@@ -241,10 +241,38 @@ export default function Review() {
   const [selectedPersistDeckId, setSelectedPersistDeckId] = useState<string>('')
   const [dismissedUnseenDeckId, setDismissedUnseenDeckId] = useState<string | null>(null)
 
+  const { setActiveDeckContext } = useLexicon()
+
   const currentDeckInfo = useMemo(() => {
     if (!deckParam) return null
     return allDecks.find((d) => d.id === deckParam) || null
   }, [allDecks, deckParam])
+
+  useEffect(() => {
+    if (item) {
+      setActiveDeckContext({
+        cardId: item.id || null,
+        deckName: item.deck_name || currentDeckInfo?.name || null,
+        thematicNature:
+          item.card_thematic_nature ||
+          item.deck_thematic_nature ||
+          currentDeckInfo?.thematic_nature ||
+          item.category ||
+          null,
+      })
+    } else if (currentDeckInfo) {
+      setActiveDeckContext({
+        cardId: null,
+        deckName: currentDeckInfo.name,
+        thematicNature: currentDeckInfo.thematic_nature || null,
+      })
+    } else {
+      setActiveDeckContext(null)
+    }
+    return () => {
+      setActiveDeckContext(null)
+    }
+  }, [item, currentDeckInfo, setActiveDeckContext])
 
   // All Cards Run Mode: Review every card in deck consecutively, easiest to hardest, then FSRS takes over
   const runParam = params.get('run') === 'all' || params.get('all_cards_run') === '1'
@@ -4860,7 +4888,13 @@ function LessonGate({
 
         <button
           type="button"
-          onClick={() => openLexicon(item.title || 'terminology', item.front || '')}
+          onClick={() =>
+            openLexicon(item.title || 'terminology', item.front || '', null, {
+              cardId: item.id,
+              deckName,
+              thematicNature: thematic,
+            })
+          }
           className="flex items-center gap-1.5 rounded-full border border-sky-400/40 bg-sky-950/70 px-2.5 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-900/80 hover:border-sky-300 transition-all shadow-sm"
           title="Lexicon lookup"
         >

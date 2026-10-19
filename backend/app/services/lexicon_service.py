@@ -13,23 +13,37 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.models import LexiconCache, User
+from app.models import Card, Deck, LexiconCache, User
 from app.services.grading_service import GradingService, parse_json
 
 log = logging.getLogger(__name__)
 
-LEXICON_SYSTEM_PROMPT = """You are an expert computer science professor and technical concordance tutor.
-A student clicked on a term they do not understand: "{term}".
-Reading Context: "{context}"
+LEXICON_SYSTEM_PROMPT = """You are an expert educator, terminology specialist, and concordance tutor across diverse academic and professional disciplines (humanities, languages, sciences, history, law, arts, mathematics, and technology).
+A student is studying and encountered a term they want to understand: "{term}".
+Subject / Deck Context:
+\"\"\"{context}\"\"\"
 
-Explain this concept with high pedagogical clarity, concise precision, and zero fluff.
-Respond ONLY with a JSON object following this exact structure:
+CRITICAL DOMAIN & RELEVANCE RULES:
+1. Examine the Subject / Deck Context and the term itself to accurately identify the real academic domain (e.g. Spanish Language, World History, Organic Chemistry, Literature, Philosophy, Medicine, Law, Linguistics, Economics, Mathematics, Computer Science, etc.).
+2. If the deck, card, or context has NOTHING to do with programming, software, or computer science:
+   - Absolutely DO NOT include any programming, computer science, data structures, hardware, or software analogies!
+   - NEVER force an analogy to programming (e.g. NEVER compare human settlements, grammatical terms, historical treaties, or biological cells to Python lists, arrays, functions, classes, or memory registers).
+   - "definition": Clear, natural 1-2 sentence core definition of the term in its authentic subject domain.
+   - "context_explanation": 2-3 sentences explaining why this concept matters within its real subject domain (e.g. for language: its cultural or grammatical usage; for history: historical significance; for biology: biological role).
+   - "example": A realistic, domain-appropriate example (e.g. a sample usage sentence in the target language with English translation, a real historical event, a biological phenomenon, or legal scenario).
+   - "domain": The authentic discipline (e.g. 'Spanish Language & Culture', 'Human Geography', 'Microbiology', 'Contract Law').
+   - "related_terms": 3-5 terms from that SAME discipline.
+3. ONLY if the subject or term is genuinely about programming, software development, or computer science:
+   - Provide a technical explanation and a code snippet or algorithmic example.
+   - "domain": A relevant computing domain (e.g. 'Algorithms & Data Structures', 'Programming Languages', 'Computer Systems').
+
+Respond ONLY with a JSON object following this exact schema:
 {{
   "definition": "1-2 sentence core definition in plain English explaining what it means fundamentally.",
-  "context_explanation": "2-3 sentences explaining how this applies to programming, data structures, or hardware, and why it matters in this context.",
-  "example": "A concrete code snippet, numerical example, or real-world illustration (e.g. '0.1 + 0.2 === 0.30000000000000004 in JavaScript/Python').",
-  "domain": "The primary domain (e.g. 'Computer Systems / Numerics', 'Algorithms', 'Data Structures', 'Programming Languages').",
-  "related_terms": ["3-5 related technical terms or concepts for their concordance"]
+  "context_explanation": "2-3 sentences explaining why it matters in this context without forcing unrelated CS metaphors.",
+  "example": "A concrete domain-appropriate example (or null if not applicable).",
+  "domain": "The authentic subject domain.",
+  "related_terms": ["3-5 related terms within the same domain"]
 }}
 """
 
@@ -76,10 +90,55 @@ async def lookup_term(
     db: AsyncSession,
     term: str,
     context: str | None = None,
+    card_id: str | None = None,
+    deck_name: str | None = None,
+    thematic_nature: str | None = None,
     user: User | None = None,
 ) -> dict:
     clean_term = term.strip()
     norm_term = clean_term.lower()
+
+    # Resolve card / deck metadata if card_id provided
+    card_content = ""
+    if card_id:
+        try:
+            import uuid
+            card_uuid = uuid.UUID(card_id) if isinstance(card_id, str) else card_id
+            card = await db.get(Card, card_uuid)
+            if card:
+                deck = card.deck or (await db.get(Deck, card.deck_id))
+                if not deck_name and deck:
+                    deck_name = deck.name
+                if not thematic_nature:
+                    thematic_nature = card.thematic_nature or (deck.thematic_nature if deck else None)
+                if not context and card.note and card.note.field_values:
+                    card_content = f"Front: {card.note.field_values.get('Front', '')}\nBack: {card.note.field_values.get('Back', '')}"
+        except Exception as exc:
+            log.debug("Failed resolving card for lexicon lookup %s: %s", card_id, exc)
+
+    # Detect if current deck, term, or context is actually related to Computer Science
+    cs_indicators = [
+        "programming", "computer science", "software", "coding", "code", "algorithm",
+        "algorithms", "data structure", "data structures", "python", "typescript",
+        "javascript", "java", "c++", "leetcode", "debugging", "compiler", "cpu",
+        "hardware", "operating system", "concurrency", "database", "sql", "git",
+        "cpsc", "cs1", "cs2", "cse", "binary", "floating-point"
+    ]
+    combined_ctx_lower = f"{clean_term} {deck_name or ''} {thematic_nature or ''} {context or ''} {card_content}".lower()
+    is_cs_subject = any(ind in combined_ctx_lower for ind in cs_indicators) or norm_term in CURATED_OFFLINE_DEFINITIONS
+
+    # Build pedagogical context
+    context_blocks = []
+    if deck_name:
+        context_blocks.append(f"Deck Name: {deck_name}")
+    if thematic_nature:
+        context_blocks.append(f"Subject / Thematic Nature: {thematic_nature}")
+    if context and context.strip():
+        context_blocks.append(f"Context / Reading: {context.strip()[:1000]}")
+    elif card_content:
+        context_blocks.append(f"Card Content: {card_content[:1000]}")
+
+    full_context_str = "\n".join(context_blocks) if context_blocks else (context or "").strip()[:1000] or "General academic study context."
 
     # 1. Check database cache
     cached_entry = (
@@ -92,17 +151,25 @@ async def lookup_term(
     ).scalar_one_or_none()
 
     if cached_entry:
-        return {
-            "term": cached_entry.term_display,
-            "definition": cached_entry.definition,
-            "context_explanation": cached_entry.context_explanation,
-            "example": cached_entry.example,
-            "domain": cached_entry.domain,
-            "related_terms": cached_entry.related_terms or [],
-            "cached": True,
-            "model_used": cached_entry.model_used,
-            "created_at": cached_entry.created_at,
-        }
+        cached_is_cs = any(
+            k in (cached_entry.domain or "").lower()
+            for k in ["computer", "programming", "algorithm", "data structure", "software"]
+        )
+        # Guardrail: If cached entry was forced into Computer Science, but current context is NOT Computer Science, bypass cache!
+        if not is_cs_subject and cached_is_cs:
+            log.info("Bypassing CS-biased cached lexicon entry for '%s' in non-CS context (%s)", clean_term, deck_name)
+        else:
+            return {
+                "term": cached_entry.term_display,
+                "definition": cached_entry.definition,
+                "context_explanation": cached_entry.context_explanation,
+                "example": cached_entry.example,
+                "domain": cached_entry.domain,
+                "related_terms": cached_entry.related_terms or [],
+                "cached": True,
+                "model_used": cached_entry.model_used,
+                "created_at": cached_entry.created_at,
+            }
 
     # 2. Check curated offline dictionary for instant match
     if norm_term in CURATED_OFFLINE_DEFINITIONS:
@@ -137,24 +204,30 @@ async def lookup_term(
     service = GradingService(model=model_name)
     prompt = LEXICON_SYSTEM_PROMPT.format(
         term=clean_term,
-        context=(context or "").strip()[:1000] or "General computer science study context.",
+        context=full_context_str,
     )
 
     try:
         raw_response = await service._generate(prompt, model=model_name)
         data = parse_json(raw_response)
-        definition = data.get("definition") or f"A technical concept in {clean_term}."
+        definition = data.get("definition") or f"A key concept: {clean_term}."
         context_explanation = data.get("context_explanation")
         example = data.get("example")
-        domain = data.get("domain", "Computer Science")
+        domain = data.get("domain") or (thematic_nature or deck_name or ("Computer Science" if is_cs_subject else "General Studies"))
         related_terms = data.get("related_terms") or []
         model_used = model_name
     except Exception as exc:
         log.warning("Ollama lexicon lookup failed for '%s': %s; using heuristic fallback", clean_term, exc)
-        definition = f"Technical term: {clean_term}. Used in computational logic and programming."
-        context_explanation = f"In this passage, '{clean_term}' specifies an essential implementation detail or operational constraint."
-        example = None
-        domain = "Computer Science"
+        if is_cs_subject:
+            domain = "Computer Science"
+            definition = f"Technical term: {clean_term}."
+            context_explanation = f"In this passage, '{clean_term}' specifies an essential implementation detail or operational constraint."
+            example = None
+        else:
+            domain = thematic_nature or deck_name or "General Studies"
+            definition = f"Concept: {clean_term}."
+            context_explanation = f"In this subject context, '{clean_term}' represents a core concept or term."
+            example = None
         related_terms = []
         model_used = "heuristic_fallback"
 

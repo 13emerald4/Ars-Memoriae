@@ -1,10 +1,23 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react'
 import { LexiconPopover } from './LexiconPopover'
 
+export interface ActiveDeckContext {
+  cardId?: string | null
+  deckName?: string | null
+  thematicNature?: string | null
+}
+
 interface LexiconContextValue {
-  openLexicon: (term: string, context?: string | null, position?: { x: number; y: number } | null) => void
+  openLexicon: (
+    term: string,
+    context?: string | null,
+    position?: { x: number; y: number } | null,
+    overrideDeckContext?: ActiveDeckContext | null,
+  ) => void
   closeLexicon: () => void
   isLexiconOpen: boolean
+  setActiveDeckContext: (ctx: ActiveDeckContext | null) => void
+  activeDeckContext: ActiveDeckContext | null
 }
 
 const LexiconContext = createContext<LexiconContextValue | null>(null)
@@ -25,6 +38,10 @@ export function LexiconProvider({ children }: { children: ReactNode }) {
   const [term, setTerm] = useState<string | null>(null)
   const [context, setContext] = useState<string | null>(null)
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
+  const [activeDeckContext, setActiveDeckContext] = useState<ActiveDeckContext | null>(null)
+  const activeDeckContextRef = useRef<ActiveDeckContext | null>(null)
+  activeDeckContextRef.current = activeDeckContext
+  const [currentLookupDeckContext, setCurrentLookupDeckContext] = useState<ActiveDeckContext | null>(null)
 
   // Floating selection pill state
   const [selectionPill, setSelectionPill] = useState<{
@@ -35,7 +52,12 @@ export function LexiconProvider({ children }: { children: ReactNode }) {
   } | null>(null)
 
   const openLexicon = useCallback(
-    (newTerm: string, newContext?: string | null, newPos?: { x: number; y: number } | null) => {
+    (
+      newTerm: string,
+      newContext?: string | null,
+      newPos?: { x: number; y: number } | null,
+      overrideDeckContext?: ActiveDeckContext | null,
+    ) => {
       isOpenRef.current = true
       setSelectionPill(null)
       try {
@@ -46,6 +68,9 @@ export function LexiconProvider({ children }: { children: ReactNode }) {
       setTerm(newTerm)
       setContext(newContext ?? null)
       setPosition(newPos ?? null)
+      setCurrentLookupDeckContext(
+        overrideDeckContext !== undefined ? overrideDeckContext : activeDeckContextRef.current,
+      )
       setIsOpen(true)
     },
     [],
@@ -125,10 +150,15 @@ export function LexiconProvider({ children }: { children: ReactNode }) {
       if (word.trim().length >= 2) {
         e.preventDefault()
         e.stopPropagation()
-        openLexicon(word.trim(), (e.target as HTMLElement)?.textContent || word, {
-          x: e.clientX,
-          y: e.clientY,
-        })
+        openLexicon(
+          word.trim(),
+          (e.target as HTMLElement)?.textContent || word,
+          {
+            x: e.clientX,
+            y: e.clientY,
+          },
+          activeDeckContextRef.current,
+        )
       }
     }
 
@@ -143,7 +173,15 @@ export function LexiconProvider({ children }: { children: ReactNode }) {
   }, [openLexicon])
 
   return (
-    <LexiconContext.Provider value={{ openLexicon, closeLexicon, isLexiconOpen: isOpen }}>
+    <LexiconContext.Provider
+      value={{
+        openLexicon,
+        closeLexicon,
+        isLexiconOpen: isOpen,
+        setActiveDeckContext,
+        activeDeckContext,
+      }}
+    >
       {children}
 
       {/* Floating Definition Pill above highlighted text */}
@@ -170,7 +208,7 @@ export function LexiconProvider({ children }: { children: ReactNode }) {
               const targetText = selectionPill.text
               const targetCtx = selectionPill.contextText
               const targetPos = { x: selectionPill.x, y: selectionPill.y }
-              openLexicon(targetText, targetCtx, targetPos)
+              openLexicon(targetText, targetCtx, targetPos, activeDeckContextRef.current)
             }}
             className="flex items-center gap-1.5 rounded-full border border-sky-400/50 bg-sky-950/95 px-3 py-1 text-xs font-semibold text-sky-200 shadow-xl backdrop-blur hover:bg-sky-900 hover:border-sky-300 transition-all hover:scale-105 active:scale-95 cursor-pointer"
           >
@@ -191,6 +229,9 @@ export function LexiconProvider({ children }: { children: ReactNode }) {
         <LexiconPopover
           term={term}
           context={context}
+          cardId={currentLookupDeckContext?.cardId ?? activeDeckContext?.cardId}
+          deckName={currentLookupDeckContext?.deckName ?? activeDeckContext?.deckName}
+          thematicNature={currentLookupDeckContext?.thematicNature ?? activeDeckContext?.thematicNature}
           position={position}
           onClose={closeLexicon}
           onLookupNewTerm={(t) => setTerm(t)}

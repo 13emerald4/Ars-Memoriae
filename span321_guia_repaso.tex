@@ -1,0 +1,471 @@
+% SPAN 321 --- Guía de Repaso: Primer Examen (Edición Socrática y Parsimoniosa)
+% Basada en los materiales de María Soledad Fernández Utrera (UBC, 2026W1)
+% Autor: Michael Polley. Maquetación con márgenes Tufte y prevención de colisiones.
+\documentclass[10pt]{article}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{mathpazo}
+\usepackage[letterpaper, left=0.65in, textwidth=4.7in, marginparsep=0.3in, marginparwidth=2.45in, top=0.75in, bottom=0.75in]{geometry}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage[most]{tcolorbox}
+\tcbuselibrary{raster,skins,breakable}
+\usepackage{multicol}
+\usepackage[titles]{tocloft}
+\usepackage{marginnote}
+\usepackage{marginfix}
+\usepackage{ragged2e}
+\usepackage{hyperref}
+
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black}
+\setlist{nosep,leftmargin=1.3em,topsep=2pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\setcounter{secnumdepth}{0}
+\setcounter{tocdepth}{1}
+
+% ======================================================================
+% Configuración del Índice (Inspirado en David Gooding: "According to Luke")
+% Diseño monocolumna limpio, rúbricas de Parte sin número de página, capítulos con sangría, sin puntos guía
+% ======================================================================
+\renewcommand{\contentsname}{Contenido}
+\renewcommand{\cfttoctitlefont}{\hfill\Large\bfseries\color{blue!60!black}}
+\renewcommand{\cftaftertoctitle}{\hfill}
+\setlength{\cftbeforetoctitleskip}{4pt}
+\setlength{\cftaftertoctitleskip}{12pt}
+
+% Partes (Part One, Part Two...): Rúbricas jerárquicas SIN número de página ni puntos
+\renewcommand{\cftpartfont}{\large\bfseries\color{orange!85!black}}
+\setlength{\cftbeforepartskip}{11pt}
+\setlength{\cftpartindent}{0pt}
+\cftpagenumbersoff{part}
+\renewcommand{\cftpartleader}{\hfill}
+
+% Secciones/Capítulos: Sangría armónica, fuente regular, sin puntos, números alineados a la derecha
+\renewcommand{\cftsecfont}{\normalsize\normalfont}
+\renewcommand{\cftsecpagefont}{\normalsize\normalfont\color{black!75}}
+\setlength{\cftsecindent}{1.4em}
+\setlength{\cftsecnumwidth}{1.8em}
+\setlength{\cftbeforesecskip}{4pt}
+\renewcommand{\cftsecleader}{\hfill} % Espacio en blanco limpio hacia el número (estilo Gooding)
+\cftsetpnumwidth{1.6em}
+\cftsetrmarg{2.0em}
+
+% Formato de Títulos y Secciones
+\titleformat{\part}[block]{\LARGE\bfseries\color{orange!80!black}}{}{0pt}{}
+\titlespacing*{\part}{0pt}{12pt}{4pt}
+\titleformat{\section}{\Large\bfseries\color{blue!50!black}}{}{0pt}{}
+\titlespacing*{\section}{0pt}{14pt}{4pt}
+\titleformat{\subsection}{\normalsize\bfseries\itshape\color{black!85}}{}{0pt}{}
+\titlespacing*{\subsection}{0pt}{7pt}{2pt}
+
+% Motor de Márgenes Anticolisión (Tufte Style)
+\setlength{\marginparpush}{7pt}
+\newcommand{\marginnotestyle}{\scriptsize\sffamily\color{black!80}\RaggedRight}
+
+\makeatletter
+\newcommand{\safemargin}[1]{%
+  \ifinner%
+    % Suprimido dentro de tablas o cajas para evitar solapamientos y error Float(s) lost
+  \else%
+    \marginpar{\marginnotestyle #1}%
+  \fi%
+}
+\makeatother
+
+% \term[Definición]{clave}{Texto}: término en negrita con definición en el margen la 1.ª vez
+\newcommand{\term}[3][]{%
+  \hypertarget{t:#2}{\textbf{#3}}%
+  \if\relax\detokenize{#1}\relax\else%
+    \safemargin{#1}%
+  \fi%
+}
+\renewcommand{\footnote}[1]{\safemargin{#1}}
+\newcommand{\ix}[3]{\hyperlink{t:#1}{#2}\dotfill #3\par}
+
+% Cajas Socráticas y de Estudio
+\newtcolorbox{corebox}{enhanced,colback=blue!4,colframe=blue!45!black,boxrule=0.6pt,arc=2pt,
+  left=6pt,right=6pt,top=4pt,bottom=4pt,fontupper=\small}
+\newtcolorbox{caja}[1]{enhanced,breakable,colback=orange!5,colframe=orange!75!black,boxrule=0.6pt,arc=2pt,
+  left=6pt,right=6pt,top=4pt,bottom=4pt,fontupper=\small,title={#1},coltitle=white,colbacktitle=orange!75!black}
+\newtcolorbox{ponder}{enhanced,colback=green!3,colframe=green!35!black,boxrule=0.5pt,arc=2pt,
+  left=6pt,right=6pt,top=3pt,bottom=3pt,fontupper=\small,
+  title={\small\bfseries Para pensar (desafío socrático)},coltitle=white,colbacktitle=green!35!black,
+  toptitle=1pt,bottomtitle=1pt}
+
+% Fichas de Arte Compactas
+\newcommand{\fichaart}[4]{%
+\begin{tcolorbox}[enhanced,breakable=false,colback=gray!3,colframe=gray!50,boxrule=0.4pt,arc=2pt,
+  left=5pt,right=5pt,top=3pt,bottom=3pt,fontupper=\small]
+\textbf{#1} \hfill \textit{\footnotesize #2}\par\vspace{1pt}
+{\footnotesize\color{black!75}\textbf{Contexto y estilo:} #3}\par
+{\footnotesize\textbf{Significado:} #4}
+\end{tcolorbox}\vspace{-2pt}}
+
+% Macros de estructura
+\newcommand{\chap}[2]{\section*{#1}\addcontentsline{toc}{section}{#1}\vspace{-2pt}\begin{corebox}\textbf{Idea central.} #2\end{corebox}}
+\newcommand{\partq}[2]{%
+  \part*{#1}%
+  {\small\itshape #2}\par\vspace{4pt}%
+}
+\newcommand{\contra}[1]{\par\smallskip\noindent{\small\textcolor{red!70!black}{\textsf{Contraejemplo socrático.}} #1}\par}
+\newcommand{\dato}[1]{\par\smallskip\noindent{\small\textcolor{orange!70!black}{\textsf{Dato de Marisol (examen).}} #1}\par}
+
+\begin{document}
+
+{\LARGE\bfseries SPAN 321 --- Guía de Repaso Socrática}\hfill{\small Primer Examen, 2026W1}
+
+\medskip
+\begin{caja}{La pregunta rectora que une los cuatro temas}
+\textbf{¿Cómo pasa la Península Ibérica de un atomismo de pueblos aislados a una España unida sin perder su diversidad irreducible?}
+\begin{itemize}
+  \item \textbf{Tema 1 (Prehistoria y Antigüedad):} Diversidad original irreductible: pueblos indígenas aislados y colonias mercantiles costeras.
+  \item \textbf{Tema 2 (Roma):} La forja de la unidad: el derecho, el latín, el urbanismo y el cristianismo unifican el espacio sin homogenizarlo del todo.
+  \item \textbf{Introducción (Geografía y Régimen Actual):} El relieve agreste y el sistema de 17 comunidades autónomas preservan la pluralidad histórica.
+  \item \textbf{Ocho apellidos vascos (El Presente):} La pervivencia de la tensión entre la tentación asimilacionista y la identidad periférica.
+\end{itemize}
+\emph{Regla del examen:} Toda respuesta con nota sobresaliente (A+/A) defiende este argumento rector y no se limita a enumerar datos.
+\end{caja}
+
+\vspace{6pt}
+\tableofcontents
+\vspace{6pt}
+
+\bigskip
+\begin{tcolorbox}[colback=gray!5,colframe=gray!60,boxrule=0.4pt,arc=2pt,fontupper=\footnotesize]
+\textbf{Coordenadas del examen:} Miércoles 21 de octubre, 12:30--2:00, Buchanan D204 (25\%). Entran: película y presentaciones (Intro, Tema 1 y 2). \textbf{Sin diccionario.} Estructura: 1 ensayo a elegir entre dos (50\%) y 5 preguntas cortas (50\%). Rúbrica de Marisol: rigor conceptual, léxico preciso, organización deductiva y claridad argumental. Calificación: A/A+ (89--90), B+ (77,5).
+\end{tcolorbox}
+
+%======================================================================
+\newpage
+\partq{Parte 1: El Presente}{¿Qué tensiones heredadas definen la España contemporánea?}
+
+%----------------------------------------------------------------------
+\chap{1. Ocho apellidos vascos: Mito, Mercado y Asimilación}{El humor y la marca turística reemplazan al terrorismo de ETA tras 2011, pero resuelven el conflicto absorbiendo la diversidad vasca dentro del marco hegemónico español.}
+
+\subsection{¿Qué es la película y qué género utiliza?}
+Es una \term[\textbf{Comedia romántica:} Narrativa de ficción basada en disfraces, equívocos amorosos y barreras sociales que busca resolverse en unión nupcial]{comrom}{comedia romántica} dirigida en 2014 por Emilio Martínez-Lázaro con guion de Borja Cobeaga y Diego San José. La trama sigue a Rafa, un señorito sevillano que viaja al País Vasco fingiendo ser «Antxon» para cortejar a Amaia, una joven \term[\textbf{Abertzale:} Partidario del movimiento nacionalista e independentista vasco]{abertzale}{abertzale}, poniendo en escena los prejuicios mutuos entre el centro/sur andaluz y el norte periférico.
+
+\subsection{¿Por qué surge precisamente en 2014?}
+Porque en octubre de 2011 la banda terrorista ETA renuncia definitivamente a la lucha armada, abriendo una era post-violencia. El lehendakari Iñigo Urkullu arrincona el separatismo radical de Ibarretxe para priorizar la gestión económica. La película marca el momento exacto en que la sociedad española sustituye el horror trágico por la comedia desdramatizadora, reemplazando la identidad histórica militante por una \term[\textbf{Marca (Brand):} Imagen pública higienizada y atractiva diseñada para el consumo turístico y la inversión exterior]{marca}{marca turística}.
+
+\subsection{¿Cómo construye la película la imagen de ambas regiones?}
+Mediante una mirada de turista superficial que recurre a la \term[\textbf{Sinécdoque:} Figura retórica que toma la parte por el todo, como presentar la fiesta de Sevilla por la totalidad de España]{sinecdoque}{sinécdoque}. Sevilla representa a toda España (fiesta, sol, flamenco, devoción a la Macarena), mientras que el País Vasco se erige como \term[\textbf{El Otro:} El grupo periférico o ajeno contemplado desde fuera con extrañamiento y fascinación]{elotro}{el Otro}: un paisaje idílico de caseríos verdes, sidrerías y hombres toscos, vaciado de conflicto real.
+
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+\textbf{Visión andaluza sobre los vascos} & \textbf{Visión vasca sobre los andaluces} \\ \midrule
+Obsesión por la pureza de sangre (los ocho apellidos) & Vagos, fiesteros, subvencionados con impuestos del norte \\
+Fonética gutural y tosca (abuso de $k$ y $t$) & Religiosidad superficial, folclórica y teatral \\
+Carácter bruto, hosco e incapacidad para el humor & Fanfarrones, mujeriegos y horteras \\
+Generalización: todos son cómplices del terrorismo & Estereotipo reductor: los toros, el Betis y el traje corto \\ \bottomrule
+\end{tabularx}
+
+\subsection{¿Quiénes encarnan esta dinámica?}
+Cuatro arquetipos que transitan del prejuicio al compromiso humano:
+\begin{itemize}
+  \item \textbf{Rafa:} El andaluz superficial que ejecuta una \term[\textbf{Mascarada:} Disfraz o parodia que exagera los rasgos identitarios ajenos]{mascarada}{mascarada} vasca y descubre la dignidad del norte.
+  \item \textbf{Amaia:} La vasca defensiva que se refugia en la dureza exterior tras ser abandonada por su novio.
+  \item \textbf{Koldo:} La quintaesencia del marinero vasco tradicional; su barco se llama «Sabino» en honor a Sabino Arana (padre del nacionalismo racial vasco).
+  \item \textbf{Merche («Anne»):} Extremeña de Cáceres y viuda de un guardia civil asesinado; demuestra que se puede vivir integrada en el País Vasco, aunque ocultando la propia procedencia.
+\end{itemize}
+
+\subsection{¿Qué omisiones deliberadas denuncia la crítica?}
+La película recurre a la omisión sistemática y al \term[\textbf{Esperpento:} Deformación grotesca de la realidad para evidenciar contradicciones morales]{esperpento}{esperpento} cómico para hacer reír:
+\begin{enumerate}
+  \item \textbf{Del País Vasco:} Borra a las víctimas del terrorismo, las amenazas y el cobro del impuesto revolucionario. La \term[\textbf{Kale borroka:} Violencia callejera juvenil vinculada al entorno de ETA (quema de cajeros, autobuses)]{kaleborroka}{kale borroka} se presenta como una rabieta adolescente inofensiva.
+  \item \textbf{De Andalucía:} Olvida el analfabetismo estructural, el desempleo y el régimen histórico del \term[\textbf{Latifundio:} Finca agraria inmensa de explotación extensiva originada en el repartimiento de la Reconquista]{latifundio}{latifundio}, así como la emigración obrera andaluza a Bilbao y Cataluña fomentada por el franquismo.
+\end{enumerate}
+
+\subsection{¿Qué revela el desenlace sobre la unidad española?}
+Que la reconciliación se logra mediante la \term[\textbf{Asimilación:} Proceso donde el grupo minoritario renuncia a sus rasgos diferenciales para integrarse en la cultura dominante]{asimilacion}{asimilación} y no mediante la pluralidad simétrica. Amaia termina vestida de flamenca en Sevilla. España tolera las \term[\textbf{Nacionalidad:} Comunidad con identidad cultural propia que acepta integrarse en el Estado unitario español]{nacionalidad}{nacionalidades} culturales, pero rechaza tajantemente la idea de \term[\textbf{Nación:} Sujeto político con derecho a la soberanía o la independencia]{nacion}{nación} política y el \term[\textbf{Independentismo:} Movimiento político que busca la secesión territorial]{independentismo}{independentismo}.
+
+\contra{«La película celebra la diversidad española». No: celebra los estereotipos para desactivar su potencial subversivo y culmina con la absorción del vasco en la órbita común.}
+
+\begin{ponder}
+Si la película reemplaza el conflicto político por una marca de consumo turístico, ¿ayuda a cicatrizar las heridas de la violencia o banaliza la memoria de las víctimas?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{2. Geografía y Autonomías: El Territorio Plural}{La fragmentación orográfica de España moldeó un mosaico histórico que desembocó en el sistema cuasi-federativo de 1978.}
+
+\subsection{¿Cómo está estructurado el Estado hoy?}
+En 17 comunidades autónomas, 2 ciudades autónomas (Ceuta y Melilla) y 50 provincias. Esta fórmula institucional, consagrada por la Constitución de 1978, define a España como un \term[\textbf{Sistema cuasi-federativo:} Modelo de descentralización donde las regiones poseen competencias exclusivas (salud, educación) sin ser estados soberanos]{cuasifed}{sistema cuasi-federativo}. La población ronda los 49 millones de habitantes.
+
+\subsection{¿Son naturales las provincias?}
+No; son construcciones políticas y administrativas. Tienen precedentes en las tres provincias romanas (Tarraconense, Lusitana, Bética) y los reinos medievales, pero el mapa provincial moderno fue diseñado de forma centralista y arbitraria entre 1812 y 1833 por Javier de Burgos.
+
+\subsection{¿Cómo condiciona el relieve la vida económica?}
+España es el segundo país más montañoso de Europa. Su relieve aísla las cuencas fluviales y divide el territorio:
+
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+\textbf{Región Orográfica} & \textbf{Sistemas montañosos y accidentes} \\ \midrule
+Norte & Macizo Galaico, Cordillera Cantábrica, Pirineos \\
+Centro & \term[\textbf{Meseta Central:} Planicie elevada interior dividida por el Sistema Central en submeseta norte y sur]{meseta}{Meseta Central} y Sistema Central \\
+Sur & Sistemas Bético y Penibético (Sierra Morena, Sierra Nevada) \\
+Este & Sistema Ibérico \\
+\midrule
+Vertiente Atlántica & Miño, Duero, Tajo, Guadiana, Guadalquivir (ríos largos y caudalosos) \\
+Vertiente Mediterránea & Ebro (caudaloso) y ríos torrenciales de estiaje severo \\ \bottomrule
+\end{tabularx}
+
+\subsection{¿Por qué existen dos Españas climáticas?}
+Por el efecto barrera de las cordilleras. La España húmeda (norte y noroeste) recibe lluvia atlántica constante, favoreciendo prados, ganadería y bosques. La España seca (meseta, sur y levante) sufre hasta 5 meses de aridez estival al año, obligando al uso del \term[\textbf{Regadío:} Técnica agraria de aporte artificial de agua indispensable en el sur y levante]{regadio}{regadío} y provocando el problema de la \term[\textbf{Despoblación:} Éxodo rural del interior hacia Madrid y las costas (la «España vacía»)]{despoblacion}{despoblación}.
+
+\subsection{¿De dónde proceden las lenguas de España?}
+Todas proceden de la evolución dialectal del latín vulgar romano, salvo el euskera. El castellano se expandió militarmente de norte a sur con la Reconquista. El catalán (con sus variantes valenciana y balear) y el gallego son lenguas cooficiales con gran peso literario.
+
+\contra{«Todas las lenguas peninsulares derivan del latín». El euskera es la única excepción: carece de origen indoeuropeo conocido y precede a la romanización.}
+
+\begin{ponder}
+¿Hasta qué punto el relieve montañoso del interior impidió la formación de un mercado unificado antes de la llegada del ferrocarril?
+\end{ponder}
+
+%======================================================================
+\partq{Parte 2: Raíces Prerromanas}{¿Quiénes habitaron el territorio antes de la ley y el orden de Roma?}
+
+%----------------------------------------------------------------------
+\chap{3. Prehistoria: Pintar la Supervivencia}{El tránsito del Paleolítico al Neolítico transformó el arte: de animales aislados y sagrados en cuevas profundas a la crónica colectiva de la caza al aire libre.}
+
+\subsection{¿Cómo era la sociedad del Paleolítico peninsular?}
+Nómada, cazadora-recolectora e igualitaria durante el \term[\textbf{Paleolítico:} Período inicial prehistórico (35.000--10.000 a.C.), depredador y nómada]{paleolitico}{Paleolítico}. Los grupos habitaban abrigos o cuevas en la cornisa cantábrica, dominaban el fuego y tallaban útiles de sílex.
+\dato{El Paleolítico se extiende del 35.000 al 10.000 a.C. Marisol atribuye Altamira al hombre de Neanderthal.}
+
+\subsection{¿En qué se diferencian Altamira y el arte levantino?}
+En prácticamente todos sus ejes técnicos, espaciales y conceptuales:
+
+\begin{tabularx}{\linewidth}{@{}lXX@{}}
+\toprule
+\textbf{Rasgo} & \textbf{Arte Cantábrico (Altamira)} & \textbf{Arte Levantino (Cogul, Lérida)} \\ \midrule
+Datación & c. 10.000 a.C. (Paleolítico) & c. 5.000 a.C. (Epipaleolítico/Neolítico) \\
+Emplazamiento & Fondos oscuros de cuevas profundas & Abrigos rocosos abiertos a la luz solar \\
+Cromatismo & \term[\textbf{Polícromo:} Pintura que utiliza múltiples pigmentos (óxidos rojos, carbón negro)]{policromo}{Polícromo} y pastoso & \term[\textbf{Monócromo:} Pintura de un solo tono, generalmente ocre o negro]{monocromo}{Monócromo} y estilizado \\
+Temática & Animales aislados y estáticos (bisontes) & Figuras humanas y animales en acción \\
+Técnica & Volumen en salientes naturales; realismo & Figuras esquemáticas dinámicas (caza, danzas) \\ \bottomrule
+\end{tabularx}
+
+\begin{ponder}
+¿Por qué el arte de Altamira esconde a la figura humana, mientras que el arte levantino la sitúa en el centro de la escena social?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{4. Pueblos Indígenas y Colonizaciones Mercantiles}{El atomismo primitivo dividió la Península entre tribus del interior y factorías comerciales en la costa mediterránea.}
+
+\subsection{¿Qué pueblos indígenas poblaban la Península?}
+Cinco grupos sin conciencia unitaria ni gobierno común:
+
+\begin{tabularx}{\linewidth}{@{}lXX@{}}
+\toprule
+\textbf{Pueblo} & \textbf{Localización e Idioma} & \textbf{Estructura Social y Rasgos} \\ \midrule
+Vascos & Navarra y Pirineos (No indoeuropeo) & Aislados en valles; resistencia a godos y pacto con Roma \\
+Íberos & Costa este y sur del Ebro (No indoeuropeo) & Agricultura urbana; falcata, culto votivo, sociedad jerarquizada \\
+Celtas & Meseta norte, Galicia y oeste (\term[\textbf{Indoeuropeo:} Familia lingüística originaria de las estepas euroasiáticas]{indoeur}{indoeuropeo}) & Pastores, metalurgia de bronce y oro; vida en clanes consanguíneos \\
+Celtíberos & Centro-norte (Celtiberia, Numancia) & Fusión cultural; asambleas militares, resistencia heroica \\
+Tartesios & Suroeste (Valle del Guadalquivir) & Monarquía minera y comercial de gran riqueza (siglos X--VI a.C.) \\ \bottomrule
+\end{tabularx}
+
+\subsection{¿Cómo se articulaba la propiedad y la sociedad entre celtas e íberos?}
+La tierra celta era comunal: la \term[\textbf{Tribu:} Comunidad sociopolítica superior que unía varios clanes bajo un caudillo]{tribu}{tribu} poseía el suelo, mientras que cada \term[\textbf{Clan:} Agrupación gentilicia unida por lazos estrictos de consanguinidad]{clan}{clan} ostentaba su \term[\textbf{Usufructo:} Disfrute y explotación colectiva de la tierra comunal sin títulos privados]{usufructo}{usufructo}. Los íberos, en cambio, desarrollaron ciudades jerarquizadas y castas guerreras provistas de la \term[\textbf{Falcata:} Espada corta de filo curvado del combatiente ibérico]{falcata}{falcata}.
+
+\subsection{¿Existió Tartesos y por qué desapareció?}
+Sí. Mencionada por autores clásicos (Heródoto, Estrabón), su existencia la corroboran yacimientos como Cancho Roano, El Carambolo y el palacio-santuario de El Turuñuelo (Badajoz, siglo V a.C.). Poseía minería avanzada de oro y plata y comercio con el Mediterráneo oriental. Hacia el siglo VI a.C. colapsó abruptamente por crisis comercial o invasión cartaginesa, siendo sus templos sellados y quemados.
+
+\subsection{¿Quiénes colonizaron la costa y con qué propósito?}
+Tres potencias marítimas atraídas por la riqueza en metales (plata, cobre, estaño):
+
+\begin{tabularx}{\linewidth}{@{}lXX@{}}
+\toprule
+\textbf{Colonizador} & \textbf{Fundaciones principales} & \textbf{Naturaleza de la presencia} \\ \midrule
+Fenicios (1100 a.C.) & Gadir (Cádiz), Malaka (Málaga), Sexi & Factorías costeras pacíficas para pesca, salazón y metales \\
+Griegos (s. VII a.C.) & Emporion (Ampurias), Rhode (Rosas) & Intercambio cerámico y agrario; alianza clave con Roma \\
+Cartagineses (s. VI a.C.) & Qart Hadasht (Cartagena), Ibiza & Ocupación militar, reclutamiento y tributos forzosos \\ \bottomrule
+\end{tabularx}
+
+\contra{«Todas las colonizaciones fueron superficiales». La fenicia y griega sí; Cartago impuso dominio militar directo y conquistó el sur peninsular.}
+
+\begin{ponder}
+¿Cómo condicionó la alianza de los griegos de Ampurias con Roma el desenlace militar de las Guerras Púnicas?
+\end{ponder}
+
+%======================================================================
+\partq{Parte 3: La Forja de la Unidad}{¿Cómo transformó Roma el mosaico tribal en una civilización común?}
+
+%----------------------------------------------------------------------
+\chap{5. Roma y la Romanización: Ley, Ciudad y Fe}{La \term[\textbf{Romanización:} Asimilación integral de las leyes, el idioma, el urbanismo y la religión del Imperio Romano]{romaniz}{romanización} superó el atomismo indígena mediante una civilización urbana y legalista.}
+
+\subsection{¿Por qué intervino Roma en Hispania?}
+Por rivalidad geopolítica con Cartago en las Guerras Púnicas (218 a.C.). Tras la derrota de Aníbal, los Escipiones desembarcaron en Ampurias para cortar el suministro de plata y mercenarios a Cartago. La conquista duró dos siglos (218--19 a.C.), enfrentando la resistencia feroz de Viriato (lusitanos), Numancia (celtíberos) y los pueblos del norte (cántabros y astures).
+\dato{La conquista formal culmina en el 19 a.C. bajo Augusto. La dominación romana duró siete siglos (s. II a.C. al V d.C.).}
+
+\subsection{¿Cuál fue la herramienta de integración más decisiva?}
+El \term[\textbf{Derecho romano:} Sistema legal racional que regula las relaciones civiles y públicas, situando al individuo como sujeto de derechos]{derrom}{derecho romano}. Desplazó la venganza colectiva tribal y superó el \term[\textbf{Atomismo:} Dispersión y fragmentación en comunidades aisladas sin cohesión estatal]{atomismo}{atomismo} prerromano, consagrando libertades civiles, la propiedad privada y la figura jurídica del \term[\textbf{Paterfamilia:} Cabeza de familia con potestad legal y económica absoluta sobre el hogar]{pater}{paterfamilia}.
+
+\subsection{¿Qué era el Jus Latii y cómo se ascendía a la ciudadanía?}
+El \term[\textbf{Jus Latii:} Derecho latino concedido a hombres libres que otorgaba garantías comerciales y civiles previas a la ciudadanía completa]{juslatii}{Jus Latii} fue otorgado a toda Hispania por el emperador Vespasiano (siglo I d.C.). Finalmente, el edicto de Caracalla (212 d.C.) otorgó la ciudadanía romana plena a todos los habitantes libres del Imperio.
+
+\subsection{¿Cómo equilibró Roma el control central y la autonomía local?}
+Mediante dos figuras complementarias:
+\begin{itemize}
+  \item \textbf{El \term[\textbf{Municipio:} Ciudad indígena aliada que conservaba asambleas y magistraturas locales tradicionales]{municipio}{municipio}:} Respetaba el arraigo tribal celtíbero e integraba a las élites locales en la administración imperial.
+  \item \textbf{La colonia:} Ciudad de nueva planta poblada por veteranos licenciados tras 30 años de servicio en las legiones, cultivada por \term[\textbf{Colono:} Campesino adscrito a la tierra en régimen de semi-servidumbre]{colono}{colonos}.
+\end{itemize}
+
+\subsection{¿Qué cosmovisión filosófica y religiosa transformó a Hispania?}
+El tránsito del \term[\textbf{Animismo:} Culto prerromano a las fuerzas sagradas de la naturaleza (montes, ríos)]{animismo}{animismo} a la religión cívica contractual romana (\emph{do ut des}) y la ética moral del \term[\textbf{Estoicismo:} Doctrina filosófica de Séneca basada en el autodominio racional, la templanza y el destino]{estoicismo}{estoicismo} cordobés, que preparó la asimilación del cristianismo.
+
+\subsection{¿Cómo evolucionó la actitud romana ante el cristianismo?}
+Pasó de la persecución sangrienta a la adopción como religión oficial del Estado:
+\begin{enumerate}
+  \item \textbf{Persecución (siglos I--III):} Los cristianos se negaban a rendir culto divino al Emperador, lo que Roma consideraba rebelión y traición política.
+  \item \textbf{Tolerancia (313 d.C., Edicto de Milán):} Constantino legaliza el culto cristiano para frenar la fractura moral de la sociedad.
+  \item \textbf{Oficialidad (380 d.C., Edicto de Tesalónica):} Teodosio impone el cristianismo católico como la única religión del Imperio. Los \term[\textbf{Padres de la Iglesia:} Teólogos y obispos de los siglos I--VIII que construyeron la dogmática cristiana]{padres}{Padres de la Iglesia} (como San Isidoro de Sevilla) cristianizan la filosofía grecorromana.
+\end{enumerate}
+\dato{Marisol sitúa a Constantino en el siglo III y a Teodosio II en el IV; históricamente son el siglo IV y Teodosio I en el 380 d.C.}
+
+\contra{«Roma unificó culturalmente a todos los pueblos por igual». Falso: el sur y el levante se romanizaron velozmente; el norte montañoso mantuvo sus costumbres y su lengua.}
+
+\begin{ponder}
+¿Por qué el derecho civil romano sobrevivió a la caída militar del Imperio y sigue rigiendo el código legal occidental moderno?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{6. El Catálogo Artístico: Arqueología del Poder}{El arte en Hispania evolucionó desde el misterio votivo y funerario indígena hasta la ingeniería monumental propagandística de Roma.}
+
+\subsection{¿Qué método se utiliza para analizar una obra de arte?}
+El análisis deductivo de cuatro pasos:
+\begin{enumerate}
+  \item \textbf{Identificación:} ¿Qué es la obra y qué tipología representa?
+  \item \textbf{Espacio-tiempo:} ¿De dónde es y en qué siglo se produjo?
+  \item \textbf{Morfología:} ¿Cuáles son sus rasgos materiales, estilísticos y formales? (p.~ej., el realismo romano frente al \term[\textbf{Hieratismo:} Rigidez solemne e inexpresiva en el arte sagrado que trasciende lo humano]{hieratismo}{hieratismo} ceremonial íbero).
+  \item \textbf{Función e influencia:} ¿Qué función social, funeraria o religiosa cumplía y de qué culturas bebe?
+\end{enumerate}
+
+\subsection{Fichas clave de las obras maestras del examen}
+
+\fichaart{Bisontes de Altamira}{Santander, c. 10.000 a.C.}{Polícromos (rojo, ocre, negro carbón). Aprovecha los relieves de la roca caliza para conferir volumen anatómico realista.}{Magia propiciatoria o santuario chamánico de caza en cueva profunda.}
+
+\fichaart{Escena de caza levantina}{El Cogul (Lérida), c. 5.000 a.C.}{Monócroma, siluetas esquemáticas estilizadas y alargadas en abrigos abiertos al exterior.}{Narración histórica colectiva; capta el movimiento, la danza y la cohesión de la tribu.}
+
+\fichaart{Relieve de El Turuñuelo}{Badajoz, siglo V a.C.}{Escultura en bulto redondo con rostro femenino de influencias euroasiáticas y ricas joyas labradas.}{Primeras representaciones antropomorfas documentadas de la civilización de Tartesos.}
+
+\fichaart{Dama de Elche}{Siglos IV--III a.C. (Arte Íbero)}{Busto de piedra caliza policromada con ricos rodetes laterales, peineta y collares. Fuerte influencia griega en el rostro.}{Urna cineraria funeraria; la cavidad dorsal albergaba cenizas sagradas.}
+
+\fichaart{Bicha de Balazote}{Albacete, siglo VI a.C. (Arte Íbero)}{Toro androcéfalo recostado (cuerpo animal y cabeza de hombre barbado). Inspiración mesopotámica y griega arcaica.}{Monstruo protector funerario de ultratumba.}
+
+\fichaart{Dama de Baza}{Granada, siglo IV a.C.}{Mujer entronizada vestida con mantos y tiara; conserva restos de estuco policromado.}{Diosa madre o dama aristocrática que funciona como cámara funeraria.}
+
+\fichaart{Toros de Guisando}{Ávila, siglos IV--II a.C. (Celtíberos/Vetones)}{Esculturas toscas en granito representando toros o verracos en pie.}{Hitos de término territorial agrario o tótem protector del ganado.}
+
+\fichaart{Diosa Tanit / Dama de Ibiza}{Ibiza, siglos IV--III a.C. (Arte Púnico)}{Terracotas votivas con atuendos ceremoniales, túnicas aladas y joyas orientales.}{Culto púnico-cartaginés a la fertilidad y la protección de los difuntos.}
+
+\fichaart{Acueducto de Segovia}{Siglos I--II d.C. (Época Flavio-Trajana)}{Ingeniería civil en granito sin argamasa (bloques en seco); doble arquería monumental de 800 metros de longitud.}{Propaganda imperial y transporte de agua desde 17 kilómetros a la urbe.}
+
+\fichaart{Teatro y Puente de Mérida (Augusta Emerita)}{Siglo I a.C. (Agripa / Augusto)}{El teatro alberga 5.000 espectadores con graderío semicircular y columnas corintias; el puente cuenta con 60 arcos de granito.}{Exhibición del poderío civilizador romano y control militar del río Guadiana.}
+
+\begin{ponder}
+¿Por qué las estatuas romanas (como el Augusto de Mérida) copiaban rostros hiperrealistas mientras que las damas íberas buscaban el hieratismo ceremonial?
+\end{ponder}
+
+%======================================================================
+\partq{Parte 4: Síntesis y Evaluación}{¿Cómo articular la respuesta definitiva en el examen?}
+
+%----------------------------------------------------------------------
+\chap{7. Síntesis Argumental: La Dialéctica Unidad-Diversidad}{La identidad española no es un bloque homogéneo ni una invención reciente: es la negociación permanente entre la centralización y la autonomía regional.}
+
+\subsection{¿Cómo se responde con éxito a la pregunta del examen?}
+Articulando los cuatro temas en un arco histórico continuo:
+\begin{enumerate}
+  \item \textbf{La base prerromana:} La Península era un crisol fragmentario de etnias (íberos, celtas, tartesios, vascos). El atomismo era la norma.
+  \item \textbf{El pacto romano:} Roma impuso la unidad estructural (el derecho, el latín, la calzada, la Iglesia), pero no practicó la uniformidad forzosa: respetó los municipios indígenas y adaptó las provincias a las regiones geográficas.
+  \item \textbf{El orden constitucional contemporáneo:} Las 17 autonomías de la Constitución de 1978 y el plurilingüismo reflejan institucionalmente los antiguos reinos y áreas culturales que Roma aglutinó sin extinguir.
+  \item \textbf{La advertencia de Ocho apellidos vascos:} Cuando el Estado busca la unidad mediante la asimilación o el borrado de las aristas locales, destruye la pluralidad. La reconciliación duradera exige aceptar al Otro en su diferencia real, no a través de una caricatura de consumo.
+\end{enumerate}
+
+%----------------------------------------------------------------------
+\chap{8. Simulacro de Examen (Entrenamiento 90 Minutos)}{Planificación de tiempo, plantillas de ensayo y banco de preguntas tipo.}
+
+\begin{caja}{Estrategia de Gestión del Tiempo (90 Minutos)}
+\begin{itemize}
+  \item \textbf{00--05 min:} Lectura de temas y selección del ensayo.
+  \item \textbf{05--45 min (40 min):} Redacción del ensayo (tesis, 3 argumentos con datos de Marisol y conclusión).
+  \item \textbf{45--75 min (30 min):} 5 preguntas cortas concretas (6 minutos por pregunta: definición + dato).
+  \item \textbf{75--85 min (10 min):} Análisis de imagen/arte o terminología complementaria.
+  \item \textbf{85--90 min (5 min):} Revisión crítica: tildes, concordancia gramatical y términos clave.
+\end{itemize}
+\end{caja}
+
+\subsection{Los 5 Ensayos Maestros a Preparar}
+\begin{enumerate}
+  \item \textbf{Ocho apellidos vascos y la identidad nacional:} Contexto post-ETA (2011), mirada del turista y omisiones calculadas; el dilema entre asimilación y pluralidad.
+  \item \textbf{Los pueblos prerromanos:} Vascos, íberos, celtas y celtíberos. Cuadro comparativo de hábitat, lengua, sociedad y resistencia bélica.
+  \item \textbf{Las colonizaciones del Mediterráneo:} Fenicios, griegos y cartagineses. De las escalas comerciales a la anexión militar de Cartago y el choque con Roma.
+  \item \textbf{Los instrumentos de la Romanización:} Conquista bélica, Derecho romano, concesión del Jus Latii, urbanismo civilizador y cristianización imperial.
+  \item \textbf{La dialéctica Unidad-Diversidad:} Del atomismo tribal a la provincia romana y de los reinos medievales a las 17 autonomías de la España de 1978.
+\end{enumerate}
+
+\subsection{Preguntas Cortas del Modelo de Examen}
+Responde por escrito y comprueba el apartado correspondiente en la guía:
+\begin{enumerate}
+  \item ¿Qué importancia tuvo el derecho romano para superar el atomismo tribal? (Cap.~5)
+  \item ¿Qué era el Jus Latii, bajo qué emperador se otorgó a Hispania y a quién beneficiaba? (Cap.~5)
+  \item ¿Qué postura adoptó Roma hacia los cultos indígenas paganos y por qué reprimió al cristianismo inicial? (Cap.~5)
+  \item ¿En qué cuatro aspectos formales y espaciales difieren el arte de Altamira y el arte levantino? (Cap.~3)
+  \item ¿Qué yacimientos confirman la existencia histórica de Tartesos y qué enigma rodea su final? (Cap.~4)
+  \item ¿Qué diferencia legal e ideológica existe en España entre «nacionalidad» y «nación»? (Cap.~1)
+\end{enumerate}
+
+%======================================================================
+\newpage
+\section*{Índice Temático de Conceptos}
+\addtocontents{toc}{\vspace{6pt}}
+\addcontentsline{toc}{section}{Índice Temático de Conceptos}
+Cada término enlaza con el capítulo donde se formula su definición canónica.
+
+\begin{multicols}{2}
+\small\raggedright
+\ix{abertzale}{Abertzale (nacionalista vasco)}{1}
+\ix{animismo}{Animismo naturista}{5}
+\ix{asimilacion}{Asimilación cultural}{1}
+\ix{atomismo}{Atomismo prerromano}{5}
+\ix{clan}{Clan consanguíneo}{4}
+\ix{colono}{Colono romano}{5}
+\ix{comrom}{Comedia romántica}{1}
+\ix{cuasifed}{Comunidad autónoma (Sistema cuasi-federativo)}{2}
+\ix{derrom}{Derecho romano}{5}
+\ix{despoblacion}{Despoblación agraria}{2}
+\ix{elotro}{El Otro (alteridad periférica)}{1}
+\ix{esperpento}{Esperpento y caricatura}{1}
+\ix{estoicismo}{Estoicismo de Séneca}{5}
+\ix{falcata}{Falcata ibérica}{4}
+\ix{hieratismo}{Hieratismo ceremonial}{6}
+\ix{independentismo}{Independentismo}{1}
+\ix{indoeur}{Indoeuropeo}{4}
+\ix{juslatii}{Jus Latii (Derecho latino)}{5}
+\ix{kaleborroka}{Kale borroka}{1}
+\ix{latifundio}{Latifundio}{1}
+\ix{marca}{Marca turística}{1}
+\ix{mascarada}{Mascarada identitaria}{1}
+\ix{meseta}{Meseta Central}{2}
+\ix{monocromo}{Monocromía levantina}{3}
+\ix{municipio}{Municipio romano}{5}
+\ix{nacion}{Nación (soberanía)}{1}
+\ix{nacionalidad}{Nacionalidad (comunidad integrada)}{1}
+\ix{padres}{Padres de la Iglesia}{5}
+\ix{paleolitico}{Paleolítico}{3}
+\ix{pater}{Paterfamilia}{5}
+\ix{policromo}{Policromía de Altamira}{3}
+\ix{regadio}{Regadío}{2}
+\ix{romaniz}{Romanización}{5}
+\ix{sinecdoque}{Sinécdoque}{1}
+\ix{tribu}{Tribu}{4}
+\ix{usufructo}{Usufructo}{4}
+\end{multicols}
+
+\vfill
+\noindent{\footnotesize\color{black!60}Fuente de referencia: María Soledad Fernández Utrera, SPAN 321 (UBC, 2026W1). Documento reescrito bajo principios socráticos y parsimoniosos de máxima densidad conceptual.}
+
+\end{document}

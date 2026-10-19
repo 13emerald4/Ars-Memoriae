@@ -25,6 +25,9 @@ async def lookup_term(
         db,
         term=body.term,
         context=body.context,
+        card_id=body.card_id,
+        deck_name=body.deck_name,
+        thematic_nature=body.thematic_nature,
         user=user,
     )
     return LexiconEntryOut(**data)

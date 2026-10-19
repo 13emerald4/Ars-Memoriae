@@ -5,6 +5,9 @@ import type { LexiconEntry, RecentLexiconItem } from '../api/types'
 interface LexiconPopoverProps {
   term: string | null
   context?: string | null
+  cardId?: string | null
+  deckName?: string | null
+  thematicNature?: string | null
   position?: { x: number; y: number } | null
   onClose: () => void
   onLookupNewTerm?: (newTerm: string) => void
@@ -13,6 +16,9 @@ interface LexiconPopoverProps {
 export function LexiconPopover({
   term: initialTerm,
   context,
+  cardId,
+  deckName,
+  thematicNature,
   position,
   onClose,
   onLookupNewTerm,
@@ -31,7 +37,10 @@ export function LexiconPopover({
     setError(null)
     setShowRecent(false)
     try {
-      const res = await api.lookupLexicon(lookupWord.trim(), context)
+      const res = await api.lookupLexicon(lookupWord.trim(), context, cardId, {
+        deckName,
+        thematicNature,
+      })
       setEntry(res)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Lookup failed')
@@ -39,7 +48,7 @@ export function LexiconPopover({
     } finally {
       setLoading(false)
     }
-  }, [context])
+  }, [context, cardId, deckName, thematicNature])
 
   useEffect(() => {
     if (initialTerm) {

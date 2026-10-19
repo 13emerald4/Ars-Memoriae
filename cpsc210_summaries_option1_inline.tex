@@ -1,0 +1,950 @@
+% CPSC 210 (2026W1) --- Chapter Summaries (Inline Muted Gloss Edition)
+% Source: CPSC 210 Software Construction textbook (Holmes, Lemieux), Chapters 1--22.
+% Optimized for Adobe Acrobat & Liquid Mode: 0 footnotes, continuous reading flow.
+\documentclass[10pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage[most]{tcolorbox}
+\usepackage{multicol}
+\usepackage[titles]{tocloft}
+\usepackage{hyperref}
+
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black}
+\setlist{nosep,leftmargin=1.3em,topsep=2pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\setlength{\emergencystretch}{1.5em}
+\setcounter{secnumdepth}{0}
+\setcounter{tocdepth}{1}
+\setlength{\cftbeforepartskip}{6pt}
+\setlength{\cftbeforesecskip}{1pt}
+\renewcommand{\cftpartfont}{\normalsize\bfseries}
+\renewcommand{\cftpartpagefont}{\normalsize\bfseries}
+\renewcommand{\cftsecfont}{\small}
+\renewcommand{\cftsecpagefont}{\small}
+
+\titleformat{\part}[block]{\LARGE\bfseries\color{blue!40!black}}{}{0pt}{}
+\titlespacing*{\part}{0pt}{10pt}{2pt}
+\titleformat{\section}{\Large\bfseries\color{blue!50!black}}{}{0pt}{}
+\titlespacing*{\section}{0pt}{14pt}{4pt}
+\titleformat{\subsection}{\normalsize\bfseries\itshape\color{black!80}}{}{0pt}{}
+\titlespacing*{\subsection}{0pt}{7pt}{1pt}
+
+\definecolor{kw}{RGB}{0,0,160}
+\definecolor{cm}{RGB}{0,120,0}
+\definecolor{st}{RGB}{160,40,0}
+\lstdefinelanguage{TS}{
+  keywords={const,let,function,return,if,else,for,of,type,interface,class,extends,
+    implements,export,async,await,new,throw,try,catch,finally,true,false,null,undefined,
+    void,number,string,boolean,unknown,any,instanceof,private,protected,readonly,
+    abstract,this,constructor,declare,public,super},
+  sensitive=true, comment=[l]{//}, morecomment=[s]{/*}{*/},
+  morestring=[b]", morestring=[b]', morestring=[b]`
+}
+\lstset{language=TS,basicstyle=\ttfamily\footnotesize,keywordstyle=\color{kw},
+  commentstyle=\color{cm}\itshape,stringstyle=\color{st},columns=fullflexible,
+  keepspaces=true,frame=l,framerule=1.5pt,rulecolor=\color{gray!50},xleftmargin=8pt,
+  aboveskip=4pt,belowskip=4pt,showstringspaces=false,upquote=true,breaklines=true}
+
+\newcommand{\code}[1]{{\ttfamily\small #1}}
+
+% ==============================================================================
+% OPTION 1: INLINE MUTED GLOSSES (No footnotes)
+% Definitions appear inline immediately following the term in subtle muted typography
+% ==============================================================================
+\newcommand{\term}[3][]{%
+  \hypertarget{t:#2}{\textbf{#3}}%
+  \if\relax\detokenize{#1}\relax\else%
+    {\thinspace\footnotesize\color{black!65}(#1)}%
+  \fi%
+}
+\renewcommand{\footnote}[1]{{\thinspace\footnotesize\color{black!65}(#1)}}
+
+% \ix{key}{Index label}{chapter}: one index line linking to the definition.
+\newcommand{\ix}[3]{\hyperlink{t:#1}{#2}\dotfill #3\par}
+
+\newtcolorbox{corebox}{colback=blue!4,colframe=blue!45!black,boxrule=0.6pt,arc=2pt,
+  left=6pt,right=6pt,top=3pt,bottom=3pt,fontupper=\small}
+\newtcolorbox{ponder}{colback=green!3,colframe=green!35!black,boxrule=0.5pt,arc=2pt,
+  left=6pt,right=6pt,top=2pt,bottom=2pt,fontupper=\small,
+  title={\small\bfseries Think it through},coltitle=white,colbacktitle=green!35!black,
+  toptitle=1pt,bottomtitle=1pt}
+
+% \chap{N. Title}{core idea}
+\newcommand{\chap}[2]{\section*{#1}\addcontentsline{toc}{section}{#1}\vspace{-2pt}\begin{corebox}\textbf{Core idea.} #2\end{corebox}}
+% \partq{Part N: Name}{the question the part answers}
+\newcommand{\partq}[2]{\part*{#1}{\small\itshape #2}}
+
+\begin{document}
+
+{\LARGE\bfseries CPSC 210 --- Chapter Summaries}\hfill{\small Software Construction, 2026W1}
+
+\medskip
+\begin{tcolorbox}[colback=gray!5,colframe=gray!60,boxrule=0.5pt,arc=2pt,fontupper=\small]
+\textbf{The question behind the course:} \emph{what makes the next change to a program cheap?} Part 1 answers with correctness, Part 2 with abstraction, Part 3 with managing change itself. (The textbook's closing section makes the same claim: every principle in it is ``about the resistance of a design to change''.)\\[2pt]
+\textbf{Source:} the CPSC 210 textbook, Chapters 1--22. Examples are the textbook's own.\\[2pt]
+\textbf{How to read this:} each heading is a question; answer it before reading on. Each bold term is defined inline right where it first appears; the index at the end links to that spot. Each chapter ends with one question left for you.
+\end{tcolorbox}
+
+\begin{multicols}{2}
+\tableofcontents
+\end{multicols}
+
+%======================================================================
+\newpage
+\partq{Part 1: Foundations}{How do we write a program and know it is correct?}
+
+%----------------------------------------------------------------------
+\chap{1. Learning a New Language}{TypeScript is CPSC 110's design method with two changes: types the compiler checks (enforcement) and control flow written as statements (form).}
+
+\subsection{What does the type checker buy you?}
+It rejects type mistakes before the program runs. Every \textbf{parameter}\footnote{\textbf{Parameter:} The input slot of a function (like a labeled blank on a paper form or the coin slot on a vending machine) where a value must be inserted when called} and \textbf{return value}\footnote{\textbf{Return Value:} The output or product handed back to the caller when a function completes its job, like a vending machine dispensing your item and receipt} is annotated with a type. Before anything runs, the compiler \code{tsc}\footnote{\textbf{tsc (TypeScript Compiler):} A program that reads your TypeScript code, checks it for grammar and type mistakes, and translates it into runnable JavaScript} checks every use against those types and refuses to produce a runnable program until the mismatches are fixed. An error caught this way, before the program runs, is a \term[\textbf{Static Errors:} Mistakes caught purely by inspecting the written source text on the page before the program is ever executed (like finding a spelling error on a printed recipe)]{staticerror}{static error}. In ISL and Python the same mistake is a \term[\textbf{Runtime Error:} A mistake that only happens when the program is actively running (like following a recipe correctly, but the oven burns the cake)]{runtimeerror}{runtime error}: it surfaces only while the program runs, and only if that line happens to execute.
+
+\subsection{Then why still test?}
+Because the compiler cannot know what happens when the program runs on a given input. It works on the \term[\textbf{Static View:} Inspecting the written code as frozen text, representing all possible future runs without actually executing any of them]{staticview}{static view}: the source text, read without executing it. Which branch an \code{if} takes, and what a variable holds, are facts of the \term[\textbf{Dynamic View:} Observing how the program behaves while it is actively running in memory with real data]{dynamicview}{dynamic view}, decided during a run. If \code{letterGrade(95)} returns \code{"A"} where the spec says \code{"A+"}, the types are fine and only a test that runs the call finds it. Static checking ``never removes the need to run and test a program.''
+
+\subsection{Why does the order of \code{if} checks matter?}
+Because \code{return} exits at once, so the first true condition wins. A \term[\textbf{Statements:} Code instructions that perform an action or give a command (like ``open this door''), but do not produce a value themselves]{statement}{statement} performs an action (deciding, returning) and produces no value; an \term[\textbf{Expressions:} Code fragments that calculate and produce a resulting value (like 2 + 2 or letterGrade(80))]{expression}{expression} evaluates to a value. ISL's \code{cond} is an expression; TypeScript writes the same logic as a chain of statements:
+\begin{lstlisting}
+function letterGrade(score: number): string {
+  if (score >= 80) {
+    return "A";           // 95 is caught here and never reaches the checks below
+  } else if (score >= 68) {
+    return "B";
+  } else if (score >= 55) {
+    return "C";
+  } else if (score >= 50) {
+    return "D";
+  } else {
+    return "F";
+  }
+}
+\end{lstlisting}
+
+\subsection{Why divide last?}
+To keep the values whole for as long as possible. \code{number} is \term[\textbf{Binary Floating Point:} Scientific notation for computers ($1.23 \times 10^4$). Because computers store numbers in base-2 (1s and 0s) rather than base-10, common fractions like 0.1 cannot be stored exactly (just like 1/3 = 0.333... in base-10), causing tiny rounding quirks like 0.1 + 0.2 !== 0.3]{float}{binary floating point}: a single numeric type stored as a binary approximation, so most decimals are inexact, as $1/3$ is in decimal. \code{(11 / 20) * 100} gives \code{55.00000000000001}; \code{(11 * 100) / 20} gives exactly \code{55}, ``because the multiplication happens while the values are still whole numbers.'' For the same reason, be careful comparing computed decimals for exact equality. Note also that \code{/} never truncates: \code{7 / 2} is \code{3.5}.
+
+\subsection{Why \code{() => f(x)} and not \code{f(x)} in a test?}
+So that \code{checkExpect} decides when the call runs. In
+\begin{lstlisting}
+test("Score of 88 returns an A", checkExpect(() => letterGrade(88), "A"));
+\end{lstlisting}
+the first argument to \code{checkExpect} is a \term[\textbf{Thunk:} A function with zero inputs that delays an action. It wraps code inside an unexecuted envelope () => f(x) so a test runner can safely choose when to open and run it]{thunk}{thunk}: a function of no parameters that wraps a computation to be run later. Don't add braces: \code{() => \{ letterGrade(88) \}} returns nothing, so the check compares \code{undefined} with \code{"A"} and fails. In Part~1 each test case holds exactly one \code{checkExpect}.
+
+\begin{ponder}
+If a program type-checks, what exactly do you know about it, and what don't you know?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{2. Modelling With Types}{Describe the shape of the information as a type; functions then follow that shape.}
+
+\subsection{Where do you start?}
+With the \textbf{data}\footnote{\textbf{Data:} Raw information (numbers, text, true/false flags) stored and processed by a computer}, not the code. The textbook's process: identify the entities $\to$ the distinct cases $\to$ the information each case needs $\to$ translate into a type $\to$ write concrete examples $\to$ look for generalisation. Name each value with \code{const name: Type = value}; a \code{const} name can never be reassigned.
+
+\subsection{Which building block fits?}
+The one that matches the shape of the information:
+
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+One atomic fact & a primitive: \code{number}, \code{string}, \code{boolean} \\
+A fixed set of choices & \term[\textbf{Union of Literals:} A restricted choice list allowing only specific exact values, like a dropdown containing only ``cold'', ``muggy'', or ``pleasant'']{literalunion}{union of literals}, a type whose values are exactly the listed literals: \code{"red" | "green" | "yellow"} \\
+Facts that belong together & an object type: \code{type Song = \{ title: string; artist: string; durationSeconds: number \}} \\
+One of several cases & \term[\textbf{Tagged Union:} A data structure that can hold one of several distinct shapes, labeled with an explicit tag (like kind) so you always know which shape is inside]{taggedunion}{tagged union}, a union of one object type per case, each carrying a shared discriminator (\code{kind}) set to a different constant \\
+Data of any length & a type that refers to itself \\
+One shape for many element types & \term[\textbf{Generics:} Type placeholders (like List<T>) that let you write one reusable structure that works on any data type, like a shipping box that can hold shoes, books, or toys]{generics}{generics}: a type parameter, as in \code{LinkedList<T>}. ``Use generics only when you see real duplication.'' \\ \bottomrule
+\end{tabularx}
+
+\subsection{How does the type shape the function?}
+One branch per case, and a \textbf{recursive} call\footnote{\textbf{Recursion:} A technique where a function solves a big problem by calling itself on smaller and smaller sub-problems until reaching a simple stopping condition (base case)} wherever the type refers to itself. Checking \code{kind} \term[\textbf{Narrowing:} Using an if-check to narrow down a broad set of possible types to one specific concrete case]{narrowing}{narrows} the type: after \code{p.kind === "songs"} the compiler knows \code{p.first} and \code{p.rest} exist, and it rejects \code{p.first} in the \code{"empty"} branch.
+\begin{lstlisting}
+type Playlist = { kind: "empty" } | { kind: "songs"; first: Song; rest: Playlist };
+
+function totalDuration(p: Playlist): number {
+  if (p.kind === "empty") {
+    return 0;                                                  // base case
+  } else {
+    return p.first.durationSeconds + totalDuration(p.rest);    // the type refers to itself here
+  }
+}
+\end{lstlisting}
+
+\subsection{What's the difference between \code{null} and \code{undefined}?}
+\term[\textbf{null:} An intentional placeholder value meaning ``deliberately empty'' (an intentionally emptied box)]{null}{\code{null}} represents a deliberate ``no value here'', such as a lookup that finds nothing. \term[\textbf{undefined:} The default state of a variable that was created but never assigned a value (a box that was never filled)]{undefined}{\code{undefined}} is the value a name has when nothing has been assigned to it yet. The textbook later notes that built-in operations such as \code{find} use \code{undefined} for ``not found''.
+
+\subsection{Why \code{===} and never \code{==}?}
+Because \code{==} converts types before comparing: \code{1 == "1"} and \code{true == 1} are both \code{true}. These surprises are never visible statically. \code{===} is strict: \code{1 === "1"} is \code{false}.
+
+\subsection{What can't a type say?}
+That a value is meaningful. \code{durationSeconds: number} accepts \code{-30}, so the textbook records ``must be positive'' in a comment and relies on tests. That gap is Chapter 3's subject.
+
+\begin{ponder}
+Model a traffic light that is red, yellow, or green with a countdown. What does the template for a function on it look like?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{3. Checking Invariants}{An \term{invariant}{invariant} is a property that must hold for a value or computation to be meaningful; in this course, one the type system cannot express. Document it, test it, assert it.}
+
+\subsection{Where do invariants attach to a function?}
+To its inputs and its output. A \term[\textbf{Preconditions:} Mandatory rules the caller must guarantee before calling a function (like having money in the account before withdrawing)]{precondition}{precondition} is an invariant that must be true of the arguments when the function is called (\code{daysLate} is a whole number and \code{>= 0}). A \term[\textbf{Postconditions:} Guarantees the function promises to deliver when it completes, provided all preconditions were met]{postcondition}{postcondition} is what the function guarantees about its result, assuming the precondition held (the fee is between 0 and 10). Together they form the function's \term[\textbf{Contract:} A formal agreement between caller and function detailing rights, prerequisites, and promises]{contract}{contract}: the caller promises the preconditions, the function promises the postconditions. Both go in the JSDoc doc comment. A useful invariant is precise, testable and operational: ``\code{daysLate} is reasonable'' is none of these.
+
+\subsection{Why write tests before the code?}
+So that a passing test means something. First write a \term[\textbf{Stub:} A temporary, intentionally broken or incomplete placeholder function used to verify that new tests fail before writing real code]{stub}{stub}: the right signature returning a clearly wrong value (\code{lateFee} returns \code{-1}, which no real fee can equal). Every test must fail against it, because ``a test that cannot fail checks nothing.'' Then implement. Tests derived from the spec caught the textbook's missing \$10 cap; ``tests written after tend to mirror the code, mistakes included.''
+
+\subsection{Which inputs?}
+One representative of each \term[\textbf{Equivalence Classes:} Grouping all possible inputs into categories expected to trigger the same behavior, so you only need to test one representative from each]{eqclass}{equivalence class}, plus every \term[\textbf{Boundary Values:} Inputs sitting right on the extreme edges between categories (e.g., minimum, maximum, 0, or off-by-one points), where bugs almost always hide]{boundary}{boundary value}. An equivalence class is a group of inputs that the spec says should be handled the same way. The classes come from the spec, never from paths through your code: a buggy implementation sends \code{lateFee(12)} and \code{lateFee(30)} down the same path, but the spec separates them. A boundary value is the last input on each side of an edge between classes: for \code{lateFee}, 2/3 and 21/22. Off-by-one faults (\code{<= 3} for \code{<= 2}) show up only at those inputs.
+
+\subsection{Should you test inputs that break a precondition?}
+Not as an equivalence class: the precondition defines the input space, so \code{lateFee(-5)} is a meaningless input, not a missing class. But the function can refuse to continue. An \term[\textbf{Assert:} A runtime tripwire. If its condition is false, it immediately halts the program because an impossible internal bug occurred]{assert}{\code{assert}} checks a condition and terminates the program, printing a description, when it is false. When a function asserts its precondition, the textbook tests the assert with \code{checkError}.
+
+\subsection{Is every failure a bug?}
+No. An \emph{expected} error is a foreseeable outcome that belongs in the contract, like renewing a loan with no renewals left. An \emph{unexpected} error means an invariant has been violated, like a loan with \code{renewalsRemaining} of \code{-1}, which no correct sequence of operations can produce.
+
+\begin{tabularx}{\linewidth}{@{}XX@{}}
+\toprule
+Expected error & Unexpected error \\ \midrule
+return a \code{Result}; test the returned value with \code{checkExpect} & \code{assert} halts; test with \code{checkError}, which passes only if an error occurs \\ \bottomrule
+\end{tabularx}
+
+\term[\textbf{Result<T, E>:} An explicit return type that cleanly separates success (containing data of type T) from an expected error (containing error information of type E)]{result}{\code{Result<T, E>}} is a tagged union, \code{\{ ok: true, value: T \} | \{ ok: false, error: E \}}, so the type checker can see whether failures are handled. Rule of thumb: ``if the specification describes the outcome, check the outcome; if the outcome should be impossible, check that the program halts.''
+\begin{lstlisting}
+function renew(loan: Loan): Result<Loan, string> {
+  assert(loan.renewalsRemaining >= 0, "Loan invariant violated: negative renewals");
+  if (loan.renewalsRemaining === 0) {
+    return { ok: false, error: "No further loan renewals available" };   // expected
+  }
+  return { ok: true, value: { title: loan.title, renewalsRemaining: loan.renewalsRemaining - 1 } };
+}
+test("renewal is refused when no renewals remain",
+  checkExpect(() => renew(exhausted), { ok: false, error: "No further loan renewals available" }));
+test("renew halts on a corrupted loan", checkError(() => renew(corrupted)));
+\end{lstlisting}
+
+\subsection{Why need types, tests \emph{and} assertions?}
+Because each covers the others' gaps. Types check structure statically, before the program runs; tests probe chosen inputs from outside; assertions watch invariants\footnote{\textbf{Invariant:} A fundamental truth or rule about an object's data that must strictly hold true at all times (e.g., ``enrolled count cannot exceed room capacity'')} from inside, on every execution that reaches them. ``An invariant that lives only in someone's head cannot be checked by anything.''
+
+\begin{ponder}
+For \code{clamp(x, lo, hi)} with precondition \code{lo <= hi}: which classes, which boundaries, and what happens when a caller passes \code{lo > hi}?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{4. Maintaining Invariants}{Make invalid values impossible to create, not merely detectable.}
+
+\subsection{When does an invariant \emph{always} hold?}
+When two things are true: it is \term[\textbf{Established:} Made strictly true right from the start when an object is first created by its constructor]{established}{established} when the value is created, and \term[\textbf{Preserved:} Maintained as true across every single operation or method that modifies the object]{preserved}{preserved} by every operation that produces a new value from an old one. Then every value that ever exists is valid.
+
+\subsection{Isn't a constructor function enough?}
+No. \code{makeAccount(balance)} asserts \code{balance >= 0}, but ``the protection is only a convention'': a client can still write the literal \code{\{ balance: -100 \}}, or skip \code{deposit} and write \code{\{ balance: account.balance - 200 \}}. Both type-check.
+
+\subsection{How do you take the data out of reach?}
+In three steps, all built from CPSC 110 ideas:
+\begin{enumerate}
+  \item Restrict creation to one \textbf{constructor function}, which asserts the invariant.
+  \item Bind operations to the data: make the type's properties functions (\code{deposit}, \code{withdraw}, \code{getBalance}), with no \code{balance} field.
+  \item Hide the state in a \term[\textbf{Closure:} A function bundled together with the surrounding variables from where it was created, keeping those variables private and protected from outside tampering]{closure}{closure}: a function that keeps access to the parameters and definitions of the function that created it, even after that function has returned.
+\end{enumerate}
+\begin{lstlisting}
+export function makeCounter(count: number): Counter {
+  assert(count <= MAX_CAPACITY, "Invariant violation: Venue is full!");   // establish
+  return {
+    increment(): Counter { return makeCounter(count + 1); },  // every new state passes the check
+    getCount(): number { return count; }                       // the only way to read count
+  };
+}
+\end{lstlisting}
+Because \code{increment} builds its result by calling \code{makeCounter} again, every state the counter ever reaches passes through that assertion. ``There is no longer a balance property anywhere in the program for a client to read or forge.''
+
+\subsection{Why move on from this?}
+Because the language barely helps. The result ``is not standard TypeScript'' and can be hard to follow. Object-oriented programming gives the same pattern direct syntax (Chapter 10).
+
+\begin{ponder}
+What breaks if \code{increment} returns an object literal \code{\{ increment, getCount \}} built by hand instead of calling \code{makeCounter}?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{5. Arrays and Iteration}{Built-in sequences with ready-made traversals; the \code{for of} loop underneath for whatever they don't cover.}
+
+\subsection{What is an array?}
+\code{Reading[]} is an ordered collection whose elements all have the same type, accessed by position. It is \term[\textbf{Zero-Indexed:} Counting elements starting at position 0 instead of 1, so the first element is at [0] and the last is at [length - 1]]{zeroindexed}{zero-indexed}: \code{day[0]} is the first element, and \code{day.length} counts them. Each cell holds a \term[\textbf{References:} Memory addresses pointing to where data lives, like writing someone's street address on paper rather than cloning their house]{reference}{reference} to an object that lives elsewhere, not the object itself (Chapter 6).
+
+\subsection{How do you pick an operation?}
+By the result you want. Each takes a function saying what to do with one element:
+
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+\code{map}\footnote{\textbf{map:} An operation that transforms every item in an array one-by-one, producing a new array of the exact same length} & a new array of the same length, each element transformed \\
+\code{filter}\footnote{\textbf{filter:} An operation that inspects each element and keeps only those that pass a true/false condition} & a new array of the elements for which the function returns \code{true} \\
+\code{reduce(f, init)}\footnote{\textbf{reduce:} An operation that folds or combines an entire array of items down into a single final value (like summing numbers)} & one value, carried through the array as an accumulator \\
+\code{find}\footnote{\textbf{find:} An operation that searches through an array and returns the very first item matching a condition} & the first matching element, or \code{undefined} \\ \bottomrule
+\end{tabularx}
+
+None of them \term[\textbf{Mutate:} Modifying or overwriting existing data directly in memory rather than creating a new copy]{mutate}{mutates} the original array. Because \code{map} and \code{filter} return new arrays, they chain: \code{day.filter(r => r.tempCelsius > 0).map(r => r.hour)}.
+
+\subsection{When is a loop the better tool?}
+When elements must be compared with each other, or no named operation fits, because each operation's function sees one element at a time:
+\begin{lstlisting}
+function hasRepeatedTemperature(day: Reading[]): boolean {
+  for (const first of day) {
+    for (const second of day) {
+      if (first.hour !== second.hour) {                       // two different readings
+        if (first.tempCelsius === second.tempCelsius) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+\end{lstlisting}
+Otherwise prefer the named operation: ``the named operations say what they are doing. Loops are for when you must control how it is done.''
+
+\subsection{What does JSON lose?}
+Everything that is not data. \term[\textbf{JSON (JavaScript Object Notation):} A universal text format used to store and transmit structured data across different programs and web servers]{json}{JSON} is a text format with six kinds of value: four primitives (string, number, boolean, \code{null}), objects and arrays. It has no notation for a date, \code{undefined}, or a function, so \code{JSON.stringify} loses them without complaint. \code{JSON.parse} checks nothing: \code{const readings: Reading[] = JSON.parse(text)} is ``hoped for, not checked'' (Chapter 18).
+
+\begin{ponder}
+Why can't \code{hasRepeatedTemperature} be written with \code{map}, \code{filter} or \code{find} alone?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{6. Mutation and Side Effects}{Mutation adds time. ``What does this variable hold?'' now depends on when you ask, so reason by tracing state.}
+
+\subsection{What does mutation add?}
+Time. A \code{let} variable can be reassigned; \code{x = e} evaluates \code{e} using current values, then stores the result. The state of a program is the value every variable holds at one instant, so order now matters: after \code{let x = 1; x = x * 2; x = x + 3;} \code{x} is 5, but swapping the two reassignments gives 8. Trace state with a trace table, or with the debugger for larger programs. The habit: declare everything with \code{const}, and change one declaration to \code{let} only when the compiler says it must change.
+
+\subsection{What does \code{const} actually freeze?}
+The name, not the object: after \code{const reading = \{ hour: 6, tempCelsius: -4 \}}, \code{reading.tempCelsius = -3} is legal; \code{reading = \{...\}} is not.
+
+\subsection{When do two names share one object?}
+Whenever an object is assigned. A primitive (number, string, boolean) is copied; an object variable holds a reference, and assignment copies the reference. After \code{const s = r}, \code{s} is an \term[\textbf{Alias:} Having multiple variable names pointing to the exact same object in memory. Modifying the object through one name alters it for all aliases]{alias}{alias} of \code{r}: two names for one object, so a change through either is seen through both. On objects, \code{===} compares \term{identity}{identity}: whether two names refer to the same object, not whether their contents match. \code{filter} builds a new array filled with the original's references, a \term[\textbf{Shallow Copy:} Creating a new outer container, but filling it with the exact same memory references as the original (the objects inside are still shared)]{shallowcopy}{shallow copy}: changing \code{frozen[0].tempCelsius} changes \code{day[0]} too. \code{push}, \code{pop} and \code{sort} mutate the array in place.
+
+\subsection{Can a function change its caller's data?}
+By mutating an object parameter, yes; by reassigning a parameter, no. Each argument is assigned to its parameter. A primitive arrives as a copy (pass-by-value). An object arrives as a copy of the reference, so changes through it reach the caller's object. TypeScript's precise behaviour is \term[\textbf{Call-by-Sharing:} Passing a reference to an object into a function. The function can edit properties inside the object, but reassigning the variable name itself does not affect the caller]{callbysharing}{call-by-sharing}: ``the dot is the difference.''
+\begin{lstlisting}
+function calibrate(reading: Reading, offset: number): void {
+  reading.tempCelsius = reading.tempCelsius + offset;      // caller sees it
+}
+function reset(reading: Reading): void {
+  reading = { hour: reading.hour, tempCelsius: 0 };        // redirects the local arrow only
+}
+\end{lstlisting}
+
+\subsection{What decides how long things live?}
+Scope for names, reachability for objects. Under \term[\textbf{Block Scope:} The lifespan and visibility of a variable, strictly restricted to the enclosing curly braces \{ \} where it was defined]{blockscope}{block scope}, a variable exists from its declaration to the end of the enclosing \code{\{ \}}. An object lives while some chain of references from a live variable reaches it; \term[\textbf{Garbage Collection:} The computer automatically reclaiming memory from objects that can no longer be reached by any variable in the program]{gc}{garbage collection} reclaims it after that. ``Declare each variable in the smallest block that still spans every use of it.''
+
+\subsection{How do you test a side effect?}
+By checking state after the call. A \term[\textbf{Side Effect:} Any observable change a function causes outside its return value (like modifying an input argument, writing to a file, or updating a display)]{sideeffect}{side effect} is any observable change a function makes besides returning a value: mutating an object its caller can see, reassigning an outside variable, or touching the outside world. A function with none is \term{pure}{pure}. A \code{void} signature says nothing about the effect, so document it (``Modifies the given reading in place''). With mutation, an invariant must be preserved by every operation, forever. A value that can never change after creation is \term{immutable}{immutable}, and aliasing it is harmless.
+
+\begin{ponder}
+After \code{const a = [\{n: 1\}]; const b = a.filter(x => true); b[0].n = 5; b.push(\{n: 9\});}, what are \code{a} and \code{b}, and why?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{7. Asynchronous Effects}{Disk and network are millions of times slower than computing, so the single thread defers work instead of blocking.}
+
+\subsection{Why not just wait for the disk?}
+Because waiting freezes everything. A blocking call does not return until the slow work finishes. A TypeScript program runs on one \term[\textbf{Thread:} A single execution line running one instruction at a time (like a single chef in a kitchen). A single thread can only do one task at a time]{thread}{thread} (an independent sequence of executing statements), so blocking it on \term[\textbf{I/O (Input/Output):} Communication between the CPU and the outside world (hard drive, internet, screen), which takes millions of times longer than pure computing]{io}{I/O} stops the whole program. Instead it uses callbacks: functions handed to other code to run later. Finished work queues its callback, and the \term[\textbf{Event Loop:} A scheduler that constantly checks if asynchronous tasks (like disk reads or web downloads) have finished, running their waiting callbacks when the main thread is idle]{eventloop}{event loop} takes callbacks from the front of the queue and runs each one to completion. So source order is not run order: \code{console.log("A"); setTimeout(() => console.log("B"), 0); console.log("C");} prints A, C, B.
+
+\subsection{What is a promise?}
+A receipt for a value that does not exist yet. A \term[\textbf{Promise:} A placeholder or receipt for a future value that has not arrived yet, which will eventually resolve with data or reject with an error]{promise}{\code{Promise<T>}} starts pending, then settles once, either fulfilled with a \code{T} or rejected with an error, and never changes again. It is not a \code{T}: \code{contents.length} on a \code{Promise<string>} is a compile error.
+
+\subsection{What does \code{await} pause?}
+The function, not the program. While it waits, the thread runs other ready work. \code{await} is allowed only in an \term[\textbf{async/await:} Keywords that pause a function until a Promise finishes, without freezing the entire program or thread]{async}{\code{async}} function, which always returns a promise. ``Asynchrony is contagious'': callers await it and must themselves be \code{async}, ``all the way up.'' A bare \code{loadReport();} with the \code{await} forgotten compiles cleanly and does not wait. The course's lint rules flag it.
+
+\subsection{One at a time, or all at once?}
+All at once for independent operations: start them all, then wait once. Calling a promise-returning function \emph{starts} the work; awaiting it \emph{collects} the result.
+\begin{lstlisting}
+async function readAll(paths: string[]): Promise<string[]> {
+  const pending: Promise<string>[] = paths.map((path: string) => readFile(path, "utf8"));
+  return await Promise.all(pending);   // wait = the slowest read, not the sum
+}
+\end{lstlisting}
+\code{Promise.all} returns results in the order supplied. It rejects as soon as any promise rejects, without cancelling the others. Await inside a loop only when iteration $n$ needs iteration $n-1$; the \code{noAwaitInLoops} lint rule flags the rest.
+
+\subsection{What about data from a web service?}
+It is unverified. In \code{const report: StationReport = await response.json()}, the annotation states an expectation that the compiler cannot verify: ``the compiler's guarantees stop at the program's edge'' (Chapter 18).
+
+\begin{ponder}
+A function calls \code{loadReport} but isn't \code{async}. What does it get back, and why can't it simply wait?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{8. Designing for Failure}{Design expected failures as deliberately as successes: return them as values or throw them as exceptions.}
+
+\subsection{What does returning a \code{Result} buy, and cost?}
+It puts the failure in the type, so ``the compiler will not let them access \code{.value} without first checking \code{.ok}.'' The cost: every layer between detection and handling must check and forward the failure. In the textbook's \code{enrolAll}, four of eight lines only forward failures, breaking up the success path.
+
+\subsection{What does throwing do instead?}
+It skips the layers in between. A \textbf{throw}\footnote{\textbf{throw:} Halting normal execution immediately and signaling an emergency error that must be handled higher up} abandons the current function and passes the exception up the call stack. Each paused caller's \term[\textbf{Stack Frame:} The memory block holding the local variables and execution state of one currently active function on the call stack]{stackframe}{stack frame} is removed in turn (the stack \emph{unwinds}\footnote{\textbf{Unwinding the Stack:} Tearing down active function stack frames one by one during an exception until a matching catch block is found}) until a \code{try}/\code{catch}\footnote{\textbf{catch:} A safety block designed to intercept and handle errors thrown from within a try block} handles it. Layers in between need no error code. TypeScript exceptions are unchecked: a signature never says what a function throws, so document it with \code{@throws}. An \code{assert} is a throw left deliberately uncaught.
+\begin{lstlisting}
+function enrolStudent(catalogue: Section[], student: Student, ids: string[]): void {
+  try {
+    const sections = enrolAll(catalogue, student, ids);   // may throw from deep inside
+    console.log("enrolled in " + sections.length + " sections");
+  } catch (error) {                                       // the caught value has type unknown
+    console.log("enrolment could not be completed:");
+    console.log(error);
+  }
+}
+\end{lstlisting}
+A \code{finally} block runs on every path out of the \code{try}, so cleanup such as closing a file handle cannot be skipped. A thrown failure is not a value, so test it with \code{checkError}.
+
+\subsection{What must a \code{catch} never do?}
+Swallow the error silently. An empty \code{catch} turns a visible failure into a silent wrong answer. Catching only to report the failure and stop one operation is legitimate, and so is recovering, as \code{sectionOrBackup} does. Nor should exceptions serve as ordinary control flow: a \code{throw} never names its handler, so the path an exception takes can be read only from the dynamic view.
+
+\subsection{So which one?}
+Return a \code{Result} when the failure is an ordinary part of the operation that the immediate caller should always deal with. Throw when the failure should abort the current line of work and be handled well above. ``Catch at the boundary where the program knows what to do''; a low-level library should almost never catch. Be consistent within a codebase.
+
+\begin{ponder}
+A file can be missing three layers down, and only \code{main} can respond. Return or throw? What changes if the immediate caller could use a default?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{9. Validating Behaviour}{Real assertions, richer test bodies, both inputs and outputs partitioned, and coverage and regression to judge the suite.}
+
+\subsection{Why does \code{to.equal} fail on two objects with the same contents?}
+Because \code{to.equal} compares with \code{===}, which on objects tests identity (Chapter 6). For \term[\textbf{Identity vs Structural Equality:} Identity asks ``are these the exact same memory address?'', whereas Structural (deep) asks ``do these two separate objects have identical contents?'']{structural}{structural equality} (same shape and values throughout), use \code{to.deep.equal}. \code{checkExpect} always compared deeply, so translate it to \code{deep.equal} when the expected value is an object or array. Prefer a specific operator (\code{to.include}, \code{to.have.length}, \code{to.have.members}, \code{to.be.closeTo}): its failure message names the actual problem. \code{expect(() => f()).to.throw("msg")} needs the thunk, and passes only if the thrown message contains \code{"msg"}.
+
+\subsection{What can a test body hold now?}
+Anything a block can. It can hold several assertions, its own setup (so no shared top-level state can make tests depend on their order), and multi-step driving. Order assertions general $\to$ specific, so the first failure names the kind of fault:
+\begin{lstlisting}
+const result = eligibleSections(catalogue, student);
+expect(result).to.be.an("array");                                   // the right kind of value
+expect(result).to.have.length(1);                                   // the right number
+expect(result.map(s => s.id)).to.include("CPSC210");                // the right section
+expect(result).to.deep.equal([{ id: "CPSC210", prerequisite: ["CPSC110"] }]);   // exactly right
+\end{lstlisting}
+
+\subsection{Is partitioning the inputs enough?}
+No. When inputs are composite, the classes are combinations of fields (plan $\times$ region $\times$ title state). Partition the outputs too: empty, one, several.
+
+\subsection{Does 100\% branch coverage mean the code is right?}
+No. Black-box tests come from the spec; white-box tests come from reading the code. \term[\textbf{Branch Coverage:} The percentage of decision branches (if/else paths) in your code that were executed during your automated test suite]{coverage}{Branch coverage}, the fraction of branches that at least one test runs, shows code the suite ignores. It cannot reveal a branch that is \emph{missing}: a \code{canPlay} that never checks regional licensing still reaches 100\%. Rerun the whole suite after every change to catch a \term[\textbf{Regression:} An unintended bug introduced into previously working features when making a new change or fix]{regression}{regression}: a change that breaks behaviour that previously worked.
+
+\begin{ponder}
+Write a three-line function with a bug that a suite at 100\% branch coverage still misses.
+\end{ponder}
+%======================================================================
+\partq{Part 2: Abstraction}{How can someone use code without knowing its insides?}
+
+%----------------------------------------------------------------------
+\chap{10. Building Abstractions (Classes)}{A class bundles state with the operations that maintain its invariant: Chapter 4's closure pattern, with language support.}
+
+\subsection{What is a class, in terms you already know?}
+A \term[\textbf{Class:} A blueprint or template defining the state (fields) and behaviors (methods) that its instantiated objects will have]{class}{class} is a template for a kind of value: the state every instance holds and the operations it provides. Each piece of the closure maps onto a piece of the class:
+
+\begin{tabularx}{\linewidth}{@{}XX@{}}
+\toprule
+Closure version (Chapter 4) & Class version \\ \midrule
+variables closed over & \term[\textbf{Fields:} Variables that live inside an object, storing its private internal data]{field}{fields} \\
+the maker function & the \term[\textbf{Constructor:} The specialized setup function that creates and initializes a new object, checking all initial rules]{constructor}{constructor}, run by \code{new} \\
+the returned operations & \term[\textbf{Methods:} Functions attached to an object that have special access to read and modify its internal fields]{method}{methods} \\
+reaching state by closure & reaching state through \code{this}\footnote{\textbf{this:} A keyword inside a class method referring to the specific object instance currently executing the code} \\ \bottomrule
+\end{tabularx}
+
+What the class adds is a name that is a type, a standard construction path through \code{new}, and operations grouped with the data by the language.
+
+\subsection{Who establishes the invariant, and who preserves it?}
+The constructor establishes it; each method preserves it. In \code{Playlist}, the current index must always point at a real song (or be \code{-1} when the list is empty). \code{remove} repairs the index in every branch, so the caller never has to think about it. A field belongs in the class if its value must survive after a method returns, or be visible to other methods.
+
+\subsection{Is OO a different way of programming?}
+No. Functional, imperative and OO programming ``are not competitors''. A method body is usually imperative, and a functional pipeline can run inside one. What changes is how the program is organised.
+
+\subsection{How do you test something with state?}
+Construct it, drive a sequence of calls, and assert on the resulting state. \code{beforeEach} builds a fresh object before every test, because one shared object would leak mutations between tests and make them depend on run order.
+\begin{lstlisting}
+let playlist: Playlist;
+beforeEach(() => { playlist = new Playlist(); });
+test("the first song added becomes current", () => {
+  playlist.add(songA);
+  expect(playlist.current()).to.deep.equal(songA);
+});
+\end{lstlisting}
+
+\begin{ponder}
+Map each part of Chapter 4's \code{makeCounter} onto a \code{Counter} class. What did the class add?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{11. Decomposing Systems (Cohesion)}{\term{cohesion}{Cohesion} asks whether everything in a class belongs together. Single Responsibility at class level: one class, one invariant.}
+
+\subsection{How does a god class happen?}
+One reasonable change at a time. Adding ``recently played'' to \code{Playlist} is easier than creating a new class, so the class ends up with two unrelated invariants. Repeat that, and you get a \term{godclass}{god class}: one type that knows about and does everything. It is hard to change (no single invariant to reason about) and hard to use (no one can predict where a feature lives).
+
+\subsection{What does ``single responsibility'' mean concretely?}
+Under \term{srp}{single responsibility}, a class enforces one invariant, and every field and method exists to establish, preserve or observe it. In practice that means one \emph{cluster} of invariants that constrain the same state and must hold together. A value object or stateless helper is cohesive around one concept instead.
+
+\subsection{How do you find and fix the problem?}
+Diagnose: name the invariant, then check each field and method against it. A field the invariant never mentions usually signals a second responsibility (an identity field like \code{id} is the exception). Design: invariants $\to$ the state each constrains $\to$ one class each $\to$ have one hold the other and delegate $\to$ name each class. ``When it is hard to come up with a name, it is often a signal the split was poor.''
+
+\subsection{How do the pieces work together again?}
+Through \term[\textbf{Composition:} Assembling complex functionality by holding references to other helper objects (``has-a'') rather than inheriting from a parent class (``is-a'')]{composition}{composition} and \term{delegation}{delegation}. Composition means one object holds a reference to another (\code{Playlist} has a \code{PlayHistory}); delegation means the holder forwards work to it (\code{play} calls \code{playHistory.record}). The class that needs a capability holds the one that provides it. A back-reference from \code{PlayHistory} to \code{Playlist} would bind the two in both directions. A field holding a collaborator does not break cohesion, because the class's own invariant does not govern it.
+
+\subsection{Should every rule become a class?}
+No. Every split adds a name to learn and a unit to navigate. ``No duplicate tags'' can stay inline in \code{Article} if tag rules will never grow; extract a \code{TagSet} if they will.
+
+\begin{ponder}
+Pick a class from your project. Name its invariant. Which field doesn't serve it?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{12. Encapsulating What Varies}{Hide the representation so that only the class's own methods can touch it, and the compiler enforces it.}
+
+\subsection{Why isn't a careful constructor enough?}
+Because public fields can be written by any code holding the object. \code{list.invited.push("alice")} twice breaks ``no duplicates'', and \code{list.capacity = -1} is legal.
+
+\subsection{What do \code{private} and \code{readonly} each control?}
+\term[\textbf{private:} An access modifier restricting visibility so only code inside this exact class can touch that field or method]{private}{\code{private}} controls \emph{who} can access a member: only the class body. \term[\textbf{readonly:} A modifier ensuring a variable or field can only be assigned once and never overwritten later]{readonly}{\code{readonly}} controls \emph{when} a field can change: only where it is declared or in the constructor. \code{public} is the default. TypeScript's \code{private} is checked at compile time and erased at run time (JavaScript's \code{\#} fields stay private at run time). Encapsulated, \code{GuestList}'s constructor rejects invalid input, and every method preserves the invariant.
+
+\subsection{If the field is private, can the invariant still leak?}
+Yes, through references. A \code{guests()} that returns \code{this.invited} hands callers the private array itself, and \code{everyone.push("alice")} writes a duplicate straight into the list's state. Return a \term[\textbf{Defensive Copy:} Duplicating an incoming or outgoing array/object so outside code cannot accidentally corrupt your internal private data through an alias]{defensivecopy}{defensive copy} instead:
+\begin{lstlisting}
+guests(): string[] {
+  return this.invited.slice();   // a copy; mutating it cannot affect the list
+}
+\end{lstlisting}
+\code{slice()} is shallow: safe for strings, which cannot be mutated, but not for an array of objects. \code{structuredClone} copies deeply, but returns class instances as plain objects without methods.
+
+\subsection{What does hiding buy later?}
+Freedom to change the representation. \code{GuestList} switched from \code{string[]} to \code{Set<string>} with no caller changed, and the \code{Set} makes ``no duplicates'' structural. Three habits keep that freedom: expose behaviour, not data; hide what is likely to change; add a public method only when a caller needs it.
+
+\subsection{How do you test what you've hidden?}
+Through the public methods, which may require design changes. A test needs controllability (it can drive the object into the state it wants) and observability (it can read back enough to judge the result). \code{LoginThrottle} read \code{Date.now()} internally, so testing the lock's expiry meant waiting 30 seconds. The fix was to pass \code{now: number} as a parameter and add \code{isLocked(now)} and \code{failureCount()}. Add methods that report derived facts, never the raw representation.
+
+\begin{ponder}
+Write the test that fails if \code{guests()} returns the internal array.
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{13. Implementation Freedom}{A class's representation is what it stores; its abstract value is what that means to a caller. A change to the representation is safe exactly when the new one denotes the same abstract values.}
+
+\subsection{What does an object \emph{mean}, versus what it \emph{stores}?}
+The \term[\textbf{Abstraction Function (AF):} A conceptual map explaining how the messy internal storage fields correspond to the clean mathematical concept the user sees]{af}{abstraction function} maps each legal representation to the abstract value it stands for. It is many-to-one: \code{["alice","bob"]}, \code{["bob","alice"]} and \code{new Set(["alice","bob"])} are one guest list. The \term[\textbf{Representation Invariant (RI):} A strict rule defining which internal data configurations are valid representations of the abstract value]{ri}{representation invariant} is the class invariant you have been writing since Part~1: which representations are legal. Document both. Writing the abstract value down forces decisions, such as whether capacity is part of what a guest list is.
+
+\subsection{When are two objects ``equal''?}
+Usually when they denote the same abstract value. That is \term{equivalence}{equivalence}, as opposed to identity (\code{===}). The language cannot check equivalence, so a class provides an \code{equals} method. An \code{equals} that walks two arrays position by position is wrong (it calls Alice-then-Bob and Bob-then-Alice different) and costs the class its freedom: it now depends on the array. Compare at the abstract level instead, using questions a caller could ask:
+\begin{lstlisting}
+equals(other: GuestList): boolean {
+  if (this.capacity !== other.capacity) { return false; }   // private is per class, not per object
+  if (this.size() !== other.size()) { return false; }
+  for (const guest of this.guests()) {
+    if (other.isInvited(guest) === false) { return false; }
+  }
+  return true;
+}
+\end{lstlisting}
+Keep it symmetric: \code{a.equals(b)} exactly when \code{b.equals(a)}.
+
+\subsection{Which equality do \code{includes}, \code{Set} and \code{Map} use?}
+\code{===}, so for objects, identity. \code{indexOf}, \code{includes}, \code{Set} and \code{Map} keys all behave this way, never using your \code{equals}. That is why \code{Playlist.remove} removes only the exact \code{Song} object it was handed. Removing by identity is a decision, and the contract must state it.
+
+\subsection{Why make value objects immutable?}
+So that their meaning cannot change underneath whoever holds them. A \term{valueobject}{value object} is a class whose whole purpose is to be a value: a date, a money amount, a coordinate. An immutable object establishes its invariant once and returns new objects instead of changing (\code{ImmutableGuestList.add} returns a new list). Its abstract value never changes, so comparisons against it stay true. It also frees the class to build, share or cache returned values. (Contrast: \code{const} protects a binding and \code{readonly} protects a field; neither makes the object immutable.)
+
+\subsection{What does a generic class give up?}
+Knowledge of its member type. \code{Roster<T>} can only compare members with \code{===}, so a \code{Roster<Seat>} lets the same seat in twice and breaks its own invariant. The fix is to pass equality in: \code{new Roster<Seat>(400, (a, b) => a.equals(b))}. ``Flexibility is bought, not free'': every commitment a class declines is knowledge that must arrive some other way.
+
+\begin{ponder}
+Store a set of strings as a sorted array. What are the abstraction function and representation invariant, and which operations must now work harder?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{14. Defining Boundaries (Interfaces)}{Depend on a named contract, not on a class: an interface hides the class itself.}
+
+\subsection{What is an interface?}
+An \term[\textbf{Interface:} A pure contract or specification of method names and types that an object promises to support, without specifying how they are implemented]{interface}{interface} is a named type listing method signatures (all public, no bodies, no fields). It records what is promised and nothing about how. Convention: \code{interface} for a contract that classes implement and callers depend on; \code{type} for unions and the shapes of plain data. Interfaces are documented with care, because every member is a promise.
+\begin{lstlisting}
+interface Notifier {
+  send(message: string): void;
+}
+class EmailNotifier implements Notifier { /* private address; send(..) over email */ }
+class SmsNotifier implements Notifier { /* private phone;   send(..) over SMS */ }
+\end{lstlisting}
+
+\subsection{If TypeScript is structural, what does \code{implements} add?}
+A checked declaration of intent. Any object with a matching \code{send} already fits. With \term[\textbf{implements:} A formal declaration that a class commits to providing every single method and property demanded by an interface]{implements}{\code{implements}}, a missing or misspelled member fails at the class, where the mistake is, instead of at a distant call site.
+
+\subsection{Which type decides what you may call?}
+The apparent type. In \code{const alerts: Notifier = new EmailNotifier("ops@example.com")}, the \term{apparent}{apparent type} is \code{Notifier}: what the compiler knows, from the static view. The \term{actual}{actual type} is \code{EmailNotifier}: the object that exists at run time. You may call only \code{send}, so any \code{Notifier} can stand behind the variable. That is the advice ``program to an interface, not an implementation''.
+
+\subsection{How does a boundary help testing?}
+A test can hand the code a \term{testdouble}{test double} (or mock object): a simpler, observable implementation of the same contract. \code{alertAll} is tested with a \code{RecordingNotifier} that pushes each message to \code{sent} instead of sending email.
+
+\subsection{One big interface or several small ones?}
+Several small ones: the \term{isp}{interface segregation principle}. Delivery confirmation goes in its own \code{Confirmable}, and \code{SmsNotifier implements Notifier, Confirmable}. A large interface forces implementers to fake operations and makes callers depend on more than they use.
+
+\subsection{How does a generic class get the operations it needs?}
+Two routes, which trade against each other. Constrain the type, \code{Roster<T extends Identifiable>}, so every member has \code{sameAs}; then \code{Roster<string>} no longer compiles. Or pass the operation in (Chapter 13), which works for every type but obliges every caller. Constrain when you own the types and the operation is fundamental to them; pass it in otherwise.
+
+\begin{ponder}
+In \code{const alerts: Notifier = new EmailNotifier("ops@example.com")}, what are the apparent and actual types, and which decides what \code{alerts.send} does?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{15. Extending Behaviour (Polymorphism)}{One call, many behaviours, chosen at run time by the object's actual type.}
+
+\subsection{Where does shared behaviour go?}
+In an abstract base class, so it isn't repeated in every class (don't repeat yourself). An interface has no bodies; an abstract class mixes concrete members with \code{abstract} ones that each subclass must supply. It cannot be instantiated. \code{protected} members are visible to the class and its subclasses only.
+\begin{lstlisting}
+abstract class BaseNotifier implements Notifier {
+  public send(message: string): void {
+    if (message.length === 0) { return; }          // shared rule
+    this.deliver(this.decorate(message));
+  }
+  protected decorate(message: string): string { return "[ALERT] " + message; }
+  protected abstract deliver(text: string): void;
+}
+class SmsNotifier extends BaseNotifier {
+  // constructor calls super() first
+  protected decorate(message: string): string { return super.decorate(message).slice(0, 160); }
+  protected deliver(text: string): void { /* over SMS */ }
+}
+\end{lstlisting}
+
+\subsection{How can one call run different code?}
+By \term[\textbf{Dynamic Dispatch:} The runtime lookup where the computer checks the actual object class at the moment of the call to choose which version of a method to run]{dispatch}{dynamic dispatch}: the method body that runs is chosen at run time from the object's actual type, not its apparent type. Inside the inherited \code{send}, \code{this.decorate} and \code{this.deliver} run \code{SmsNotifier}'s versions. That is \term[\textbf{Polymorphism:} ``Many forms''---the ability of different classes to respond to the exact same method call in their own specialized ways]{polymorphism}{polymorphism}: one piece of code working with many types and behaving, for each, according to that type.
+
+\subsection{When may a subclass stand in for its base?}
+When it honours the contract: it demands no more (no stronger precondition), promises no less (no weaker postcondition), and preserves the base's invariants. A \code{send} that also rejected messages containing whitespace would strengthen the precondition. One that silently dropped long messages would weaken the postcondition. The compiler catches neither, because the violation is in behaviour, not in types.
+
+\subsection{\code{extends} or \code{implements}?}
+\code{extends} for is-a: it inherits the implementation and the type, from one class at most. \code{implements} for can-do: type only, from any number of interfaces. A test double wants the type and none of the implementation, so it implements.
+
+\subsection{Then should everything inherit?}
+No: ``composition over inheritance''. Polymorphism replaces a branch on a type tag, but combining features belongs to composition. For $c$ channels in $f$ formats, inheritance needs $c \times f$ classes; holding a \code{Formatter} collaborator needs $c + f$. A base class is fixed when the subclass is written, whereas a collaborator is chosen when the object is built. Subclasses depend on the base's implementation, which causes the \term{fragile}{fragile base class problem}: a harmless-looking change inside the base breaks subclasses that were never edited.
+
+\begin{ponder}
+A subclass's \code{send} quietly drops messages longer than its provider accepts. Which rule does it break, and why does no test of \code{alertAll} notice?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{16. Growing Systems (Open/Closed)}{Code is \term{ocp}{open for extension and closed for modification} when new behaviour is added as new code, without changing existing code that already works.}
+
+\subsection{What does it look like?}
+Adding a push channel is one new class. \code{Notifier}, \code{BaseNotifier}, the existing channels and \code{alertAll} are untouched:
+\begin{lstlisting}
+class PushNotifier extends BaseNotifier {
+  // constructor(deviceId) stores this.deviceId
+  protected deliver(text: string): void { /* push to this.deviceId */ }
+}
+alertAll([new EmailNotifier("ops@example.com"), new PushNotifier("device-42")], "deploy finished");
+\end{lstlisting}
+The alternative, adding an \code{else if} to a function that branches on a channel string, reopens tested code. In practice the same tag is also branched on in formatting, validation and logging.
+
+\subsection{Why avoid editing working code?}
+Because every edit to tested code risks a regression (Chapter 9). Adding \code{PushNotifier} leaves the existing channels and their tests alone. ``Closed'' does not mean code never changes: bugs are still fixed. It means a \emph{foreseen} kind of addition should not reopen working code.
+
+\subsection{Should every class be open?}
+No: no design is open on every axis. Put the boundary, an \term[\textbf{Extension Point:} A designated hook or interface in your architecture designed to let new classes plug in cleanly without modifying existing code]{extpoint}{extension point}, where new variants will actually appear. \code{Notifier} is open to new channels, not to group delivery or scheduling. Abstractions for variation that never arrives are \term[\textbf{Speculative Generality:} Adding unnecessary flexibility, hooks, and complex abstractions for hypothetical features nobody has asked for]{specgen}{speculative generality}.
+
+\subsection{What must already be true for this to work?}
+Five principles at once: cohesion (Ch.~11), encapsulation (Ch.~12), implementation freedom (Ch.~13), small contracts (Ch.~14), and substitutability (Ch.~15). Open/closed ``is not a seventh item''; it is what you observe when all five hold. Remove any one and the same addition gets harder. For example, a public \code{address} field read by an audit log breaks when \code{PushNotifier} has no address. Underneath is the \term[\textbf{Dependency Inversion Principle:} The rule that high-level business logic should depend on abstract interfaces rather than concrete, low-level implementation details]{dip}{Dependency Inversion Principle}: high-level policy depends on abstractions, not on concrete classes.
+
+\subsection{Why do the principles seem to conflict?}
+Because people predict change differently: ``every design decision is an answer to the same question: what is likely to change?'' The two possible errors are not equally expensive. An unnecessary abstraction is a small, permanent tax on every reader. A missing one costs a larger, one-time modification.
+
+\begin{ponder}
+A new requirement: deliver one alert to a whole group. Does \code{Notifier} help? What would have to change?
+\end{ponder}
+%======================================================================
+\partq{Part 3: Evolution}{How do we keep code cheap to change as it changes?}
+
+%----------------------------------------------------------------------
+\chap{17. Coupling and Dependencies}{\term{coupling}{Coupling} is the degree to which one part of a system depends on another. Cohesion is judged within a boundary, coupling between boundaries; both aim to keep change local.}
+
+\subsection{Why does one change force others?}
+Because of hidden assumptions. \code{WeeklyRecap} read \code{PlayHistory}'s array directly. It assumed an array, most-recent-first ordering, \code{Song} elements and a \code{title} field, and none of these was in any contract. Adding timestamps to the history then broke code that had no interest in storage. That is the ripple effect. The edits are its smallest cost; the others are regression risk and coordinating with other teams. The practical test: ``how much must you know about B in order to write or change A?''
+
+\subsection{How do you spot risky classes?}
+Draw the dependency graph: A depends on B if A constructs, holds, takes, calls or reads a B. \term[\textbf{Fan-in:} The number of other classes that depend on this class. High fan-in means changes here will ripple across the entire system]{fanin}{Fan-in} (how many classes depend on this one) predicts how expensive it is to change; keep such classes small and stable, ideally interfaces. \term[\textbf{fan-out:} The number of other classes that this class relies on. High fan-out means this class is fragile because it depends on many outside things]{fanout}{Fan-out} (how many classes it depends on) predicts how fragile it is; keep such assembly classes few and at the edges. Every \code{import} is a dependency, and importing only a type commits you to less than importing a class you construct.
+
+\subsection{Are all dependencies equally bad?}
+No. From tightest to loosest: \textbf{content} (reading or writing another class's internal state), \textbf{common} (shared mutable state that belongs to neither), \textbf{control} (a flag that picks the callee's branch), \textbf{stamp} (a whole object when part would do), \textbf{data} (exactly the values needed). Move each dependency as far down the list as possible. Replace a boolean flag with named methods (\code{weeklySummary}), or with the value it stood for (\code{summarySince(time)}). Class extension is tighter still, outside the list, because a subclass depends on its base's implementation.
+
+\subsection{What does loose coupling look like in code?}
+Ask your neighbour; don't walk through it. \code{order.customer().address().city()} needs three classes to be right. The \term{demeter}{Law of Demeter} says a method should call methods only on itself, its fields, its parameters, and objects it creates, so write \code{order.shippingCity()}. Chains over one type, such as \code{songs.filter(..).map(..)}, are fine. Under \term{tda}{Tell, Don't Ask}, you tell an object what to do instead of extracting its state and deciding for it:
+\begin{lstlisting}
+if (account.balance() >= amount) { account.setBalance(account.balance() - amount); }  // asks
+account.withdraw(amount);                                                             // tells
+\end{lstlisting}
+
+\subsection{How do you break a cycle?}
+Try these in order: reverse the direction of the question (the class that already depends asks); invert one direction with an interface (\code{PlayHistory} holds a \code{PlayObserver}, not a \code{Playlist}); or extract a third class for a policy that belongs to neither.
+
+\subsection{How do cohesion and coupling fit together?}
+As the two halves of \term{soc}{separation of concerns}: each concern (a rule, a responsibility, a reason to change) gets exactly one home. \term{tangling}{Tangling} (many concerns in one place) is poor cohesion seen from inside a class; you fix it by splitting. \term{scattering}{Scattering} (one concern spread across many places) is tight coupling seen from outside; you fix it by giving the concern one owner and a contract. Low coupling is not a goal by itself: merging everything into one class has zero coupling and is a god class. A class that is hard to test usually reports coupling: ``if a unit test requires you to construct a large part of the system, the class under test is coupled to a large part of the system.''
+
+\begin{ponder}
+Which class in your project has the highest fan-in? What would changing its return type cost?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{18. Consuming Data and Services (APIs)}{Data from outside has no invariants. Convert it once, at the edge, into a typed value whose invariant holds, and keep the provider behind an interface you own.}
+
+\subsection{What is an API, and how do the two kinds differ?}
+An \term[\textbf{API (Application Programming Interface):} A documented doorway allowing different software programs to talk to each other and exchange data]{api}{API} is a contract published by code you call but do not own. A library API runs in your process: it is fast, typed by the compiler, and changes only when you upgrade. A web service API runs on another machine: it takes milliseconds to seconds, can time out or half-complete, sends text that is typed only if you check it, and changes whenever the provider deploys.
+
+\subsection{Doesn't a type annotation check the JSON?}
+No. \code{JSON.parse} and \code{response.json()} return \code{any}, which switches the checker off. \code{as Shipment} is ``a claim, not a check'': it produces no code and cannot fail. Take incoming data as \code{unknown}, which cannot be used until converted, and convert it into a \code{Result}. Zod does this from a schema. \code{z.infer} derives the type from the schema, so the two cannot drift; \code{safeParse} returns a result and \code{parse} throws. Don't put a Zod type in your own signatures.
+\begin{lstlisting}
+function toShipment(raw: unknown): Result<Shipment, string> {
+  const parsed = ShipmentSchema.safeParse(raw);
+  if (parsed.success === false) {
+    return { ok: false, error: parsed.error.message };
+  }
+  return { ok: true, value: parsed.data };
+}
+\end{lstlisting}
+Serialisation records fields only: no class, no methods, and a \code{Map} becomes \code{\{\}}. Rebuild objects with behaviour through their constructor, so the invariant is established again.
+
+\subsection{What can go wrong with a call?}
+Three things, each caught in a different place:
+\begin{enumerate}
+  \item The call does not complete: \code{fetch} rejects.
+  \item An error status arrives: \code{fetch} does \emph{not} throw on 404 or 500, so check \code{response.ok}. 4xx means the request was wrong and will fail again; 5xx means the service failed and a retry might work.
+  \item A 200 carries the wrong data: the converter catches it.
+\end{enumerate}
+Latency makes every caller \code{async}, and a response is stale the instant it arrives. Retry only \term[\textbf{Idempotent:} An operation that produces the exact same outcome whether executed once or repeated ten times in a row (like pushing an elevator call button)]{idempotent}{idempotent} calls, ones where doing it twice has the same effect as once (GET, PUT), and space the retries out. Retry POST only when the API documents a duplicate-safe key.
+
+\subsection{How do you keep the provider out of your design?}
+Own the contract (\code{CarrierClient}), and write one \term{adapter}{adapter} per provider: a class that implements your interface and knows one provider's URLs, JSON and vocabulary. \code{ParcelTracker} receives its adapters through its constructor. Supplying a dependency from outside instead of constructing it is \term{di}{dependency injection}. Gather that construction in one place at the program's edge, the \term{comproot}{composition root}, the only code that names concrete carriers. Tests inject a \code{StubCarrier} and never touch the network. Depend on the documentation, never on behaviour you merely observed.
+
+\begin{ponder}
+For one carrier lookup, which line of your code detects each of the three failure modes?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{19. Designing APIs}{A published API is close to permanent and its users are engineers: keep it small, easy to use correctly, and hard to use incorrectly.}
+
+\subsection{Why export so little?}
+Because of \term[\textbf{Hyrum's Law:} The observation that with enough users, every observable quirk of a system will be relied upon by someone, making changes risky]{hyrum}{Hyrum's law}: with enough clients, every observable behaviour will be depended on by somebody, whatever the contract says. Adding later is easy; removing breaks clients. Declare the surface in one \code{index.ts}. Don't export internal types for convenience, and don't let a dependency's types (such as Zod's) into your signatures.
+
+\subsection{What makes misuse hard?}
+Design so the compiler catches the mistake. \code{track(carrierId: string, trackingNumber: string)} lets the two strings be swapped silently; an options object, \code{track(\{ carrierId, trackingNumber \})}, or distinct value types prevent it. Also: descriptive names, consistency across the surface, and one documented meaning for absence.
+
+\subsection{Why tagged errors instead of messages?}
+Because clients branch on \code{kind}, which you promise, not on message text, which you don't. That leaves the wording free to change.
+\begin{lstlisting}
+export type TrackingError =
+  | { kind: "malformed-tracking-number"; reason: string }
+  | { kind: "unknown-tracking-number" }
+  | { kind: "carrier-unavailable"; carrier: string };
+\end{lstlisting}
+Documentation \emph{is} the API for a client. State what clients may \emph{not} rely on (``may be out of date immediately''), because a non-promise keeps you free, for example to add caching later.
+
+\subsection{Which changes break clients?}
+Safe: a new operation, an optional parameter, accepting input you used to reject; adding a field to a returned object is usually safe. Breaking: renaming, removing, a required parameter, rejecting input you used to accept, changing a field's type, and adding a failure case (client code that handled every case is now silently incomplete). The dangerous ones compile: tightening validation, changing a field's meaning (\code{lastSeenAt} moving from local time to UTC), reordering results, rewording a matched message.
+
+\subsection{How do you change it anyway?}
+Signal it with \term[\textbf{SemVer (Semantic Versioning):} The standard versioning convention Major.Minor.Patch (e.g. 2.1.4), where breaking changes force a Major version bump]{semver}{semantic versioning}: major.minor.patch, with a major bump for any breaking change. A breaking change shipped in a patch release is worse than a breaking change. Web services put the version in the path (\code{/v1/}) and keep old versions running. Remove in steps: \code{@deprecated} with the replacement named (minor release), wait across several releases, then remove (major release).
+
+\begin{ponder}
+Is making an optional parameter required a minor or a major bump? What about returning results in a new order?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{20. Code Quality and Refactoring}{Refactor to make the upcoming change easy: change structure, not behaviour, with the suite checking every step.}
+
+\subsection{If the tests pass, is the code good?}
+Not necessarily. External quality (does it do what it should?) is what users see and what tests measure. Internal quality (can a person read, reason about and safely change it?) is invisible until a change is needed. The two are independent. The tracker passed every test while \code{normaliseStatus} in its middle had learned every carrier's vocabulary.
+
+\subsection{What are smells really pointing at?}
+A \term{smell}{code smell} is a surface sign of a deeper design problem, a hint and not a rule. Most smells reduce to tangling or scattering (Chapter 17), and the cures run in opposite directions. Tangling (large class, divergent change, conditional on a type tag) is cured by splitting. Scattering (duplicated code, shotgun surgery, primitive obsession) is cured by consolidating. Record deliberate \term[\textbf{Technical Debt:} The future cost of taking quick-and-dirty shortcuts today, which makes adding future features progressively harder and slower]{techdebt}{technical debt} where the next maintainer will look, because undocumented debt looks like intended design.
+
+\subsection{How do you know you changed only structure?}
+By running the suite before and after. \term[\textbf{Refactoring:} Restructuring and cleaning up internal code without changing any of its external behavior or results]{refactoring}{Refactoring} changes structure and preserves behaviour; never combine it with a feature, a bug fix or a rewrite in one change. It is ``pure risk'': the benefit is deferred, so manage the risk. Run the suite first (a test already failing makes later failures meaningless), make the change, run it again. For untested code, first write a \term{charact}{characterisation test} that records what the code does now, even if that looks wrong.
+
+\subsection{What does a refactoring look like?}
+A sequence of small named moves (rename, extract function, extract class, move method, inline, replace conditional with polymorphism), with step $\to$ test $\to$ commit after each. For the tracker: extract each carrier's status branches into a private \code{toStatus} on its adapter, move the conversion into the adapter, repeat per carrier, then inline away \code{normaliseStatus}. The refactoring ``restored'' an extension point that had quietly stopped working.
+
+\subsection{When do you stop, or not start?}
+Stop once the change you came to make is easy: ``make the change easy, then make the easy change.'' Don't refactor code nobody needs to change, code you have no way to check for behaviour change, or in the same commit as a behaviour change.
+
+\begin{ponder}
+Why must the suite be green \emph{before} you start refactoring?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{21. Debugging and Fault Localization}{Debugging is a process, not a talent: reproduce, localize, fix, validate.}
+
+\subsection{What are you actually looking for?}
+The \term[\textbf{Fault:} A static bug, defect, or mistake written directly in the source code]{fault}{fault}: the defect in the code, the thing you eventually edit. When it executes it produces an \term[\textbf{Error:} An incorrect, diseased intermediate internal runtime state resulting from executing a fault]{error}{error}, an incorrect state while running, usually invisible. That may surface as a \term[\textbf{Failure:} An externally visible deviation from expected behavior or specification (what a user or test actually witnesses)]{failure}{failure}, the externally visible misbehaviour a user reports. (These are narrower senses than ``runtime error'' in Chapter 1 or ``expected error'' in Chapter 3.) Debugging runs the chain backwards. Sometimes there is no fault: intended behaviour, a misunderstanding, or a problem in data or configuration.
+
+\subsection{Why reproduce first?}
+Because nothing else is actionable until you can trigger the failure on demand. Make the reproduction deterministic: pass time and randomness as parameters, replace network calls with test doubles, reset state between tests. Make it minimal: everything you remove without losing the failure is somewhere the fault is not. The parcel bug shrank to one call, \code{carrier.track("Z2200417")}.
+
+\subsection{How do you narrow it down?}
+Use the scientific loop: state a hypothesis precise enough to be false, predict, observe, keep or discard. Follow the dependency graph backwards, start from what changed, and bisect (\code{git bisect} finds the commit where behaviour changed, which may expose an older fault). Round one logged the raw status, \code{"NOT\_DELIVERED"}, which ruled out the carrier. Round two found the fault: \code{raw.includes("DELIVERED")} is true for \code{"NOT\_DELIVERED"}. Tools: the debugger, print statements (remove them as part of the fix), and assertions, which turn an error into a failure where it occurs. In a stack trace, start at the topmost frame in your own code.
+
+\subsection{Where does the fix go?}
+At the fault, not the symptom. A special case for \code{"NOT\_DELIVERED"} leaves \code{PARTIALLY\_DELIVERED} still broken. Ask three questions: what else could this fault produce, at what level does it live, and why was it possible? The real fix matches statuses exactly and returns an error for unknown ones, which is Chapter 18's converter. Then write the reproduction as a regression test, watch it fail, fix, and rerun the full suite. In a public API, clients may depend on the buggy behaviour (Hyrum's law). Options: a breaking fix with a major version, a new operation alongside the old, or fixing only the documentation. Severity (lost data, exposed information) overrides all of these.
+
+\begin{ponder}
+A failure only happens on the first of the month. How do you make it reproducible on demand?
+\end{ponder}
+
+%----------------------------------------------------------------------
+\chap{22. Adding New Features}{What a feature costs depends far less on the feature than on whether the design anticipated it.}
+
+\subsection{Is the request the spec?}
+No; it states a need. Code shows no outward sign of what a change costs, so make the cost visible to the requester early. Turn the request into a user story with acceptance criteria. Ask who it is for and what they will do differently, what success looks like, and what is explicitly not included. ``This should not be built here'' is a legitimate answer.
+
+\subsection{How do you read code you didn't write?}
+Build a model of only the parts the change touches. Follow one real path end to end; read the tests, then the types and data; follow the dependency graph, not the file listing; run it in the debugger. Keep a list of unknowns instead of chasing each one.
+
+\subsection{Is there a place for it already?}
+Look for an extension point (the industry also calls it a seam): an interface with several implementations, an abstract base, a collaborator passed through a constructor, or the composition root. A sixth carrier lands on one: one new class, \code{CarrierFClient implements CarrierClient}, plus one line at the composition root. No existing file or test changes.
+
+\subsection{And if there isn't?}
+Create it first. Forcing delay notifications into \code{locate(trackingNumber, notifier?)} makes three mistakes. It gives a query a side effect, violating \term{cqs}{command-query separation} (a method either returns a value or changes something, not both). It threads a parameter through callers that don't want it. And it puts the delay policy in the lookup. Instead, commit 1 adds a \code{ShipmentObserver} interface and a loop over observers in \code{locate}; with no observers the behaviour is unchanged, and the unchanged suite proves it. Commit 2 adds \code{DelayNotifier implements ShipmentObserver}, plus one line at the composition root. If the extension point would cost far more than the feature, decide openly: build it awkwardly and record the debt, schedule the restructuring, or decline.
+
+\subsection{When is it done?}
+When the new behaviour is tested, including failure cases; the whole suite passes; documentation and contracts are updated; no new smells appear; and ``the next feature is not harder because of this one.''
+
+\begin{ponder}
+The tracker must now also write every lookup to an audit log. Where does that go, and how many existing files change?
+\end{ponder}
+
+%======================================================================
+\newpage
+\section*{How the Parts Answer the Question}
+\addcontentsline{toc}{section}{How the Parts Answer the Question}
+
+The textbook's closing argument is that invariants, cohesion, encapsulation, interfaces, polymorphism, low coupling, validated boundaries, small published surfaces and a regression suite ``were each introduced for their own reasons, but every one of them was ultimately about the resistance of a design to change.''
+\begin{itemize}
+  \item \textbf{Part 1:} know at once whether a change broke anything. Types, tests and assertions each cover the others' gaps (Ch.~3), and the regression suite rechecks everything after each change (Ch.~9).
+  \item \textbf{Part 2:} keep a change behind a boundary. A class that protects its invariant can be changed without auditing the program (Ch.~10--12); a contract lets whole classes change or be added (Ch.~13--16).
+  \item \textbf{Part 3:} keep a change local and its cost visible. Low coupling limits the ripple (Ch.~17); edges isolate what you don't control (Ch.~18--19); refactoring makes room for a feature on an extension point (Ch.~20--22).
+\end{itemize}
+
+\textbf{Objection.} All this structure (interfaces, extra classes, extension points) is itself code to read and change, so it can make changes dearer.
+\textbf{Answer.} The textbook agrees and limits it. An unnecessary abstraction is a small, permanent tax, so build only for variation you have evidence for (Ch.~16). Define an interface only when change is likely, a second implementation is plausible, or a test needs a stand-in (Ch.~17). Don't refactor code nobody needs to change (Ch.~20).
+
+\subsection{Test yourself}
+Answer without looking; the chapter holds the answer.
+\begin{enumerate}
+  \item What do types, tests and assertions each check, and when? (Ch.~3)
+  \item What three steps make an invariant enforced by the code rather than by discipline? (Ch.~4)
+  \item After \code{const b = a.filter(x => true)}, which changes to \code{b} show up in \code{a}? (Ch.~6)
+  \item Return a \code{Result} or throw: what decides? (Ch.~8)
+  \item When is a change to a representation safe? (Ch.~13)
+  \item What three conditions let a subclass stand in for its base? (Ch.~15)
+  \item What are the three ways a web-service call fails, and where is each caught? (Ch.~18)
+  \item Which changes to a published API break clients without any compiler error? (Ch.~19)
+  \item Why must refactoring never share a commit with a bug fix? (Ch.~20)
+\end{enumerate}
+
+%======================================================================
+\section*{Index of Terms}
+\addcontentsline{toc}{section}{Index of Terms}
+Each entry links to the sentence that defines it.
+
+\begin{multicols}{3}
+\small\raggedright
+\ix{af}{abstraction function}{13}
+\ix{actual}{actual type}{14}
+\ix{adapter}{adapter}{18}
+\ix{alias}{alias}{6}
+\ix{api}{API}{18}
+\ix{apparent}{apparent type}{14}
+\ix{assert}{assert}{3}
+\ix{async}{async}{7}
+\ix{float}{binary floating point}{1}
+\ix{blockscope}{block scope}{6}
+\ix{boundary}{boundary value}{3}
+\ix{coverage}{branch coverage}{9}
+\ix{callbysharing}{call-by-sharing}{6}
+\ix{charact}{characterisation test}{20}
+\ix{class}{class}{10}
+\ix{closure}{closure}{4}
+\ix{smell}{code smell}{20}
+\ix{cohesion}{cohesion}{11}
+\ix{cqs}{command-query separation}{22}
+\ix{composition}{composition}{11}
+\ix{comproot}{composition root}{18}
+\ix{constructor}{constructor}{10}
+\ix{contract}{contract}{3}
+\ix{coupling}{coupling}{17}
+\ix{defensivecopy}{defensive copy}{12}
+\ix{delegation}{delegation}{11}
+\ix{di}{dependency injection}{18}
+\ix{dip}{Dependency Inversion Principle}{16}
+\ix{dispatch}{dynamic dispatch}{15}
+\ix{dynamicview}{dynamic view}{1}
+\ix{eqclass}{equivalence class}{3}
+\ix{equivalence}{equivalence (sameness)}{13}
+\ix{error}{error (debugging)}{21}
+\ix{established}{established (invariant)}{4}
+\ix{eventloop}{event loop}{7}
+\ix{expression}{expression}{1}
+\ix{extpoint}{extension point}{16}
+\ix{failure}{failure}{21}
+\ix{fanin}{fan-in}{17}
+\ix{fanout}{fan-out}{17}
+\ix{fault}{fault}{21}
+\ix{field}{field}{10}
+\ix{fragile}{fragile base class}{15}
+\ix{gc}{garbage collection}{6}
+\ix{generics}{generics}{2}
+\ix{godclass}{god class}{11}
+\ix{hyrum}{Hyrum's law}{19}
+\ix{io}{I/O}{7}
+\ix{idempotent}{idempotent}{18}
+\ix{identity}{identity}{6}
+\ix{immutable}{immutable}{6}
+\ix{implements}{implements}{14}
+\ix{interface}{interface}{14}
+\ix{isp}{interface segregation}{14}
+\ix{invariant}{invariant}{3}
+\ix{json}{JSON}{5}
+\ix{demeter}{Law of Demeter}{17}
+\ix{method}{method}{10}
+\ix{mutate}{mutate}{5}
+\ix{narrowing}{narrowing}{2}
+\ix{null}{null}{2}
+\ix{ocp}{open/closed}{16}
+\ix{polymorphism}{polymorphism}{15}
+\ix{postcondition}{postcondition}{3}
+\ix{precondition}{precondition}{3}
+\ix{preserved}{preserved (invariant)}{4}
+\ix{private}{private}{12}
+\ix{promise}{Promise}{7}
+\ix{pure}{pure function}{6}
+\ix{readonly}{readonly}{12}
+\ix{reference}{reference}{5}
+\ix{refactoring}{refactoring}{20}
+\ix{regression}{regression}{9}
+\ix{ri}{representation invariant}{13}
+\ix{result}{Result<T, E>}{3}
+\ix{runtimeerror}{runtime error}{1}
+\ix{scattering}{scattering}{17}
+\ix{semver}{semantic versioning}{19}
+\ix{soc}{separation of concerns}{17}
+\ix{shallowcopy}{shallow copy}{6}
+\ix{sideeffect}{side effect}{6}
+\ix{srp}{single responsibility}{11}
+\ix{specgen}{speculative generality}{16}
+\ix{stackframe}{stack frame}{8}
+\ix{statement}{statement}{1}
+\ix{staticerror}{static error}{1}
+\ix{staticview}{static view}{1}
+\ix{structural}{structural equality}{9}
+\ix{stub}{stub}{3}
+\ix{taggedunion}{tagged union}{2}
+\ix{tangling}{tangling}{17}
+\ix{techdebt}{technical debt}{20}
+\ix{tda}{Tell, Don't Ask}{17}
+\ix{testdouble}{test double}{14}
+\ix{thread}{thread}{7}
+\ix{thunk}{thunk}{1}
+\ix{undefined}{undefined}{2}
+\ix{literalunion}{union of literals}{2}
+\ix{valueobject}{value object}{13}
+\ix{zeroindexed}{zero-indexed}{5}
+\end{multicols}
+
+\end{document}

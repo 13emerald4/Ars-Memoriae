@@ -25,7 +25,11 @@ from app.models import (
 )
 from app.routers.deps import current_user, parse_uuid
 from app.schemas.core import (
+    CardAnalyticsOut,
+    CardMemoryNoteIn,
+    CardNextIntervalsOut,
     CardOut,
+    CardReviewLogItemOut,
     DeckCreate,
     DeckOut,
     DeckReorderRequest,
@@ -40,6 +44,7 @@ from app.schemas.core import (
 )
 from app.schemas.review import QueueItem
 from app.services import tree_service
+from app.services.fsrs_service import FSRSService, Rating
 from app.services.note_service import default_note_type, sync_cards
 from app.services.rendering import occlusion_payload, render
 
@@ -925,6 +930,154 @@ async def postpone_card(
     card.due = now + timedelta(hours=hours)
     await db.commit()
     return {"card_id": str(card.id), "due": card.due.isoformat(), "postponed_hours": hours}
+
+
+def format_interval_delta(delta: timedelta) -> str:
+    secs = max(0, delta.total_seconds())
+    if secs < 60:
+        return f"{int(secs)}s"
+    if secs < 3600:
+        mins = secs / 60
+        return f"{int(mins)}m" if mins.is_integer() else f"{mins:.1f}m"
+    if secs < 86400:
+        hours = secs / 3600
+        return f"{int(hours)}h" if hours.is_integer() else f"{hours:.1f}h"
+    days = secs / 86400
+    if days >= 365:
+        return f"{days / 365:.1f}y"
+    if days >= 30:
+        return f"{days / 30:.1f}mo"
+    return f"{int(days)}d" if days.is_integer() else f"{days:.1f}d"
+
+
+@router.get("/cards/{card_id}/analytics", response_model=CardAnalyticsOut)
+async def get_card_analytics(
+    card_id: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CardAnalyticsOut:
+    """Retrieve detailed learning analytics, memory stats, weak points, and history for a single card."""
+    card = await _owned_card(db, user, parse_uuid(card_id))
+    now = datetime.now(UTC)
+
+    # 1. Fetch review logs
+    stmt = (
+        select(ReviewLog)
+        .where(ReviewLog.card_id == card.id)
+        .order_by(ReviewLog.reviewed_at.desc())
+    )
+    logs = list((await db.scalars(stmt)).all())
+
+    total_reviews = len(logs)
+    total_overridden = sum(1 for l in logs if l.overridden)
+
+    # 2. Performance metrics
+    recall_count = sum(1 for l in logs if l.final_grade in ("hard", "good", "easy"))
+    recall_rate = round((recall_count / total_reviews) * 100, 1) if total_reviews > 0 else 0.0
+
+    rating_counts = {"again": 0, "hard": 0, "good": 0, "easy": 0}
+    for l in logs:
+        rating_counts[l.final_grade] = rating_counts.get(l.final_grade, 0) + 1
+
+    rating_percentages = {
+        k: round((v / total_reviews) * 100, 1) if total_reviews > 0 else 0.0
+        for k, v in rating_counts.items()
+    }
+
+    latencies = [l.latency_ms for l in logs if l.latency_ms is not None and l.latency_ms > 0]
+    if latencies:
+        avg_latency = int(sum(latencies) / len(latencies))
+        fastest_latency = min(latencies)
+        slowest_latency = max(latencies)
+        automaticity_achieved = avg_latency <= 3000 and recall_rate >= 80.0
+    else:
+        avg_latency = None
+        fastest_latency = None
+        slowest_latency = None
+        automaticity_achieved = None
+
+    # 3. Retrievability and next intervals via FSRS
+    retrievability = None
+    next_intervals = None
+    try:
+        fsrs = FSRSService(fuzz=False)
+        fsrs_card = FSRSService.to_fsrs_card(
+            state=card.state,
+            stability=card.stability,
+            difficulty=card.difficulty,
+            step=card.step,
+            due=card.due,
+            last_review=card.last_review,
+        )
+        if card.stability is not None and card.last_review is not None:
+            retrievability = round(float(fsrs.retrievability(fsrs_card, now)), 4)
+
+        intervals = {}
+        for rating_key, rating_val in [
+            ("again", Rating.Again),
+            ("hard", Rating.Hard),
+            ("good", Rating.Good),
+            ("easy", Rating.Easy),
+        ]:
+            simulated, _ = fsrs.schedule(fsrs_card, rating_val, now)
+            delta = simulated.due - now
+            intervals[rating_key] = format_interval_delta(delta)
+        next_intervals = CardNextIntervalsOut(**intervals)
+    except Exception:
+        pass
+
+    log_items = [
+        CardReviewLogItemOut(
+            id=l.id,
+            reviewed_at=l.reviewed_at,
+            final_grade=l.final_grade,
+            typed_answer=l.typed_answer,
+            latency_ms=l.latency_ms,
+            llm_grade=l.llm_grade,
+            llm_reasoning=l.llm_reasoning,
+            llm_confidence=l.llm_confidence,
+            overridden=l.overridden,
+            user_confidence=l.user_confidence,
+            is_blitz=l.is_blitz,
+            weaknesses=l.weaknesses or [],
+            improvements=l.improvements or [],
+        )
+        for l in logs
+    ]
+
+    return CardAnalyticsOut(
+        card=card_out(card),
+        retrievability=retrievability,
+        next_intervals=next_intervals,
+        total_reviews=total_reviews,
+        recall_rate=recall_rate,
+        rating_counts=rating_counts,
+        rating_percentages=rating_percentages,
+        avg_latency_ms=avg_latency,
+        fastest_latency_ms=fastest_latency,
+        slowest_latency_ms=slowest_latency,
+        automaticity_achieved=automaticity_achieved,
+        total_overridden=total_overridden,
+        active_weaknesses=list(card.active_weaknesses or []),
+        weakness_history=list(card.weakness_history or []),
+        review_logs=log_items,
+    )
+
+
+@router.patch("/cards/{card_id}/memory-note", response_model=CardOut)
+async def update_card_memory_note(
+    card_id: str,
+    body: CardMemoryNoteIn,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CardOut:
+    """Update or clear personal memory anchor / documentation note on a card."""
+    card = await _owned_card(db, user, parse_uuid(card_id))
+    note_text = body.memory_note.strip()
+    card.documentation = note_text if note_text else None
+    await db.commit()
+    await db.refresh(card)
+    return card_out(card)
 
 
 @router.patch("/priority")
