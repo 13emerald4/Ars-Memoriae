@@ -1,6 +1,6 @@
-"""Ingest SPAN 321 Exam 1 subdecks into Ars Memoriae.
+"""Ingest or update SPAN 321 Exam 1 subdecks in Ars Memoriae.
 
-Extracts SPAN321_Exam1_Subdecks.zip to course folders and populates:
+Extracts zip to course folders and populates/updates:
 - Parent deck: SPAN321_Exam1_Core_AllPriorities (0 direct cards, 47 total with subdecks)
 - Subdeck 1: SPAN321_Exam1_P1_Highest (20 cards, priority 90)
 - Subdeck 2: SPAN321_Exam1_P2_Likely (16 cards, priority 70)
@@ -31,7 +31,7 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 log = logging.getLogger("ingest_span321")
 
 USER_EMAIL = "michael.r.polley@outlook.com"
-ZIP_PATH = Path(r"C:\Users\micha\OneDrive\Documents\UBC BCS ICS\SPAN 321\SPAN321_Exam1_Subdecks.zip")
+DEFAULT_ZIP = Path(r"C:\Users\micha\OneDrive\Documents\UBC BCS ICS\SPAN 321\Midterm 1\SPAN321_Exam1_Guide.zip")
 ONEDRIVE_COURSE_DIR = Path(r"C:\Users\micha\OneDrive\Documents\UBC BCS ICS\SPAN 321")
 
 EXAM_DATE = datetime(2026, 10, 21, 12, 30, 0)
@@ -65,26 +65,27 @@ SUBDECK_SPECS = [
 ]
 
 
-def extract_zip_files():
+def extract_zip_files(zip_path: Path):
     """Unpack JSON files to local OneDrive directories."""
-    log.info(f"Extracting zip: {ZIP_PATH}")
-    if not ZIP_PATH.exists():
-        raise FileNotFoundError(f"Zip file not found: {ZIP_PATH}")
+    log.info(f"Extracting zip: {zip_path}")
+    if not zip_path.exists():
+        raise FileNotFoundError(f"Zip file not found: {zip_path}")
 
     target_dirs = [
         ONEDRIVE_COURSE_DIR / "06 Flashcards",
+        ONEDRIVE_COURSE_DIR / "Midterm 1" / zip_path.stem,
         ONEDRIVE_COURSE_DIR / "SPAN321_Exam1_Subdecks",
     ]
 
-    with zipfile.ZipFile(ZIP_PATH) as z:
+    with zipfile.ZipFile(zip_path) as z:
         for tdir in target_dirs:
             tdir.mkdir(parents=True, exist_ok=True)
             z.extractall(tdir)
             log.info(f"  -> Extracted files to: {tdir}")
 
 
-async def ingest():
-    extract_zip_files()
+async def ingest(zip_path: Path):
+    extract_zip_files(zip_path)
 
     async with SessionLocal() as db:
         user = await db.scalar(select(User).where(User.email == USER_EMAIL))
@@ -129,8 +130,9 @@ async def ingest():
         # Get default basic note type
         basic_nt = await default_note_type(db, user, "basic", grading_profile="short_answer")
 
-        with zipfile.ZipFile(ZIP_PATH) as z:
+        with zipfile.ZipFile(zip_path) as z:
             total_notes_created = 0
+            total_notes_updated = 0
             total_cards_created = 0
             total_citations_created = 0
 
@@ -172,16 +174,18 @@ async def ingest():
                 data = json.loads(z.read(spec["filename"]).decode("utf-8"))
                 log.info(f"Processing {len(data)} items from {spec['filename']} into subdeck '{sub_name}'")
 
-                # Existing fronts in this subdeck to avoid duplicate creation
-                existing_fronts_query = await db.execute(
-                    select(Note.field_values).join(Card, Card.note_id == Note.id).where(Card.deck_id == sub_deck.id)
+                # Existing notes in this subdeck to update or add
+                existing_notes_stmt = (
+                    select(Note).join(Card, Card.note_id == Note.id).where(Card.deck_id == sub_deck.id)
                 )
-                existing_fronts = {
-                    str((fv or {}).get("Front", "")).strip()
-                    for (fv,) in existing_fronts_query.all()
+                existing_notes = (await db.scalars(existing_notes_stmt)).all()
+                existing_notes_by_front = {
+                    str((n.field_values or {}).get("Front", "")).strip(): n
+                    for n in existing_notes
                 }
 
                 notes_in_sub = 0
+                notes_updated_in_sub = 0
                 cards_in_sub = 0
 
                 for item in data:
@@ -189,10 +193,34 @@ async def ingest():
                     back = (item.get("back") or "").strip()
                     if not front or not back:
                         continue
-                    if front in existing_fronts:
-                        continue
-                    existing_fronts.add(front)
 
+                    locator = (item.get("locator") or "").strip()
+                    quote = (item.get("quote") or "").strip()
+                    source_title = (item.get("source_title") or "SPAN 321 · Guía de Repaso Socrática: Primer Examen").strip()
+
+                    doc_parts = []
+                    if locator:
+                        doc_parts.append(f"**Locator**: {locator}")
+                    if quote:
+                        doc_parts.append(f'**Key Quote**: "{quote}"')
+                    card_doc = "\n\n".join(doc_parts) if doc_parts else sub_deck.documentation
+
+                    if front in existing_notes_by_front:
+                        note_row = existing_notes_by_front[front]
+                        old_fv = dict(note_row.field_values or {})
+                        if old_fv.get("Back") != back:
+                            old_fv["Back"] = back
+                            note_row.field_values = old_fv
+                            notes_updated_in_sub += 1
+                        # Update card documentation / source documents if needed
+                        card_rows = (await db.scalars(select(Card).where(Card.note_id == note_row.id))).all()
+                        for c in card_rows:
+                            c.documentation = card_doc
+                            c.thematic_nature = sub_deck.thematic_nature
+                            c.priority = spec["priority"]
+                        continue
+
+                    # Otherwise, create note and card
                     note_row = Note(
                         user_id=user.id,
                         note_type_id=basic_nt.id,
@@ -205,17 +233,6 @@ async def ingest():
                     for t in ["span321", "exam1", f"p{spec['position']}"]:
                         if t not in tags:
                             tags.append(t)
-
-                    locator = (item.get("locator") or "").strip()
-                    quote = (item.get("quote") or "").strip()
-                    source_title = (item.get("source_title") or "SPAN 321 · Guía de Repaso Socrática: Primer Examen").strip()
-
-                    doc_parts = []
-                    if locator:
-                        doc_parts.append(f"**Locator**: {locator}")
-                    if quote:
-                        doc_parts.append(f'**Key Quote**: "{quote}"')
-                    card_doc = "\n\n".join(doc_parts) if doc_parts else sub_deck.documentation
 
                     cards = await sync_cards(
                         db,
@@ -248,26 +265,27 @@ async def ingest():
                             ))
                             total_citations_created += 1
 
-                log.info(f"  -> Added {notes_in_sub} notes, {cards_in_sub} cards to '{sub_name}'")
+                log.info(f"  -> {sub_name}: {notes_updated_in_sub} updated, {notes_in_sub} created, {cards_in_sub} cards created")
                 total_notes_created += notes_in_sub
+                total_notes_updated += notes_updated_in_sub
                 total_cards_created += cards_in_sub
 
             # Add import record
             db.add(Import(
                 user_id=user.id,
-                filename="json:SPAN321_Exam1_Subdecks",
-                notes_mapped=total_notes_created,
-                cards_mapped=total_cards_created,
+                filename=f"json:{zip_path.stem}",
+                notes_mapped=total_notes_created + total_notes_updated,
+                cards_mapped=total_cards_created + total_notes_updated,
                 warnings=[],
             ))
 
             await db.commit()
 
         # Print summary
-        log.info("\n=== INGESTION SUMMARY ===")
-        log.info(f"Total notes created: {total_notes_created}")
-        log.info(f"Total cards created: {total_cards_created}")
-        log.info(f"Total citations created: {total_citations_created}")
+        log.info("\n=== INGESTION & UPDATE SUMMARY ===")
+        log.info(f"Total notes updated with refined answers: {total_notes_updated}")
+        log.info(f"Total notes newly created: {total_notes_created}")
+        log.info(f"Total cards newly created: {total_cards_created}")
 
         # Verify rollups
         p_count = await db.scalar(select(func.count()).select_from(Card).where(Card.deck_id == parent_deck.id))
@@ -275,8 +293,9 @@ async def ingest():
         for spec in SUBDECK_SPECS:
             sub = await db.scalar(select(Deck).where(Deck.user_id == user.id, Deck.name == spec["name"]))
             c_count = await db.scalar(select(func.count()).select_from(Card).where(Card.deck_id == sub.id))
-            log.info(f"Subdeck '{spec['name']}' direct cards: {c_count} (expected: {len(json.loads(zipfile.ZipFile(ZIP_PATH).read(spec['filename']).decode('utf-8')))})")
+            log.info(f"Subdeck '{spec['name']}' direct cards: {c_count}")
 
 
 if __name__ == "__main__":
-    asyncio.run(ingest())
+    zip_arg = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_ZIP
+    asyncio.run(ingest(zip_arg))
