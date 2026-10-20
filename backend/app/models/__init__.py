@@ -331,6 +331,7 @@ class Card(Base):
     documentation: Mapped[str | None] = mapped_column(Text, nullable=True)
     thematic_nature: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_documents: Mapped[list] = mapped_column(JSONType, nullable=False, default=list)
+    lexicon_glosses: Mapped[list[dict]] = mapped_column(JSONType, nullable=False, default=list)
 
     __table_args__ = (
         CheckConstraint("state IN ('new','learning','review','relearning')", name="ck_cards_state"),

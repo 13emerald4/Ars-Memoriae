@@ -64,6 +64,7 @@ def to_schema(item: ComposedItem) -> QueueItem:
         card_documentation=item.card_documentation,
         card_thematic_nature=item.card_thematic_nature,
         card_source_documents=item.card_source_documents,
+        lexicon_glosses=item.lexicon_glosses,
     )
 
 

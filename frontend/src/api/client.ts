@@ -27,6 +27,7 @@ import type {
   LearningAnalytics,
   Lesson,
   LexiconEntry,
+  LexiconGlossItem,
   NoteType,
   QueueConfig,
   QueueItem,
@@ -276,6 +277,8 @@ export const api = {
   cardAnalytics: (cardId: string) => request<CardAnalytics>(`/api/cards/${cardId}/analytics`),
   updateCardMemoryNote: (cardId: string, memory_note: string) =>
     patch<Card>(`/api/cards/${cardId}/memory-note`, { memory_note }),
+  updateCardLexiconGlosses: (cardId: string, glosses: LexiconGlossItem[]) =>
+    patch<Card>(`/api/cards/${cardId}/lexicon-glosses`, { glosses }),
   setPriority: (target: 'deck' | 'card' | 'source' | 'extract', id: string, priority: number) =>
     patch<{ priority: number }>('/api/priority', { target, id, priority }),
 

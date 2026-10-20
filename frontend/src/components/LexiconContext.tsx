@@ -7,6 +7,8 @@ export interface ActiveDeckContext {
   thematicNature?: string | null
 }
 
+export type MarginLookupListener = (term: string, context?: string | null) => void
+
 interface LexiconContextValue {
   openLexicon: (
     term: string,
@@ -18,6 +20,8 @@ interface LexiconContextValue {
   isLexiconOpen: boolean
   setActiveDeckContext: (ctx: ActiveDeckContext | null) => void
   activeDeckContext: ActiveDeckContext | null
+  registerMarginListener: (listener: MarginLookupListener | null) => void
+  hasMarginListener: boolean
 }
 
 const LexiconContext = createContext<LexiconContextValue | null>(null)
@@ -34,6 +38,14 @@ export function LexiconProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
   const isOpenRef = useRef(false)
   isOpenRef.current = isOpen
+
+  const marginListenerRef = useRef<MarginLookupListener | null>(null)
+  const [hasMarginListener, setHasMarginListener] = useState(false)
+
+  const registerMarginListener = useCallback((listener: MarginLookupListener | null) => {
+    marginListenerRef.current = listener
+    setHasMarginListener(Boolean(listener))
+  }, [])
 
   const [term, setTerm] = useState<string | null>(null)
   const [context, setContext] = useState<string | null>(null)
@@ -58,13 +70,19 @@ export function LexiconProvider({ children }: { children: ReactNode }) {
       newPos?: { x: number; y: number } | null,
       overrideDeckContext?: ActiveDeckContext | null,
     ) => {
-      isOpenRef.current = true
       setSelectionPill(null)
       try {
         window.getSelection()?.removeAllRanges()
       } catch {
         // ignore
       }
+
+      if (marginListenerRef.current) {
+        marginListenerRef.current(newTerm, newContext ?? null)
+        return
+      }
+
+      isOpenRef.current = true
       setTerm(newTerm)
       setContext(newContext ?? null)
       setPosition(newPos ?? null)
@@ -180,6 +198,8 @@ export function LexiconProvider({ children }: { children: ReactNode }) {
         isLexiconOpen: isOpen,
         setActiveDeckContext,
         activeDeckContext,
+        registerMarginListener,
+        hasMarginListener,
       }}
     >
       {children}

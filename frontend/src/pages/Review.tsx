@@ -22,6 +22,7 @@ import SessionTimer, { formatClock, REVIEW_EVENT } from '../components/SessionTi
 import { Empty, ErrorNote, RichText, Spinner } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
 import { useLexicon } from '../components/LexiconContext'
+import { MarginLexiconPanel } from '../components/MarginLexiconPanel'
 import { useTheme } from '../components/ThemeContext'
 import { FullscreenButton } from '../components/FullscreenContext'
 import { DeckReviewStatsBar } from '../components/DeckReviewStatsBar'
@@ -40,6 +41,11 @@ import {
   getDraftForCard,
   getSavedDraftsCount,
 } from '../utils/savedCardDrafts'
+import {
+  getAllCardsRunProgress,
+  saveAllCardsRunProgress,
+  clearAllCardsRunProgress,
+} from '../utils/allCardsRunStorage'
 import {
   isCodeCard as checkIsCodeCard,
   looksLikeCode,
@@ -711,14 +717,13 @@ export default function Review() {
   }, [load, setParams])
 
   const startAllCardsRun = useCallback(
-    async (deckId: string, deckName?: string) => {
+    async (deckId: string, deckName?: string, forceStartIndex?: number) => {
       setLoading(true)
       setError(null)
       // Cancel persist mode if running
       setPersistActive(false)
       setAllCardsRunActive(true)
       setAllCardsRunDeckId(deckId)
-      setAllCardsRunIndex(0)
       setAllCardsRunCompleted(false)
 
       setParams((p) => {
@@ -741,10 +746,35 @@ export default function Review() {
 
         if (cards.length === 0) {
           setItem(null)
+          setAllCardsRunIndex(0)
         } else {
-          setItem(cards[0])
-          initCardState(cards[0])
-          setLastOutcome(`All Cards Run started — Card 1 of ${cards.length} (Easiest → Hardest).`)
+          let targetIndex = 0
+          if (forceStartIndex !== undefined) {
+            targetIndex = forceStartIndex
+          } else {
+            const saved = getAllCardsRunProgress(deckId)
+            if (saved && typeof saved.index === 'number' && saved.index > 0 && saved.index < cards.length) {
+              targetIndex = saved.index
+            }
+          }
+
+          setAllCardsRunIndex(targetIndex)
+          setItem(cards[targetIndex])
+          initCardState(cards[targetIndex])
+          saveAllCardsRunProgress({
+            deckId,
+            deckName: dName,
+            index: targetIndex,
+            total: cards.length,
+            cardId: cards[targetIndex]?.id,
+            updatedAt: Date.now(),
+          })
+
+          if (targetIndex > 0) {
+            setLastOutcome(`All Cards Run resumed — Card ${targetIndex + 1} of ${cards.length} (Easiest → Hardest).`)
+          } else {
+            setLastOutcome(`All Cards Run started — Card 1 of ${cards.length} (Easiest → Hardest).`)
+          }
         }
       } catch (err) {
         setError(err)
@@ -1187,6 +1217,9 @@ export default function Review() {
 
         if (nextIdx >= allCardsRunCards.length) {
           setAllCardsRunCompleted(true)
+          if (allCardsRunDeckId) {
+            clearAllCardsRunProgress(allCardsRunDeckId)
+          }
           setItem(null)
           setLastOutcome(
             `All Cards Run complete! All ${allCardsRunCards.length} cards in this deck reviewed consecutively from easiest to hardest. FSRS algorithm now takes over.`,
@@ -1195,6 +1228,16 @@ export default function Review() {
           const nextCard = allCardsRunCards[nextIdx]
           setItem(nextCard)
           initCardState(nextCard)
+          if (allCardsRunDeckId) {
+            saveAllCardsRunProgress({
+              deckId: allCardsRunDeckId,
+              deckName: allCardsRunDeckName,
+              index: nextIdx,
+              total: allCardsRunCards.length,
+              cardId: nextCard.id,
+              updatedAt: Date.now(),
+            })
+          }
           setLastOutcome(
             `${finalGrade} — Card ${nextIdx + 1} of ${allCardsRunCards.length} in run (Easiest → Hardest).`,
           )
@@ -1274,6 +1317,9 @@ export default function Review() {
       setAllCardsRunIndex(nextIdx)
       if (nextIdx >= allCardsRunCards.length) {
         setAllCardsRunCompleted(true)
+        if (allCardsRunDeckId) {
+          clearAllCardsRunProgress(allCardsRunDeckId)
+        }
         setItem(null)
         setLastOutcome(
           `All Cards Run complete! All ${allCardsRunCards.length} cards in this deck completed.`,
@@ -1282,6 +1328,16 @@ export default function Review() {
         const nextCard = allCardsRunCards[nextIdx]
         setItem(nextCard)
         initCardState(nextCard)
+        if (allCardsRunDeckId) {
+          saveAllCardsRunProgress({
+            deckId: allCardsRunDeckId,
+            deckName: allCardsRunDeckName,
+            index: nextIdx,
+            total: allCardsRunCards.length,
+            cardId: nextCard.id,
+            updatedAt: Date.now(),
+          })
+        }
         setLastOutcome(`Card ${nextIdx + 1} of ${allCardsRunCards.length} in run (Unrecorded skip).`)
       }
     } else if (persistActive) {
@@ -1509,7 +1565,8 @@ export default function Review() {
                   className="btn border border-ink-line hover:bg-ink-soft text-slate-300 py-2.5 px-4 cursor-pointer"
                   onClick={() => {
                     if (allCardsRunDeckId) {
-                      void startAllCardsRun(allCardsRunDeckId, allCardsRunDeckName)
+                      clearAllCardsRunProgress(allCardsRunDeckId)
+                      void startAllCardsRun(allCardsRunDeckId, allCardsRunDeckName, 0)
                     } else {
                       exitAllCardsRun()
                     }
@@ -1784,15 +1841,25 @@ export default function Review() {
                           ? `(${allDecks.find((d) => d.id === selectedPersistDeckId)?.new_count})`
                           : ''}
                       </button>
-                      <button
-                        type="button"
-                        disabled={!selectedPersistDeckId}
-                        onClick={() => selectedPersistDeckId && startAllCardsRun(selectedPersistDeckId)}
-                        className="btn border border-purple-500/50 bg-purple-500/20 text-purple-200 hover:bg-purple-500/30 text-xs whitespace-nowrap disabled:opacity-50"
-                        title="Review every card consecutively from easiest to hardest, then FSRS takes over"
-                      >
-                        All Cards Run
-                      </button>
+                      {(() => {
+                        const savedRun = selectedPersistDeckId ? getAllCardsRunProgress(selectedPersistDeckId) : null
+                        const hasSaved = Boolean(savedRun && savedRun.index > 0 && savedRun.index < savedRun.total)
+                        return (
+                          <button
+                            type="button"
+                            disabled={!selectedPersistDeckId}
+                            onClick={() => selectedPersistDeckId && startAllCardsRun(selectedPersistDeckId)}
+                            className="btn border border-purple-500/50 bg-purple-500/20 text-purple-200 hover:bg-purple-500/30 text-xs whitespace-nowrap disabled:opacity-50"
+                            title={
+                              hasSaved
+                                ? `Resume All Cards Run from Card ${savedRun!.index + 1}`
+                                : 'Review every card consecutively from easiest to hardest, then FSRS takes over'
+                            }
+                          >
+                            {hasSaved ? `Resume Run (${savedRun!.index + 1}/${savedRun!.total})` : 'All Cards Run'}
+                          </button>
+                        )
+                      })()}
                     </div>
                   </div>
 
@@ -1868,15 +1935,32 @@ export default function Review() {
             savedCount={savedCount}
             onOpenSavedDrawer={() => setSavedDrawerOpen(true)}
           />
-          <LessonGate
-            item={item}
-            lesson={lesson}
-            loading={lessonLoading}
-            deckName={item.deck_name}
-            onContinue={continueToQuestion}
-            onOpenSettings={() => navigate('/settings')}
-            codeLanguage={codeLanguage}
-          />
+          <div className="flex flex-col xl:flex-row items-start justify-center gap-6 max-w-[1750px] mx-auto px-2 sm:px-4">
+            <div className="flex-1 w-full max-w-4xl min-w-0">
+              <LessonGate
+                item={item}
+                lesson={lesson}
+                loading={lessonLoading}
+                deckName={item.deck_name}
+                onContinue={continueToQuestion}
+                onOpenSettings={() => navigate('/settings')}
+                codeLanguage={codeLanguage}
+              />
+            </div>
+            <aside className="w-full xl:w-88 2xl:w-96 shrink-0 xl:sticky xl:top-16">
+              <MarginLexiconPanel
+                cardId={item.id}
+                deckName={item.deck_name}
+                thematicNature={item.card_thematic_nature || item.deck_thematic_nature}
+                cardFront={item.front}
+                cardBack={item.back}
+                initialGlosses={item.lexicon_glosses}
+                onGlossesUpdated={(updatedGlosses) => {
+                  item.lexicon_glosses = updatedGlosses
+                }}
+              />
+            </aside>
+          </div>
         </div>
       )
     }
@@ -2121,17 +2205,32 @@ export default function Review() {
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    Reviewing every card in this deck consecutively in ascending difficulty order. Thereafter, FSRS scheduling takes over.
+                    Reviewing every card in this deck consecutively in ascending difficulty order. Progress is automatically saved.
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
+                {allCardsRunIndex > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (allCardsRunDeckId) {
+                        clearAllCardsRunProgress(allCardsRunDeckId)
+                        void startAllCardsRun(allCardsRunDeckId, allCardsRunDeckName, 0)
+                      }
+                    }}
+                    className="rounded-md border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-xs text-purple-300 hover:bg-purple-500/20 transition cursor-pointer"
+                    title="Restart All Cards Run from Card 1"
+                  >
+                    Restart Run
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={exitAllCardsRun}
                   className="rounded-md border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-xs text-purple-300 hover:bg-purple-500/20 transition cursor-pointer"
-                  title="Exit All Cards Run and return to standard FSRS queue"
+                  title="Exit All Cards Run (progress is saved) and return to standard FSRS queue"
                 >
                   &times; Exit Run (to FSRS)
                 </button>
@@ -3444,9 +3543,11 @@ export default function Review() {
       </div>
         ) : (
           /* ════════════════════════════════════════════════════════════════════
-             CLASSIC CARD VIEW
+             CLASSIC CARD VIEW WITH MARGIN CONCORDANCE & LEXICON
              ════════════════════════════════════════════════════════════════════ */
-          <div className={`card ${isCodeCard && tiledTabs ? 'max-w-6xl' : 'max-w-4xl'} mx-auto`}>
+          <div className="flex flex-col xl:flex-row items-start justify-center gap-6 max-w-[1750px] mx-auto px-2 sm:px-4">
+            <div className="flex-1 w-full max-w-4xl min-w-0">
+              <div className={`card ${isCodeCard && tiledTabs ? 'max-w-6xl' : 'w-full'} mx-auto`}>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="chip">{item.deck_name}</span>
@@ -4357,6 +4458,23 @@ export default function Review() {
                 )}
               </div>
             )}
+              </div>
+            </div>
+
+            {/* Right Margin: Concordance, Lexicon & Persistent Card Memory */}
+            <aside className="w-full xl:w-88 2xl:w-96 shrink-0 xl:sticky xl:top-16">
+              <MarginLexiconPanel
+                cardId={item.id}
+                deckName={item.deck_name}
+                thematicNature={item.card_thematic_nature || item.deck_thematic_nature}
+                cardFront={item.front}
+                cardBack={item.back}
+                initialGlosses={item.lexicon_glosses}
+                onGlossesUpdated={(updatedGlosses) => {
+                  item.lexicon_glosses = updatedGlosses
+                }}
+              />
+            </aside>
           </div>
         )}
 

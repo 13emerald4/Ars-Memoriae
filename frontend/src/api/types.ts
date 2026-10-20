@@ -129,6 +129,18 @@ export interface QueueItem {
   card_documentation?: string | null
   card_thematic_nature?: string | null
   card_source_documents?: Array<Record<string, any>>
+  lexicon_glosses?: LexiconGlossItem[]
+}
+
+export interface LexiconGlossItem {
+  term: string
+  source?: string
+  definition?: string
+  definitions?: string[]
+  context_explanation?: string | null
+  example?: string | null
+  domain?: string | null
+  pinned_at?: string
 }
 
 export interface CitedCard {
@@ -409,6 +421,7 @@ export interface Card {
   documentation?: string | null
   thematic_nature?: string | null
   source_documents?: Array<Record<string, any>>
+  lexicon_glosses?: LexiconGlossItem[]
 }
 
 export interface CardReviewLogItem {

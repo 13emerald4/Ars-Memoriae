@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '../api/client'
 import type { DeckStats } from '../api/types'
+import { getAllCardsRunProgress } from '../utils/allCardsRunStorage'
 
 interface DeckReviewStatsBarProps {
   deckId: string | null
@@ -199,11 +200,25 @@ export function DeckReviewStatsBar({
 }: DeckReviewStatsBarProps) {
   const [stats, setStats] = useState<DeckStats | null>(propStats || null)
   const [loading, setLoading] = useState(false)
+  const [savedRunProgress, setSavedRunProgress] = useState(() => (deckId ? getAllCardsRunProgress(deckId) : null))
   const [isExpanded, setIsExpanded] = useState<boolean>(() => {
     if (hideToggle) return true
     if (typeof localStorage === 'undefined') return true
     return localStorage.getItem('memorization.deckStatsExpanded') !== '0'
   })
+
+  useEffect(() => {
+    setSavedRunProgress(deckId ? getAllCardsRunProgress(deckId) : null)
+    const handleProgressChange = () => {
+      setSavedRunProgress(deckId ? getAllCardsRunProgress(deckId) : null)
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('allCardsRunProgressChanged', handleProgressChange)
+      return () => {
+        window.removeEventListener('allCardsRunProgressChanged', handleProgressChange)
+      }
+    }
+  }, [deckId, lastUpdated])
 
   const loadStats = useCallback(async (id: string) => {
     try {
@@ -371,30 +386,48 @@ export function DeckReviewStatsBar({
             </div>
           )}
 
-          {onStartAllCardsRun && deckId && (
-            <button
-              type="button"
-              onClick={() => {
-                if (isAllCardsRunActive && onExitAllCardsRun) {
-                  onExitAllCardsRun()
-                } else {
-                  onStartAllCardsRun(deckId)
+          {onStartAllCardsRun && deckId && (() => {
+            const hasSavedRun = Boolean(
+              !isAllCardsRunActive &&
+              savedRunProgress &&
+              savedRunProgress.index > 0 &&
+              savedRunProgress.index < (stats.total_cards || savedRunProgress.total || 1)
+            )
+            return (
+              <button
+                type="button"
+                onClick={() => {
+                  if (isAllCardsRunActive && onExitAllCardsRun) {
+                    onExitAllCardsRun()
+                  } else {
+                    onStartAllCardsRun(deckId)
+                  }
+                }}
+                className={`flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 text-[11px] font-semibold transition shadow-sm shrink-0 cursor-pointer ${
+                  isAllCardsRunActive
+                    ? 'border-purple-500/60 bg-purple-500/20 text-purple-200 ring-1 ring-purple-500/40 hover:bg-purple-500/30'
+                    : hasSavedRun
+                    ? 'border-purple-400/60 bg-purple-500/25 text-purple-100 ring-1 ring-purple-500/40 hover:bg-purple-500/35'
+                    : 'border-purple-500/40 bg-purple-500/10 text-purple-200 hover:bg-purple-500/25'
+                }`}
+                title={
+                  isAllCardsRunActive
+                    ? 'Exit All Cards Run (progress is saved)'
+                    : hasSavedRun
+                    ? `Resume All Cards Run from Card ${savedRunProgress!.index + 1}`
+                    : 'Review all cards consecutively from easiest to hardest'
                 }
-              }}
-              className={`flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 text-[11px] font-semibold transition shadow-sm shrink-0 cursor-pointer ${
-                isAllCardsRunActive
-                  ? 'border-purple-500/60 bg-purple-500/20 text-purple-200 ring-1 ring-purple-500/40 hover:bg-purple-500/30'
-                  : 'border-purple-500/40 bg-purple-500/10 text-purple-200 hover:bg-purple-500/25'
-              }`}
-              title={
-                isAllCardsRunActive
-                  ? 'Exit All Cards Run'
-                  : 'Review all cards in order'
-              }
-            >
-              <span>{isAllCardsRunActive ? 'Exit Run' : 'All Cards Run'}</span>
-            </button>
-          )}
+              >
+                <span>
+                  {isAllCardsRunActive
+                    ? 'Exit Run'
+                    : hasSavedRun
+                    ? `Resume Run (${savedRunProgress!.index + 1}/${stats.total_cards || savedRunProgress!.total})`
+                    : 'All Cards Run'}
+                </span>
+              </button>
+            )
+          })()}
 
           {onStudyDeck && (
             <button

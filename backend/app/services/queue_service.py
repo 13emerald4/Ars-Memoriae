@@ -105,6 +105,7 @@ class ComposedItem:
     card_documentation: str | None = None
     card_thematic_nature: str | None = None
     card_source_documents: list = field(default_factory=list)
+    lexicon_glosses: list = field(default_factory=list)
 
 
 @dataclass
@@ -433,6 +434,7 @@ def _card_item(card: Card, effective: float, seconds: float) -> ComposedItem:
         card_documentation=card.documentation or (card.deck.documentation if card.deck else None),
         card_thematic_nature=card.thematic_nature or (card.deck.thematic_nature if card.deck else None),
         card_source_documents=list(card.source_documents or (card.deck.source_documents if card.deck else [])),
+        lexicon_glosses=list(card.lexicon_glosses or []),
     )
 
 

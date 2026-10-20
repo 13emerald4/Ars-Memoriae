@@ -26,6 +26,7 @@ from app.models import (
 from app.routers.deps import current_user, parse_uuid
 from app.schemas.core import (
     CardAnalyticsOut,
+    CardLexiconGlossesUpdate,
     CardMemoryNoteIn,
     CardNextIntervalsOut,
     CardOut,
@@ -96,6 +97,7 @@ def card_out(card: Card, deck_name: str | None = None) -> CardOut:
         documentation=card.documentation or (deck.documentation if deck else None),
         thematic_nature=card.thematic_nature or (deck.thematic_nature if deck else None),
         source_documents=list(card.source_documents or (deck.source_documents if deck else [])),
+        lexicon_glosses=list(card.lexicon_glosses or []),
     )
 
 
@@ -1075,6 +1077,21 @@ async def update_card_memory_note(
     card = await _owned_card(db, user, parse_uuid(card_id))
     note_text = body.memory_note.strip()
     card.documentation = note_text if note_text else None
+    await db.commit()
+    await db.refresh(card)
+    return card_out(card)
+
+
+@router.patch("/cards/{card_id}/lexicon-glosses", response_model=CardOut)
+async def update_card_lexicon_glosses(
+    card_id: str,
+    body: CardLexiconGlossesUpdate,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CardOut:
+    """Update saved lexicon/concordance glosses on a card."""
+    card = await _owned_card(db, user, parse_uuid(card_id))
+    card.lexicon_glosses = body.glosses
     await db.commit()
     await db.refresh(card)
     return card_out(card)

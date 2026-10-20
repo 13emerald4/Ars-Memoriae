@@ -61,6 +61,7 @@ class QueueItem(BaseModel):
     card_documentation: str | None = None
     card_thematic_nature: str | None = None
     card_source_documents: list[dict | str] = Field(default_factory=list)
+    lexicon_glosses: list[dict] = Field(default_factory=list)
 
 
 class SessionSummary(BaseModel):

@@ -240,6 +240,11 @@ class CardOut(BaseModel):
     documentation: str | None = None
     thematic_nature: str | None = None
     source_documents: list[dict | str] = Field(default_factory=list)
+    lexicon_glosses: list[dict] = Field(default_factory=list)
+
+
+class CardLexiconGlossesUpdate(BaseModel):
+    glosses: list[dict]
 
 
 class CardReviewLogItemOut(BaseModel):
