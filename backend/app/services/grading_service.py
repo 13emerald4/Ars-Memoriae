@@ -20,6 +20,7 @@ involved and nothing leaves the machine.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import re
@@ -106,19 +107,15 @@ def is_memory_or_vram_error(exc: Exception | str) -> bool:
         parts.append(str(exc))
         resp = getattr(exc, "response", None)
         if resp is not None:
-            try:
+            with contextlib.suppress(Exception):
                 parts.append(resp.text)
-            except Exception:
-                pass
         cause = getattr(exc, "__cause__", None)
         if cause is not None:
             parts.append(str(cause))
             cause_resp = getattr(cause, "response", None)
             if cause_resp is not None:
-                try:
+                with contextlib.suppress(Exception):
                     parts.append(cause_resp.text)
-                except Exception:
-                    pass
     text = " ".join(parts).lower()
     return any(
         phrase in text
@@ -229,11 +226,11 @@ UNICODE_PROMPT_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ("⇐", "<="),
     ("↔", "<->"),
     ("—", "--"),
-    ("–", "-"),
+    ("–", "-"),  # noqa: RUF001
     ("“", '"'),
     ("”", '"'),
-    ("‘", "'"),
-    ("’", "'"),
+    ("‘", "'"),  # noqa: RUF001
+    ("’", "'"),  # noqa: RUF001
     ("…", "..."),
     ("•", "*"),
     ("≤", "<="),

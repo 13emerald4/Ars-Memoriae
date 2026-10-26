@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api } from '../api/client'
-import type { EventReadiness, HardwareProfile, QueueConfig, User } from '../api/types'
+import { QRCodeSVG } from 'qrcode.react'
+import { api, token } from '../api/client'
+import type { EventReadiness, HardwareProfile, QueueConfig, SyncStatus, User } from '../api/types'
 import { isAllowedQwenCoderModel, ALLOWED_QWEN_CODER_MODELS } from '../api/types'
 import { ErrorNote, Section, Spinner } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
@@ -53,6 +54,7 @@ export default function Settings() {
       <NavigationModulesPanel user={user} onChange={refresh} />
       <SchedulingPanel user={user} onChange={refresh} />
       <QueuePanel cfg={queueCfg} onChange={load} />
+      <MobileCompanionPanel user={user} />
       <DataPanel />
       <FeatureRequestPanel />
 
@@ -719,6 +721,117 @@ function QueuePanel({ cfg, onChange }: { cfg: QueueConfig; onChange: () => Promi
               onBlur={(e) => save({ seconds_per_ir_extract: Number(e.target.value) })}
             />
           </Field>
+        </div>
+      </div>
+    </Section>
+  )
+}
+
+function MobileCompanionPanel({ user }: { user: User }) {
+  const [status, setStatus] = useState<SyncStatus | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+
+  const loadStatus = useCallback(async () => {
+    try {
+      const s = await api.syncStatus()
+      setStatus(s)
+    } catch (err) {
+      setError(err)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadStatus()
+    const interval = setInterval(loadStatus, 8000)
+    return () => clearInterval(interval)
+  }, [loadStatus])
+
+  const authToken = token.get() || ''
+  const pairingData = status
+    ? JSON.stringify({
+        server_url: status.pairing_url,
+        token: authToken,
+        email: user.email,
+      })
+    : ''
+
+  const copyUrl = () => {
+    if (status?.pairing_url) {
+      void navigator.clipboard.writeText(status.pairing_url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  return (
+    <Section
+      title="Mobile Companion & Real-Time Sync"
+      description="Connect your iPhone or Android app to review cards on the go with real-time bidirectional synchronization."
+    >
+      <ErrorNote error={error} />
+      <div className="flex flex-col gap-6 md:flex-row md:items-center">
+        {status ? (
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-ink-line/80 bg-white p-4 shadow-sm">
+            <QRCodeSVG value={pairingData} size={170} level="M" />
+            <span className="text-[11px] font-semibold tracking-wide text-slate-700">
+              Scan with Mobile App
+            </span>
+          </div>
+        ) : (
+          <div className="flex h-44 w-44 items-center justify-center rounded-xl border border-ink-line/40 bg-ink/20">
+            <Spinner />
+          </div>
+        )}
+
+        <div className="flex-1 space-y-4">
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-block h-3 w-3 rounded-full ${
+                status && status.user_connections > 0
+                  ? 'bg-emerald-400 animate-pulse'
+                  : 'bg-slate-500'
+              }`}
+            />
+            <span className="text-sm font-medium text-slate-200">
+              {status && status.user_connections > 0
+                ? `${status.user_connections} Mobile Device(s) Connected in Real Time`
+                : 'Ready for Connection'}
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Local Network Address (Wi-Fi)
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={status?.pairing_url || 'Detecting local IP...'}
+                className="input font-mono text-sm max-w-sm"
+              />
+              <button
+                type="button"
+                className="btn btn-secondary whitespace-nowrap text-xs"
+                onClick={copyUrl}
+              >
+                {copied ? '✓ Copied' : 'Copy URL'}
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              Your phone must be connected to the same Wi-Fi network as this computer, or connected via VPN / Tailscale.
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-sky-900/30 bg-sky-950/20 p-3 text-xs text-sky-300">
+            <p className="font-semibold text-sky-200">How to Pair:</p>
+            <ol className="mt-1 list-decimal space-y-1 pl-4 text-sky-300/90">
+              <li>Open the Ars Memoriae mobile app on iOS or Android.</li>
+              <li>Tap <strong>Scan QR</strong> and aim your phone's camera at the QR code.</li>
+              <li>Your device authenticates and begins streaming cards and syncing reviews!</li>
+            </ol>
+          </div>
         </div>
       </div>
     </Section>

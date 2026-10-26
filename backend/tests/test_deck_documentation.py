@@ -100,3 +100,229 @@ async def test_deck_and_card_documentation(auth_client: AsyncClient):
     patch_me = await auth_client.patch("/api/me", json={"show_thematic_context": False})
     assert patch_me.status_code == 200
     assert patch_me.json()["show_thematic_context"] is False
+
+
+@pytest.mark.asyncio
+async def test_deck_document_upload_list_and_delete(auth_client: AsyncClient):
+    # 1. Create a deck
+    deck_resp = await auth_client.post(
+        "/api/decks",
+        json={"name": "CPSC 210 Software Construction", "thematic_nature": "Design Patterns"},
+    )
+    assert deck_resp.status_code == 201
+    deck_id = deck_resp.json()["id"]
+
+    # 2. Upload a markdown documentation file
+    doc_content = (
+        b"# CPSC 210 Specification\n\n"
+        b"## Result Types\n"
+        b"The Result type represents either a successful outcome with a value or a failure with an error message.\n"
+        b"Always use assertOk to unwrap the value in unit tests.\n\n"
+        b"## Invariants\n"
+        b"All mutations must preserve the class invariant.\n"
+    )
+
+    upload_resp = await auth_client.post(
+        f"/api/decks/{deck_id}/documents",
+        files={"file": ("cpsc210_spec.md", doc_content, "text/markdown")},
+        data={"title": "CPSC 210 Course Specifications"},
+    )
+    assert upload_resp.status_code == 201, upload_resp.text
+    doc_data = upload_resp.json()
+    assert doc_data["title"] == "CPSC 210 Course Specifications"
+    assert doc_data["filename"] == "cpsc210_spec.md"
+    assert doc_data["segment_count"] >= 1
+    assert len(doc_data["locators"]) >= 1
+    doc_id = doc_data["id"]
+
+    # 3. List documents for deck
+    list_resp = await auth_client.get(f"/api/decks/{deck_id}/documents")
+    assert list_resp.status_code == 200
+    docs = list_resp.json()["documents"]
+    assert len(docs) == 1
+    assert docs[0]["id"] == doc_id
+    assert docs[0]["title"] == "CPSC 210 Course Specifications"
+
+    # 4. Delete document
+    del_resp = await auth_client.delete(f"/api/decks/{deck_id}/documents/{doc_id}")
+    assert del_resp.status_code == 200
+    assert del_resp.json()["status"] == "deleted"
+
+    # Verify list is now empty
+    list_resp2 = await auth_client.get(f"/api/decks/{deck_id}/documents")
+    assert list_resp2.status_code == 200
+    assert len(list_resp2.json()["documents"]) == 0
+
+
+@pytest.mark.asyncio
+async def test_deck_document_query_grounding(auth_client: AsyncClient, monkeypatch):
+    from app.services.grading_service import GradingService
+
+    # 1. Create deck and upload doc
+    deck_resp = await auth_client.post(
+        "/api/decks",
+        json={"name": "Algorithmic Invariants"},
+    )
+    assert deck_resp.status_code == 201
+    deck_id = deck_resp.json()["id"]
+
+    doc_content = (
+        b"# Heaps and Priority Queues\n\n"
+        b"## Min-Heap Property\n"
+        b"In a min-heap, for any given node C, if P is a parent node of C, then the key of P is less than or equal to the key of C.\n"
+        b"The root node contains the minimum element in the entire heap.\n"
+    )
+
+    upload_resp = await auth_client.post(
+        f"/api/decks/{deck_id}/documents",
+        files={"file": ("heap_spec.md", doc_content, "text/markdown")},
+        data={"title": "Heap Specifications"},
+    )
+    assert upload_resp.status_code == 201
+
+    async def fake_generate(self, prompt, model=None, schema=None, **kwargs):
+        return (
+            "**→ Found in Docs.** [Heap Specifications · Min-Heap Property]: In a min-heap, "
+            "the key of the parent node P is less than or equal to the key of child C.\n\n"
+            "**→ Explanation.** The code maintains the heap invariant by bubbling up smaller elements to the root.\n\n"
+            "**→ Key Takeaway.** Root always holds the minimal element."
+        )
+
+    async def fake_verify(self):
+        return ["qwen2.5-coder:7b", "qwen2.5-coder:3b"]
+
+    monkeypatch.setattr(GradingService, "_generate", fake_generate)
+    monkeypatch.setattr(GradingService, "verify_engine", fake_verify)
+
+    # 2. Query deck documents endpoint
+    query_resp = await auth_client.post(
+        f"/api/decks/{deck_id}/query-docs",
+        json={
+            "query": "parent.val <= child.val",
+            "full_code": "function heapifyUp() { if (parent.val > child.val) swap(); }",
+            "language": "typescript",
+        },
+    )
+    assert query_resp.status_code == 200, query_resp.text
+    q_data = query_resp.json()
+    assert "Heap Specifications" in (q_data.get("doc_citation") or "") or "Heap Specifications" in q_data["found_info"]
+    assert q_data["doc_citation"] is not None
+    assert "heap invariant" in (q_data["explanation"] or "").lower()
+    assert len(q_data["citations"]) >= 1
+
+    # 3. Test explain-selection endpoint with mode="docs" and deck_id
+    explain_resp = await auth_client.post(
+        "/api/code/explain-selection",
+        json={
+            "selected_code": "if (parent.val > child.val) swap();",
+            "language": "typescript",
+            "mode": "docs",
+            "deck_id": deck_id,
+        },
+    )
+    assert explain_resp.status_code == 200, explain_resp.text
+    e_data = explain_resp.json()
+    assert "Cited Document" in e_data["explanation"] or "Found in Docs" in e_data["explanation"]
+    assert e_data["doc_citation"] is not None
+    assert e_data.get("verbatim_passage") is not None
+    assert len(e_data["doc_matches"]) >= 1
+
+
+@pytest.mark.asyncio
+async def test_subdeck_inherits_parent_deck_documents(auth_client: AsyncClient, monkeypatch):
+    from app.services.grading_service import GradingService
+
+    # 1. Create parent deck (e.g. CPSC 210)
+    parent_resp = await auth_client.post(
+        "/api/decks",
+        json={"name": "CPSC 210"},
+    )
+    assert parent_resp.status_code == 201
+    parent_id = parent_resp.json()["id"]
+
+    # 2. Upload document to parent deck
+    doc_content = (
+        b"# Solutions Manual\n\n"
+        b"## Grade Calculation\n"
+        b"LA01 Card 4: gradeFromPoints(points, total) converts points/total to a percentage, "
+        b"then to a letter grade with thresholds: 80 A, 68 B, 55 C, 50 D, else F.\n"
+    )
+    upload_resp = await auth_client.post(
+        f"/api/decks/{parent_id}/documents",
+        files={"file": ("solutions_manual.md", doc_content, "text/markdown")},
+        data={"title": "Solutions Manual"},
+    )
+    assert upload_resp.status_code == 201
+
+    # 3. Create subdeck (e.g. LA01) with parent_id set to parent_id
+    subdeck_resp = await auth_client.post(
+        "/api/decks",
+        json={"name": "LA01", "parent_id": parent_id},
+    )
+    assert subdeck_resp.status_code == 201
+    subdeck_id = subdeck_resp.json()["id"]
+
+    async def fake_generate(self, prompt, model=None, schema=None, **kwargs):
+        return (
+            "**→ Cited Document.** [Solutions Manual · Grade Calculation]\n"
+            "**→ Verbatim Specification.**\n"
+            "> LA01 Card 4: gradeFromPoints(points, total) converts points/total to a percentage, "
+            "then to a letter grade with thresholds: 80 A, 68 B, 55 C, 50 D, else F.\n"
+            "**→ Relevant Rules.** Convert points/total to percentage, division last, then map to letter.\n"
+            "**→ Key Takeaway.** Letter thresholds: 80 A, 68 B, 55 C, 50 D, else F."
+        )
+
+    monkeypatch.setattr(GradingService, "_generate", fake_generate)
+
+    # 4. Search docs specifying subdeck_id (which has no direct docs attached)
+    explain_resp = await auth_client.post(
+        "/api/code/explain-selection",
+        json={
+            "selected_code": "function gradeFromPoints(points: number, total: number)",
+            "language": "typescript",
+            "mode": "docs",
+            "deck_id": subdeck_id,
+        },
+    )
+    assert explain_resp.status_code == 200, explain_resp.text
+    data = explain_resp.json()
+    assert "Cited Document" in data["explanation"]
+    assert "Solutions Manual" in data["explanation"]
+    assert data["verbatim_passage"] is not None
+    assert "gradeFromPoints" in data["verbatim_passage"]
+    assert len(data["doc_matches"]) >= 1
+    assert data["doc_matches"][0]["source_title"] == "Solutions Manual"
+    assert "LA01 Card 4" in data["doc_matches"][0]["content"]
+
+    # 5. Ask a follow-up question via /api/code/ask-docs
+    async def fake_qa_generate(self, prompt, model=None, schema=None, **kwargs):
+        assert "Prior Discussion" in prompt or "Student Question" in prompt
+        assert "Why is 80 checked before 68?" in prompt
+        return "Checking 80 first ensures higher grade thresholds are evaluated before lower ones."
+
+    monkeypatch.setattr(GradingService, "_generate", fake_qa_generate)
+
+    qa_resp = await auth_client.post(
+        "/api/code/ask-docs",
+        json={
+            "question": "Why is 80 checked before 68?",
+            "selected_code": "if (pct >= 80) return 'A';",
+            "full_code": "function gradeFromPoints(points, total) { const pct = points / total * 100; if (pct >= 80) return 'A'; }",
+            "deck_id": subdeck_id,
+            "history": [
+                {"role": "user", "content": "What are the grade thresholds?"},
+                {"role": "assistant", "content": "80 is A, 68 is B, 55 is C, 50 is D, else F."},
+            ],
+        },
+    )
+    assert qa_resp.status_code == 200, qa_resp.text
+    qa_data = qa_resp.json()
+    assert "Checking 80 first" in qa_data["answer"]
+    assert qa_data["doc_citation"] is not None
+    assert "Solutions Manual" in qa_data["doc_citation"]
+    assert len(qa_data["citations"]) >= 1
+
+    # Empty question validation
+    bad_resp = await auth_client.post("/api/code/ask-docs", json={"question": "   "})
+    assert bad_resp.status_code == 400
+

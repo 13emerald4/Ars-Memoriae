@@ -5,6 +5,7 @@ from collections.abc import AsyncIterator
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 
@@ -13,10 +14,16 @@ class Base(DeclarativeBase):
     pass
 
 
+engine_kwargs: dict = {"echo": False}
+if settings.is_sqlite:
+    engine_kwargs["poolclass"] = NullPool
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+else:
+    engine_kwargs["pool_pre_ping"] = True
+
 engine = create_async_engine(
     settings.database_url,
-    echo=False,
-    pool_pre_ping=not settings.is_sqlite,
+    **engine_kwargs,
 )
 
 if settings.is_sqlite:

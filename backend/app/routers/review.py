@@ -52,6 +52,7 @@ from app.services.grading_service import (
     heuristic_overlap,
 )
 from app.services.rendering import render, select_grading_profile
+from app.services.sync_service import sync_manager
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/review", tags=["review"])
@@ -658,12 +659,29 @@ async def confirm_review(
     await db.commit()
     await db.refresh(card)
 
+    due = card.due if card.due.tzinfo else card.due.replace(tzinfo=UTC)
+    background.add_task(
+        sync_manager.broadcast_to_user,
+        user.id,
+        "CARD_REVIEWED",
+        {
+            "card_id": str(card.id),
+            "deck_id": str(card.deck_id),
+            "final_grade": body.final_grade.value,
+            "state": card.state,
+            "next_due": due.isoformat(),
+            "new_stability": card.stability or 0.0,
+            "new_difficulty": card.difficulty or 0.0,
+            "lapse_count": card.lapse_count,
+            "timestamp": now.isoformat(),
+        },
+    )
+
     auto_exceeded = bool(
         user.automaticity_threshold_ms
         and body.latency_ms
         and body.latency_ms > user.automaticity_threshold_ms
     )
-    due = card.due if card.due.tzinfo else card.due.replace(tzinfo=UTC)
     return ConfirmReviewResponse(
         next_due=due,
         new_stability=card.stability or 0.0,

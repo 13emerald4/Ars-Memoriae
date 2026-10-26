@@ -1,11 +1,13 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   CONCORDANCE_CATEGORIES,
-  CONCORDANCE_MASTER_REGEX,
   ConcordanceCategory,
   ConcordanceEntry,
   GUTTAG_CONCORDANCE_LEXICON,
   getConcordanceEntryById,
+  getConcordanceMasterRegex,
+  isConcordanceLoaded,
+  loadConcordanceLexicon,
   resolveConcordanceEntry,
   searchConcordance,
 } from '../services/concordance_engine'
@@ -58,9 +60,18 @@ export function ConcordanceReader({
   const [lexiconSearch, setLexiconSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<ConcordanceCategory | 'All'>('All')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [lexiconLoaded, setLexiconLoaded] = useState<boolean>(isConcordanceLoaded)
+
+  useEffect(() => {
+    if (!lexiconLoaded) {
+      void loadConcordanceLexicon().then(() => {
+        setLexiconLoaded(true)
+      })
+    }
+  }, [lexiconLoaded])
 
   // Single compiled regex over every indexed surface form, longest alternative first.
-  const masterRegex = CONCORDANCE_MASTER_REGEX
+  const masterRegex = getConcordanceMasterRegex()
 
   const handleMouseEnter = (
     e: React.MouseEvent<HTMLSpanElement>,
@@ -342,16 +353,16 @@ export function ConcordanceReader({
     }
     counts.set('All', GUTTAG_CONCORDANCE_LEXICON.length)
     return counts
-  }, [])
+  }, [lexiconLoaded])
 
   const filteredLexicon = useMemo(
     () => searchConcordance(lexiconSearch, selectedCategory),
-    [lexiconSearch, selectedCategory]
+    [lexiconSearch, selectedCategory, lexiconLoaded]
   )
 
   const renderedContent = useMemo(
     () => renderRichText(content),
-    [content, isEnabled]
+    [content, isEnabled, lexiconLoaded]
   )
 
   return (

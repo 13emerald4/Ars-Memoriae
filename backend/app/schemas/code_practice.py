@@ -150,3 +150,86 @@ class CodeProgressionStats(BaseModel):
     categories: list[CategoryProgression] = Field(default_factory=list)
     difficulty: dict[str, DifficultyTierProgression] = Field(default_factory=dict)
     recent_activity: list[CodeSubmissionOut] = Field(default_factory=list)
+
+
+class ExplainCodeSelectionRequest(BaseModel):
+    selected_code: str
+    full_code: str | None = None
+    language: str = "typescript"
+    context: str | None = None
+    mode: str = "both"  # "occams_razor" | "socratic" | "both" | "docs"
+    model: str | None = None
+    deck_id: str | None = None
+    doc_id: str | None = None
+
+
+class ExplainCodeSelectionResponse(BaseModel):
+    explanation: str
+    occams_razor: str | None = None
+    socratic_insight: str | None = None
+    doc_citation: str | None = None
+    verbatim_passage: str | None = None
+    doc_matches: list[dict[str, Any]] = Field(default_factory=list)
+    model_used: str
+    available_models: list[str] = Field(default_factory=list)
+
+
+class DeckDocumentOut(BaseModel):
+    id: str
+    source_id: str
+    filename: str
+    title: str
+    segment_count: int = 0
+    locators: list[str] = Field(default_factory=list)
+    uploaded_at: str | None = None
+
+
+class DeckDocumentsListResponse(BaseModel):
+    deck_id: str
+    documents: list[DeckDocumentOut] = Field(default_factory=list)
+
+
+class QueryDeckDocsRequest(BaseModel):
+    query: str
+    full_code: str | None = None
+    language: str = "typescript"
+    doc_id: str | None = None
+    model: str | None = None
+
+
+class QueryDeckDocsResponse(BaseModel):
+    found_info: str
+    doc_citation: str | None = None
+    verbatim_passage: str | None = None
+    explanation: str | None = None
+    key_takeaway: str | None = None
+    citations: list[dict[str, Any]] = Field(default_factory=list)
+    model_used: str
+    available_models: list[str] = Field(default_factory=list)
+
+
+class DeckDocMessage(BaseModel):
+    role: str  # "user" | "assistant"
+    content: str
+    citation: str | None = None
+
+
+class AskDeckQuestionRequest(BaseModel):
+    question: str
+    selected_code: str | None = None
+    full_code: str | None = None
+    language: str = "typescript"
+    context: str | None = None
+    deck_id: str | None = None
+    doc_id: str | None = None
+    model: str | None = None
+    history: list[DeckDocMessage] = Field(default_factory=list)
+
+
+class AskDeckQuestionResponse(BaseModel):
+    answer: str
+    doc_citation: str | None = None
+    citations: list[dict[str, Any]] = Field(default_factory=list)
+    model_used: str
+    available_models: list[str] = Field(default_factory=list)
+

@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
-import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Spinner } from './components/ui'
 import { useAuth } from './hooks/useAuth'
+import { createSyncSocket } from './api/client'
 import InteractiveTutorialModal from './components/InteractiveTutorialModal'
 
 const CodeLab = lazy(() => import('./pages/CodeLab'))
@@ -35,7 +36,7 @@ function LexiconNavButton() {
     <button
       type="button"
       data-lexicon-trigger="true"
-      onClick={() => openLexicon('binary approximations')}
+      onClick={() => openLexicon()}
       title="Lexicon"
       className="flex items-center gap-1.5 rounded-lg border border-sky-500/40 bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-500/20 hover:border-sky-400 transition-colors"
     >
@@ -241,6 +242,14 @@ function AppLayout() {
     }
   }, [user])
 
+  useEffect(() => {
+    if (!user) return
+    const cleanup = createSyncSocket((event) => {
+      window.dispatchEvent(new CustomEvent('ars:sync', { detail: event }))
+    })
+    return cleanup
+  }, [user])
+
   const hideHeader = isZenMode && !headerHovered
 
   const visibleNav = useMemo(() => {
@@ -277,7 +286,14 @@ function AppLayout() {
               : 'mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3'
           }
         >
-          <span className="text-sm font-semibold tracking-tight text-slate-100">Ars Memoriae</span>
+          <Link
+            to="/"
+            className="text-sm font-semibold tracking-tight text-slate-100 hover:text-white transition rounded px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+            title="Ars Memoriae Dashboard"
+            aria-label="Ars Memoriae Dashboard"
+          >
+            Ars Memoriae
+          </Link>
           <div className="flex items-center gap-2.5">
             <nav className="flex flex-wrap gap-1">
               {visibleNav.map((item) => (

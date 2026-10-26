@@ -34,5 +34,14 @@ release/
 
 # unrelated projects / local workspaces
 tcs-website/
+job-scraper-mcp/
+stream-grabber/
+start_stream_grabber.bat
 pnpm-lock.yaml
 pnpm-workspace.yaml
+
+# scratch / temp files
+scratch/
+ch2_full_text.txt
+transcript_*.txt
+

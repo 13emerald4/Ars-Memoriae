@@ -7,6 +7,7 @@ import type {
   AtomicityLintResult,
   Card,
   Deck,
+  DeckDocumentOut,
   DeckStats,
   DecomposedCardItem,
   DocumentUpload,
@@ -185,6 +186,62 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<unknown>(null)
 
+  const [deckDocs, setDeckDocs] = useState<DeckDocumentOut[]>([])
+  const [loadingDocs, setLoadingDocs] = useState(false)
+  const [uploadingDoc, setUploadingDoc] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [docTitle, setDocTitle] = useState('')
+  const [docUploadError, setDocUploadError] = useState<string | null>(null)
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null)
+
+  const loadDeckDocs = useCallback(async (dId: string) => {
+    setLoadingDocs(true)
+    try {
+      const res = await api.getDeckDocuments(dId)
+      setDeckDocs(res.documents || [])
+    } catch {
+      setDeckDocs([])
+    } finally {
+      setLoadingDocs(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (deck.id) {
+      void loadDeckDocs(deck.id)
+    }
+  }, [deck.id, loadDeckDocs])
+
+  const handleUploadDocument = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!deck.id || !selectedFile) return
+    setUploadingDoc(true)
+    setDocUploadError(null)
+    try {
+      const res = await api.uploadDeckDocument(deck.id, selectedFile, docTitle.trim() || undefined)
+      setDeckDocs((prev) => [res, ...prev])
+      setSelectedFile(null)
+      setDocTitle('')
+    } catch (err: any) {
+      setDocUploadError(err?.message || 'Failed to upload document.')
+    } finally {
+      setUploadingDoc(false)
+    }
+  }
+
+  const handleDeleteDocument = async (docId: string) => {
+    if (!confirm('Remove this document from the deck?')) return
+    setDeletingDocId(docId)
+    try {
+      await api.deleteDeckDocument(deck.id, docId)
+      setDeckDocs((prev) => prev.filter((d) => d.id !== docId && d.source_id !== docId))
+    } catch (err: any) {
+      alert(err?.message || 'Failed to delete document.')
+    } finally {
+      setDeletingDocId(null)
+    }
+  }
+
   useEffect(() => {
     setThematicNature(deck.thematic_nature || '')
     setDocumentation(deck.documentation || '')
@@ -354,6 +411,118 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
                 No documentation added yet.
               </p>
             )}
+          </div>
+
+          {/* Attached Reference Files for Local LLM Grounding & Search */}
+          <div className="pt-3 border-t border-ink-line space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs font-semibold text-emerald-300 flex items-center gap-1.5">
+                  <span>📄</span>
+                  <span>Attached Reference Documents ({deckDocs.length})</span>
+                </span>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Files attached here are searched and cited by local LLMs when highlighting code in Review (Alt+D).
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadDeckDocs(deck.id)}
+                className="btn text-[11px] px-2 py-0.5"
+                title="Refresh attached documents"
+              >
+                ↻ Refresh
+              </button>
+            </div>
+
+            {loadingDocs ? (
+              <div className="flex items-center gap-2 py-2 text-xs text-slate-400">
+                <Spinner />
+                <span>Loading attached documents…</span>
+              </div>
+            ) : deckDocs.length > 0 ? (
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                {deckDocs.map((doc) => (
+                  <div
+                    key={doc.id || doc.source_id}
+                    className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-emerald-500/30 bg-[#11242c]/50 text-xs"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-base shrink-0">📄</span>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-emerald-200 truncate">
+                          {doc.title || doc.filename}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          {doc.filename} · {doc.segment_count} passages indexed
+                          {doc.uploaded_at ? ` · ${new Date(doc.uploaded_at).toLocaleDateString()}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={deletingDocId === (doc.id || doc.source_id)}
+                      onClick={() => void handleDeleteDocument(doc.id || doc.source_id)}
+                      className="px-2 py-1 rounded text-[11px] text-rose-400 hover:text-rose-200 hover:bg-rose-950/40 border border-rose-500/30 transition shrink-0 cursor-pointer"
+                      title="Delete attached document"
+                    >
+                      {deletingDocId === (doc.id || doc.source_id) ? '…' : 'Delete'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs italic text-slate-500">
+                No reference files attached yet. Upload course slides, textbook chapters, or reference code below.
+              </p>
+            )}
+
+            {/* Upload Form */}
+            <form onSubmit={handleUploadDocument} className="p-3.5 rounded-xl border border-emerald-500/25 bg-emerald-950/15 space-y-2.5">
+              <span className="text-xs font-semibold text-emerald-300 block">
+                ＋ Upload Reference Document (PDF, Markdown, Source Code)
+              </span>
+              <p className="text-[11px] text-slate-400">
+                Supported formats: PDF, Markdown (.md), Plain Text (.txt), HTML, TypeScript (.ts, .tsx), Python (.py), Java (.java), JSON.
+              </p>
+              {docUploadError && (
+                <p className="text-xs text-rose-400 bg-rose-950/40 p-2 rounded border border-rose-500/30">
+                  {docUploadError}
+                </p>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-300 mb-1">Choose File *</label>
+                  <input
+                    type="file"
+                    accept=".pdf,.txt,.md,.markdown,.html,.htm,.rst,.ts,.tsx,.js,.jsx,.py,.java,.json"
+                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    required
+                    className="w-full text-xs text-slate-300 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border file:border-emerald-500/40 file:text-xs file:font-medium file:bg-emerald-950 file:text-emerald-200 cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-300 mb-1">Document Title (optional)</label>
+                  <input
+                    type="text"
+                    value={docTitle}
+                    onChange={(e) => setDocTitle(e.target.value)}
+                    placeholder="e.g. Lecture 05 Concurrency Slides"
+                    className="input w-full text-xs"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end pt-1">
+                <button
+                  type="submit"
+                  disabled={uploadingDoc || !selectedFile}
+                  className="btn btn-primary text-xs px-3.5 py-1.5 flex items-center gap-1.5"
+                >
+                  {uploadingDoc && <Spinner />}
+                  <span>{uploadingDoc ? 'Uploading & Indexing…' : 'Upload Reference Document'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

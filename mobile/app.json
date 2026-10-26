@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Ars Memoriae",
+    "slug": "ars-memoriae",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0f172a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.arsmemoriae.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0f172a"
+      },
+      "package": "com.arsmemoriae.mobile"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

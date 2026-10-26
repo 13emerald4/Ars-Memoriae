@@ -934,3 +934,121 @@ export interface HardwareProfile {
   models: HardwareModelOption[]
 }
 
+export interface SyncStatus {
+  lan_ip: string
+  port: number
+  pairing_url: string
+  active_connections: number
+  user_connections: number
+  server_time: string
+}
+
+export interface SyncEvent<T = any> {
+  type: 'CONNECTED' | 'PONG' | 'CARD_REVIEWED' | 'QUEUE_INVALIDATED' | 'DECK_MUTATED' | 'SESSION_TICK'
+  data: T
+}
+
+export interface ExplainCodeSelectionRequest {
+  selected_code: string
+  full_code?: string | null
+  language?: string
+  context?: string | null
+  mode?: 'occams_razor' | 'socratic' | 'both' | 'docs'
+  model?: string | null
+  deck_id?: string | null
+  doc_id?: string | null
+}
+
+export interface ExplainCodeSelectionResponse {
+  explanation: string
+  occams_razor?: string | null
+  socratic_insight?: string | null
+  doc_citation?: string | null
+  verbatim_passage?: string | null
+  doc_matches?: Array<{
+    extract_id: string
+    source_id: string
+    source_title: string
+    locator: string
+    content: string
+    score: number
+  }>
+  model_used: string
+  available_models: string[]
+}
+
+export interface DeckDocumentOut {
+  id: string
+  source_id: string
+  filename: string
+  title: string
+  segment_count: number
+  locators: string[]
+  uploaded_at?: string | null
+}
+
+export interface DeckDocumentsListResponse {
+  deck_id: string
+  documents: DeckDocumentOut[]
+}
+
+export interface QueryDeckDocsRequest {
+  query: string
+  full_code?: string | null
+  language?: string
+  doc_id?: string | null
+  model?: string | null
+}
+
+export interface QueryDeckDocsResponse {
+  found_info: string
+  doc_citation?: string | null
+  verbatim_passage?: string | null
+  explanation?: string | null
+  key_takeaway?: string | null
+  citations: Array<{
+    extract_id: string
+    source_id: string
+    source_title: string
+    locator: string
+    content: string
+    score: number
+  }>
+  model_used: string
+  available_models: string[]
+}
+
+export interface DeckDocMessage {
+  role: 'user' | 'assistant'
+  content: string
+  citation?: string | null
+}
+
+export interface AskDeckQuestionRequest {
+  question: string
+  selected_code?: string | null
+  full_code?: string | null
+  language?: string
+  context?: string | null
+  deck_id?: string | null
+  doc_id?: string | null
+  model?: string | null
+  history?: DeckDocMessage[]
+}
+
+export interface AskDeckQuestionResponse {
+  answer: string
+  doc_citation?: string | null
+  citations?: Array<{
+    extract_id: string
+    source_id: string
+    source_title: string
+    locator: string
+    content: string
+    score: number
+  }>
+  model_used: string
+  available_models?: string[]
+}
+
+

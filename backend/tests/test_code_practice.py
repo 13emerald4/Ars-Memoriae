@@ -472,3 +472,69 @@ async def test_code_stats_card_metrics_match_the_users_cards(auth_client):
     from app.core.timeutil import day_key
 
     assert stats["forecast"] == {day_key(now + timedelta(days=3), None): 2}
+
+
+@pytest.mark.asyncio
+async def test_explain_code_selection_endpoint(auth_client, monkeypatch):
+    from app.services.grading_service import GradingService
+
+    async def fake_generate(self, prompt, model=None, schema=None, **kwargs):
+        return (
+            "**→ Found in Docs.** [Spec.md · Section 2]: All grade calculations must pipe percentage directly.\n\n"
+            "**→ Documentation Details.** Adheres to the grading specification.\n\n"
+            "**→ Key Takeaway.** Pipe percentage directly into grade letter."
+        )
+
+    async def fake_verify(self):
+        return ["qwen2.5-coder:7b", "qwen2.5-coder:3b"]
+
+    monkeypatch.setattr(GradingService, "_generate", fake_generate)
+    monkeypatch.setattr(GradingService, "verify_engine", fake_verify)
+
+    # 1. Without docs attached
+    resp = await auth_client.post(
+        "/api/code/explain-selection",
+        json={
+            "selected_code": "return gradeToLetter(percentage(points, total));",
+            "full_code": "function gradeFromPoints() { ... }",
+            "language": "typescript",
+            "mode": "docs",
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert "Cited Document" in data["explanation"] or "Found in Docs" in data["explanation"]
+
+    # 2. With doc attached to deck
+    deck_resp = await auth_client.post("/api/decks", json={"name": "Testing Deck Selection"})
+    deck_id = deck_resp.json()["id"]
+    files = {"file": ("Spec.md", b"# Grade Spec\nSection 2: All grade calculations must pipe percentage directly.", "text/markdown")}
+    upload_resp = await auth_client.post(f"/api/decks/{deck_id}/documents", files=files)
+    assert upload_resp.status_code == 201
+
+    resp2 = await auth_client.post(
+        "/api/code/explain-selection",
+        json={
+            "selected_code": "return gradeToLetter(percentage(points, total));",
+            "full_code": "function gradeFromPoints() { ... }",
+            "language": "typescript",
+            "mode": "docs",
+            "deck_id": deck_id,
+        },
+    )
+    assert resp2.status_code == 200, resp2.text
+    data2 = resp2.json()
+    assert "Cited Document" in data2["explanation"] or "Found in Docs" in data2["explanation"]
+    assert data2.get("verbatim_passage") is not None
+    assert len(data2["doc_matches"]) >= 1
+    assert "qwen2.5-coder" in data2["model_used"]
+    assert len(data2["available_models"]) >= 1
+
+
+@pytest.mark.asyncio
+async def test_explain_code_selection_empty_validation(auth_client):
+    resp = await auth_client.post(
+        "/api/code/explain-selection",
+        json={"selected_code": "   ", "language": "typescript"},
+    )
+    assert resp.status_code == 400

@@ -11,7 +11,7 @@ export type MarginLookupListener = (term: string, context?: string | null) => vo
 
 interface LexiconContextValue {
   openLexicon: (
-    term: string,
+    term?: string | null,
     context?: string | null,
     position?: { x: number; y: number } | null,
     overrideDeckContext?: ActiveDeckContext | null,
@@ -65,7 +65,7 @@ export function LexiconProvider({ children }: { children: ReactNode }) {
 
   const openLexicon = useCallback(
     (
-      newTerm: string,
+      newTerm?: string | null,
       newContext?: string | null,
       newPos?: { x: number; y: number } | null,
       overrideDeckContext?: ActiveDeckContext | null,
@@ -78,12 +78,12 @@ export function LexiconProvider({ children }: { children: ReactNode }) {
       }
 
       if (marginListenerRef.current) {
-        marginListenerRef.current(newTerm, newContext ?? null)
+        marginListenerRef.current(newTerm ?? '', newContext ?? null)
         return
       }
 
       isOpenRef.current = true
-      setTerm(newTerm)
+      setTerm(newTerm ?? null)
       setContext(newContext ?? null)
       setPosition(newPos ?? null)
       setCurrentLookupDeckContext(

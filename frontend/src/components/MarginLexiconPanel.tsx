@@ -4,6 +4,7 @@ import type { LexiconEntry, LexiconGlossItem, RecentLexiconItem } from '../api/t
 import {
   resolveConcordanceEntry,
   findConcordanceMatch,
+  loadConcordanceLexicon,
   type ConcordanceEntry,
 } from '../services/concordance_engine'
 import { useLexicon } from './LexiconContext'
@@ -127,6 +128,7 @@ export function MarginLexiconPanel({
       setActiveTab('lookup')
 
       // Check local concordance engine first for instant definition
+      await loadConcordanceLexicon()
       const matched = resolveConcordanceEntry(trimmed) || findConcordanceMatch(trimmed)
       setActiveConcordance(matched)
 
@@ -157,7 +159,13 @@ export function MarginLexiconPanel({
   useEffect(() => {
     registerMarginListener((term, ctx) => {
       setQuery(term)
-      void handleLookup(term, ctx)
+      if (term.trim()) {
+        void handleLookup(term, ctx)
+      } else {
+        setCollapsed(false)
+        setActiveTab('recent')
+        void refreshRecent()
+      }
     })
     return () => {
       registerMarginListener(null)

@@ -23,7 +23,22 @@ MAX_DOCUMENT_BYTES = 25 * 1024 * 1024
 # generation step behind thousands of LLM calls.
 MAX_SEGMENTS = 2000
 
-SUPPORTED_SUFFIXES = (".pdf", ".txt", ".md", ".markdown", ".html", ".htm", ".rst")
+SUPPORTED_SUFFIXES = (
+    ".pdf",
+    ".txt",
+    ".md",
+    ".markdown",
+    ".html",
+    ".htm",
+    ".rst",
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".py",
+    ".java",
+    ".json",
+)
 
 HEADING_RE = re.compile(r"^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$", re.M)
 

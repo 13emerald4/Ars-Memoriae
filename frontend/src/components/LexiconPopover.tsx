@@ -28,7 +28,7 @@ export function LexiconPopover({
   const [entry, setEntry] = useState<LexiconEntry | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [recentTerms, setRecentTerms] = useState<RecentLexiconItem[]>([])
-  const [showRecent, setShowRecent] = useState(false)
+  const [showRecent, setShowRecent] = useState(!initialTerm || !initialTerm.trim())
   const popoverRef = useRef<HTMLDivElement>(null)
 
   const doLookup = useCallback(async (lookupWord: string) => {

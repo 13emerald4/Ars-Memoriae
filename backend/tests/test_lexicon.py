@@ -128,3 +128,84 @@ async def test_lookup_non_cs_deck_does_not_force_programming(auth_client: AsyncC
     prompt = captured_prompts[0]
     assert "CRITICAL DOMAIN & RELEVANCE RULES" in prompt
     assert "SPAN 321" in prompt
+
+
+@pytest.mark.asyncio
+async def test_lexicon_unauthenticated_rejected(client: AsyncClient):
+    """Verifies that unauthenticated requests to lexicon endpoints return 401."""
+    resp = await client.post(
+        "/api/lexicon/lookup",
+        json={"term": "binary approximations"},
+    )
+    assert resp.status_code == 401
+
+    recent_resp = await client.get("/api/lexicon/recent")
+    assert recent_resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_lexicon_cross_tenant_card_rejected(auth_client: AsyncClient, client: AsyncClient):
+    """Verifies that a user cannot access another user's card via lexicon lookup."""
+    import uuid
+
+    # Register second user (User B)
+    email_b = f"user-{uuid.uuid4().hex[:8]}@example.com"
+    reg_b = await client.post(
+        "/api/auth/register", json={"email": email_b, "password": "hunter2hunter2"}
+    )
+    assert reg_b.status_code == 201
+    token_b = reg_b.json()["access_token"]
+
+    # User B creates a deck and a card with confidential content
+    deck_b_resp = await client.post(
+        "/api/decks",
+        json={"name": "Confidential Research Deck"},
+        headers={"Authorization": f"Bearer {token_b}"},
+    )
+    assert deck_b_resp.status_code == 201
+    deck_b_id = deck_b_resp.json()["id"]
+
+    note_b_resp = await client.post(
+        "/api/notes",
+        json={
+            "deck_id": deck_b_id,
+            "template_kind": "basic",
+            "field_values": {"Front": "Confidential Front", "Back": "Confidential Back"},
+        },
+        headers={"Authorization": f"Bearer {token_b}"},
+    )
+    assert note_b_resp.status_code == 201
+    card_b_id = note_b_resp.json()["cards"][0]["id"]
+
+    # User A attempts to look up a term referencing User B's card
+    resp = await auth_client.post(
+        "/api/lexicon/lookup",
+        json={
+            "term": "test",
+            "card_id": card_b_id,
+        },
+    )
+    assert resp.status_code == 404
+    assert "Card not found" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_lexicon_nonexistent_and_invalid_card_rejected(auth_client: AsyncClient):
+    """Verifies that non-existent and malformed card IDs return 404 to avoid enumeration oracle."""
+    import uuid
+
+    # Random non-existent UUID
+    resp_missing = await auth_client.post(
+        "/api/lexicon/lookup",
+        json={"term": "binary search", "card_id": str(uuid.uuid4())},
+    )
+    assert resp_missing.status_code == 404
+    assert "Card not found" in resp_missing.json()["detail"]
+
+    # Malformed card_id string
+    resp_malformed = await auth_client.post(
+        "/api/lexicon/lookup",
+        json={"term": "binary search", "card_id": "not-a-valid-uuid"},
+    )
+    assert resp_malformed.status_code == 404
+    assert "Card not found" in resp_malformed.json()["detail"]

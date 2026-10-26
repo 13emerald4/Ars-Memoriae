@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,11 +44,19 @@ from app.schemas.core import (
     NoteUpdate,
     PriorityUpdate,
 )
+from app.schemas.code_practice import (
+    DeckDocumentOut,
+    DeckDocumentsListResponse,
+    QueryDeckDocsRequest,
+    QueryDeckDocsResponse,
+)
 from app.schemas.review import QueueItem
-from app.services import tree_service
+from app.services import document_service, ir_service, tree_service
+from app.services.document_service import DocumentError
 from app.services.fsrs_service import FSRSService, Rating
 from app.services.note_service import default_note_type, sync_cards
 from app.services.rendering import occlusion_payload, render
+from app.services.sync_service import sync_manager
 
 router = APIRouter(prefix="/api", tags=["decks"])
 
@@ -353,7 +362,10 @@ async def list_decks(
 
 @router.post("/decks", response_model=DeckOut, status_code=201)
 async def create_deck(
-    body: DeckCreate, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
+    body: DeckCreate,
+    background: BackgroundTasks,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> DeckOut:
     parent_id = None
     if body.parent_id:
@@ -375,6 +387,12 @@ async def create_deck(
     db.add(deck)
     await db.commit()
     await db.refresh(deck)
+    background.add_task(
+        sync_manager.broadcast_to_user,
+        user.id,
+        "DECK_MUTATED",
+        {"action": "create", "deck_id": str(deck.id), "name": deck.name},
+    )
     return DeckOut(
         id=str(deck.id),
         name=deck.name,
@@ -971,22 +989,22 @@ async def get_card_analytics(
     logs = list((await db.scalars(stmt)).all())
 
     total_reviews = len(logs)
-    total_overridden = sum(1 for l in logs if l.overridden)
+    total_overridden = sum(1 for log_item in logs if log_item.overridden)
 
     # 2. Performance metrics
-    recall_count = sum(1 for l in logs if l.final_grade in ("hard", "good", "easy"))
+    recall_count = sum(1 for log_item in logs if log_item.final_grade in ("hard", "good", "easy"))
     recall_rate = round((recall_count / total_reviews) * 100, 1) if total_reviews > 0 else 0.0
 
     rating_counts = {"again": 0, "hard": 0, "good": 0, "easy": 0}
-    for l in logs:
-        rating_counts[l.final_grade] = rating_counts.get(l.final_grade, 0) + 1
+    for log_item in logs:
+        rating_counts[log_item.final_grade] = rating_counts.get(log_item.final_grade, 0) + 1
 
     rating_percentages = {
         k: round((v / total_reviews) * 100, 1) if total_reviews > 0 else 0.0
         for k, v in rating_counts.items()
     }
 
-    latencies = [l.latency_ms for l in logs if l.latency_ms is not None and l.latency_ms > 0]
+    latencies = [log_item.latency_ms for log_item in logs if log_item.latency_ms is not None and log_item.latency_ms > 0]
     if latencies:
         avg_latency = int(sum(latencies) / len(latencies))
         fastest_latency = min(latencies)
@@ -1030,21 +1048,21 @@ async def get_card_analytics(
 
     log_items = [
         CardReviewLogItemOut(
-            id=l.id,
-            reviewed_at=l.reviewed_at,
-            final_grade=l.final_grade,
-            typed_answer=l.typed_answer,
-            latency_ms=l.latency_ms,
-            llm_grade=l.llm_grade,
-            llm_reasoning=l.llm_reasoning,
-            llm_confidence=l.llm_confidence,
-            overridden=l.overridden,
-            user_confidence=l.user_confidence,
-            is_blitz=l.is_blitz,
-            weaknesses=l.weaknesses or [],
-            improvements=l.improvements or [],
+            id=entry.id,
+            reviewed_at=entry.reviewed_at,
+            final_grade=entry.final_grade,
+            typed_answer=entry.typed_answer,
+            latency_ms=entry.latency_ms,
+            llm_grade=entry.llm_grade,
+            llm_reasoning=entry.llm_reasoning,
+            llm_confidence=entry.llm_confidence,
+            overridden=entry.overridden,
+            user_confidence=entry.user_confidence,
+            is_blitz=entry.is_blitz,
+            weaknesses=entry.weaknesses or [],
+            improvements=entry.improvements or [],
         )
-        for l in logs
+        for entry in logs
     ]
 
     return CardAnalyticsOut(
@@ -1138,3 +1156,236 @@ async def _note_out(db: AsyncSession, note_id: uuid.UUID) -> NoteOut:
         created_at=note.created_at,
         cards=[card_out(c) for c in cards],
     )
+
+
+def _distinct_locators(locators: list[str], limit: int = 20) -> list[str]:
+    seen: list[str] = []
+    for loc in locators:
+        if loc and loc not in seen:
+            seen.append(loc)
+        if len(seen) >= limit:
+            break
+    return seen
+
+
+@router.post("/decks/{deck_id}/documents", response_model=DeckDocumentOut, status_code=status.HTTP_201_CREATED)
+async def upload_deck_document(
+    deck_id: str,
+    file: UploadFile = File(...),
+    title: str | None = Form(default=None),
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> DeckDocumentOut:
+    """Uploads a document (.pdf, .md, .txt, code file) attached to a specific deck for grounding."""
+    deck = await _owned_deck(db, user, parse_uuid(deck_id))
+    if not document_service.supported(file.filename or ""):
+        raise HTTPException(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            f"unsupported file type; upload one of: {', '.join(document_service.SUPPORTED_SUFFIXES)}",
+        )
+
+    data = b""
+    while chunk := await file.read(1 << 20):
+        data += chunk
+        if len(data) > document_service.MAX_DOCUMENT_BYTES:
+            raise HTTPException(
+                status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                f"file exceeds {document_service.MAX_DOCUMENT_BYTES // (1024 * 1024)} MB",
+            )
+
+    try:
+        parsed_title, segments = await asyncio.to_thread(
+            document_service.extract_document, file.filename or "document", data
+        )
+    except DocumentError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+
+    target_title = (title or "").strip() or parsed_title
+    raw_text = "\n\n".join(s.text for s in segments)
+
+    source = await ir_service.create_source(
+        db,
+        user.id,
+        title=target_title,
+        raw_text=raw_text,
+        priority=deck.default_priority,
+        segments=[(s.locator, s.text) for s in segments],
+        for_reading=False,
+    )
+
+    doc_id = str(uuid.uuid4())
+    locators = _distinct_locators([s.locator for s in segments], limit=20)
+    now_iso = datetime.now(UTC).isoformat()
+    doc_entry = {
+        "id": doc_id,
+        "source_id": str(source.id),
+        "filename": file.filename or "document",
+        "title": target_title,
+        "segment_count": len(segments),
+        "locators": locators,
+        "uploaded_at": now_iso,
+    }
+
+    current_docs = list(deck.source_documents or [])
+    current_docs.append(doc_entry)
+    deck.source_documents = current_docs
+    await db.commit()
+    await db.refresh(deck)
+
+    return DeckDocumentOut(
+        id=doc_id,
+        source_id=str(source.id),
+        filename=file.filename or "document",
+        title=target_title,
+        segment_count=len(segments),
+        locators=locators,
+        uploaded_at=now_iso,
+    )
+
+
+@router.get("/decks/{deck_id}/documents", response_model=DeckDocumentsListResponse)
+async def list_deck_documents(
+    deck_id: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> DeckDocumentsListResponse:
+    """Lists all documents attached to a deck."""
+    deck = await _owned_deck(db, user, parse_uuid(deck_id))
+    docs_out: list[DeckDocumentOut] = []
+    for d in (deck.source_documents or []):
+        if isinstance(d, dict):
+            doc_id = str(d.get("id") or d.get("source_id") or uuid.uuid4())
+            source_id = str(d.get("source_id") or "")
+            filename = str(d.get("filename") or d.get("title") or "document")
+            title = str(d.get("title") or d.get("filename") or "Untitled Document")
+            segment_count = int(d.get("segment_count") or 0)
+            locators = list(d.get("locators") or [])
+            uploaded_at = d.get("uploaded_at")
+            docs_out.append(
+                DeckDocumentOut(
+                    id=doc_id,
+                    source_id=source_id,
+                    filename=filename,
+                    title=title,
+                    segment_count=segment_count,
+                    locators=locators,
+                    uploaded_at=uploaded_at,
+                )
+            )
+        elif isinstance(d, str):
+            docs_out.append(
+                DeckDocumentOut(
+                    id=str(uuid.uuid4()),
+                    source_id="",
+                    filename=d,
+                    title=d,
+                    segment_count=0,
+                    locators=[],
+                    uploaded_at=None,
+                )
+            )
+    return DeckDocumentsListResponse(deck_id=str(deck.id), documents=docs_out)
+
+
+@router.delete("/decks/{deck_id}/documents/{doc_id}")
+async def delete_deck_document(
+    deck_id: str,
+    doc_id: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Removes a document from the deck."""
+    deck = await _owned_deck(db, user, parse_uuid(deck_id))
+    current_docs = list(deck.source_documents or [])
+    new_docs = []
+    removed_source_id = None
+    for d in current_docs:
+        if isinstance(d, dict):
+            if str(d.get("id")) == doc_id or str(d.get("source_id")) == doc_id:
+                removed_source_id = d.get("source_id")
+                continue
+        elif isinstance(d, str) and d == doc_id:
+            continue
+        new_docs.append(d)
+
+    deck.source_documents = new_docs
+    await db.commit()
+    return {"status": "deleted", "doc_id": doc_id, "source_id": removed_source_id}
+
+
+@router.post("/decks/{deck_id}/query-docs", response_model=QueryDeckDocsResponse)
+async def query_deck_documents(
+    deck_id: str,
+    body: QueryDeckDocsRequest,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> QueryDeckDocsResponse:
+    """Finds information within attached deck docs for a query / highlighted code block."""
+    deck = await _owned_deck(db, user, parse_uuid(deck_id))
+    source_ids = []
+    curr_deck: Deck | None = deck
+    visited_deck_ids = set()
+    while curr_deck and curr_deck.user_id == user.id and curr_deck.id not in visited_deck_ids:
+        visited_deck_ids.add(curr_deck.id)
+        for d in (curr_deck.source_documents or []):
+            if isinstance(d, dict) and d.get("source_id"):
+                try:
+                    sid = parse_uuid(d["source_id"])
+                    if not body.doc_id or str(sid) == body.doc_id or str(d.get("id")) == body.doc_id:
+                        if sid not in source_ids:
+                            source_ids.append(sid)
+                except Exception:
+                    pass
+        if curr_deck.parent_id:
+            curr_deck = await db.get(Deck, curr_deck.parent_id)
+        else:
+            break
+
+    if not source_ids:
+        return QueryDeckDocsResponse(
+            found_info="No documentation attached to this deck. Upload documentation using the 'Deck Docs' button.",
+            doc_citation=None,
+            explanation=None,
+            key_takeaway=None,
+            citations=[],
+            model_used=body.model or user.grading_model or "qwen2.5-coder:7b",
+            available_models=[],
+        )
+
+    rows = (
+        await db.execute(
+            select(Extract, Source)
+            .join(Source, Extract.source_id == Source.id)
+            .where(Extract.source_id.in_(source_ids))
+        )
+    ).all()
+
+    if not rows:
+        return QueryDeckDocsResponse(
+            found_info="Attached documents contain no readable extracts.",
+            doc_citation=None,
+            explanation=None,
+            key_takeaway=None,
+            citations=[],
+            model_used=body.model or user.grading_model or "qwen2.5-coder:7b",
+            available_models=[],
+        )
+
+    from app.services.code_ai_service import CodeAiService, rank_extracts_for_query
+
+    top_excerpts = rank_extracts_for_query(
+        query=body.query,
+        extracts_with_sources=rows,
+        top_k=5,
+    )
+
+    ai_svc = CodeAiService(model=body.model or user.grading_model)
+    res = await ai_svc.query_deck_docs(
+        query=body.query,
+        doc_excerpts=top_excerpts,
+        full_code=body.full_code,
+        language=body.language,
+        model=body.model,
+    )
+    return QueryDeckDocsResponse(**res)
+

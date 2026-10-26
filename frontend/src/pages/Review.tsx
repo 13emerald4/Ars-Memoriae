@@ -2318,20 +2318,21 @@ export default function Review() {
           >
             {/* Left Column: Problem & Review Pane */}
             {workbenchLayout.leftCollapsed ? (
-              <div
-                className={`hidden lg:flex flex-col items-center py-4 px-2 bg-[#161a22] border border-ink-line rounded-xl cursor-pointer hover:bg-[#1c2230] hover:border-sky-500/50 transition-all select-none shrink-0 self-stretch my-0.5 mx-1 shadow-md group ${
+              <button
+                type="button"
+                className={`hidden lg:flex flex-col items-center py-4 px-2 bg-[#161a22] border border-ink-line rounded-xl cursor-pointer hover:bg-[#1c2230] hover:border-sky-500/50 transition-all select-none shrink-0 self-stretch my-0.5 mx-1 shadow-md group focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
                   workbenchLayout.columnsSwapped ? 'order-3' : 'order-1'
                 }`}
                 style={{ width: '42px' }}
                 onClick={workbenchLayout.toggleLeftCollapsed}
                 title="Click to expand Problem Description"
+                aria-label="Expand Problem Description panel"
               >
-                <button
-                  type="button"
-                  className="w-6 h-6 rounded-full bg-sky-950 border border-sky-500/50 text-sky-300 flex items-center justify-center text-xs font-bold shadow group-hover:scale-110 transition-transform mb-3"
+                <div
+                  className="w-6 h-6 rounded-full bg-sky-950 border border-sky-500/50 text-sky-300 flex items-center justify-center text-xs font-bold shadow group-hover:scale-110 transition-transform mb-3 shrink-0"
                 >
                   {workbenchLayout.columnsSwapped ? '‹' : '›'}
-                </button>
+                </div>
                 <div className="flex-1 flex items-center justify-center">
                   <span
                     className="text-[11px] font-semibold text-slate-400 group-hover:text-sky-200 tracking-wider uppercase whitespace-nowrap"
@@ -2343,7 +2344,7 @@ export default function Review() {
                 <span className="text-[10px] text-slate-500 mt-2 font-mono">
                   {item.difficulty || 'Code'}
                 </span>
-              </div>
+              </button>
             ) : (
               <div
                 style={
@@ -3333,6 +3334,8 @@ export default function Review() {
                         readOnly={true}
                         height={`${workbenchLayout.editorHeight}px`}
                         placeholder="// Reference solution"
+                        context={item?.deck_name || item?.front}
+                        deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
                       />
                     ) : (
                       <div
@@ -3366,6 +3369,8 @@ export default function Review() {
                         readOnly={true}
                         height={`${workbenchLayout.editorHeight}px`}
                         placeholder="// Completed reference test suite"
+                        context={item?.deck_name || item?.front}
+                        deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
                       />
                     ) : (
                       <div
@@ -3407,6 +3412,8 @@ export default function Review() {
                       onCursorChange={(l) => setEditorCursorLine(l)}
                       onGradeSolution={activeEditorTab === 'solution' ? () => void (answer.trim() ? grade() : reveal()) : undefined}
                       grading={activeEditorTab === 'solution' ? grading : false}
+                      context={item?.deck_name || item?.front}
+                      deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
                     />
                   )
                 )}
@@ -4064,6 +4071,8 @@ export default function Review() {
                               readOnly={true}
                               height="320px"
                               placeholder="// Reference solution"
+                              context={item?.deck_name || item?.front}
+                              deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
                             />
                           ) : (
                             <div className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-2 h-[320px]">
@@ -4073,7 +4082,7 @@ export default function Review() {
                               <div className="space-y-0.5">
                                 <h4 className="text-xs font-semibold text-slate-200">Reference Solution</h4>
                                 <p className="text-[11px] text-slate-400 max-w-xs leading-relaxed">
-                                  Hidden until revealed.
+                                   Hidden until revealed.
                                 </p>
                               </div>
                               <button
@@ -4094,6 +4103,8 @@ export default function Review() {
                               readOnly={true}
                               height="320px"
                               placeholder="// Completed reference test suite"
+                              context={item?.deck_name || item?.front}
+                              deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
                             />
                           ) : (
                             <div className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-2 h-[320px]">
@@ -4103,7 +4114,7 @@ export default function Review() {
                               <div className="space-y-0.5">
                                 <h4 className="text-xs font-semibold text-slate-200">Reference Tests</h4>
                                 <p className="text-[11px] text-slate-400 max-w-xs leading-relaxed">
-                                  Hidden until revealed.
+                                   Hidden until revealed.
                                 </p>
                               </div>
                               <div className="flex items-center gap-2 mt-1">
@@ -4132,6 +4143,8 @@ export default function Review() {
                             onCursorChange={(l) => setEditorCursorLine(l)}
                             onGradeSolution={activeEditorTab === 'solution' ? () => void (answer.trim() ? grade() : reveal()) : undefined}
                             grading={activeEditorTab === 'solution' ? grading : false}
+                            context={item?.deck_name || item?.front}
+                            deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
                           />
                         )
                       )}

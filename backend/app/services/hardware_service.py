@@ -13,8 +13,8 @@ import os
 import platform
 import shutil
 import subprocess
-import sys
 from dataclasses import asdict, dataclass
+from functools import lru_cache
 from typing import Any
 
 log = logging.getLogger(__name__)
@@ -172,6 +172,7 @@ def _get_gpu_info() -> tuple[str | None, float | None, bool]:
     return None, None, False
 
 
+@lru_cache
 def detect_hardware() -> HardwareProfile:
     """Inspects host hardware and returns a complete HardwareProfile with recommendations."""
     os_sys = platform.system()
@@ -182,7 +183,6 @@ def detect_hardware() -> HardwareProfile:
     cpu_name = _get_cpu_name()
     ram_gb = _get_ram_gb()
     gpu_name, vram_gb, has_cuda = _get_gpu_info()
-    has_metal = is_apple_silicon
 
     # Nice OS string
     if os_sys == "Windows":

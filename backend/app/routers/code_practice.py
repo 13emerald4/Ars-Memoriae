@@ -13,9 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.timeutil import day_key
 from app.db import get_db
-from app.models import Card, CodeProblem, CodeSubmission, Deck, Note, NoteType, StudySession, User
+from app.models import Card, CodeProblem, CodeSubmission, Deck, Extract, Note, NoteType, Source, StudySession, User
 from app.routers.deps import current_user, parse_uuid
 from app.schemas.code_practice import (
+    AskDeckQuestionRequest,
+    AskDeckQuestionResponse,
     CategoryProgression,
     CodeLeechOut,
     CodeProblemOut,
@@ -23,6 +25,8 @@ from app.schemas.code_practice import (
     CodeProgressionStats,
     CodeSubmissionOut,
     DifficultyTierProgression,
+    ExplainCodeSelectionRequest,
+    ExplainCodeSelectionResponse,
     ExportToDeckRequest,
     ForgeProblemRequest,
     RunCodeRequest,
@@ -32,7 +36,7 @@ from app.schemas.code_practice import (
     SubmitCodeRequest,
     SubmitCodeResponse,
 )
-from app.services.code_ai_service import CodeAiService
+from app.services.code_ai_service import CodeAiService, rank_extracts_for_query
 from app.services.code_runner_service import run_code as execute_code
 from app.services.fundamentals_catalog import FUNDAMENTALS_CATALOG
 from app.services.note_service import sync_cards
@@ -364,6 +368,208 @@ async def socratic_hint(
         hint_type=body.hint_type,
     )
     return SocraticCodeResponse(hint=hint_text)
+
+
+@router.post("/explain-selection", response_model=ExplainCodeSelectionResponse)
+async def explain_code_selection(
+    body: ExplainCodeSelectionRequest,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ExplainCodeSelectionResponse:
+    """Finds information within attached deck docs for selected code using local LLM."""
+    if not body.selected_code or not body.selected_code.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="selected_code cannot be empty",
+        )
+    ai_svc = CodeAiService(model=body.model or user.grading_model)
+    try:
+        source_ids = []
+        if body.deck_id:
+            try:
+                curr_deck = await db.get(Deck, parse_uuid(body.deck_id))
+                visited_deck_ids = set()
+                while curr_deck and curr_deck.user_id == user.id and curr_deck.id not in visited_deck_ids:
+                    visited_deck_ids.add(curr_deck.id)
+                    for d in (curr_deck.source_documents or []):
+                        if isinstance(d, dict) and d.get("source_id"):
+                            try:
+                                sid = parse_uuid(d["source_id"])
+                                if not body.doc_id or str(sid) == body.doc_id or str(d.get("id")) == body.doc_id:
+                                    if sid not in source_ids:
+                                        source_ids.append(sid)
+                            except Exception:
+                                pass
+                    if curr_deck.parent_id:
+                        curr_deck = await db.get(Deck, curr_deck.parent_id)
+                    else:
+                        break
+            except Exception as e:
+                log.warning("Deck document hierarchy lookup failed: %s", e)
+
+        # Fall back to user's general sources ONLY if no deck_id was specified
+        if not body.deck_id and not source_ids:
+            user_sources = (
+                await db.execute(select(Source.id).where(Source.user_id == user.id).limit(20))
+            ).scalars().all()
+            source_ids = list(user_sources)
+
+        if source_ids:
+            rows = (
+                await db.execute(
+                    select(Extract, Source)
+                    .join(Source, Extract.source_id == Source.id)
+                    .where(Extract.source_id.in_(source_ids))
+                )
+            ).all()
+            if rows:
+                top_excerpts = rank_extracts_for_query(
+                    query=body.selected_code,
+                    extracts_with_sources=rows,
+                    top_k=5,
+                )
+                res = await ai_svc.query_deck_docs(
+                    query=body.selected_code,
+                    doc_excerpts=top_excerpts,
+                    full_code=body.full_code,
+                    language=body.language,
+                    model=body.model,
+                )
+                sections = []
+                citation = res.get("doc_citation") or "Deck Documentation"
+                sections.append(f"**→ Cited Document.** {citation}")
+
+                verbatim = res.get("verbatim_passage")
+                if verbatim:
+                    sections.append(f"**→ Verbatim Specification.**\n> {verbatim}")
+
+                meaning = res.get("explanation") or res.get("found_info")
+                if meaning and meaning != verbatim:
+                    sections.append(f"**→ Meaning & Application.** {meaning}")
+
+                takeaway = res.get("key_takeaway")
+                if takeaway:
+                    sections.append(f"**→ Key Takeaway.** {takeaway}")
+
+                formatted_explanation = "\n\n".join(sections).strip()
+
+                return ExplainCodeSelectionResponse(
+                    explanation=formatted_explanation,
+                    occams_razor=res.get("explanation"),
+                    socratic_insight=res.get("key_takeaway"),
+                    doc_citation=res.get("doc_citation"),
+                    verbatim_passage=res.get("verbatim_passage"),
+                    doc_matches=res.get("citations", []),
+                    model_used=res.get("model_used", body.model or user.grading_model or "qwen2.5-coder:7b"),
+                    available_models=res.get("available_models", []),
+                )
+
+        formatted_explanation = (
+            "**→ Cited Document.** Deck Documentation\n\n"
+            "**→ Meaning & Application.** No documentation attached to this deck or its parent decks.\n\n"
+            "**→ Key Takeaway.** Upload documentation (.pdf, .md, .txt, code files) using the '📄 Deck Docs' button in the deck view to search specifications and ground code."
+        )
+        return ExplainCodeSelectionResponse(
+            explanation=formatted_explanation,
+            occams_razor=None,
+            socratic_insight=None,
+            doc_citation=None,
+            verbatim_passage=None,
+            doc_matches=[],
+            model_used=body.model or user.grading_model or "qwen2.5-coder:7b",
+            available_models=[],
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Documentation search failed: {exc}",
+        ) from exc
+
+
+@router.post("/ask-docs", response_model=AskDeckQuestionResponse)
+async def ask_deck_docs(
+    body: AskDeckQuestionRequest,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> AskDeckQuestionResponse:
+    """Answers a user's follow-up question grounded in code and attached deck documentation."""
+    if not body.question or not body.question.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="question cannot be empty",
+        )
+    ai_svc = CodeAiService(model=body.model or user.grading_model)
+    try:
+        source_ids = []
+        if body.deck_id:
+            try:
+                curr_deck = await db.get(Deck, parse_uuid(body.deck_id))
+                visited_deck_ids = set()
+                while curr_deck and curr_deck.user_id == user.id and curr_deck.id not in visited_deck_ids:
+                    visited_deck_ids.add(curr_deck.id)
+                    for d in (curr_deck.source_documents or []):
+                        if isinstance(d, dict) and d.get("source_id"):
+                            try:
+                                sid = parse_uuid(d["source_id"])
+                                if not body.doc_id or str(sid) == body.doc_id or str(d.get("id")) == body.doc_id:
+                                    if sid not in source_ids:
+                                        source_ids.append(sid)
+                            except Exception:
+                                pass
+                    if curr_deck.parent_id:
+                        curr_deck = await db.get(Deck, curr_deck.parent_id)
+                    else:
+                        break
+            except Exception as e:
+                log.warning("Deck document hierarchy lookup failed for ask_deck_docs: %s", e)
+
+        # Fall back to user's general sources ONLY if no deck_id was specified
+        if not body.deck_id and not source_ids:
+            user_sources = (
+                await db.execute(select(Source.id).where(Source.user_id == user.id).limit(20))
+            ).scalars().all()
+            source_ids = list(user_sources)
+
+        top_excerpts = []
+        if source_ids:
+            rows = (
+                await db.execute(
+                    select(Extract, Source)
+                    .join(Source, Extract.source_id == Source.id)
+                    .where(Extract.source_id.in_(source_ids))
+                )
+            ).all()
+            if rows:
+                search_query = f"{body.question} {body.selected_code or ''}".strip()
+                top_excerpts = rank_extracts_for_query(
+                    query=search_query,
+                    extracts_with_sources=rows,
+                    top_k=5,
+                )
+
+        res = await ai_svc.ask_deck_question(
+            question=body.question,
+            doc_excerpts=top_excerpts,
+            selected_code=body.selected_code,
+            full_code=body.full_code,
+            language=body.language,
+            history=body.history,
+            model=body.model,
+        )
+
+        return AskDeckQuestionResponse(
+            answer=res.get("answer", ""),
+            doc_citation=res.get("doc_citation"),
+            citations=res.get("citations", []),
+            model_used=res.get("model_used", body.model or user.grading_model or "qwen2.5-coder:7b"),
+            available_models=res.get("available_models", []),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Documentation question failed: {exc}",
+        ) from exc
+
 
 
 @router.post("/problems/forge", response_model=CodeProblemOut)

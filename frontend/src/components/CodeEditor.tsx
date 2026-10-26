@@ -1,4 +1,6 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { api } from '../api/client'
+import type { DeckDocMessage, ExplainCodeSelectionResponse } from '../api/types'
 
 export interface LineHintData {
   hint: string
@@ -26,6 +28,10 @@ export interface CodeEditorProps {
   hideFooter?: boolean
   borderless?: boolean
   placeholder?: string
+  // Context for LLM explanations (e.g. card title or problem prompt)
+  context?: string | null
+  // Deck ID for grounding code against attached documentation
+  deckId?: string | null
   // Socratic Line Hint props
   activeLineHint?: LineHintData | null
   lineHintLoading?: boolean
@@ -214,6 +220,233 @@ function highlightLeetCode(code: string): string {
   return html
 }
 
+function renderDocExplanation(text: string) {
+  const paragraphs = text.split(/\n\s*\n/)
+  return paragraphs.map((p, idx) => {
+    const trimmed = p.trim()
+    if (!trimmed) return null
+
+    const isVerbatim = trimmed.includes('Verbatim Specification') || trimmed.startsWith('>')
+    const isMeaningApp = trimmed.includes('Meaning & Application') || trimmed.includes('Relevant Rules') || trimmed.includes('Documentation Details') || trimmed.includes('→ Explanation.')
+    const isCitedDoc = trimmed.includes('Cited Document') || trimmed.includes('Found in Docs')
+    const isKeyTakeaway = trimmed.includes('Key Takeaway')
+
+    // Citation is already shown in the top header badge; suppress redundant box
+    if (isCitedDoc) {
+      return null
+    }
+
+    // If it's a verbatim specification block
+    if (isVerbatim) {
+      let quoteText = trimmed
+      if (quoteText.includes('**→ Verbatim Specification.**')) {
+        quoteText = quoteText.replace(/\*\*→\s*Verbatim Specification\.\*\*/i, '').trim()
+      }
+      quoteText = quoteText.replace(/^>\s*/gm, '').trim()
+
+      return (
+        <div
+          key={idx}
+          className="rounded-lg border-l-4 border-emerald-400 bg-emerald-950/30 border-y border-r border-emerald-500/20 p-3 shadow-sm space-y-1.5"
+        >
+          <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[10px] tracking-wider uppercase">
+            <span>📖</span>
+            <span>Verbatim Specification</span>
+          </div>
+          <div className="font-mono text-[12px] leading-relaxed text-emerald-100/95 whitespace-pre-wrap pl-0.5">
+            {quoteText}
+          </div>
+        </div>
+      )
+    }
+
+    // If it's a Meaning & Application block
+    if (isMeaningApp) {
+      let bodyText = trimmed
+      if (bodyText.includes('**→ Meaning & Application.**')) {
+        bodyText = bodyText.replace(/\*\*→\s*Meaning\s*(?:&|and)\s*Application\.\*\*/i, '').trim()
+      } else if (bodyText.includes('**→ Relevant Rules.**')) {
+        bodyText = bodyText.replace(/\*\*→\s*Relevant Rules\.\*\*/i, '').trim()
+      } else if (bodyText.includes('**→ Documentation Details.**')) {
+        bodyText = bodyText.replace(/\*\*→\s*Documentation Details\.\*\*/i, '').trim()
+      }
+      // Clean up punctuation spacing around inline backticks: e.g. " `token` ," -> " `token`,"
+      bodyText = bodyText.replace(/\s+([,.:;?!])/g, '$1')
+
+      const parts = bodyText.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
+
+      return (
+        <div
+          key={idx}
+          className="rounded-lg bg-black/40 border border-white/5 p-3.5 space-y-1.5 shadow-sm"
+        >
+          <div className="flex items-center gap-1.5 text-emerald-300 font-bold text-[11px] tracking-wider uppercase">
+            <span>💡</span>
+            <span>Meaning & Application</span>
+          </div>
+          <div className="text-[13px] leading-6 text-slate-100 font-sans">
+            {parts.map((part, pIdx) => {
+              if (part.startsWith('**') && part.endsWith('**')) {
+                return (
+                  <strong key={pIdx} className="text-emerald-300 font-semibold">
+                    {part.slice(2, -2)}
+                  </strong>
+                )
+              }
+              if (part.startsWith('`') && part.endsWith('`')) {
+                return (
+                  <code
+                    key={pIdx}
+                    className="px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-300 font-mono text-[12px] border border-emerald-500/25 inline-block my-0.5"
+                  >
+                    {part.slice(1, -1)}
+                  </code>
+                )
+              }
+              return <span key={pIdx}>{part}</span>
+            })}
+          </div>
+        </div>
+      )
+    }
+
+    // Key takeaway block
+    if (isKeyTakeaway) {
+      let bodyText = trimmed
+      if (bodyText.includes('**→ Key Takeaway.**')) {
+        bodyText = bodyText.replace(/\*\*→\s*Key Takeaway\.\*\*/i, '').trim()
+      }
+      bodyText = bodyText.replace(/\s+([,.:;?!])/g, '$1')
+      const parts = bodyText.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
+
+      return (
+        <div
+          key={idx}
+          className="flex items-start gap-2.5 rounded-lg bg-sky-950/30 border border-sky-500/30 px-3.5 py-2.5 text-sky-100 shadow-sm"
+        >
+          <span className="text-sky-400 font-bold text-sm shrink-0 mt-0.5">⚡</span>
+          <div className="text-[12px] leading-relaxed text-sky-100/90 font-sans">
+            <span className="font-semibold text-sky-300 mr-1.5">Key Takeaway:</span>
+            {parts.map((part, pIdx) => {
+              if (part.startsWith('**') && part.endsWith('**')) {
+                return (
+                  <strong key={pIdx} className="text-sky-200 font-semibold">
+                    {part.slice(2, -2)}
+                  </strong>
+                )
+              }
+              if (part.startsWith('`') && part.endsWith('`')) {
+                return (
+                  <code
+                    key={pIdx}
+                    className="px-1.5 py-0.5 rounded bg-black/60 text-sky-200 font-mono text-[11px] border border-sky-500/20"
+                  >
+                    {part.slice(1, -1)}
+                  </code>
+                )
+              }
+              return <span key={pIdx}>{part}</span>
+            })}
+          </div>
+        </div>
+      )
+    }
+
+    // Parse simple inline bolding (**text**) and code (`code`)
+    const parts = trimmed.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
+
+    return (
+      <div
+        key={idx}
+        className="p-3 rounded-lg bg-black/30 border border-white/10 text-slate-200 text-[13px] leading-relaxed"
+      >
+        <p>
+          {parts.map((part, pIdx) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              const boldContent = part.slice(2, -2)
+              return (
+                <strong key={pIdx} className="text-white font-semibold">
+                  {boldContent}
+                </strong>
+              )
+            }
+            if (part.startsWith('`') && part.endsWith('`')) {
+              return (
+                <code
+                  key={pIdx}
+                  className="px-1.5 py-0.5 rounded bg-black/60 text-emerald-200 font-mono text-[11px] border border-emerald-500/20"
+                >
+                  {part.slice(1, -1)}
+                </code>
+              )
+            }
+            return <span key={pIdx}>{part}</span>
+          })}
+        </p>
+      </div>
+    )
+  })
+}
+
+function renderFormattedMarkdown(text: string) {
+  const paragraphs = text.split(/\n\s*\n/)
+  return paragraphs.map((p, idx) => {
+    const trimmed = p.trim()
+    if (!trimmed) return null
+
+    // Code block check ```lang ... ```
+    if (trimmed.startsWith('```') && trimmed.endsWith('```')) {
+      const codeLines = trimmed.slice(3, -3).replace(/^[a-z0-9_-]+\n/i, '')
+      return (
+        <pre
+          key={idx}
+          className="my-1.5 p-2 rounded bg-black/70 border border-emerald-500/25 font-mono text-[11px] text-emerald-200 overflow-x-auto whitespace-pre leading-relaxed"
+        >
+          {codeLines}
+        </pre>
+      )
+    }
+
+    const lines = trimmed.split('\n')
+    return (
+      <div key={idx} className="space-y-1 text-[12px] leading-relaxed text-slate-200 font-sans">
+        {lines.map((line, lIdx) => {
+          const isBullet = line.trim().startsWith('- ') || line.trim().startsWith('* ')
+          const cleanLine = isBullet ? line.trim().slice(2) : line
+          const parts = cleanLine.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
+          return (
+            <div key={lIdx} className={isBullet ? 'flex items-start gap-1.5 pl-1.5' : ''}>
+              {isBullet && <span className="text-emerald-400 font-bold shrink-0 mt-0.5">•</span>}
+              <div>
+                {parts.map((part, pIdx) => {
+                  if (part.startsWith('**') && part.endsWith('**')) {
+                    return (
+                      <strong key={pIdx} className="text-emerald-300 font-semibold">
+                        {part.slice(2, -2)}
+                      </strong>
+                    )
+                  }
+                  if (part.startsWith('`') && part.endsWith('`')) {
+                    return (
+                      <code
+                        key={pIdx}
+                        className="px-1.5 py-0.5 rounded bg-emerald-950/70 text-emerald-300 font-mono text-[11px] border border-emerald-500/25 inline-block mx-0.5"
+                      >
+                        {part.slice(1, -1)}
+                      </code>
+                    )
+                  }
+                  return <span key={pIdx}>{part}</span>
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  })
+}
+
 export function CodeEditor({
   code,
   onChange,
@@ -230,6 +463,8 @@ export function CodeEditor({
   hideFooter = false,
   borderless = false,
   placeholder = '# Write your solution here...',
+  context,
+  deckId,
   activeLineHint,
   lineHintLoading = false,
   onRequestLineHint,
@@ -241,9 +476,71 @@ export function CodeEditor({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const highlightRef = useRef<HTMLPreElement | null>(null)
   const lineNumbersRef = useRef<HTMLDivElement | null>(null)
+  const editorContainerRef = useRef<HTMLDivElement | null>(null)
 
   const [cursorLine, setCursorLine] = useState(1)
   const [cursorCol, setCursorCol] = useState(1)
+
+  // Selection & Deck Documentation Search state
+  const [selectedText, setSelectedText] = useState('')
+  const [floatingPillPos, setFloatingPillPos] = useState<{ top: number; left: number } | null>(null)
+  const [isSearchingDocs, setIsSearchingDocs] = useState(false)
+  const [docSearchResult, setDocSearchResult] = useState<
+    (ExplainCodeSelectionResponse & { selectedSnippet: string }) | null
+  >(null)
+  const [docSearchError, setDocSearchError] = useState<string | null>(null)
+  const [showDocMatches, setShowDocMatches] = useState(false)
+  const [selectedModel, setSelectedModel] = useState<string | null>(null)
+  const [availableModels, setAvailableModels] = useState<string[]>([])
+  const [copiedDocResult, setCopiedDocResult] = useState(false)
+
+  // Interactive Deck Documentation Q&A state
+  const [qaHistory, setQaHistory] = useState<DeckDocMessage[]>([])
+  const [qaInput, setQaInput] = useState('')
+  const [isAskingQuestion, setIsAskingQuestion] = useState(false)
+  const [qaError, setQaError] = useState<string | null>(null)
+  const qaThreadEndRef = useRef<HTMLDivElement | null>(null)
+
+  const promptSuggestions = useMemo(() => {
+    const c = code.toLowerCase()
+    if (c.includes('empty') || c.includes('items') || c.includes('rest')) {
+      return [
+        'Why check inventory.kind === "empty" first?',
+        'How does union narrowing work here?',
+        'What happens if there are no weapons?',
+        'What is the time & space complexity?',
+      ]
+    }
+    if (c.includes('type') || c.includes('interface')) {
+      return [
+        'Explain the type invariants and structure',
+        'How does TypeScript narrow these union types?',
+        'What edge cases must be handled?',
+        'How does the recursion base case work?',
+      ]
+    }
+    return [
+      'Explain the core mechanism of this code',
+      'What are the edge cases to watch out for?',
+      'How does this adhere to course rules?',
+      'What is the time and space complexity?',
+    ]
+  }, [code])
+
+  // Query installed local models on mount
+  useEffect(() => {
+    api
+      .models()
+      .then((data) => {
+        if (data?.models && data.models.length > 0) {
+          setAvailableModels(data.models)
+        }
+        if (data?.active && !selectedModel) {
+          setSelectedModel(data.active)
+        }
+      })
+      .catch(() => {})
+  }, [selectedModel])
 
   const lines = code.split('\n')
   const lineCount = Math.max(lines.length, 1)
@@ -267,6 +564,158 @@ export function CodeEditor({
       onCursorChange(currentLineNumber, currentColNumber)
     }
   }, [code, onCursorChange])
+
+  // Track text selection in textarea and position floating pill
+  const handleSelectOrMouseUp = useCallback(
+    (e?: React.MouseEvent | React.SyntheticEvent) => {
+      updateCursorPosition()
+      const textarea = textareaRef.current
+      if (!textarea) return
+      const start = textarea.selectionStart ?? 0
+      const end = textarea.selectionEnd ?? 0
+      if (start !== end) {
+        const slice = code.slice(Math.min(start, end), Math.max(start, end))
+        if (slice.trim().length > 0) {
+          setSelectedText(slice)
+          if (editorContainerRef.current) {
+            const containerRect = editorContainerRef.current.getBoundingClientRect()
+            if (e && 'clientX' in e && (e as React.MouseEvent).clientX) {
+              const mouseEvent = e as React.MouseEvent
+              const relativeX = Math.max(
+                80,
+                Math.min(containerRect.width - 80, mouseEvent.clientX - containerRect.left)
+              )
+              const relativeY = Math.max(
+                32,
+                Math.min(containerRect.height - 35, mouseEvent.clientY - containerRect.top - 10)
+              )
+              setFloatingPillPos({ top: relativeY, left: relativeX })
+            } else if (!floatingPillPos) {
+              setFloatingPillPos({ top: 36, left: Math.min(containerRect.width - 80, 200) })
+            }
+          }
+          return
+        }
+      }
+      setSelectedText('')
+      setFloatingPillPos(null)
+    },
+    [code, floatingPillPos, updateCursorPosition]
+  )
+
+  const triggerDocSearch = useCallback(
+    async (codeToSearch?: string, modelOverride?: string) => {
+      const targetModel = modelOverride || selectedModel
+
+      let text = (codeToSearch ?? selectedText).trim()
+      if (!text && textareaRef.current) {
+        const start = textareaRef.current.selectionStart ?? 0
+        const end = textareaRef.current.selectionEnd ?? 0
+        if (start !== end) {
+          text = code.slice(Math.min(start, end), Math.max(start, end)).trim()
+        }
+      }
+      // If still empty, fall back to current line
+      if (!text) {
+        const lineList = code.split('\n')
+        text = (lineList[cursorLine - 1] ?? '').trim()
+      }
+      if (!text) {
+        setDocSearchError('Please select or position cursor on code to search documentation.')
+        return
+      }
+
+      setIsSearchingDocs(true)
+      setDocSearchError(null)
+      try {
+        const res = await api.explainCodeSelection({
+          selected_code: text,
+          full_code: code,
+          language,
+          context,
+          mode: 'docs',
+          model: targetModel,
+          deck_id: deckId,
+        })
+        setDocSearchResult({ ...res, selectedSnippet: text })
+        if (res.available_models && res.available_models.length > 0) {
+          setAvailableModels(res.available_models)
+        }
+        if (res.model_used && !selectedModel) {
+          setSelectedModel(res.model_used)
+        }
+      } catch (err: any) {
+        setDocSearchError(
+          err?.message ||
+            "Failed to search deck documentation. Ensure local server & Ollama are running."
+        )
+      } finally {
+        setIsSearchingDocs(false)
+      }
+    },
+    [code, context, cursorLine, deckId, language, selectedModel, selectedText]
+  )
+
+  const handleCopyDocResult = () => {
+    if (docSearchResult?.explanation) {
+      void navigator.clipboard.writeText(docSearchResult.explanation)
+      setCopiedDocResult(true)
+      setTimeout(() => setCopiedDocResult(false), 2000)
+    }
+  }
+
+  const handleAskQuestion = useCallback(
+    async (overrideQuestion?: string) => {
+      const q = (overrideQuestion ?? qaInput).trim()
+      if (!q || isAskingQuestion) return
+
+      const userMessage: DeckDocMessage = { role: 'user', content: q }
+      const updatedHistory = [...qaHistory, userMessage]
+      setQaHistory(updatedHistory)
+      setQaInput('')
+      setIsAskingQuestion(true)
+      setQaError(null)
+
+      try {
+        const snippet = docSearchResult?.selectedSnippet || selectedText || ''
+        const res = await api.askDeckQuestion({
+          question: q,
+          selected_code: snippet,
+          full_code: code,
+          language,
+          context,
+          deck_id: deckId,
+          model: selectedModel,
+          history: updatedHistory.slice(0, -1),
+        })
+
+        const assistantMessage: DeckDocMessage = {
+          role: 'assistant',
+          content: res.answer,
+          citation: res.doc_citation,
+        }
+        setQaHistory([...updatedHistory, assistantMessage])
+
+        if (res.available_models && res.available_models.length > 0) {
+          setAvailableModels(res.available_models)
+        }
+        if (res.model_used && !selectedModel) {
+          setSelectedModel(res.model_used)
+        }
+      } catch (err: any) {
+        setQaError(
+          err?.message ||
+            'Failed to get answer from local LLM. Check that Ollama is running.'
+        )
+      } finally {
+        setIsAskingQuestion(false)
+        setTimeout(() => {
+          qaThreadEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+        }, 50)
+      }
+    },
+    [code, context, deckId, docSearchResult?.selectedSnippet, isAskingQuestion, language, qaHistory, qaInput, selectedModel, selectedText]
+  )
 
   const triggerLineHint = useCallback(
     (targetLine?: number) => {
@@ -299,11 +748,32 @@ export function CodeEditor({
 
   // Handle Tab, Shift+Tab, Enter (auto-indent), auto-closing brackets, and shortcuts
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Escape to dismiss Socratic line hint callout
-    if (e.key === 'Escape' && (activeLineHint || lineHintLoading)) {
+    // Escape to dismiss doc search tray or line hint
+    if (e.key === 'Escape') {
+      if (docSearchResult || isSearchingDocs || docSearchError) {
+        e.preventDefault()
+        e.stopPropagation()
+        setDocSearchResult(null)
+        setDocSearchError(null)
+        setIsSearchingDocs(false)
+        setQaHistory([])
+        setQaInput('')
+        setQaError(null)
+        return
+      }
+      if (activeLineHint || lineHintLoading) {
+        e.preventDefault()
+        e.stopPropagation()
+        onDismissLineHint?.()
+        return
+      }
+    }
+
+    // Alt + D or Alt + E: Search Deck Documentation for selection
+    if (e.altKey && (e.key === 'd' || e.key === 'D' || e.key === 'e' || e.key === 'E')) {
       e.preventDefault()
       e.stopPropagation()
-      onDismissLineHint?.()
+      void triggerDocSearch()
       return
     }
 
@@ -457,7 +927,8 @@ export function CodeEditor({
 
   return (
     <div
-      className={`flex flex-col ${
+      ref={editorContainerRef}
+      className={`relative flex flex-col ${
         borderless ? 'bg-[#1a1a1a]' : 'rounded-xl border border-[#282828] bg-[#1a1a1a] shadow-2xl'
       } text-[#eff1f6] overflow-hidden`}
     >
@@ -490,7 +961,7 @@ export function CodeEditor({
             </div>
           </div>
 
-          {/* Sub-Header: Language Selector & Auto Indicator (Matching LeetCode) */}
+          {/* Sub-Header: Language Selector, Explain Selection, Line Hint, Grade & Auto Indicator */}
           <div className="flex items-center justify-between border-b border-[#282828] bg-[#1e1e1e] px-4 py-1.5 text-xs">
             <div className="flex items-center gap-2.5">
               {onLanguageChange ? (
@@ -513,6 +984,25 @@ export function CodeEditor({
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
+              {/* Search Deck Docs Button */}
+              <button
+                type="button"
+                onClick={() => void triggerDocSearch()}
+                disabled={isSearchingDocs}
+                className={`flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition cursor-pointer shrink-0 whitespace-nowrap ${
+                  isSearchingDocs
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse'
+                    : selectedText.trim()
+                    ? 'bg-emerald-600/30 text-emerald-200 border border-emerald-500/50 hover:bg-emerald-600/40 shadow-sm ring-1 ring-emerald-500/30'
+                    : 'bg-[#182822] hover:bg-[#1e332b] text-emerald-300 border border-emerald-500/30 hover:text-emerald-200'
+                }`}
+                title="Search and ground selected code against attached deck documentation (Alt+D)"
+              >
+                <span className="text-emerald-400">📄</span>
+                <span>{isSearchingDocs ? 'Searching Docs…' : selectedText.trim() ? 'Search Docs' : 'Deck Docs'}</span>
+                <span className="text-[10px] text-emerald-400/60 font-mono hidden md:inline">(Alt+D)</span>
+              </button>
+
               {onRequestLineHint && !readOnly && (
                 <button
                   type="button"
@@ -634,7 +1124,40 @@ export function CodeEditor({
             }}
           />
 
-          {/* Textarea Input Overlay */}
+          {/* Floating Search Deck Docs Pill on Selection */}
+          {floatingPillPos && selectedText.trim().length > 0 && !isSearchingDocs && (
+            <div
+              style={{
+                position: 'absolute',
+                top: floatingPillPos.top,
+                left: floatingPillPos.left,
+                zIndex: 35,
+                transform: 'translate(-50%, -100%)',
+              }}
+              className="animate-in fade-in zoom-in-95 duration-150 pointer-events-auto select-none flex items-center gap-1.5"
+            >
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  // Prevent mousedown from collapsing the textarea selection
+                  e.preventDefault()
+                }}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  void triggerDocSearch(selectedText)
+                }}
+                className="flex items-center gap-1.5 rounded-full bg-[#09221a]/95 hover:bg-[#0e3328] text-emerald-200 border border-emerald-400/60 px-3.5 py-1 text-xs font-semibold shadow-2xl transition cursor-pointer ring-2 ring-emerald-500/25 hover:scale-105 backdrop-blur-md"
+                title="Search attached deck documentation for this selected code (Alt+D)"
+              >
+                <span className="text-emerald-400 font-bold">📄</span>
+                <span>Search Docs</span>
+                <kbd className="px-1 py-0.2 rounded bg-black/60 text-[10px] font-mono text-emerald-300 border border-emerald-500/30">Alt+D</kbd>
+              </button>
+            </div>
+          )}
+
+          {/* Textarea Input Overlay with Translucent Selection Highlight (No solid blue blur-out) */}
           <textarea
             ref={textareaRef}
             value={code}
@@ -642,9 +1165,10 @@ export function CodeEditor({
               onChange(e.target.value)
               setTimeout(updateCursorPosition, 0)
             }}
-            onKeyUp={updateCursorPosition}
+            onKeyUp={handleSelectOrMouseUp}
+            onMouseUp={handleSelectOrMouseUp}
             onClick={updateCursorPosition}
-            onSelect={updateCursorPosition}
+            onSelect={handleSelectOrMouseUp}
             onKeyDown={handleKeyDown}
             onScroll={handleScroll}
             readOnly={readOnly}
@@ -652,7 +1176,7 @@ export function CodeEditor({
             autoCapitalize="off"
             autoComplete="off"
             autoCorrect="off"
-            className="absolute inset-0 m-0 w-full h-full resize-none bg-transparent p-3 font-mono text-[13px] leading-6 text-transparent caret-white focus:outline-none whitespace-pre overflow-auto selection:bg-[#264f78]"
+            className="code-editor-textarea absolute inset-0 m-0 w-full h-full resize-none bg-transparent p-3 font-mono text-[13px] leading-6 text-transparent caret-white focus:outline-none whitespace-pre overflow-auto selection:bg-sky-500/35 selection:text-transparent"
             style={{
               fontFamily: 'Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
               tabSize: 4,
@@ -661,6 +1185,312 @@ export function CodeEditor({
           />
         </div>
       </div>
+
+      {/* Inline Deck Documentation Search Callout Tray */}
+      {(isSearchingDocs || docSearchResult || docSearchError) && (
+        <div className="border-t border-emerald-500/30 bg-[#0b1411] px-4 py-3.5 text-xs text-emerald-100 shadow-2xl animate-in fade-in duration-200">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+              <div className="space-y-2 min-w-0 flex-1">
+                {/* Header row: badge, citation, model picker */}
+                <div className="flex items-center flex-wrap gap-2 justify-between">
+                  <div className="flex items-center flex-wrap gap-2">
+                    <span className="flex items-center gap-2 font-semibold text-xs tracking-wide">
+                      <span className="text-emerald-400">📄</span>
+                      <span className="text-emerald-200 font-bold">Deck Documentation</span>
+                      {docSearchResult?.doc_citation && (
+                        <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-mono text-[11px] font-semibold border border-emerald-500/40 shadow-sm">
+                          {docSearchResult.doc_citation}
+                        </span>
+                      )}
+                    </span>
+
+                    {/* Model Picker */}
+                    {availableModels.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-emerald-400/70">Model:</span>
+                        <select
+                          value={selectedModel || docSearchResult?.model_used || availableModels[0]}
+                          onChange={(e) => {
+                            const newModel = e.target.value
+                            setSelectedModel(newModel)
+                            if (docSearchResult?.selectedSnippet) {
+                              void triggerDocSearch(docSearchResult.selectedSnippet, newModel)
+                            }
+                          }}
+                          className="rounded bg-[#0c3124] px-2 py-0.5 text-[10px] font-mono text-emerald-200 border border-emerald-500/30 focus:outline-none cursor-pointer"
+                        >
+                          {availableModels.map((m) => (
+                            <option key={m} value={m} className="bg-[#09221a] text-slate-200">
+                              {m}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Selected code preview snippet */}
+                  {docSearchResult?.selectedSnippet && (
+                    <span
+                      className="font-mono text-[10px] text-emerald-300/90 bg-black/70 px-2 py-0.5 rounded truncate max-w-xs border border-emerald-500/20"
+                      title={docSearchResult.selectedSnippet}
+                    >
+                      {docSearchResult.selectedSnippet.replace(/\s+/g, ' ').slice(0, 45)}
+                      {docSearchResult.selectedSnippet.length > 45 ? '…' : ''}
+                    </span>
+                  )}
+                </div>
+
+                {/* Content body */}
+                {isSearchingDocs ? (
+                  <div className="flex items-center gap-2 text-emerald-300/80 text-xs py-2">
+                    <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin" />
+                    <span>
+                      Searching deck documentation for selected code using local LLM ({selectedModel || docSearchResult?.model_used || 'Qwen 2.5 Coder'})…
+                    </span>
+                  </div>
+                ) : docSearchError ? (
+                  <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs flex items-center justify-between">
+                    <span>{docSearchError}</span>
+                    <button
+                      type="button"
+                      onClick={() => void triggerDocSearch()}
+                      className="underline font-semibold ml-2 hover:text-rose-100 cursor-pointer"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2 pt-1 font-sans">
+                    {docSearchResult?.explanation && renderDocExplanation(docSearchResult.explanation)}
+
+                    {/* Collapsible Matched Document Excerpts Section */}
+                    {docSearchResult?.doc_matches && docSearchResult.doc_matches.length > 0 && (
+                      <div className="mt-2.5 pt-2 border-t border-emerald-500/20">
+                        <button
+                          type="button"
+                          onClick={() => setShowDocMatches(!showDocMatches)}
+                          className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-300/80 hover:text-emerald-200 transition cursor-pointer py-1"
+                        >
+                          <span className="text-[9px]">{showDocMatches ? '▼' : '▶'}</span>
+                          <span>
+                            {showDocMatches ? 'Hide' : 'Show'} Matched Course Excerpt{docSearchResult.doc_matches.length > 1 ? 's' : ''} ({docSearchResult.doc_matches.length})
+                          </span>
+                        </button>
+                        {showDocMatches && (
+                          <div className="mt-2 space-y-2 max-h-48 overflow-y-auto pr-1">
+                            {docSearchResult.doc_matches.map((m, mIdx) => (
+                              <div
+                                key={m.extract_id || mIdx}
+                                className="p-2 rounded bg-black/60 border border-emerald-500/20 text-slate-300 text-[11px] font-mono leading-relaxed"
+                              >
+                                <div className="flex items-center justify-between text-emerald-400 font-semibold mb-1 text-[10px]">
+                                  <span>{m.source_title}</span>
+                                  <span className="bg-emerald-950 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                                    {m.locator || 'General'}
+                                  </span>
+                                </div>
+                                <div className="text-slate-300 whitespace-pre-wrap font-mono text-[11px] line-clamp-4 hover:line-clamp-none transition">
+                                  {m.content}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Interactive Follow-Up Questions (Local LLM) */}
+                    <div className="mt-3 pt-2.5 border-t border-emerald-500/25 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-emerald-300 font-bold text-[11px] tracking-wider uppercase">
+                          <span>💬</span>
+                          <span>Ask Further Questions</span>
+                          <span className="text-[10px] text-emerald-400/70 font-normal lowercase font-sans">
+                            (Local LLM · {selectedModel || docSearchResult?.model_used || 'Qwen'})
+                          </span>
+                        </div>
+                        {qaHistory.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setQaHistory([])}
+                            className="text-[10px] text-emerald-400/60 hover:text-emerald-200 underline cursor-pointer"
+                          >
+                            Clear Thread
+                          </button>
+                        )}
+                      </div>
+
+                      {/* QA Thread Messages */}
+                      {qaHistory.length > 0 && (
+                        <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                          {qaHistory.map((turn, tIdx) => {
+                            const isUser = turn.role === 'user'
+                            return (
+                              <div
+                                key={tIdx}
+                                className={`rounded-lg p-2.5 shadow-sm text-xs ${
+                                  isUser
+                                    ? 'bg-black/60 border border-emerald-500/30 text-emerald-100 ml-4'
+                                    : 'bg-[#061811] border border-emerald-500/40 text-slate-100 mr-4'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between text-[10px] font-semibold mb-1">
+                                  <span className={isUser ? 'text-emerald-300' : 'text-emerald-400'}>
+                                    {isUser ? '👤 You' : `🤖 ${selectedModel || docSearchResult?.model_used || 'Local LLM'}`}
+                                  </span>
+                                  {turn.citation && !isUser && (
+                                    <span className="px-1.5 py-0.2 rounded bg-black/60 text-emerald-300 font-mono text-[9px] border border-emerald-500/30">
+                                      {turn.citation}
+                                    </span>
+                                  )}
+                                </div>
+                                <div>
+                                  {isUser ? (
+                                    <p className="text-emerald-100/90 whitespace-pre-wrap font-sans">{turn.content}</p>
+                                  ) : (
+                                    renderFormattedMarkdown(turn.content)
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                          <div ref={qaThreadEndRef} />
+                        </div>
+                      )}
+
+                      {/* Thinking spinner while waiting for response */}
+                      {isAskingQuestion && (
+                        <div className="flex items-center gap-2 text-emerald-300/80 text-xs py-1.5 px-2.5 rounded bg-emerald-950/40 border border-emerald-500/25">
+                          <span className="inline-block w-3 h-3 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin" />
+                          <span>
+                            Asking local LLM ({selectedModel || docSearchResult?.model_used || 'Qwen 2.5 Coder'})…
+                          </span>
+                        </div>
+                      )}
+
+                      {/* QA Error */}
+                      {qaError && (
+                        <div className="p-2 rounded bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs flex items-center justify-between">
+                          <span>{qaError}</span>
+                          <button
+                            type="button"
+                            onClick={() => void handleAskQuestion()}
+                            className="underline font-semibold ml-2 hover:text-rose-100 cursor-pointer"
+                          >
+                            Retry
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Suggested quick questions (when no messages yet) */}
+                      {qaHistory.length === 0 && !isAskingQuestion && (
+                        <div className="space-y-1">
+                          <span className="text-[10px] text-emerald-400/70 font-medium">Quick suggestions:</span>
+                          <div className="flex items-center flex-wrap gap-1.5">
+                            {promptSuggestions.map((prompt) => (
+                              <button
+                                key={prompt}
+                                type="button"
+                                onClick={() => void handleAskQuestion(prompt)}
+                                className="rounded-full bg-black/60 hover:bg-emerald-950/80 border border-emerald-500/30 hover:border-emerald-400 px-2.5 py-0.5 text-[10px] text-emerald-300 hover:text-emerald-100 transition cursor-pointer shadow-sm"
+                              >
+                                {prompt}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Input form */}
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault()
+                          void handleAskQuestion()
+                        }}
+                        className="flex items-center gap-2 pt-1"
+                      >
+                        <input
+                          type="text"
+                          value={qaInput}
+                          onChange={(e) => setQaInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
+                              e.stopPropagation()
+                              ;(e.target as HTMLElement).blur()
+                            }
+                          }}
+                          placeholder="Ask a follow-up question (e.g. why check empty first?)..."
+                          disabled={isAskingQuestion}
+                          className="flex-1 rounded-lg bg-black/70 border border-emerald-500/35 px-3 py-1.5 text-xs text-slate-100 placeholder-emerald-400/40 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/50 transition font-sans"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isAskingQuestion || !qaInput.trim()}
+                          className="rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-xs font-semibold text-white shadow transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                        >
+                          {isAskingQuestion ? (
+                            <>
+                              <span className="inline-block w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                              <span>Asking…</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Ask</span>
+                              <span className="text-[10px] opacity-75">↵</span>
+                            </>
+                          )}
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right side buttons */}
+            <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+              {docSearchResult && !isSearchingDocs && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleCopyDocResult}
+                    title="Copy document findings"
+                    className="rounded px-2 py-1 text-[11px] font-medium text-emerald-300 hover:text-emerald-100 hover:bg-emerald-500/20 transition cursor-pointer"
+                  >
+                    {copiedDocResult ? 'Copied' : 'Copy'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void triggerDocSearch(docSearchResult.selectedSnippet)}
+                    title="Re-search documentation"
+                    className="rounded px-2 py-1 text-[11px] font-medium text-emerald-300 hover:text-emerald-100 hover:bg-emerald-500/20 transition cursor-pointer"
+                  >
+                    Re-search
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setDocSearchResult(null)
+                  setDocSearchError(null)
+                  setIsSearchingDocs(false)
+                  setQaHistory([])
+                  setQaInput('')
+                  setQaError(null)
+                }}
+                title="Dismiss (Escape)"
+                className="rounded p-1 text-slate-400 hover:text-slate-200 hover:bg-white/10 transition cursor-pointer text-xs"
+              >
+                &times;
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Inline Socratic Line Hint Callout Tray */}
       {(lineHintLoading || activeLineHint) && (
@@ -741,6 +1571,20 @@ export function CodeEditor({
                 <kbd className="rounded bg-[#282828] px-1 py-0.5 text-emerald-300 border border-emerald-500/30">Alt+G</kbd> Grade
               </span>
             )}
+            {/* Search Deck Docs footer button */}
+            <button
+              type="button"
+              onClick={() => void triggerDocSearch()}
+              className={`cursor-pointer transition flex items-center gap-1 shrink-0 ${
+                selectedText.trim()
+                  ? 'text-emerald-300 font-bold bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/40'
+                  : 'text-emerald-400/90 hover:text-emerald-200'
+              }`}
+              title="Search attached deck documentation for selected code (Alt+D)"
+            >
+              <kbd className="rounded bg-[#282828] px-1 py-0.5 text-emerald-300 border border-emerald-500/30">Alt+D</kbd>
+              <span>{selectedText.trim() ? 'Search Docs' : 'Docs'}</span>
+            </button>
             <span className="shrink-0"><kbd className="rounded bg-[#282828] px-1 py-0.5 text-[#eff1f6]">Ctrl+↵</kbd> Run</span>
             <span className="shrink-0 hidden xl:inline"><kbd className="rounded bg-[#282828] px-1 py-0.5 text-[#eff1f6]">Ctrl+⇧+↵</kbd> Submit</span>
           </div>

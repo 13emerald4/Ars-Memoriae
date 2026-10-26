@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { api } from '../api/client'
-import type { QueueItem } from '../api/types'
+import type { DeckDocumentOut, QueueItem } from '../api/types'
 import { CodeEditor } from './CodeEditor'
 import { RichText } from './ui'
 import { isCodeCard, extractCleanCode, detectCodeLanguage } from '../utils/codeUtils'
@@ -36,6 +36,15 @@ export function DeckCardsViewer({
   const [copiedCode, setCopiedCode] = useState(false)
   const [showTestsSection, setShowTestsSection] = useState(false)
 
+  // Deck documentation state
+  const [deckDocs, setDeckDocs] = useState<DeckDocumentOut[]>([])
+  const [showDocsModal, setShowDocsModal] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [docTitle, setDocTitle] = useState('')
+  const [uploadingDoc, setUploadingDoc] = useState(false)
+  const [docUploadError, setDocUploadError] = useState<string | null>(null)
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null)
+
   // Fetch cards when opened
   const loadCards = useCallback(async (id: string) => {
     try {
@@ -58,11 +67,52 @@ export function DeckCardsViewer({
     }
   }, [currentCardId])
 
+  // Fetch deck documentation
+  const loadDeckDocs = useCallback(async (id: string) => {
+    try {
+      const res = await api.getDeckDocuments(id)
+      setDeckDocs(res?.documents || [])
+    } catch {
+      // ignore
+    }
+  }, [])
+
   useEffect(() => {
     if (isOpen && deckId) {
       void loadCards(deckId)
+      void loadDeckDocs(deckId)
     }
-  }, [isOpen, deckId, loadCards])
+  }, [isOpen, deckId, loadCards, loadDeckDocs])
+
+  const handleUploadDocument = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!deckId || !selectedFile) return
+    setUploadingDoc(true)
+    setDocUploadError(null)
+    try {
+      const res = await api.uploadDeckDocument(deckId, selectedFile, docTitle.trim() || undefined)
+      setDeckDocs((prev) => [res, ...prev])
+      setSelectedFile(null)
+      setDocTitle('')
+    } catch (err: any) {
+      setDocUploadError(err?.message || 'Failed to upload document.')
+    } finally {
+      setUploadingDoc(false)
+    }
+  }
+
+  const handleDeleteDocument = async (docId: string) => {
+    if (!deckId) return
+    setDeletingDocId(docId)
+    try {
+      await api.deleteDeckDocument(deckId, docId)
+      setDeckDocs((prev) => prev.filter((d) => d.id !== docId && d.source_id !== docId))
+    } catch (err: any) {
+      alert(err?.message || 'Failed to delete document.')
+    } finally {
+      setDeletingDocId(null)
+    }
+  }
 
   // Close on Escape key
   useEffect(() => {
@@ -152,15 +202,32 @@ export function DeckCardsViewer({
 
           <div className="flex items-center gap-2">
             {deckId && (
-              <button
-                type="button"
-                onClick={() => void loadCards(deckId)}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border border-ink-line bg-[#1f2637] hover:bg-[#283248] text-slate-300 transition cursor-pointer"
-                title="Refresh"
-              >
-                <span>↻</span>
-                <span className="hidden sm:inline">Refresh</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowDocsModal(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-emerald-500/40 bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-200 transition cursor-pointer shadow-sm"
+                  title="Manage attached reference documents for this deck"
+                >
+                  <span>📄</span>
+                  <span>Deck Docs</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-[10px] font-mono text-emerald-300">
+                    {deckDocs.length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void loadCards(deckId)
+                    void loadDeckDocs(deckId)
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border border-ink-line bg-[#1f2637] hover:bg-[#283248] text-slate-300 transition cursor-pointer"
+                  title="Refresh"
+                >
+                  <span>↻</span>
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
+              </>
             )}
             <button
               type="button"
@@ -511,6 +578,8 @@ export function DeckCardsViewer({
                       hideHeader={true}
                       borderless={true}
                       placeholder="// Reference solution"
+                      context={selectedCard.title || selectedCard.front}
+                      deckId={deckId}
                     />
                   ) : (
                     <div className="p-4 text-xs sm:text-sm text-slate-200 leading-relaxed">
@@ -591,6 +660,8 @@ export function DeckCardsViewer({
                               height="140px"
                               hideHeader={true}
                               borderless={true}
+                              context={selectedCard.title || selectedCard.front}
+                              deckId={deckId}
                             />
                           </div>
                         )}
@@ -609,6 +680,8 @@ export function DeckCardsViewer({
                               height="160px"
                               hideHeader={true}
                               borderless={true}
+                              context={selectedCard.title || selectedCard.front}
+                              deckId={deckId}
                             />
                           </div>
                         )}
@@ -625,6 +698,194 @@ export function DeckCardsViewer({
           </div>
         </div>
       </div>
+
+      {/* Deck Documentation Modal */}
+      {showDocsModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="relative flex flex-col w-full max-w-2xl max-h-[85vh] rounded-2xl border border-emerald-500/40 bg-[#0f1728] text-slate-100 shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-ink-line/80 bg-[#142034] px-5 py-3.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📄</span>
+                <div>
+                  <h3 className="text-sm font-bold text-emerald-200">
+                    Deck Documentation · {deckName || 'Current Deck'}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Attached documents are searched and cited by local LLMs when explaining highlighted code.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDocsModal(false)
+                  setDocUploadError(null)
+                  setSelectedFile(null)
+                  setDocTitle('')
+                }}
+                className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer text-lg leading-none"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
+              {/* Upload New Document Form */}
+              <form onSubmit={handleUploadDocument} className="p-4 rounded-xl border border-emerald-500/30 bg-[#11242c]/40 space-y-3">
+                <h4 className="text-xs font-semibold text-emerald-300 flex items-center gap-1.5">
+                  <span>＋</span>
+                  <span>Upload Reference Documentation</span>
+                </h4>
+                <p className="text-[11px] text-slate-400">
+                  Supported formats: PDF, Markdown (.md), Plain Text (.txt), HTML, TypeScript (.ts, .tsx), JavaScript (.js), Python (.py), Java (.java), JSON.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-300 mb-1">
+                      Select File *
+                    </label>
+                    <input
+                      type="file"
+                      accept=".pdf,.txt,.md,.markdown,.html,.htm,.rst,.ts,.tsx,.js,.jsx,.py,.java,.json"
+                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                      required
+                      className="w-full text-[11px] text-slate-300 file:mr-2.5 file:py-1 file:px-3 file:rounded-lg file:border file:border-emerald-500/40 file:text-[11px] file:font-semibold file:bg-emerald-950/60 file:text-emerald-200 hover:file:bg-emerald-900/80 cursor-pointer"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-300 mb-1">
+                      Document Title (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={docTitle}
+                      onChange={(e) => setDocTitle(e.target.value)}
+                      placeholder={selectedFile?.name || "e.g. Course Specification"}
+                      className="w-full rounded-lg border border-ink-line/80 bg-[#1b2233] px-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {docUploadError && (
+                  <div className="p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300 text-[11px]">
+                    {docUploadError}
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    disabled={!selectedFile || uploadingDoc}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+                  >
+                    {uploadingDoc ? (
+                      <>
+                        <span className="inline-block w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                        <span>Extracting &amp; Segmenting…</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Upload &amp; Attach to Deck</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+
+              {/* List of Attached Documents */}
+              <div className="space-y-2.5">
+                <h4 className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                  <span>Attached Documents ({deckDocs.length})</span>
+                  <span className="text-[11px] text-slate-400 font-normal">
+                    {deckDocs.reduce((acc, d) => acc + (d.segment_count || 0), 0)} total citable segments
+                  </span>
+                </h4>
+
+                {deckDocs.length === 0 ? (
+                  <div className="p-6 rounded-xl border border-dashed border-ink-line/60 bg-[#131b2c]/30 text-center text-slate-400 space-y-1">
+                    <p className="font-medium text-slate-300">No documents attached yet</p>
+                    <p className="text-[11px]">
+                      Upload course notes, specification PDFs, or source code above. You can then highlight any code block and press Alt+D to search these documents.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {deckDocs.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="p-3 rounded-xl border border-ink-line/80 bg-[#162136] flex items-start justify-between gap-3 hover:border-emerald-500/40 transition"
+                      >
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-400 font-bold">📄</span>
+                            <span className="font-semibold text-slate-100 truncate text-xs">
+                              {doc.title}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono truncate">
+                              ({doc.filename})
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                            <span className="text-emerald-300/90 font-medium">
+                              {doc.segment_count} citable segment{doc.segment_count === 1 ? '' : 's'}
+                            </span>
+                            {doc.uploaded_at && (
+                              <span>• Added {new Date(doc.uploaded_at).toLocaleDateString()}</span>
+                            )}
+                          </div>
+                          {doc.locators && doc.locators.length > 0 && (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {doc.locators.slice(0, 8).map((loc, lIdx) => (
+                                <span
+                                  key={lIdx}
+                                  className="px-1.5 py-0.2 rounded bg-black/40 text-slate-300 font-mono text-[9px] border border-white/5"
+                                >
+                                  {loc}
+                                </span>
+                              ))}
+                              {doc.locators.length > 8 && (
+                                <span className="text-[9px] text-slate-500">
+                                  +{doc.locators.length - 8} more
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteDocument(doc.id)}
+                          disabled={deletingDocId === doc.id}
+                          className="px-2 py-1 rounded text-[11px] text-rose-400 hover:text-rose-200 hover:bg-rose-950/40 border border-transparent hover:border-rose-500/30 transition cursor-pointer"
+                          title="Remove document from deck"
+                        >
+                          {deletingDocId === doc.id ? 'Removing…' : 'Remove'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between border-t border-ink-line/80 bg-[#142034] px-5 py-3 text-xs">
+              <span className="text-slate-400">
+                Tip: In the code editor, select any code and press <kbd className="px-1 py-0.5 rounded bg-black/50 text-emerald-300 border border-emerald-500/30 font-mono">Alt+D</kbd> to search docs.
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowDocsModal(false)}
+                className="px-3.5 py-1 rounded-lg border border-ink-line bg-[#1f2a40] hover:bg-[#283652] text-slate-200 font-medium cursor-pointer transition"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <CardAnalyticsModal
         cardId={analyticsCardId}

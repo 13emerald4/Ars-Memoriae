@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import logging
 import re
+
 import httpx
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -139,7 +141,7 @@ CURATED_OFFLINE_DEFINITIONS: dict[str, dict] = {
         "related_terms": ["Cartago", "Carthago Nova", "fenicios", "Guerras Púnicas", "Amílcar Barca"],
     },
     "reconquista": {
-        "definition": "The Reconquista was a centuries-long period in medieval Iberian history (c. 718–1492) during which Christian kingdoms expanded southward to retake territories from Muslim rule.",
+        "definition": "The Reconquista was a centuries-long period in medieval Iberian history (c. 718-1492) during which Christian kingdoms expanded southward to retake territories from Muslim rule.",
         "context_explanation": "Culminating in the fall of Granada in 1492 under the Catholic Monarchs, it profoundly shaped Spanish national identity, institutions, land distribution (latifundios), and religious unity.",
         "example": "La Reconquista concluyó en 1492 con la toma de Granada por los Reyes Católicos.",
         "domain": "Medieval Spanish History",
@@ -227,12 +229,20 @@ async def lookup_term(
     if card_id:
         try:
             import uuid
-            card_uuid = uuid.UUID(card_id) if isinstance(card_id, str) else card_id
+            try:
+                card_uuid = uuid.UUID(card_id) if isinstance(card_id, str) else card_id
+            except (ValueError, AttributeError):
+                raise HTTPException(status.HTTP_404_NOT_FOUND, "Card not found") from None
+
             card = await db.get(Card, card_uuid)
-            if card:
+            if not card:
+                raise HTTPException(status.HTTP_404_NOT_FOUND, "Card not found")
+            deck = card.deck or (await db.get(Deck, card.deck_id))
+            if user and deck and deck.user_id != user.id:
+                raise HTTPException(status.HTTP_404_NOT_FOUND, "Card not found")
+            if deck:
                 target_deck_id = card.deck_id
-                deck = card.deck or (await db.get(Deck, card.deck_id))
-                if not deck_name and deck:
+                if not deck_name:
                     deck_name = deck.name
                 if not thematic_nature:
                     thematic_nature = card.thematic_nature or (deck.thematic_nature if deck else None)
@@ -240,8 +250,11 @@ async def lookup_term(
                     front_txt = card.note.field_values.get('Front') or card.note.field_values.get('front') or ''
                     back_txt = card.note.field_values.get('Back') or card.note.field_values.get('back') or ''
                     card_content = f"Front: {front_txt}\nBack: {back_txt}".strip()
+        except HTTPException:
+            raise
         except Exception as exc:
             log.debug("Failed resolving card for lexicon lookup %s: %s", card_id, exc)
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Card not found") from exc
 
     # Detect discipline indicators
     combined_ctx_lower = f"{clean_term} {deck_name or ''} {thematic_nature or ''} {context or ''} {card_content}".lower()
@@ -277,13 +290,7 @@ async def lookup_term(
         cached_def_lower = cached_entry.definition.lower()
         mismatched = False
 
-        if is_cs_subject and not any(k in cached_domain_lower for k in ["computer", "programming", "algorithm", "software", "numerics"]):
-            mismatched = True
-        elif not is_cs_subject and any(k in cached_domain_lower for k in ["computer", "programming", "software", "algorithm"]):
-            mismatched = True
-        elif is_spanish and any(bad in cached_def_lower for bad in ["expected time of arrival", "estimated time of arrival"]):
-            mismatched = True
-        elif is_spanish and not any(k in cached_domain_lower or k in cached_def_lower for k in ["span", "españ", "vasc", "history", "culture", "literature", "latin", "art", "iber"]):
+        if (is_cs_subject and not any(k in cached_domain_lower for k in ["computer", "programming", "algorithm", "software", "numerics"])) or (not is_cs_subject and any(k in cached_domain_lower for k in ["computer", "programming", "software", "algorithm"])) or (is_spanish and any(bad in cached_def_lower for bad in ["expected time of arrival", "estimated time of arrival"])) or (is_spanish and not any(k in cached_domain_lower or k in cached_def_lower for k in ["span", "españ", "vasc", "history", "culture", "literature", "latin", "art", "iber"])):
             mismatched = True
 
         if not mismatched:
@@ -342,21 +349,34 @@ async def lookup_term(
     deck_occurrences = []
     try:
         if not target_deck_id and deck_name:
-            d_row = (await db.execute(select(Deck.id).where(Deck.name == deck_name).limit(1))).scalar_one_or_none()
+            stmt = select(Deck.id).where(Deck.name == deck_name)
+            if user:
+                stmt = stmt.where(Deck.user_id == user.id)
+            d_row = (await db.execute(stmt.limit(1))).scalar_one_or_none()
             if d_row:
                 target_deck_id = d_row
 
-        if target_deck_id:
-            subdeck_ids = (await db.execute(select(Deck.id).where(Deck.parent_id == target_deck_id))).scalars().all()
-            deck_id_pool = [target_deck_id] + list(subdeck_ids)
+        if target_deck_id and user:
+            owner_id = (await db.execute(select(Deck.user_id).where(Deck.id == target_deck_id))).scalar_one_or_none()
+            if owner_id != user.id:
+                target_deck_id = None
 
-            stmt = (
+        if target_deck_id:
+            subdeck_stmt = select(Deck.id).where(Deck.parent_id == target_deck_id)
+            if user:
+                subdeck_stmt = subdeck_stmt.where(Deck.user_id == user.id)
+            subdeck_ids = (await db.execute(subdeck_stmt)).scalars().all()
+            deck_id_pool = [target_deck_id, *list(subdeck_ids)]
+
+            notes_stmt = (
                 select(Note.field_values)
                 .join(Card, Card.note_id == Note.id)
+                .join(Deck, Card.deck_id == Deck.id)
                 .where(Card.deck_id.in_(deck_id_pool))
-                .limit(150)
             )
-            deck_notes = (await db.execute(stmt)).scalars().all()
+            if user:
+                notes_stmt = notes_stmt.where(Deck.user_id == user.id)
+            deck_notes = (await db.execute(notes_stmt.limit(150))).scalars().all()
             pattern = re.compile(rf'\b{re.escape(clean_term)}\b', re.IGNORECASE)
             for fv in deck_notes:
                 if not fv or not isinstance(fv, dict):
@@ -413,10 +433,9 @@ async def lookup_term(
         model_used = model_name
 
         # Safety post-processing: If Spanish context was tainted with Expected Time of Arrival
-        if is_spanish and "expected time of arrival" in definition.lower():
-            if encyclopedic_ref:
-                definition = f"ETA (Euskadi Ta Askatasuna): armed Basque nationalist and separatist organization in Spain."
-                domain = "Spanish History & Politics"
+        if is_spanish and "expected time of arrival" in definition.lower() and encyclopedic_ref:
+            definition = "ETA (Euskadi Ta Askatasuna): armed Basque nationalist and separatist organization in Spain."
+            domain = "Spanish History & Politics"
     except Exception as exc:
         log.warning("Ollama lexicon lookup failed for '%s': %s; using heuristic fallback", clean_term, exc)
         if encyclopedic_ref:

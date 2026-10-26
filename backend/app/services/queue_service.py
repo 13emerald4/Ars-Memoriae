@@ -827,7 +827,7 @@ async def compose_deck_persist_queue(
     unseen_only: bool = False,
 ) -> list[ComposedItem]:
     """Load all active (non-suspended) cards in a deck formatted as ComposedItems for persist mode.
-    
+
     If unseen_only is True, filters to only cards that have not yet been reviewed (Card.state == 'new').
     """
     deck = await db.get(Deck, deck_id)

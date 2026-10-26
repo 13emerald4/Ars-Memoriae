@@ -83,5 +83,6 @@ elif command -v xdg-open >/dev/null 2>&1; then
     (sleep 1 && xdg-open http://localhost:8000) &
 fi
 
+HOST="${HOST:-0.0.0.0}"
 cd backend
-exec ./.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+exec ./.venv/bin/uvicorn app.main:app --host "$HOST" --port 8000

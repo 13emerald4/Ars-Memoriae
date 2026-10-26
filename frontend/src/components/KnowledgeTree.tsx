@@ -679,21 +679,43 @@ export function KnowledgeTree({
               type="button"
               draggable={false}
               onClick={(e) => toggleExpand('__root__', e)}
-              className="p-0.5 rounded hover:bg-slate-700/40 text-slate-400 hover:text-slate-200 transition shrink-0"
+              className="p-0.5 rounded hover:bg-slate-700/40 text-slate-400 hover:text-slate-200 transition shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400"
+              aria-label={`${expanded.has('__root__') ? 'Collapse' : 'Expand'} root tree`}
+              title={`${expanded.has('__root__') ? 'Collapse' : 'Expand'} root tree`}
             >
               <ChevronIcon expanded={expanded.has('__root__')} />
             </button>
 
-            {/* Glowing Lightbulb for Root */}
-            <LightbulbIcon className="w-4 h-4" />
+            {/* Root Select Button (Icon + Title + Count) */}
+            <button
+              type="button"
+              onClick={() =>
+                handleNodeClick({
+                  id: '__root__',
+                  title: rootTitle,
+                  kind: 'root',
+                  parentId: null,
+                  elementCount: rootTotals.elements,
+                  dueCount: rootTotals.due,
+                  newCount: rootTotals.newCards,
+                  children: nodes,
+                })
+              }
+              className="flex items-center gap-2 text-left rounded px-1 -ml-1 hover:text-white transition focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400 shrink truncate cursor-pointer"
+              aria-label={`Select ${rootTitle}`}
+              title={`Select ${rootTitle} (${rootTotals.elements} cards)`}
+            >
+              {/* Glowing Lightbulb for Root */}
+              <LightbulbIcon className="w-4 h-4" />
 
-            {/* Title & Count */}
-            <span className="font-semibold truncate">
-              {rootTitle}
-            </span>
-            <span className="text-xs text-slate-400 font-mono tabular-nums">
-              ({rootTotals.elements})
-            </span>
+              {/* Title & Count */}
+              <span className="font-semibold truncate">
+                {rootTitle}
+              </span>
+              <span className="text-xs text-slate-400 font-mono tabular-nums">
+                ({rootTotals.elements})
+              </span>
+            </button>
 
             {/* Distribution bars on Root */}
             {showBars && rootStats.total_cards > 0 && (
@@ -709,14 +731,32 @@ export function KnowledgeTree({
 
             {/* Badges */}
             {rootTotals.due > 0 && (
-              <span className="chip border-sky-500/40 bg-sky-500/15 text-sky-300 text-[10px] py-0 px-2 font-semibold ml-auto shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleStudyAction(allNodesMap.get('__root__')!, 'standard')
+                }}
+                className="chip hover:scale-105 active:scale-95 cursor-pointer border-sky-500/40 bg-sky-500/15 text-sky-300 text-[10px] py-0 px-2 font-semibold ml-auto shrink-0 transition focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400"
+                aria-label={`Study all ${rootTotals.due} due cards`}
+                title={`Study ${rootTotals.due} due cards`}
+              >
                 {rootTotals.due} due
-              </span>
+              </button>
             )}
             {rootTotals.newCards > 0 && (
-              <span className="chip border-emerald-500/40 bg-emerald-500/15 text-emerald-300 text-[10px] py-0 px-2 font-semibold shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleStudyAction(allNodesMap.get('__root__')!, 'unseen')
+                }}
+                className={`chip hover:scale-105 active:scale-95 cursor-pointer border-emerald-500/40 bg-emerald-500/15 text-emerald-300 text-[10px] py-0 px-2 font-semibold shrink-0 transition focus:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400 ${rootTotals.due > 0 ? 'ml-1' : 'ml-auto'}`}
+                aria-label={`Study all ${rootTotals.newCards} new cards`}
+                title={`Study ${rootTotals.newCards} new cards`}
+              >
                 {rootTotals.newCards} new
-              </span>
+              </button>
             )}
           </div>
 
@@ -749,6 +789,7 @@ export function KnowledgeTree({
                     onDragEnd={handleDragEnd}
                     onDragOver={handleDragOverNode}
                     onDrop={handleDropOnNode}
+                    onStudy={handleStudyAction}
                   />
                 ))}
             </div>
@@ -938,6 +979,7 @@ interface KnowledgeTreeNodeProps {
   onDragEnd: () => void
   onDragOver: (node: KnowledgeTreeNode, e: React.DragEvent) => void
   onDrop: (node: KnowledgeTreeNode, e: React.DragEvent) => void
+  onStudy?: (node: KnowledgeTreeNode, mode: 'standard' | 'unseen' | 'all_run' | 'persist_all') => void
 }
 
 function KnowledgeTreeNodeComponent({
@@ -959,6 +1001,7 @@ function KnowledgeTreeNodeComponent({
   onDragEnd,
   onDragOver,
   onDrop,
+  onStudy,
 }: KnowledgeTreeNodeProps) {
   const isSelected = selectedId === node.id
   const hasChildren = node.children && node.children.length > 0
@@ -1028,26 +1071,37 @@ function KnowledgeTreeNodeComponent({
             type="button"
             draggable={false}
             onClick={(e) => onToggle(node.id, e)}
-            className="p-0.5 rounded hover:bg-slate-700/40 text-slate-400 hover:text-slate-200 transition shrink-0"
+            className="p-0.5 rounded hover:bg-slate-700/40 text-slate-400 hover:text-slate-200 transition shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400"
+            aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${node.title}`}
+            title={`${isOpen ? 'Collapse' : 'Expand'} branch`}
           >
             <ChevronIcon expanded={isOpen} />
           </button>
         ) : (
-          <span className="w-3.5 shrink-0" />
+          <span className="w-3.5 shrink-0" aria-hidden="true" />
         )}
 
-        {/* Node Icon */}
-        {renderIcon()}
+        {/* Node Select Button (Icon + Title + Element Count) */}
+        <button
+          type="button"
+          onClick={() => onSelect(node)}
+          className="flex items-center gap-1.5 min-w-0 text-left rounded px-1 -ml-1 hover:text-white transition focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400 shrink truncate cursor-pointer"
+          aria-label={`Select deck ${node.title}`}
+          title={`Select ${node.title} (${node.elementCount} cards)`}
+        >
+          {/* Node Icon */}
+          {renderIcon()}
 
-        {/* Title */}
-        <span className="truncate select-none font-medium text-xs">
-          {node.title}
-        </span>
+          {/* Title */}
+          <span className="truncate select-none font-medium text-xs">
+            {node.title}
+          </span>
 
-        {/* Count */}
-        <span className="text-[11px] text-slate-400 font-mono tabular-nums shrink-0">
-          ({node.elementCount})
-        </span>
+          {/* Count */}
+          <span className="text-[11px] text-slate-400 font-mono tabular-nums shrink-0">
+            ({node.elementCount})
+          </span>
+        </button>
 
         {/* Inline Compact Distribution Bars */}
         {showBars && node.stats && node.stats.total_cards > 0 && (
@@ -1076,19 +1130,34 @@ function KnowledgeTreeNodeComponent({
 
         {/* Unseen Count Chip */}
         {node.newCount !== undefined && node.newCount > 0 && (
-          <span
-            className="chip border-amber-500/40 bg-amber-500/15 text-amber-300 text-[10px] py-0 px-1.5 font-semibold ml-auto shrink-0"
-            title={`${node.newCount} unseen cards`}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onStudy?.(node, 'unseen')
+            }}
+            className="chip hover:scale-105 active:scale-95 cursor-pointer border-amber-500/40 bg-amber-500/15 text-amber-300 text-[10px] py-0 px-1.5 font-semibold ml-auto shrink-0 transition focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
+            aria-label={`Study ${node.newCount} new cards in ${node.title}`}
+            title={`Study ${node.newCount} new cards`}
           >
             {node.newCount} new
-          </span>
+          </button>
         )}
 
         {/* Due Count Chip */}
         {node.dueCount !== undefined && node.dueCount > 0 && (
-          <span className={`chip border-sky-500/40 bg-sky-500/15 text-sky-300 text-[10px] py-0 px-1.5 font-semibold shrink-0 ${node.newCount ? 'ml-1' : 'ml-auto'}`}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onStudy?.(node, 'standard')
+            }}
+            className={`chip hover:scale-105 active:scale-95 cursor-pointer border-sky-500/40 bg-sky-500/15 text-sky-300 text-[10px] py-0 px-1.5 font-semibold shrink-0 transition focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400 ${node.newCount ? 'ml-1' : 'ml-auto'}`}
+            aria-label={`Study ${node.dueCount} due cards in ${node.title}`}
+            title={`Study ${node.dueCount} due cards`}
+          >
             {node.dueCount} due
-          </span>
+          </button>
         )}
       </div>
 
@@ -1121,6 +1190,7 @@ function KnowledgeTreeNodeComponent({
                 onDragEnd={onDragEnd}
                 onDragOver={onDragOver}
                 onDrop={onDrop}
+                onStudy={onStudy}
               />
             ))}
         </div>

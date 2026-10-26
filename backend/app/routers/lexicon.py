@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models import User
-from app.routers.deps import optional_user
+from app.routers.deps import current_user
 from app.schemas.lexicon import LexiconEntryOut, LexiconLookupRequest, RecentLexiconItem
 from app.services import lexicon_service
 
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/lexicon", tags=["lexicon"])
 @router.post("/lookup", response_model=LexiconEntryOut)
 async def lookup_term(
     body: LexiconLookupRequest,
-    user: User | None = Depends(optional_user),
+    user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ) -> LexiconEntryOut:
     """Look up a technical term, concept, or phrase with contextual explanation."""
@@ -35,7 +35,7 @@ async def lookup_term(
 
 @router.get("/recent", response_model=list[RecentLexiconItem])
 async def recent_terms(
-    user: User | None = Depends(optional_user),
+    user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[RecentLexiconItem]:
     """Return recently explored vocabulary terms for concordance exploration."""

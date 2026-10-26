@@ -12,6 +12,7 @@ from starlette.responses import FileResponse
 
 from app.core import security
 from app.core.config import settings
+from app.db import engine
 from app.jobs import scheduler
 from app.routers import (
     auth,
@@ -31,6 +32,7 @@ from app.routers import (
     sessions,
     sources,
     stats,
+    sync,
     tree,
 )
 from app.services import (
@@ -46,6 +48,7 @@ async def _auto_migrate() -> None:
     """Runs pending Alembic migrations on startup so fresh installs and git pulls work out of the box."""
     def _run():
         from alembic.config import Config
+
         from alembic import command
         alembic_ini = Path(__file__).resolve().parents[1] / "alembic.ini"
         if alembic_ini.is_file():
@@ -72,6 +75,7 @@ async def lifespan(app: FastAPI):
         scheduler.start()
     yield
     scheduler.shutdown()
+    await engine.dispose()
 
 
 app = FastAPI(
@@ -87,10 +91,9 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
-    # Local dev servers on any port. Remote access (the UBC tunnel) goes
-    # through this app's own origin, so no third-party tunnel domain — which
-    # anyone can register — is trusted here.
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$",
+    # Local dev servers on any port, plus LAN IP ranges (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+    # for the mobile companion app on Wi-Fi.
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:[0-9]+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -115,6 +118,7 @@ for router in (
     stats.router,
     export.router,
     optimize.router,
+    sync.router,
 ):
     app.include_router(router)
 

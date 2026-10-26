@@ -69,6 +69,9 @@ async def optimize_user(db: AsyncSession, user: User) -> bool:
         return False
 
     logs = await collect_review_logs(db, user)
+    # Release active transaction so DB locks are not held during CPU-bound optimization
+    await db.commit()
+
     try:
         # Fitting is CPU-bound; keep it off the event loop.
         weights = await asyncio.to_thread(FSRSService.optimize, logs)
@@ -87,10 +90,53 @@ async def run_for_all_users() -> dict:
     """Entry point for the nightly APScheduler job."""
     results = {"optimized": 0, "skipped": 0}
     async with SessionLocal() as db:
-        users = (await db.scalars(select(User))).all()
-        for user in users:
-            if await optimize_user(db, user):
+        user_ids = (await db.scalars(select(User.id))).all()
+
+    for user_id in user_ids:
+        # Phase 1: Short-lived DB session to evaluate review count and extract logs
+        async with SessionLocal() as db:
+            user = await db.get(User, user_id)
+            if not user:
+                continue
+
+            if not FSRSService.optimizer_available():
+                log.info("fsrs optimizer extra not installed; skipping refit for %s", user.email)
+                results["skipped"] += 1
+                continue
+
+            count = await db.scalar(
+                select(func.count())
+                .select_from(ReviewLog)
+                .join(Card, Card.id == ReviewLog.card_id)
+                .join(Deck, Deck.id == Card.deck_id)
+                .where(Deck.user_id == user.id)
+            )
+            if (count or 0) < MIN_REVIEWS_FOR_FIT:
+                log.info("user %s has %s reviews (<%s); keeping defaults", user.email, count, MIN_REVIEWS_FOR_FIT)
+                results["skipped"] += 1
+                continue
+
+            logs = await collect_review_logs(db, user)
+            user_email = user.email
+
+        # Phase 2: CPU-bound model training executed off the event loop with NO open DB session
+        try:
+            weights = await asyncio.to_thread(FSRSService.optimize, logs)
+        except Exception as exc:
+            log.warning("FSRS optimize failed for %s: %s", user_email, exc)
+            results["skipped"] += 1
+            continue
+
+        # Phase 3: Short-lived DB session to write back optimized weights
+        async with SessionLocal() as db:
+            user = await db.get(User, user_id)
+            if user:
+                user.fsrs_parameters = [float(w) for w in weights]
+                user.fsrs_optimized_at = datetime.now(UTC)
+                await db.commit()
+                log.info("refit FSRS parameters for %s from %s reviews", user_email, count)
                 results["optimized"] += 1
             else:
                 results["skipped"] += 1
+
     return results

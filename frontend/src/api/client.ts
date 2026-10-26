@@ -11,10 +11,16 @@ import type {
   CodeSubmissionOut,
   ConfirmReviewResponse,
   Deck,
+  DeckDocumentOut,
+  AskDeckQuestionRequest,
+  AskDeckQuestionResponse,
+  DeckDocumentsListResponse,
   DeckStats,
   DecomposeCardResponse,
   DocumentUpload,
   EventReadiness,
+  ExplainCodeSelectionRequest,
+  ExplainCodeSelectionResponse,
   Extract,
   GenerateCardsResponse,
   GenerateDeckResponse,
@@ -31,6 +37,8 @@ import type {
   NoteType,
   QueueConfig,
   QueueItem,
+  QueryDeckDocsRequest,
+  QueryDeckDocsResponse,
   RecentLexiconItem,
   RunCodeResponse,
   SequentialClozeResponse,
@@ -47,6 +55,8 @@ import type {
   SubmitAnswerResponse,
   SubmitCodeResponse,
   SuggestedCard,
+  SyncEvent,
+  SyncStatus,
   TreeNode,
   User,
   WeaknessHintResponse,
@@ -471,6 +481,28 @@ export const api = {
     idOrSlug: string,
     body: { code: string; language?: string; hint_type?: string },
   ) => post<SocraticCodeResponse>(`/api/code/problems/${idOrSlug}/socratic`, body),
+  explainCodeSelection: (body: ExplainCodeSelectionRequest) =>
+    post<ExplainCodeSelectionResponse>('/api/code/explain-selection', body),
+  askDeckQuestion: (body: AskDeckQuestionRequest) =>
+    post<AskDeckQuestionResponse>('/api/code/ask-docs', body),
+  uploadDeckDocument: (deckId: string, file: File, title?: string) => {
+    const form = new FormData()
+    form.append('file', file)
+    if (title) form.append('title', title)
+    return request<DeckDocumentOut>(`/api/decks/${deckId}/documents`, {
+      method: 'POST',
+      body: form,
+    })
+  },
+  getDeckDocuments: (deckId: string) =>
+    request<DeckDocumentsListResponse>(`/api/decks/${deckId}/documents`),
+  deleteDeckDocument: (deckId: string, docId: string) =>
+    request<{ status: string; doc_id: string; source_id?: string | null }>(
+      `/api/decks/${deckId}/documents/${docId}`,
+      { method: 'DELETE' },
+    ),
+  queryDeckDocs: (deckId: string, body: QueryDeckDocsRequest) =>
+    post<QueryDeckDocsResponse>(`/api/decks/${deckId}/query-docs`, body),
   forgeProblem: (body: { topic: string; difficulty?: string; target_language?: string }) =>
     post<CodeProblemOut>('/api/code/problems/forge', body),
   exportProblemToCard: (idOrSlug: string, deckId: string) =>
@@ -497,4 +529,60 @@ export const api = {
       thematic_nature: options?.thematicNature,
     }),
   getRecentLexicon: () => request<RecentLexiconItem[]>('/api/lexicon/recent'),
+  syncStatus: () => request<SyncStatus>('/api/sync/status'),
+}
+
+export function createSyncSocket(onMessage: (event: SyncEvent) => void): () => void {
+  const t = token.get()
+  if (!t) return () => {}
+
+  let ws: WebSocket | null = null
+  let pingInterval: any = null
+  let reconnectTimeout: any = null
+  let disposed = false
+
+  function connect() {
+    if (disposed) return
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const host = window.location.host
+    const wsBase = BASE ? BASE.replace(/^http/, 'ws') : `${protocol}//${host}`
+    ws = new WebSocket(`${wsBase}/api/sync/ws?token=${encodeURIComponent(t || '')}`)
+
+    ws.onopen = () => {
+      pingInterval = setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'PING' }))
+        }
+      }, 25000)
+    }
+
+    ws.onmessage = (e) => {
+      try {
+        const parsed = JSON.parse(e.data) as SyncEvent
+        onMessage(parsed)
+      } catch (err) {
+        console.debug('Failed to parse WS sync event', err)
+      }
+    }
+
+    ws.onclose = () => {
+      if (pingInterval) clearInterval(pingInterval)
+      if (!disposed) {
+        reconnectTimeout = setTimeout(connect, 3000)
+      }
+    }
+
+    ws.onerror = () => {
+      if (ws) ws.close()
+    }
+  }
+
+  connect()
+
+  return () => {
+    disposed = true
+    if (pingInterval) clearInterval(pingInterval)
+    if (reconnectTimeout) clearTimeout(reconnectTimeout)
+    if (ws) ws.close()
+  }
 }
