@@ -140,8 +140,8 @@ Format your response strictly using these section headers:
 **→ Meaning & Application.** <Concise explanation of what this highlighted code means and how the document rules apply to it>
 """
 
-DECK_DOCS_QA_PROMPT = """You are a precise technical tutor helping a student understand their code and the attached course documentation.
-A student is working on a coding flashcard/problem and has a question about the code or attached course documentation.
+DECK_DOCS_QA_PROMPT = """You are a precise, insightful technical tutor helping a student understand their code, attached course documentation, and programming concepts.
+A student is working on a coding flashcard/problem and has a question about the code or documentation.
 
 Attached Course Documentation:
 {doc_excerpts}
@@ -157,9 +157,12 @@ Student Question:
 {question}
 
 Instructions:
-1. Provide a direct, technically accurate, and clear answer to the student's question.
-2. Ground your explanation in the attached course documentation (rules, formulas, types, invariants) and the provided code whenever applicable.
-3. Be concise and structured (typically 2-4 sentences or short, clean bullet points). Zero conversational filler (do NOT say "Sure!", "Great question!", "Certainly!", "As an AI...").
+1. Provide a direct, technically accurate, clear, and educational answer to the student's question.
+2. Synthesize BOTH the attached course documentation and your general pre-trained programming knowledge and language capabilities ({language}):
+   - If the attached documentation specifies rules, formulas, constraints, or course conventions, incorporate and adhere to them.
+   - Use your pre-trained software engineering knowledge to explain underlying mechanics, language semantics, standard library behavior, algorithmic complexity, common pitfalls, and edge cases.
+   - If no attached documentation is found or if the documentation is silent on this detail, provide a complete and authoritative answer drawn from your pre-trained programming knowledge.
+3. Be concise and structured (typically 2-4 focused sentences or clean bullet points). Zero conversational filler (do NOT say "Sure!", "Great question!", "Certainly!", "As an AI...").
 4. Use markdown backticks (`code`) for code tokens and bold for key terms.
 """
 
@@ -563,7 +566,11 @@ class CodeAiService:
             formatted_excerpts.append(
                 f"[Document: {exc['source_title']} · {exc.get('locator') or 'General'}]\n{exc['content']}\n"
             )
-        doc_excerpts_str = "\n".join(formatted_excerpts) if formatted_excerpts else "(No attached course documentation extracts found)"
+        doc_excerpts_str = (
+            "\n".join(formatted_excerpts)
+            if formatted_excerpts
+            else "(No attached course documentation extracts found; answer using pre-trained programming knowledge)"
+        )
 
         full_code_section = (
             f"\nFull Surrounding Code:\n```{language}\n{full_code.strip()}\n```\n"

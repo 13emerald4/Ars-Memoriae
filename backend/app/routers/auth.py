@@ -62,6 +62,9 @@ def user_out(user: User) -> UserOut:
         show_thematic_context=user.show_thematic_context,
         tutorial_completed=user.tutorial_completed,
         timezone=user.timezone,
+        enable_schema_checkpoints=getattr(user, "enable_schema_checkpoints", True),
+        enable_prompt_mutation=getattr(user, "enable_prompt_mutation", False),
+        enable_prediction_mode=getattr(user, "enable_prediction_mode", False),
     )
 
 

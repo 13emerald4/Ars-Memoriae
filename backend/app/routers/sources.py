@@ -380,6 +380,8 @@ async def accept_cards(
         else:
             nt = await default_note_type(db, user, "basic")
             fields = {"Front": suggestion.front, "Back": suggestion.back}
+        if suggestion.image:
+            fields["Image"] = suggestion.image.strip()
         note = Note(user_id=user.id, note_type_id=nt.id, field_values=fields)
         db.add(note)
         await db.flush()

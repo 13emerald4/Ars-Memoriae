@@ -98,12 +98,24 @@ async def import_json(
             if not (item.cloze_text or "").strip():
                 warnings.append(f"note {i}: kind is \"cloze\" but cloze_text is empty — skipped")
                 continue
-            field_values = {"Text": item.cloze_text, "Extra": item.back or ""}
+            text = item.cloze_text.strip()
+            if item.front and item.front.strip() and not text.startswith(item.front.strip()):
+                text = f"**{item.front.strip()}**\n\n{text}"
+            field_values = {"Text": text, "Extra": item.back or ""}
+            if item.image:
+                field_values["Image"] = item.image.strip()
+            if item.back_image:
+                field_values["BackImage"] = item.back_image.strip()
         else:
-            if not (item.front or "").strip() or not (item.back or "").strip():
-                warnings.append(f"note {i}: front and back are both required — skipped")
+            has_front = bool((item.front or "").strip() or (item.image or "").strip())
+            if not has_front or not (item.back or "").strip():
+                warnings.append(f"note {i}: front (or image) and back are required — skipped")
                 continue
-            field_values = {"Front": item.front, "Back": item.back}
+            field_values = {"Front": item.front or "", "Back": item.back}
+            if item.image:
+                field_values["Image"] = item.image.strip()
+            if item.back_image:
+                field_values["BackImage"] = item.back_image.strip()
             if is_code:
                 if item.starter_code:
                     field_values["starter_code"] = item.starter_code

@@ -10,7 +10,8 @@ from app.db import get_db
 from app.models import Note, NoteType, SisterPair, User
 from app.routers.deps import current_user, parse_uuid
 from app.schemas.core import SisterPairOut
-from app.services import interference_service
+from app.schemas.review import ContrastDrillResponse
+from app.services import interference_service, neuro_service
 from app.services.rendering import render
 
 router = APIRouter(prefix="/api/interference", tags=["interference"])
@@ -103,3 +104,18 @@ async def dismiss(
         note_a_id=str(pair.note_a_id),
         note_b_id=str(pair.note_b_id),
     )
+
+
+@router.post("/{pair_id}/contrast-drill", response_model=ContrastDrillResponse)
+async def get_contrast_drill(
+    pair_id: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ContrastDrillResponse:
+    """Generates a Dentate Gyrus pattern separation comparison drill between confusable notes."""
+    pair = await db.get(SisterPair, parse_uuid(pair_id))
+    if pair is None or pair.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "pair not found")
+    data = await neuro_service.generate_contrast_drill(db, user, pair)
+    return ContrastDrillResponse(**data)
+

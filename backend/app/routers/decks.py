@@ -29,6 +29,7 @@ from app.schemas.core import (
     CardAnalyticsOut,
     CardLexiconGlossesUpdate,
     CardMemoryNoteIn,
+    CardNeuroPropsUpdate,
     CardNextIntervalsOut,
     CardOut,
     CardReviewLogItemOut,
@@ -100,6 +101,8 @@ def card_out(card: Card, deck_name: str | None = None) -> CardOut:
         tags=list(card.tags or []),
         front=front,
         back=back,
+        image=str((card.note.field_values or {}).get("Image", "") or (card.note.field_values or {}).get("image", "")).strip() or None if card.note else None,
+        back_image=str((card.note.field_values or {}).get("BackImage", "") or (card.note.field_values or {}).get("back_image", "")).strip() or None if card.note else None,
         occlusion=occlusion_payload(card.note.field_values or {}, card.template_slot)
         if card.note.note_type.template_kind == "image_occlusion"
         else None,
@@ -107,6 +110,12 @@ def card_out(card: Card, deck_name: str | None = None) -> CardOut:
         thematic_nature=card.thematic_nature or (deck.thematic_nature if deck else None),
         source_documents=list(card.source_documents or (deck.source_documents if deck else [])),
         lexicon_glosses=list(card.lexicon_glosses or []),
+        position=card.position,
+        is_schema_checkpoint=getattr(card, "is_schema_checkpoint", False),
+        spatial_x=getattr(card, "spatial_x", None),
+        spatial_y=getattr(card, "spatial_y", None),
+        spatial_locus=getattr(card, "spatial_locus", None),
+        mnemonic_vignette=getattr(card, "mnemonic_vignette", None),
     )
 
 
@@ -684,10 +693,14 @@ async def deck_persist_items(
     db: AsyncSession = Depends(get_db),
 ) -> list[QueueItem]:
     """Return all active cards in a deck formatted as QueueItems for persist review mode."""
-    deck = await _owned_deck(db, user, parse_uuid(deck_id))
     from app.routers.queue import to_schema
     from app.services.queue_service import compose_deck_persist_queue
 
+    if deck_id in ("__root__", "all"):
+        items = await compose_deck_persist_queue(db, user, None, unseen_only=unseen_only)
+        return [to_schema(i) for i in items]
+
+    deck = await _owned_deck(db, user, parse_uuid(deck_id))
     items = await compose_deck_persist_queue(db, user, deck.id, unseen_only=unseen_only)
     return [to_schema(i) for i in items]
 
@@ -906,7 +919,13 @@ async def list_cards(
     """Browse — also serves §9.5's "everything else" manual-override view."""
     stmt = select(Card).join(Deck, Deck.id == Card.deck_id).where(Deck.user_id == user.id)
     if deck_id:
-        stmt = stmt.where(Card.deck_id == parse_uuid(deck_id, "deck_id"))
+        from app.services.queue_service import deck_scope
+        parsed_id = parse_uuid(deck_id, "deck_id")
+        scope = await deck_scope(db, user, parsed_id)
+        if scope and scope.deck_ids:
+            stmt = stmt.where(Card.deck_id.in_(scope.deck_ids))
+        else:
+            stmt = stmt.where(Card.deck_id == parsed_id)
     if not include_suspended:
         stmt = stmt.where(Card.suspended.is_(False))
     stmt = stmt.order_by(Card.due.is_(None), Card.due).limit(limit + offset)
@@ -1388,4 +1407,90 @@ async def query_deck_documents(
         model=body.model,
     )
     return QueryDeckDocsResponse(**res)
+
+
+# ── Neuroscience Enhancements ────────────────────────────────────────────────
+
+
+@router.patch("/cards/{card_id}/neuro-props", response_model=CardOut)
+@router.patch("/decks/cards/{card_id}/neuro-props", response_model=CardOut)
+async def update_card_neuro_props(
+    card_id: str,
+    body: CardNeuroPropsUpdate,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CardOut:
+    """Updates neuroscience-specific attributes (schema checkpoint, locus, coordinates, mnemonic)."""
+    card = await _owned_card(db, user, parse_uuid(card_id))
+    for key, val in body.model_dump(exclude_unset=True).items():
+        setattr(card, key, val)
+    await db.commit()
+    await db.refresh(card)
+    return card_out(card)
+
+
+@router.post("/decks/{deck_id}/auto-palace", response_model=list[CardOut])
+@router.post("/{deck_id}/auto-palace", response_model=list[CardOut])
+async def auto_generate_memory_palace(
+    deck_id: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[CardOut]:
+    """Arranges cards in this deck into a virtual memory palace layout (rooms + loci + coordinates)."""
+    deck = await _owned_deck(db, user, parse_uuid(deck_id))
+    cards = list(
+        (
+            await db.scalars(
+                select(Card)
+                .where(Card.deck_id == deck.id, Card.suspended.is_(False))
+                .order_by(Card.position, Card.id)
+            )
+        ).all()
+    )
+    if not cards:
+        return []
+
+    rooms = [
+        "Grand Vestibule",
+        "Library of Epistemology",
+        "Observatory Gallery",
+        "Atrium of First Principles",
+        "Vault of Axioms",
+        "Sanctum of Dialectics",
+        "Laboratory Alcove",
+        "Rotunda of Socratic Inquiry",
+    ]
+    loci_names = [
+        "North Pedestal",
+        "East Bookshelf",
+        "South Alcove",
+        "West Hearth",
+        "Center Fountain",
+        "Marble Table",
+        "Gilded Cornice",
+        "Bronze Sundial",
+    ]
+
+    import math
+
+    for idx, card in enumerate(cards):
+        room_idx = idx // len(loci_names)
+        room_name = rooms[room_idx % len(rooms)]
+        locus_name = loci_names[idx % len(loci_names)]
+        card.spatial_locus = f"{room_name} · {locus_name}"
+
+        room_col = room_idx % 3
+        room_row = room_idx // 3
+        pos_in_room = idx % len(loci_names)
+        angle = (2 * math.pi / len(loci_names)) * pos_in_room
+        radius = 120.0
+
+        card.spatial_x = round(room_col * 400.0 + 200.0 + radius * math.cos(angle), 1)
+        card.spatial_y = round(room_row * 400.0 + 200.0 + radius * math.sin(angle), 1)
+
+    await db.commit()
+    for c in cards:
+        await db.refresh(c)
+    return [card_out(c) for c in cards]
+
 

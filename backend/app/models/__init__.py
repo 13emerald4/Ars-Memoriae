@@ -85,6 +85,10 @@ class User(Base):
     tutorial_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # IANA zone for the study-day boundary (app.core.timeutil). None = UTC.
     timezone: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Neuroscience enhancements
+    enable_schema_checkpoints: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    enable_prompt_mutation: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    enable_prediction_mode: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
@@ -259,6 +263,10 @@ class KnowledgeNode(Base):
     extract_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("extracts.id", ondelete="CASCADE")
     )
+    # Memory Palace spatial coordinates
+    spatial_x: Mapped[float | None] = mapped_column(Float, nullable=True)
+    spatial_y: Mapped[float | None] = mapped_column(Float, nullable=True)
+    spatial_room: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
@@ -332,6 +340,13 @@ class Card(Base):
     thematic_nature: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_documents: Mapped[list] = mapped_column(JSONType, nullable=False, default=list)
     lexicon_glosses: Mapped[list[dict]] = mapped_column(JSONType, nullable=False, default=list)
+    position: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Neuroscience enhancements: schema checkpoint, spatial memory palace locus, mnemonic vignette
+    is_schema_checkpoint: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    spatial_x: Mapped[float | None] = mapped_column(Float, nullable=True)
+    spatial_y: Mapped[float | None] = mapped_column(Float, nullable=True)
+    spatial_locus: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mnemonic_vignette: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (
         CheckConstraint("state IN ('new','learning','review','relearning')", name="ck_cards_state"),
@@ -505,6 +520,10 @@ class ReviewLog(Base):
     weaknesses: Mapped[list[str]] = mapped_column(JSONType, nullable=False, default=list)
     improvements: Mapped[list[str]] = mapped_column(JSONType, nullable=False, default=list)
     persistent_weaknesses: Mapped[list[str]] = mapped_column(JSONType, nullable=False, default=list)
+    # Neuroscience prediction error & prompt mutation tracking
+    is_pretest_prediction: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    prediction_error_detected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    mutation_type: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (
         CheckConstraint(
@@ -709,6 +728,39 @@ class LexiconCache(Base):
     __table_args__ = (Index("idx_lexicon_term_normalized", "term_normalized"),)
 
 
+class ConceptEdge(Base):
+    """Associative knowledge network edge connecting related cards (§Neuroscience)."""
+
+    __tablename__ = "concept_edges"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    source_card_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("cards.id", ondelete="CASCADE"), nullable=False
+    )
+    target_card_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("cards.id", ondelete="CASCADE"), nullable=False
+    )
+    relationship_type: Mapped[str] = mapped_column(
+        Text, nullable=False, default="associative"
+    )
+    weight: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "relationship_type IN ('associative', 'prerequisite_of', 'contrasts_with', 'implements', 'analogous_to', 'component_of', 'failure_mode_of')",
+            name="ck_concept_edges_relationship",
+        ),
+        Index("idx_concept_edges_user_source", "user_id", "source_card_id"),
+        Index("idx_concept_edges_user_target", "user_id", "target_card_id"),
+    )
+
+
 __all__ = [
     "Base",
     "Card",
@@ -716,6 +768,7 @@ __all__ = [
     "CardReference",
     "CodeProblem",
     "CodeSubmission",
+    "ConceptEdge",
     "Deck",
     "Extract",
     "GradingCache",

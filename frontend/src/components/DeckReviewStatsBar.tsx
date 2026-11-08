@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '../api/client'
-import type { DeckStats } from '../api/types'
+import type { DeckStats, QueueItem } from '../api/types'
 import { getAllCardsRunProgress } from '../utils/allCardsRunStorage'
 
 interface DeckReviewStatsBarProps {
@@ -178,6 +178,128 @@ export function CompactDeckDistributionBars({
       {/* Viewed percentage text */}
       <span className="text-[10px] font-mono font-semibold text-sky-300 tabular-nums">
         {viewedPct}%
+      </span>
+    </div>
+  )
+}
+
+/**
+ * Compact inline triple progression bar for an individual card.
+ * Mirrors CompactDeckDistributionBars visual language:
+ * 1. Mini-bar 1: Retrievability / Mastery % (gradient bar)
+ * 2. Mini-bar 2: Card Difficulty indicator (Easy = emerald, Medium = amber, Hard = rose, Unrated = slate)
+ * 3. Mini-bar 3: Recall / Latest Rating indicator (Again = rose, Hard = amber, Good = emerald, Easy = sky, Unreviewed = slate)
+ * 4. Percentage text: XX%
+ */
+export function CompactCardProgressionBar({
+  card,
+  className = '',
+}: {
+  card?: QueueItem | null
+  className?: string
+}) {
+  if (!card) return null
+
+  // 1. Mastery / Retrievability percentage
+  let retrievabilityPct = 0
+  if (card.retrievability != null) {
+    retrievabilityPct = Math.round(card.retrievability * 100)
+  } else if (card.state === 'review') {
+    retrievabilityPct = 100
+  } else if (card.state === 'learning') {
+    const reps = card.review_count || 1
+    retrievabilityPct = Math.min(85, Math.max(40, 45 + reps * 15))
+  } else if (card.state === 'relearning') {
+    retrievabilityPct = 35
+  } else {
+    // 'new'
+    retrievabilityPct = 0
+  }
+  retrievabilityPct = Math.min(100, Math.max(0, retrievabilityPct))
+
+  // Mastery bar gradient / color styling
+  let progressGradient = 'bg-gradient-to-r from-sky-500 to-emerald-400'
+  if (card.state === 'relearning') {
+    progressGradient = 'bg-gradient-to-r from-rose-500 to-amber-500'
+  } else if (card.state === 'learning') {
+    progressGradient = 'bg-gradient-to-r from-amber-500 to-sky-400'
+  } else if (card.state === 'new' || retrievabilityPct === 0) {
+    progressGradient = 'bg-slate-700'
+  }
+
+  // 2. Difficulty Indicator
+  let diffLabel = 'Unrated'
+  let diffColor = 'bg-slate-600'
+  const rawDiff = card.difficulty?.toLowerCase() || ''
+  if (rawDiff === 'easy' || (card.fsrs_difficulty != null && card.fsrs_difficulty < 3.5)) {
+    diffLabel = 'Easy'
+    diffColor = 'bg-emerald-500'
+  } else if (rawDiff === 'medium' || rawDiff === 'med' || (card.fsrs_difficulty != null && card.fsrs_difficulty <= 7.0)) {
+    diffLabel = 'Medium'
+    diffColor = 'bg-amber-500'
+  } else if (rawDiff === 'hard' || (card.fsrs_difficulty != null && card.fsrs_difficulty > 7.0)) {
+    diffLabel = 'Hard'
+    diffColor = 'bg-rose-500'
+  }
+
+  // 3. Recall / Latest Rating
+  let ratingLabel = 'Unreviewed'
+  let ratingColor = 'bg-slate-700'
+  const rawGrade = card.last_grade?.toLowerCase()
+  if (rawGrade === 'again') {
+    ratingLabel = 'Again'
+    ratingColor = 'bg-rose-500'
+  } else if (rawGrade === 'hard') {
+    ratingLabel = 'Hard'
+    ratingColor = 'bg-amber-500'
+  } else if (rawGrade === 'good') {
+    ratingLabel = 'Good'
+    ratingColor = 'bg-emerald-500'
+  } else if (rawGrade === 'easy') {
+    ratingLabel = 'Easy'
+    ratingColor = 'bg-sky-500'
+  }
+
+  // State label
+  const stateLabel = card.state ? card.state.charAt(0).toUpperCase() + card.state.slice(1) : 'New'
+
+  const tooltip = `Card Progression:\n• State: ${stateLabel}\n• Retrievability / Mastery: ${retrievabilityPct}%\n• Difficulty: ${diffLabel}${card.fsrs_difficulty != null ? ` (FSRS: ${card.fsrs_difficulty.toFixed(1)})` : ''}\n• Last Rating: ${ratingLabel}\n• Reviews: ${card.review_count ?? 0}${card.lapses ? ` (${card.lapses} lapses)` : ''}${card.stability != null ? `\n• Stability: ${card.stability.toFixed(1)}d` : ''}`
+
+  return (
+    <div
+      className={`inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-md bg-slate-900/60 border border-slate-700/50 select-none ${className}`}
+      title={tooltip}
+    >
+      {/* 1. Mastery / Retrievability mini bar */}
+      <div
+        className="relative h-1.5 w-7 overflow-hidden rounded-full bg-slate-800"
+        title={`Retrievability / Mastery: ${retrievabilityPct}% (${stateLabel})`}
+      >
+        <div
+          className={`h-full ${progressGradient} transition-all duration-300`}
+          style={{ width: `${retrievabilityPct}%` }}
+        />
+      </div>
+
+      {/* 2. Difficulty mini bar */}
+      <div
+        className="h-1.5 w-7 overflow-hidden rounded-full bg-slate-800"
+        title={`Difficulty: ${diffLabel}${card.fsrs_difficulty != null ? ` (${card.fsrs_difficulty.toFixed(1)}/10)` : ''}`}
+      >
+        <div className={`h-full w-full ${diffColor}`} />
+      </div>
+
+      {/* 3. Latest Recall mini bar */}
+      <div
+        className="h-1.5 w-7 overflow-hidden rounded-full bg-slate-800"
+        title={`Last Recall: ${ratingLabel}`}
+      >
+        <div className={`h-full w-full ${ratingColor}`} />
+      </div>
+
+      {/* Percentage text */}
+      <span className="text-[10px] font-mono font-semibold text-sky-300 tabular-nums">
+        {retrievabilityPct}%
       </span>
     </div>
   )

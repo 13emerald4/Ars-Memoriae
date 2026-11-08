@@ -1,0 +1,706 @@
+[
+  {
+    "card_id": "d8b881e9-9389-4967-8f31-0be5e0dbda67",
+    "deck_name": "01.3 Concepto de Provincia (s. XIX)",
+    "deck_id": "17e42f2d-7c28-4235-9031-be22076fe159",
+    "template_slot": "default",
+    "front": "1.3 ¿En qué siglo surge el concepto moderno de «provincia»?",
+    "back": "En el siglo XIX, entre 1812 y 1833.\n\nEvolución de la división territorial\n├── Roma: Tarraconense, Lusitana y Bética\n├── Edad Media: reinos\n├── Siglo XVIII: los Borbones centralizan\n└── Siglo XIX (1812–1833): concepto moderno de provincia  [ESTA CARTA]",
+    "position": 3,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "1.3 ¿En qué siglo surge el concepto moderno de «provincia»?",
+      "Back": "En el siglo XIX, entre 1812 y 1833.\n\nEvolución de la división territorial\n├── Roma: Tarraconense, Lusitana y Bética\n├── Edad Media: reinos\n├── Siglo XVIII: los Borbones centralizan\n└── Siglo XIX (1812–1833): concepto moderno de provincia  [ESTA CARTA]"
+    }
+  },
+  {
+    "card_id": "3b2f9607-ed7e-42f2-aa07-af9d17e95778",
+    "deck_name": "01.4 Ocho Apellidos Vascos",
+    "deck_id": "1ca862bf-df33-4205-acfc-6ff18482b06e",
+    "template_slot": "default",
+    "front": "1.4 ¿Qué contexto político en el País Vasco y en España permite entender «Ocho apellidos vascos» (2014)?",
+    "back": "En 2011 ETA renunció a la lucha armada y se abrió una nueva era. Urkullu dejó al margen la agenda separatista de Ibarretxe. En el cine predomina el humor frente al horror, y la «marca vasca» frente a lo identitario.\n\nContexto político (2014)\n├── 2011: ETA renuncia a la lucha armada\n├── Urkullu deja la agenda separatista de Ibarretxe\n├── Humor frente al horror\n└── «Marca vasca» frente a lo identitario",
+    "position": 4,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "1.4 ¿Qué contexto político en el País Vasco y en España permite entender «Ocho apellidos vascos» (2014)?",
+      "Back": "En 2011 ETA renunció a la lucha armada y se abrió una nueva era. Urkullu dejó al margen la agenda separatista de Ibarretxe. En el cine predomina el humor frente al horror, y la «marca vasca» frente a lo identitario.\n\nContexto político (2014)\n├── 2011: ETA renuncia a la lucha armada\n├── Urkullu deja la agenda separatista de Ibarretxe\n├── Humor frente al horror\n└── «Marca vasca» frente a lo identitario"
+    }
+  },
+  {
+    "card_id": "0db2e798-58d3-43aa-9fc5-c36966024f65",
+    "deck_name": "01.2 Organización Política Íbera",
+    "deck_id": "2b7898ed-fe92-4cd5-be02-b129c0e6dd7e",
+    "template_slot": "default",
+    "front": "1.2 ¿Cómo se organizaban los íberos a nivel político?",
+    "back": "No tenían un gobierno común; se organizaban en tribus territoriales sin vínculo familiar agrupadas en naciones.\n\nOrganización política íbera\n├── Sin gobierno común: fragmentación política\n├── Tribus: agrupadas en naciones, con amplio territorio\n└── Vínculo: territorial, sin lazo familiar en la tribu",
+    "position": 2,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "1.2 ¿Cómo se organizaban los íberos a nivel político?",
+      "Back": "No tenían un gobierno común; se organizaban en tribus territoriales sin vínculo familiar agrupadas en naciones.\n\nOrganización política íbera\n├── Sin gobierno común: fragmentación política\n├── Tribus: agrupadas en naciones, con amplio territorio\n└── Vínculo: territorial, sin lazo familiar en la tribu"
+    }
+  },
+  {
+    "card_id": "59a0e122-5628-4c5d-ae90-8080c24eabd4",
+    "deck_name": "08 Definiciones, Obras y Ensayos",
+    "deck_id": "2e0f2db5-f6ed-4164-b910-abdf631f799a",
+    "template_slot": "default",
+    "front": "Ensayo B: ¿cuál es el esqueleto del ensayo sobre la religión de Roma y el cristianismo?",
+    "back": "Tesis: el cristianismo pasa de amenaza perseguida a religión del Estado, y solo la Iglesia sobrevive.\n\nEnsayo B\n├── 1. Religión romana: 4 elementos; tolerancia con límites\n├── 2. Amenaza → 300 años de persecuciones\n├── 3. Se romaniza (ss. II–III); adopción en todas las clases\n├── 4. Constantino (313) y Teodosio (s. IV)\n├── 5. Hispania: Santiago; basílica, escultura, Prudencio\n└── Conclusión: solo la Iglesia sobrevive",
+    "position": 45,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "Ensayo B: ¿cuál es el esqueleto del ensayo sobre la religión de Roma y el cristianismo?",
+      "Back": "Tesis: el cristianismo pasa de amenaza perseguida a religión del Estado, y solo la Iglesia sobrevive.\n\nEnsayo B\n├── 1. Religión romana: 4 elementos; tolerancia con límites\n├── 2. Amenaza → 300 años de persecuciones\n├── 3. Se romaniza (ss. II–III); adopción en todas las clases\n├── 4. Constantino (313) y Teodosio (s. IV)\n├── 5. Hispania: Santiago; basílica, escultura, Prudencio\n└── Conclusión: solo la Iglesia sobrevive"
+    }
+  },
+  {
+    "card_id": "737e1a03-7123-403d-89a5-2501aadeb2af",
+    "deck_name": "08 Definiciones, Obras y Ensayos",
+    "deck_id": "2e0f2db5-f6ed-4164-b910-abdf631f799a",
+    "template_slot": "default",
+    "front": "Ensayo C: ¿cuál es el esqueleto del ensayo sobre el carácter urbano de la cultura romana?",
+    "back": "Tesis: la vida giraba en torno a las ciudades; el objetivo era hacer la vida agradable.\n\nEnsayo C\n├── 1. Arquitectura urbana: circos, teatros (Mérida), vías (Augusta), arcos (Bará)\n├── 2. Escultura: bustos realistas; Venus de Itálica\n├── 3. Mosaicos: colorido, escenas mitológicas\n└── 4. Literatura: Séneca, Lucano, Marcial, Quintiliano",
+    "position": 46,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "Ensayo C: ¿cuál es el esqueleto del ensayo sobre el carácter urbano de la cultura romana?",
+      "Back": "Tesis: la vida giraba en torno a las ciudades; el objetivo era hacer la vida agradable.\n\nEnsayo C\n├── 1. Arquitectura urbana: circos, teatros (Mérida), vías (Augusta), arcos (Bará)\n├── 2. Escultura: bustos realistas; Venus de Itálica\n├── 3. Mosaicos: colorido, escenas mitológicas\n└── 4. Literatura: Séneca, Lucano, Marcial, Quintiliano"
+    }
+  },
+  {
+    "card_id": "8a4feb01-d97d-4b5c-9696-f2aa01837c6a",
+    "deck_name": "02 Roma y la Conquista de Hispania",
+    "deck_id": "38fb5710-ea40-48e2-80be-34c0be2cd3f2",
+    "template_slot": "default",
+    "front": "¿Cuánto duró la dominación de Roma en la Península?",
+    "back": "Duró siete siglos, desde la llegada en el siglo II a. C. hasta la caída del Imperio en el siglo V d. C.\n\nDominación romana en la Península\n├── Duración: 7 siglos\n├── Inicio: siglo II a. C. (218 a. C., II Guerra Púnica)\n└── Fin: siglo V d. C. (caída del Imperio romano)",
+    "position": 8,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "¿Cuánto duró la dominación de Roma en la Península?",
+      "Back": "Duró siete siglos, desde la llegada en el siglo II a. C. hasta la caída del Imperio en el siglo V d. C.\n\nDominación romana en la Península\n├── Duración: 7 siglos\n├── Inicio: siglo II a. C. (218 a. C., II Guerra Púnica)\n└── Fin: siglo V d. C. (caída del Imperio romano)"
+    }
+  },
+  {
+    "card_id": "042fc162-527c-43f2-82f0-887c9ad71d92",
+    "deck_name": "02 Roma y la Conquista de Hispania",
+    "deck_id": "38fb5710-ea40-48e2-80be-34c0be2cd3f2",
+    "template_slot": "default",
+    "front": "★ ¿Por qué se dice que con los romanos comienza la historia de España como nación?",
+    "back": "Porque los pueblos peninsulares dejan de ser unidades fragmentadas y adquieren unidad política, económica y cultural.\n\nEspaña como nación con Roma\n├── Fin del atomismo: dejan de ser unidades fragmentadas\n├── Intereses comunes: unión bajo la política y economía de Roma\n└── Unidad cultural: integración en la civilización romana",
+    "position": 9,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿Por qué se dice que con los romanos comienza la historia de España como nación?",
+      "Back": "Porque los pueblos peninsulares dejan de ser unidades fragmentadas y adquieren unidad política, económica y cultural.\n\nEspaña como nación con Roma\n├── Fin del atomismo: dejan de ser unidades fragmentadas\n├── Intereses comunes: unión bajo la política y economía de Roma\n└── Unidad cultural: integración en la civilización romana"
+    }
+  },
+  {
+    "card_id": "1a793f57-5a4e-4745-a984-39492bac3180",
+    "deck_name": "02 Roma y la Conquista de Hispania",
+    "deck_id": "38fb5710-ea40-48e2-80be-34c0be2cd3f2",
+    "template_slot": "default",
+    "front": "¿Por qué llegaron los romanos a Iberia y cuáles son las fechas de las tres Guerras Púnicas?",
+    "back": "Llegaron por las Guerras Púnicas (disputa comercial con Cartago, siglos III–II a. C.).\n\nGuerras Púnicas y llegada de Roma\n├── Causa: lucha con Cartago por el dominio comercial\n├── I Guerra Púnica (264–241 a. C.)\n├── II Guerra Púnica (218–201 a. C.): llegada a la Península (218 a. C.)\n└── III Guerra Púnica (149–146 a. C.)",
+    "position": 10,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "¿Por qué llegaron los romanos a Iberia y cuáles son las fechas de las tres Guerras Púnicas?",
+      "Back": "Llegaron por las Guerras Púnicas (disputa comercial con Cartago, siglos III–II a. C.).\n\nGuerras Púnicas y llegada de Roma\n├── Causa: lucha con Cartago por el dominio comercial\n├── I Guerra Púnica (264–241 a. C.)\n├── II Guerra Púnica (218–201 a. C.): llegada a la Península (218 a. C.)\n└── III Guerra Púnica (149–146 a. C.)"
+    }
+  },
+  {
+    "card_id": "ad9b56d0-a0c4-48b3-b4f6-a9e4b3f273ed",
+    "deck_name": "02 Roma y la Conquista de Hispania",
+    "deck_id": "38fb5710-ea40-48e2-80be-34c0be2cd3f2",
+    "template_slot": "default",
+    "front": "¿Qué pasó después de la I Guerra Púnica?",
+    "back": "Los cartagineses perdieron la guerra y después invadieron Iberia (tras perder Córcega y Cerdeña). Las colonias griegas de la Península pidieron ayuda a Roma.\n\nI Guerra Púnica (264–241 a. C.)\n├── Derrota de Cartago: pierde la guerra y los territorios de Córcega y Cerdeña\n├── Invasión de Iberia: Cartago invade la Península tras la derrota\n└── Reacción griega: las colonias griegas de la Península piden ayuda a Roma",
+    "position": 11,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "¿Qué pasó después de la I Guerra Púnica?",
+      "Back": "Los cartagineses perdieron la guerra y después invadieron Iberia (tras perder Córcega y Cerdeña). Las colonias griegas de la Península pidieron ayuda a Roma.\n\nI Guerra Púnica (264–241 a. C.)\n├── Derrota de Cartago: pierde la guerra y los territorios de Córcega y Cerdeña\n├── Invasión de Iberia: Cartago invade la Península tras la derrota\n└── Reacción griega: las colonias griegas de la Península piden ayuda a Roma"
+    }
+  },
+  {
+    "card_id": "e00fb16c-5fb7-47c7-a950-0beff7e3f7cd",
+    "deck_name": "02 Roma y la Conquista de Hispania",
+    "deck_id": "38fb5710-ea40-48e2-80be-34c0be2cd3f2",
+    "template_slot": "default",
+    "front": "¿Qué pasó en la II Guerra Púnica y por qué es la clave de la conquista?",
+    "back": "Los romanos lucharon contra los cartagineses dentro de la Península; por eso conquistaron la Península. Roma envió a los Escipiones, que entraron por Ampurias y terminaron por derrotar a Aníbal en África. Los íberos, que antes eran aliados de Cartago, pasaron a ser aliados de Roma.\n\nII Guerra Púnica (218–201 a. C.) — Clave de la conquista\n├── Clave de la conquista: luchan dentro de la Península → por eso conquistan la Península\n├── Llegada: Roma envía a los Escipiones (desembarco por Ampurias, colonia griega aliada)\n├── Desenlace militar: derrotan finalmente a Aníbal en África (Zama)\n└── Cambio de alianzas: los íberos (antes aliados de Cartago) pasan a ser aliados de Roma",
+    "position": 12,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "¿Qué pasó en la II Guerra Púnica y por qué es la clave de la conquista?",
+      "Back": "Los romanos lucharon contra los cartagineses dentro de la Península; por eso conquistaron la Península. Roma envió a los Escipiones, que entraron por Ampurias y terminaron por derrotar a Aníbal en África. Los íberos, que antes eran aliados de Cartago, pasaron a ser aliados de Roma.\n\nII Guerra Púnica (218–201 a. C.) — Clave de la conquista\n├── Clave de la conquista: luchan dentro de la Península → por eso conquistan la Península\n├── Llegada: Roma envía a los Escipiones (desembarco por Ampurias, colonia griega aliada)\n├── Desenlace militar: derrotan finalmente a Aníbal en África (Zama)\n└── Cambio de alianzas: los íberos (antes aliados de Cartago) pasan a ser aliados de Roma"
+    }
+  },
+  {
+    "card_id": "b5b37a46-2494-45f9-b5c8-54562c5fae32",
+    "deck_name": "02 Roma y la Conquista de Hispania",
+    "deck_id": "38fb5710-ea40-48e2-80be-34c0be2cd3f2",
+    "template_slot": "default",
+    "front": "★ ¿Qué supuso la caída de Cartago?",
+    "back": "Supuso el fin de la hegemonía púnica y el inicio de la romanización europea.\n\nConsecuencias de la caída de Cartago\n├── Fin: término del predominio africano en el Mediterráneo\n└── Inicio: comienzo de la romanización de Europa",
+    "position": 13,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿Qué supuso la caída de Cartago?",
+      "Back": "Supuso el fin de la hegemonía púnica y el inicio de la romanización europea.\n\nConsecuencias de la caída de Cartago\n├── Fin: término del predominio africano en el Mediterráneo\n└── Inicio: comienzo de la romanización de Europa"
+    }
+  },
+  {
+    "card_id": "f6d6e152-552b-4eee-a328-4202bd076867",
+    "deck_name": "02 Roma y la Conquista de Hispania",
+    "deck_id": "38fb5710-ea40-48e2-80be-34c0be2cd3f2",
+    "template_slot": "default",
+    "front": "¿Cómo fue la conquista romana de la Península?",
+    "back": "Ocupación militar de dos siglos, larga y penosa (Pompeyo y Julio César), con fuerte resistencia indígena hasta Augusto (38 a. C.).\n\nConquista romana de Hispania\n├── Duración: dos siglos (larga y penosa)\n├── Guerras civiles: pugnas entre Pompeyo y Julio César\n├── Resistencia indígena:\n│   ├── Lusitanos (Viriato)\n│   ├── Celtíberos (Numancia)\n│   └── Cántabros y astures\n└── Hito final: 38 a. C. (Augusto integra Hispania en el Imperio)",
+    "position": 14,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "¿Cómo fue la conquista romana de la Península?",
+      "Back": "Ocupación militar de dos siglos, larga y penosa (Pompeyo y Julio César), con fuerte resistencia indígena hasta Augusto (38 a. C.).\n\nConquista romana de Hispania\n├── Duración: dos siglos (larga y penosa)\n├── Guerras civiles: pugnas entre Pompeyo y Julio César\n├── Resistencia indígena:\n│   ├── Lusitanos (Viriato)\n│   ├── Celtíberos (Numancia)\n│   └── Cántabros y astures\n└── Hito final: 38 a. C. (Augusto integra Hispania en el Imperio)"
+    }
+  },
+  {
+    "card_id": "7ad830ee-18c8-4eb1-8b07-38a6f448695b",
+    "deck_name": "01.1 Arte Rupestre (Altamira)",
+    "deck_id": "702005d8-e63b-4466-aa8c-6bda5ceaef83",
+    "template_slot": "default",
+    "front": "1.1 ¿Cuáles son las características del arte rupestre de las cuevas profundas del norte de España?\n\n![](/media/span321_altamira_bisonte.jpg)",
+    "back": "Arte de las cuevas de Altamira (Santander, Cantabria), del Paleolítico (hace ~10.000 años).\n\nArte rupestre del norte (Altamira)\n├── Época y lugar: Paleolítico (~10.000 años), Santander (Cantabria)\n├── Figuras: grandes, aisladas y en reposo\n├── Color: polícromas (rojo, amarillo y negro)\n├── Trazo: simple\n└── Sentido realista: aprovecha protuberancias de la roca para crear volumen",
+    "position": 1,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "1.1 ¿Cuáles son las características del arte rupestre de las cuevas profundas del norte de España?",
+      "Back": "Arte de las cuevas de Altamira (Santander, Cantabria), del Paleolítico (hace ~10.000 años).\n\nArte rupestre del norte (Altamira)\n├── Época y lugar: Paleolítico (~10.000 años), Santander (Cantabria)\n├── Figuras: grandes, aisladas y en reposo\n├── Color: polícromas (rojo, amarillo y negro)\n├── Trazo: simple\n└── Sentido realista: aprovecha protuberancias de la roca para crear volumen",
+      "Image": "/media/span321_altamira_bisonte.jpg"
+    }
+  },
+  {
+    "card_id": "b933719b-9669-4b31-b655-33fa56f8bedd",
+    "deck_name": "01.5 La Dama de Elche",
+    "deck_id": "835824c1-f449-4d42-a0c7-0df72785f804",
+    "template_slot": "default",
+    "front": "1.5 Dama de Elche: ¿qué es, a qué cultura y época pertenece, a quién representa y qué función tenía?\n\n![](/media/span321_dama_elche.jpg)",
+    "back": "Dama de Elche\n├── Qué es: busto, totalmente policromado\n├── Cultura y época: cultura íbera (influida por la griega), siglos III–II a. C.\n├── Representación: dama ibérica con dos grandes rodetes (aros), peineta con velo y joyas en el pecho\n└── Función: escultura decorativa (según el PPT), no votiva (religiosa)",
+    "position": 5,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "1.5 Dama de Elche: ¿qué es, a qué cultura y época pertenece, a quién representa y qué función tenía?",
+      "Back": "Dama de Elche\n├── Qué es: busto, totalmente policromado\n├── Cultura y época: cultura íbera (influida por la griega), siglos III–II a. C.\n├── Representación: dama ibérica con dos grandes rodetes (aros), peineta con velo y joyas en el pecho\n└── Función: escultura decorativa (según el PPT), no votiva (religiosa)",
+      "Image": "/media/span321_dama_elche.jpg"
+    }
+  },
+  {
+    "card_id": "2071fe75-d67f-41c8-9ca6-3bb4103a236d",
+    "deck_name": "01.5 La Dama de Elche",
+    "deck_id": "835824c1-f449-4d42-a0c7-0df72785f804",
+    "template_slot": "default",
+    "front": "1.5 ¿Qué influencias artísticas muestra la Dama de Elche y cómo las vemos?\n\n![](/media/span321_dama_elche.jpg)",
+    "back": "Muestra una síntesis de influencias griegas y orientales (fenicias).\n\nInfluencias artísticas (Dama de Elche)\n├── Griega: técnica y detalle realista (rostro, ojos, nariz, labios)\n└── Oriental (fenicia): hieratismo, simetría del cabello, joyas y adornos",
+    "position": 6,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "1.5 ¿Qué influencias artísticas muestra la Dama de Elche y cómo las vemos?",
+      "Back": "Muestra una síntesis de influencias griegas y orientales (fenicias).\n\nInfluencias artísticas (Dama de Elche)\n├── Griega: técnica y detalle realista (rostro, ojos, nariz, labios)\n└── Oriental (fenicia): hieratismo, simetría del cabello, joyas y adornos",
+      "Image": "/media/span321_dama_elche.jpg"
+    }
+  },
+  {
+    "card_id": "d2cd972a-487d-4286-bf0e-aa0a0f570ab2",
+    "deck_name": "01.6 Ensayo A: Hispania Unida",
+    "deck_id": "8490ae8f-1cdf-4ec2-a1cb-94e6a9b35171",
+    "template_slot": "default",
+    "front": "2 · Ensayo sobre Roma (hasta el arte): ¿cuál es el esqueleto?",
+    "back": "Tesis: con los romanos empieza la historia de España como nación. Partes: Roma y Cartago → conquista → organización → romanización. Conclusión: en el siglo V hay una Hispania unificada por el concepto político de nación.\n\nEnsayo A: Roma hasta el arte\n├── Tesis: con Roma empieza la historia de España como nación (7 siglos)\n├── 1. Roma y Cartago: Guerras Púnicas; 218 a. C., Escipiones, Ampurias\n├── 2. Conquista: dos siglos; Viriato, Numancia, cántabros y astures; 38 a. C.\n├── 3. Organización: derecho romano, clases, Ius Latii, colonias y municipios, provincias\n├── 4. Romanización: unidad frente al atomismo; latín; emperadores\n└── Conclusión: siglo V, Hispania unificada por el concepto político de nación",
+    "position": 7,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "2 · Ensayo sobre Roma (hasta el arte): ¿cuál es el esqueleto?",
+      "Back": "Tesis: con los romanos empieza la historia de España como nación. Partes: Roma y Cartago → conquista → organización → romanización. Conclusión: en el siglo V hay una Hispania unificada por el concepto político de nación.\n\nEnsayo A: Roma hasta el arte\n├── Tesis: con Roma empieza la historia de España como nación (7 siglos)\n├── 1. Roma y Cartago: Guerras Púnicas; 218 a. C., Escipiones, Ampurias\n├── 2. Conquista: dos siglos; Viriato, Numancia, cántabros y astures; 38 a. C.\n├── 3. Organización: derecho romano, clases, Ius Latii, colonias y municipios, provincias\n├── 4. Romanización: unidad frente al atomismo; latín; emperadores\n└── Conclusión: siglo V, Hispania unificada por el concepto político de nación"
+    }
+  },
+  {
+    "card_id": "0175f2b5-e227-4326-9b15-64cc7bafd267",
+    "deck_name": "06 Religión de Roma y Primer Cristianismo",
+    "deck_id": "8c45e08f-bdbc-44f9-ae5e-2c9b9becf199",
+    "template_slot": "default",
+    "front": "¿De qué cuatro elementos se componía la religión romana?",
+    "back": "La religión romana clásica integraba cuatro elementos complementarios.\n\nCuatro elementos de la religión romana\n├── 1. Mitología griega\n├── 2. Culto al emperador\n├── 3. Animismo naturista\n└── 4. Abstracción de conceptos sociales o políticos (ej. juventud)",
+    "position": 33,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "¿De qué cuatro elementos se componía la religión romana?",
+      "Back": "La religión romana clásica integraba cuatro elementos complementarios.\n\nCuatro elementos de la religión romana\n├── 1. Mitología griega\n├── 2. Culto al emperador\n├── 3. Animismo naturista\n└── 4. Abstracción de conceptos sociales o políticos (ej. juventud)"
+    }
+  },
+  {
+    "card_id": "234a2b0e-d098-4f4d-806e-75e7408d88cc",
+    "deck_name": "06 Religión de Roma y Primer Cristianismo",
+    "deck_id": "8c45e08f-bdbc-44f9-ae5e-2c9b9becf199",
+    "template_slot": "default",
+    "front": "★ ¿Qué actitud tenía Roma con las religiones indígenas?",
+    "back": "Tolerancia general sujeta a dos límites políticos y morales infranqueables.\n\nActitud de Roma con religiones indígenas\n├── Principio general: tolerancia religiosa\n└── Dos límites estrictos:\n    ├── Prohibición expresa de sacrificios humanos\n    └── Persecución de grupos hostiles al Estado (separatismo o ataques al emperador)",
+    "position": 34,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿Qué actitud tenía Roma con las religiones indígenas?",
+      "Back": "Tolerancia general sujeta a dos límites políticos y morales infranqueables.\n\nActitud de Roma con religiones indígenas\n├── Principio general: tolerancia religiosa\n└── Dos límites estrictos:\n    ├── Prohibición expresa de sacrificios humanos\n    └── Persecución de grupos hostiles al Estado (separatismo o ataques al emperador)"
+    }
+  },
+  {
+    "card_id": "0084d23b-8146-4658-bd20-e6fe5ae07b0d",
+    "deck_name": "06 Religión de Roma y Primer Cristianismo",
+    "deck_id": "8c45e08f-bdbc-44f9-ae5e-2c9b9becf199",
+    "template_slot": "default",
+    "front": "★ ¿Por qué el cristianismo fue al principio una amenaza para Roma?",
+    "back": "Planteaba una doble amenaza al orden divino y social de Roma, motivando 300 años de persecuciones.\n\nCristianismo como amenaza inicial\n├── Amenaza política: negaba el carácter divino del emperador\n├── Amenaza social: defendía la igualdad de todos frente a las jerarquías\n└── Reacción del Imperio: persecuciones durante 300 años",
+    "position": 35,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿Por qué el cristianismo fue al principio una amenaza para Roma?",
+      "Back": "Planteaba una doble amenaza al orden divino y social de Roma, motivando 300 años de persecuciones.\n\nCristianismo como amenaza inicial\n├── Amenaza política: negaba el carácter divino del emperador\n├── Amenaza social: defendía la igualdad de todos frente a las jerarquías\n└── Reacción del Imperio: persecuciones durante 300 años"
+    }
+  },
+  {
+    "card_id": "c82f5500-552e-4a4b-9279-5c5b86114c68",
+    "deck_name": "06 Religión de Roma y Primer Cristianismo",
+    "deck_id": "8c45e08f-bdbc-44f9-ae5e-2c9b9becf199",
+    "template_slot": "default",
+    "front": "★ ¿Cómo se «romanizó» el cristianismo en los siglos II y III?",
+    "back": "Asimiló las instituciones y la cultura organizativa del Imperio romano.\n\nRomanización del cristianismo (ss. II–III)\n├── Estructura institucional: adopción del derecho romano y jerarquías\n├── Centro neurálgico: Roma se erige en centro espiritual\n└── Síntesis cultural: interpretación cristiana del ideal civilizatorio romano",
+    "position": 36,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿Cómo se «romanizó» el cristianismo en los siglos II y III?",
+      "Back": "Asimiló las instituciones y la cultura organizativa del Imperio romano.\n\nRomanización del cristianismo (ss. II–III)\n├── Estructura institucional: adopción del derecho romano y jerarquías\n├── Centro neurálgico: Roma se erige en centro espiritual\n└── Síntesis cultural: interpretación cristiana del ideal civilizatorio romano"
+    }
+  },
+  {
+    "card_id": "dcf7d6c5-ba65-46e0-973d-644a7ee72c14",
+    "deck_name": "06 Religión de Roma y Primer Cristianismo",
+    "deck_id": "8c45e08f-bdbc-44f9-ae5e-2c9b9becf199",
+    "template_slot": "default",
+    "front": "★ ¿Por qué adoptaron el cristianismo personas de todas las clases sociales?",
+    "back": "Ofrecía solidez ética y orden institucional percibidos como la salvación de la civilización.\n\nAdopción del cristianismo en todas las clases\n├── Principios morales: ética clara y universal para la vida cotidiana\n├── Respeto al orden: conservaba las jerarquías sociales existentes\n├── Doctrina política: formuló una visión del Estado integradora\n└── Misión histórica: promesa de salvar el Imperio y la civilización romana",
+    "position": 37,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿Por qué adoptaron el cristianismo personas de todas las clases sociales?",
+      "Back": "Ofrecía solidez ética y orden institucional percibidos como la salvación de la civilización.\n\nAdopción del cristianismo en todas las clases\n├── Principios morales: ética clara y universal para la vida cotidiana\n├── Respeto al orden: conservaba las jerarquías sociales existentes\n├── Doctrina política: formuló una visión del Estado integradora\n└── Misión histórica: promesa de salvar el Imperio y la civilización romana"
+    }
+  },
+  {
+    "card_id": "7330aef7-1cc1-4209-924b-cd163f345a06",
+    "deck_name": "06 Religión de Roma y Primer Cristianismo",
+    "deck_id": "8c45e08f-bdbc-44f9-ae5e-2c9b9becf199",
+    "template_slot": "default",
+    "front": "¿Qué hizo el emperador Constantino?\n\n![](/media/span321_constantino.png)",
+    "back": "Promulgó el Edicto de Milán en el 313 d. C. (siglo IV), transformando las relaciones con la Iglesia.\n\nEdicto de Milán (313 d. C., Constantino)\n├── Libertad religiosa: garantía de libertad de culto\n├── Fin de persecuciones: cese definitivo de la hostilidad estatal\n└── Alianza institucional: aproximación entre la Iglesia y el Imperio",
+    "position": 38,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "¿Qué hizo el emperador Constantino?",
+      "Back": "Promulgó el Edicto de Milán en el 313 d. C. (siglo IV), transformando las relaciones con la Iglesia.\n\nEdicto de Milán (313 d. C., Constantino)\n├── Libertad religiosa: garantía de libertad de culto\n├── Fin de persecuciones: cese definitivo de la hostilidad estatal\n└── Alianza institucional: aproximación entre la Iglesia y el Imperio",
+      "Image": "/media/span321_constantino.png"
+    }
+  },
+  {
+    "card_id": "f2638e96-f6ba-4134-97c1-2c438d7c63cc",
+    "deck_name": "06 Religión de Roma y Primer Cristianismo",
+    "deck_id": "8c45e08f-bdbc-44f9-ae5e-2c9b9becf199",
+    "template_slot": "default",
+    "front": "¿Qué hizo Teodosio (s. IV) y qué pasó a su muerte?\n\n![](/media/span321_emperador_teodosio.jpg)",
+    "back": "Estableció el cristianismo como religión oficial y a su muerte el Imperio se fracturó.\n\nTeodosio (siglo IV)\n├── Imposición del cristianismo oficial:\n│   ├── Cristianización del Estado y del derecho\n│   ├── Cristianización del arte y la literatura\n│   └── Cristianización de la filosofía (Padres de la Iglesia)\n└── A su muerte: división definitiva del Imperio (Oriente y Occidente)",
+    "position": 39,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "¿Qué hizo Teodosio (s. IV) y qué pasó a su muerte?",
+      "Back": "Estableció el cristianismo como religión oficial y a su muerte el Imperio se fracturó.\n\nTeodosio (siglo IV)\n├── Imposición del cristianismo oficial:\n│   ├── Cristianización del Estado y del derecho\n│   ├── Cristianización del arte y la literatura\n│   └── Cristianización de la filosofía (Padres de la Iglesia)\n└── A su muerte: división definitiva del Imperio (Oriente y Occidente)",
+      "Image": "/media/span321_emperador_teodosio.jpg"
+    }
+  },
+  {
+    "card_id": "067e3621-c954-4aa0-8d6b-f629f0f0919e",
+    "deck_name": "07 Cristianización de Hispania y Cultura Cristiana",
+    "deck_id": "93830aef-1f84-45c4-bc5a-7461f52b3e1c",
+    "template_slot": "default",
+    "front": "★ ¿Por qué la Iglesia es tan importante para la cultura europea?",
+    "back": "Porque constituyó la única institución que pervivió a la caída del Imperio.\n\nImportancia de la Iglesia en Europa\n├── Supervivencia: única institución que sobrevivió a la caída del Imperio romano\n└── Legado cultural: puente de transmisión del derecho, el latín y la cultura clásica",
+    "position": 40,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿Por qué la Iglesia es tan importante para la cultura europea?",
+      "Back": "Porque constituyó la única institución que pervivió a la caída del Imperio.\n\nImportancia de la Iglesia en Europa\n├── Supervivencia: única institución que sobrevivió a la caída del Imperio romano\n└── Legado cultural: puente de transmisión del derecho, el latín y la cultura clásica"
+    }
+  },
+  {
+    "card_id": "d850cfb3-d4e2-493d-bb00-7a84a84b1c0f",
+    "deck_name": "07 Cristianización de Hispania y Cultura Cristiana",
+    "deck_id": "93830aef-1f84-45c4-bc5a-7461f52b3e1c",
+    "template_slot": "default",
+    "front": "★ ¿Cómo fue la cristianización de la Península?",
+    "back": "Proceso temprano y tenaz con persecuciones y un fuerte impacto legal y social.\n\nCristianización de la Península\n├── Expansión temprana: llegada de la fe (tradición del Apóstol Santiago)\n├── Persecuciones: superó una dura resistencia y violencia inicial\n├── Humanización legal: atemperó la aplicación del derecho romano\n└── Inclusión social: promovió mayor integración de la población hispana",
+    "position": 41,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿Cómo fue la cristianización de la Península?",
+      "Back": "Proceso temprano y tenaz con persecuciones y un fuerte impacto legal y social.\n\nCristianización de la Península\n├── Expansión temprana: llegada de la fe (tradición del Apóstol Santiago)\n├── Persecuciones: superó una dura resistencia y violencia inicial\n├── Humanización legal: atemperó la aplicación del derecho romano\n└── Inclusión social: promovió mayor integración de la población hispana"
+    }
+  },
+  {
+    "card_id": "4a0a4d36-0d0a-47b9-90c6-40e4a6fc10f9",
+    "deck_name": "07 Cristianización de Hispania y Cultura Cristiana",
+    "deck_id": "93830aef-1f84-45c4-bc5a-7461f52b3e1c",
+    "template_slot": "default",
+    "front": "¿Cómo era la arquitectura cristiana?\n\n![](/media/span321_basilica.jpg)",
+    "back": "Adaptó los modelos espaciales romanos para el nuevo culto.\n\nArquitectura cristiana primitiva\n├── Modelo base: la basílica civil romana\n└── Transformación: adaptada a la liturgia, asamblea y culto cristiano",
+    "position": 42,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "¿Cómo era la arquitectura cristiana?",
+      "Back": "Adaptó los modelos espaciales romanos para el nuevo culto.\n\nArquitectura cristiana primitiva\n├── Modelo base: la basílica civil romana\n└── Transformación: adaptada a la liturgia, asamblea y culto cristiano",
+      "Image": "/media/span321_basilica.jpg"
+    }
+  },
+  {
+    "card_id": "f95cf204-1578-437a-b6f7-651fdb6376e9",
+    "deck_name": "07 Cristianización de Hispania y Cultura Cristiana",
+    "deck_id": "93830aef-1f84-45c4-bc5a-7461f52b3e1c",
+    "template_slot": "default",
+    "front": "★ ¿Por qué decayó la escultura cristiana y cómo era?",
+    "back": "Decayó por cautela ante la idolatría pagana, evolucionando hacia un arte más espiritual.\n\nEscultura cristiana primitiva\n├── Decadencia: temor a la idolatría y culto a estatuas paganas\n├── Estética: más tosca, rígida y hierática\n└── Contenido: intensificación del misticismo y simbolismo religioso",
+    "position": 43,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿Por qué decayó la escultura cristiana y cómo era?",
+      "Back": "Decayó por cautela ante la idolatría pagana, evolucionando hacia un arte más espiritual.\n\nEscultura cristiana primitiva\n├── Decadencia: temor a la idolatría y culto a estatuas paganas\n├── Estética: más tosca, rígida y hierática\n└── Contenido: intensificación del misticismo y simbolismo religioso"
+    }
+  },
+  {
+    "card_id": "e6b8fed5-fa12-43eb-9422-22cf72e8394d",
+    "deck_name": "07 Cristianización de Hispania y Cultura Cristiana",
+    "deck_id": "93830aef-1f84-45c4-bc5a-7461f52b3e1c",
+    "template_slot": "default",
+    "front": "★ ¿Quién fue Aurelio Prudencio?",
+    "back": "El poeta lírico más relevante del cristianismo hispánico.\n\nAurelio Prudencio\n├── Perfil: el mejor poeta cristiano de Hispania\n└── Trascendencia litúrgica: sus himnos continúan cantándose en la liturgia católica",
+    "position": 44,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿Quién fue Aurelio Prudencio?",
+      "Back": "El poeta lírico más relevante del cristianismo hispánico.\n\nAurelio Prudencio\n├── Perfil: el mejor poeta cristiano de Hispania\n└── Trascendencia litúrgica: sus himnos continúan cantándose en la liturgia católica"
+    }
+  },
+  {
+    "card_id": "2600ac8c-c6e3-4f2d-a0bd-c0b28b912192",
+    "deck_name": "03 Organización Romana y Provincias",
+    "deck_id": "be8559f4-ae6f-4188-ba00-6a8bafaf4a57",
+    "template_slot": "default",
+    "front": "¿Qué sistemas coexistieron desde el inicio en la organización romana y con qué objetivos?",
+    "back": "Coexistieron la organización romana y los sistemas indígenas bajo el derecho romano.\n\nOrganización inicial de Roma\n├── Sistemas coexistentes:\n│   ├── Sistemas políticos indígenas\n│   └── Organización militar y política romana\n├── Objetivos:\n│   ├── Garantizar la autoridad de Roma\n│   └── Asegurar los privilegios de los ciudadanos romanos\n└── Sustento: el derecho romano",
+    "position": 15,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "¿Qué sistemas coexistieron desde el inicio en la organización romana y con qué objetivos?",
+      "Back": "Coexistieron la organización romana y los sistemas indígenas bajo el derecho romano.\n\nOrganización inicial de Roma\n├── Sistemas coexistentes:\n│   ├── Sistemas políticos indígenas\n│   └── Organización militar y política romana\n├── Objetivos:\n│   ├── Garantizar la autoridad de Roma\n│   └── Asegurar los privilegios de los ciudadanos romanos\n└── Sustento: el derecho romano"
+    }
+  },
+  {
+    "card_id": "2a1ffa55-0545-4d9e-83fe-1aa277d51eb3",
+    "deck_name": "03 Organización Romana y Provincias",
+    "deck_id": "be8559f4-ae6f-4188-ba00-6a8bafaf4a57",
+    "template_slot": "default",
+    "front": "★ ¿Qué es el derecho romano y por qué es la mayor contribución de Roma?",
+    "back": "Es el sistema que organiza las relaciones de los individuos entre sí y con el gobierno. Su fundamento es el individuo y se aplicó a todos los pueblos sometidos.\n\nDerecho romano\n├── Fundamento: el individuo (frente al colectivismo de las tribus)\n├── Libertades básicas sin importar el origen étnico (ej. propiedad)\n├── Paterfamilias: persona jurídica fundamental\n└── Se aplicó a todos los pueblos sometidos a Roma",
+    "position": 16,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿Qué es el derecho romano y por qué es la mayor contribución de Roma?",
+      "Back": "Es el sistema que organiza las relaciones de los individuos entre sí y con el gobierno. Su fundamento es el individuo y se aplicó a todos los pueblos sometidos.\n\nDerecho romano\n├── Fundamento: el individuo (frente al colectivismo de las tribus)\n├── Libertades básicas sin importar el origen étnico (ej. propiedad)\n├── Paterfamilias: persona jurídica fundamental\n└── Se aplicó a todos los pueblos sometidos a Roma"
+    }
+  },
+  {
+    "card_id": "b61bd251-a445-4abd-ad25-142ffef59ae4",
+    "deck_name": "03 Organización Romana y Provincias",
+    "deck_id": "be8559f4-ae6f-4188-ba00-6a8bafaf4a57",
+    "template_slot": "default",
+    "front": "¿Qué clases sociales había en los territorios conquistados?",
+    "back": "Tres: libres, semilibres y esclavos.\n\nClases sociales\n├── Libres: ciudadanos romanos, latinos y extranjeros\n├── Semilibres: colonos de los romanos\n└── Esclavos",
+    "position": 17,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "¿Qué clases sociales había en los territorios conquistados?",
+      "Back": "Tres: libres, semilibres y esclavos.\n\nClases sociales\n├── Libres: ciudadanos romanos, latinos y extranjeros\n├── Semilibres: colonos de los romanos\n└── Esclavos"
+    }
+  },
+  {
+    "card_id": "21dcebae-8ed0-432f-a306-302cf98dede7",
+    "deck_name": "03 Organización Romana y Provincias",
+    "deck_id": "be8559f4-ae6f-4188-ba00-6a8bafaf4a57",
+    "template_slot": "default",
+    "front": "★ ¿Qué era el Ius Latii y cuándo recibió Hispania el Ius Latii y la ciudadanía romana?",
+    "back": "El Ius Latii otorgaba derechos civiles como paso previo a la ciudadanía completa.\n\nIus Latii y Ciudadanía en Hispania\n├── Concepto: derecho latino (leyes especiales y derechos previos a la ciudadanía)\n├── Ius Latii: otorgado por Vespasiano (siglo I d. C.)\n└── Ciudadanía romana: otorgada por Caracalla (siglo III d. C., 212)",
+    "position": 18,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿Qué era el Ius Latii y cuándo recibió Hispania el Ius Latii y la ciudadanía romana?",
+      "Back": "El Ius Latii otorgaba derechos civiles como paso previo a la ciudadanía completa.\n\nIus Latii y Ciudadanía en Hispania\n├── Concepto: derecho latino (leyes especiales y derechos previos a la ciudadanía)\n├── Ius Latii: otorgado por Vespasiano (siglo I d. C.)\n└── Ciudadanía romana: otorgada por Caracalla (siglo III d. C., 212)"
+    }
+  },
+  {
+    "card_id": "55712923-10a1-4f53-9936-b08dcb6f6e17",
+    "deck_name": "03 Organización Romana y Provincias",
+    "deck_id": "be8559f4-ae6f-4188-ba00-6a8bafaf4a57",
+    "template_slot": "default",
+    "front": "★ ¿En qué se diferenciaban las colonias romanas de los municipios y por qué importan los municipios?",
+    "back": "En las colonias, los legionarios recibían tierras tras el servicio militar y los colonos nativos las cultivaban en semiesclavitud. Los municipios eran ciudades indígenas aliadas de Roma, con libertad, autonomía, asambleas populares y leyes propias; tuvieron gran arraigo en Hispania.\n\nColonias y ciudades\n├── Colonias: legionarios (tierras tras 30 años) + colonos nativos\n└── Municipios: alianza con Roma, autonomía, asambleas, leyes propias → gran arraigo",
+    "position": 19,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿En qué se diferenciaban las colonias romanas de los municipios y por qué importan los municipios?",
+      "Back": "En las colonias, los legionarios recibían tierras tras el servicio militar y los colonos nativos las cultivaban en semiesclavitud. Los municipios eran ciudades indígenas aliadas de Roma, con libertad, autonomía, asambleas populares y leyes propias; tuvieron gran arraigo en Hispania.\n\nColonias y ciudades\n├── Colonias: legionarios (tierras tras 30 años) + colonos nativos\n└── Municipios: alianza con Roma, autonomía, asambleas, leyes propias → gran arraigo"
+    }
+  },
+  {
+    "card_id": "8272ea84-2f9b-4f3d-abbb-541d12a8a87e",
+    "deck_name": "03 Organización Romana y Provincias",
+    "deck_id": "be8559f4-ae6f-4188-ba00-6a8bafaf4a57",
+    "template_slot": "default",
+    "front": "★ ¿Qué provincias romanas había en Hispania y qué reconocían?\n\n![](/media/span321_mapa_provincias.jpg)",
+    "back": "La administración provincial reconocía las regiones naturales y la identidad de cada grupo.\n\nProvincias romanas en Hispania\n├── Provincias principales:\n│   ├── Tarraconense\n│   ├── Lusitana\n│   └── Bética\n├── Divisiones posteriores:\n│   ├── Galaica (Caracalla)\n│   ├── Cartaginense y Mauritana (Diocleciano)\n│   └── Baleárica\n└── Criterio: adaptadas a regiones naturales e identidades locales",
+    "position": 20,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿Qué provincias romanas había en Hispania y qué reconocían?",
+      "Back": "La administración provincial reconocía las regiones naturales y la identidad de cada grupo.\n\nProvincias romanas en Hispania\n├── Provincias principales:\n│   ├── Tarraconense\n│   ├── Lusitana\n│   └── Bética\n├── Divisiones posteriores:\n│   ├── Galaica (Caracalla)\n│   ├── Cartaginense y Mauritana (Diocleciano)\n│   └── Baleárica\n└── Criterio: adaptadas a regiones naturales e identidades locales",
+      "Image": "/media/span321_mapa_provincias.jpg"
+    }
+  },
+  {
+    "card_id": "746460b4-32a1-4274-99df-a12138bfb0e3",
+    "deck_name": "04 Romanización de la Península",
+    "deck_id": "c3d66280-ca5d-40a2-a740-849d44d5d24e",
+    "template_slot": "default",
+    "front": "¿Qué es la romanización y qué era el atomismo?",
+    "back": "La romanización articuló una unidad común sobre la fragmentación previa.\n\nRomanización vs. Atomismo\n├── Romanización: proceso formativo de unidad social, política y cultural\n└── Atomismo: estado previo de división (colonizadores y tribus aisladas)",
+    "position": 21,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "¿Qué es la romanización y qué era el atomismo?",
+      "Back": "La romanización articuló una unidad común sobre la fragmentación previa.\n\nRomanización vs. Atomismo\n├── Romanización: proceso formativo de unidad social, política y cultural\n└── Atomismo: estado previo de división (colonizadores y tribus aisladas)"
+    }
+  },
+  {
+    "card_id": "e6a3c75a-b11e-48a3-a871-4a0a383bd58a",
+    "deck_name": "04 Romanización de la Península",
+    "deck_id": "c3d66280-ca5d-40a2-a740-849d44d5d24e",
+    "template_slot": "default",
+    "front": "★ Si cada pueblo se romanizó a su propio ritmo, ¿se puede hablar de una nación?",
+    "back": "Sí; la nación es un concepto político alcanzado en el siglo V que integró la diversidad.\n\nConcepto político de nación\n├── Naturaleza: concepto político de unidad institucional bajo Roma\n├── Ritmo dispar: cada pueblo asimiló la cultura a diferente velocidad\n├── Diversidad interna: convivencia de grupos y tradiciones heterogéneas\n└── Culminación: Hispania unificada en el siglo V antes de la caída",
+    "position": 22,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ Si cada pueblo se romanizó a su propio ritmo, ¿se puede hablar de una nación?",
+      "Back": "Sí; la nación es un concepto político alcanzado en el siglo V que integró la diversidad.\n\nConcepto político de nación\n├── Naturaleza: concepto político de unidad institucional bajo Roma\n├── Ritmo dispar: cada pueblo asimiló la cultura a diferente velocidad\n├── Diversidad interna: convivencia de grupos y tradiciones heterogéneas\n└── Culminación: Hispania unificada en el siglo V antes de la caída"
+    }
+  },
+  {
+    "card_id": "b911f43a-4b41-412f-a045-f394a66609b3",
+    "deck_name": "04 Romanización de la Península",
+    "deck_id": "c3d66280-ca5d-40a2-a740-849d44d5d24e",
+    "template_slot": "default",
+    "front": "¿Qué lenguas salieron del latín?",
+    "back": "Las principales lenguas romances peninsulares.\n\nLenguas peninsulares derivadas del latín\n├── Castellano\n├── Catalán\n└── Gallego",
+    "position": 23,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "¿Qué lenguas salieron del latín?",
+      "Back": "Las principales lenguas romances peninsulares.\n\nLenguas peninsulares derivadas del latín\n├── Castellano\n├── Catalán\n└── Gallego"
+    }
+  },
+  {
+    "card_id": "b923eba6-1186-4cee-9b1d-2b5807b742e6",
+    "deck_name": "04 Romanización de la Península",
+    "deck_id": "c3d66280-ca5d-40a2-a740-849d44d5d24e",
+    "template_slot": "default",
+    "front": "¿Qué emperadores romanos nacieron en Hispania?\n\n![](/media/span321_emperadores_hispanos.jpg)",
+    "back": "Cuatro emperadores romanos tuvieron origen hispánico.\n\nEmperadores romanos de Hispania\n├── Adriano\n├── Trajano\n├── Marco Aurelio\n└── Teodosio",
+    "position": 24,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "¿Qué emperadores romanos nacieron en Hispania?",
+      "Back": "Cuatro emperadores romanos tuvieron origen hispánico.\n\nEmperadores romanos de Hispania\n├── Adriano\n├── Trajano\n├── Marco Aurelio\n└── Teodosio",
+      "Image": "/media/span321_emperadores_hispanos.jpg"
+    }
+  },
+  {
+    "card_id": "3161c0b3-48a2-40a8-86bf-c1c800ac115d",
+    "deck_name": "05 Cultura y Arte Romano",
+    "deck_id": "fe60e552-3796-4109-ade3-0e498f787952",
+    "template_slot": "default",
+    "front": "★ ¿Qué quiere decir que la cultura romana tenía carácter urbano?\n\n![](/media/span321_calzadas_romanas.jpg)",
+    "back": "La vida económica y cultural giraba en torno a ciudades construidas para hacer la vida agradable.\n\nCarácter urbano romano\n├── Centro neurálgico: la vida social y económica gira en torno a la ciudad\n├── Finalidad: hacer la vida agradable (otium y servicios cívicos)\n└── Infraestructuras de ocio y cohesión:\n    ├── Teatros y circos (ej. Mérida)\n    └── Vías de comunicación (ej. Vía Augusta)",
+    "position": 25,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿Qué quiere decir que la cultura romana tenía carácter urbano?",
+      "Back": "La vida económica y cultural giraba en torno a ciudades construidas para hacer la vida agradable.\n\nCarácter urbano romano\n├── Centro neurálgico: la vida social y económica gira en torno a la ciudad\n├── Finalidad: hacer la vida agradable (otium y servicios cívicos)\n└── Infraestructuras de ocio y cohesión:\n    ├── Teatros y circos (ej. Mérida)\n    └── Vías de comunicación (ej. Vía Augusta)",
+      "Image": "/media/span321_calzadas_romanas.jpg"
+    }
+  },
+  {
+    "card_id": "c12c7fdf-c505-4816-80c9-9e4e3016fcf8",
+    "deck_name": "05 Cultura y Arte Romano",
+    "deck_id": "fe60e552-3796-4109-ade3-0e498f787952",
+    "template_slot": "default",
+    "front": "Análisis de obra: Arco de Bará. ¿Qué es, dónde está, qué vemos y qué significa?\n\n![](/media/span321_arco_bara.jpg)",
+    "back": "Arco de Bará\n├── Qué es: arco triunfal romano\n├── Dónde: Tarragona (junto a la Vía Augusta)\n├── Qué vemos: arco monumental de piedra\n└── Qué significa: conmemora las glorias de los emperadores",
+    "position": 26,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "Análisis de obra: Arco de Bará. ¿Qué es, dónde está, qué vemos y qué significa?",
+      "Back": "Arco de Bará\n├── Qué es: arco triunfal romano\n├── Dónde: Tarragona (junto a la Vía Augusta)\n├── Qué vemos: arco monumental de piedra\n└── Qué significa: conmemora las glorias de los emperadores",
+      "Image": "/media/span321_arco_bara.jpg"
+    }
+  },
+  {
+    "card_id": "f8391570-af17-4a38-b16d-f02d9ca4a9a0",
+    "deck_name": "05 Cultura y Arte Romano",
+    "deck_id": "fe60e552-3796-4109-ade3-0e498f787952",
+    "template_slot": "default",
+    "front": "Análisis de obra: Teatro romano de Mérida. ¿Qué es, de cuándo es, qué vemos y qué significa?\n\n![](/media/span321_teatro_merida.jpg)",
+    "back": "Teatro romano de Mérida\n├── Qué es: el teatro romano mejor conservado de España\n├── Cuándo: siglo I a. C.\n├── Qué vemos: graderío para 5.000 espectadores y escena (proscenio)\n└── Qué significa: manifestación del carácter urbano; hacían la vida agradable",
+    "position": 27,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "Análisis de obra: Teatro romano de Mérida. ¿Qué es, de cuándo es, qué vemos y qué significa?",
+      "Back": "Teatro romano de Mérida\n├── Qué es: el teatro romano mejor conservado de España\n├── Cuándo: siglo I a. C.\n├── Qué vemos: graderío para 5.000 espectadores y escena (proscenio)\n└── Qué significa: manifestación del carácter urbano; hacían la vida agradable",
+      "Image": "/media/span321_teatro_merida.jpg"
+    }
+  },
+  {
+    "card_id": "7195b1e8-625b-4138-8880-825d50147d44",
+    "deck_name": "05 Cultura y Arte Romano",
+    "deck_id": "fe60e552-3796-4109-ade3-0e498f787952",
+    "template_slot": "default",
+    "front": "Análisis de obra: Busto del emperador Augusto (Mérida). ¿Qué es, dónde está, qué vemos y qué significa?\n\n![](/media/span321_augusto_merida.jpg)",
+    "back": "Busto del emperador Augusto\n├── Qué es: busto romano del siglo I d. C.\n├── Dónde: Mérida\n├── Qué vemos: retrato muy realista, con la toga\n└── Qué significa: la toga lo presenta como emperador y pontífice",
+    "position": 28,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "Análisis de obra: Busto del emperador Augusto (Mérida). ¿Qué es, dónde está, qué vemos y qué significa?",
+      "Back": "Busto del emperador Augusto\n├── Qué es: busto romano del siglo I d. C.\n├── Dónde: Mérida\n├── Qué vemos: retrato muy realista, con la toga\n└── Qué significa: la toga lo presenta como emperador y pontífice",
+      "Image": "/media/span321_augusto_merida.jpg"
+    }
+  },
+  {
+    "card_id": "c2180b4c-a473-4f79-95c8-242e6149bddb",
+    "deck_name": "05 Cultura y Arte Romano",
+    "deck_id": "fe60e552-3796-4109-ade3-0e498f787952",
+    "template_slot": "default",
+    "front": "★ Análisis de obra: Venus de Itálica. ¿Qué es, dónde y cuándo, qué vemos y qué significa?\n\n![](/media/span321_venus_italica.jpg)",
+    "back": "Venus de Itálica\n├── Qué es: copia de un ejemplar griego clásico\n├── Dónde y cuándo: Itálica (Sevilla), hacia el siglo I a. C.\n├── Qué vemos: desnudo idealizado de gran perfección técnica\n└── Qué significa: primacía de la técnica sobre la capacidad creadora original",
+    "position": 29,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ Análisis de obra: Venus de Itálica. ¿Qué es, dónde y cuándo, qué vemos y qué significa?",
+      "Back": "Venus de Itálica\n├── Qué es: copia de un ejemplar griego clásico\n├── Dónde y cuándo: Itálica (Sevilla), hacia el siglo I a. C.\n├── Qué vemos: desnudo idealizado de gran perfección técnica\n└── Qué significa: primacía de la técnica sobre la capacidad creadora original",
+      "Image": "/media/span321_venus_italica.jpg"
+    }
+  },
+  {
+    "card_id": "0c21803b-9451-4419-af6c-33008e724488",
+    "deck_name": "05 Cultura y Arte Romano",
+    "deck_id": "fe60e552-3796-4109-ade3-0e498f787952",
+    "template_slot": "default",
+    "front": "★ ¿Cómo eran los mosaicos romanos de Hispania?\n\n![](/media/span321_medusa_tarragona.jpg)",
+    "back": "Artes decorativas muy coloridas que combinaban patrones decorativos y temas mitológicos.\n\nMosaicos romanos de Hispania\n├── Características: arte decorativo muy vistoso y colorido\n├── Motivos:\n│   ├── Geométricos y florales\n│   └── Figuras humanas y animales\n└── Escenas mitológicas: ej. Ceres, Medusa",
+    "position": 30,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿Cómo eran los mosaicos romanos de Hispania?",
+      "Back": "Artes decorativas muy coloridas que combinaban patrones decorativos y temas mitológicos.\n\nMosaicos romanos de Hispania\n├── Características: arte decorativo muy vistoso y colorido\n├── Motivos:\n│   ├── Geométricos y florales\n│   └── Figuras humanas y animales\n└── Escenas mitológicas: ej. Ceres, Medusa",
+      "Image": "/media/span321_medusa_tarragona.jpg"
+    }
+  },
+  {
+    "card_id": "cb978834-b67b-43b9-b3b6-20231c8811e0",
+    "deck_name": "05 Cultura y Arte Romano",
+    "deck_id": "fe60e552-3796-4109-ade3-0e498f787952",
+    "template_slot": "default",
+    "front": "★ ¿Quién fue Séneca y qué es el estoicismo?",
+    "back": "Séneca fue un filósofo cordobés clave en la difusión del estoicismo clásico.\n\nSéneca y el estoicismo\n├── Biografía: nacido en Córdoba; autor de obras filosóficas y literarias\n├── Filosofía estoica: la conciencia del individuo es la norma de toda virtud\n└── Trascendencia: enorme prestigio e influencia en la Edad Media y el Renacimiento",
+    "position": 31,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "★ ¿Quién fue Séneca y qué es el estoicismo?",
+      "Back": "Séneca fue un filósofo cordobés clave en la difusión del estoicismo clásico.\n\nSéneca y el estoicismo\n├── Biografía: nacido en Córdoba; autor de obras filosóficas y literarias\n├── Filosofía estoica: la conciencia del individuo es la norma de toda virtud\n└── Trascendencia: enorme prestigio e influencia en la Edad Media y el Renacimiento"
+    }
+  },
+  {
+    "card_id": "91210056-a315-460d-a5c5-915fb15be382",
+    "deck_name": "05 Cultura y Arte Romano",
+    "deck_id": "fe60e552-3796-4109-ade3-0e498f787952",
+    "template_slot": "default",
+    "front": "¿Quiénes fueron Lucano, Marcial y Quintiliano?",
+    "back": "Tres grandes literatos y pensadores hispanorromanos.\n\nAutores hispanorromanos\n├── Lucano: Farsalia (poema épico de la guerra entre Pompeyo y César)\n├── Marcial: Epigramas (poesía satírica de costumbres)\n└── Quintiliano: maestro de retórica y formación del orador",
+    "position": 32,
+    "is_schema_checkpoint": false,
+    "spatial_locus": null,
+    "field_values": {
+      "Front": "¿Quiénes fueron Lucano, Marcial y Quintiliano?",
+      "Back": "Tres grandes literatos y pensadores hispanorromanos.\n\nAutores hispanorromanos\n├── Lucano: Farsalia (poema épico de la guerra entre Pompeyo y César)\n├── Marcial: Epigramas (poesía satírica de costumbres)\n└── Quintiliano: maestro de retórica y formación del orador"
+    }
+  }
+]

@@ -60,6 +60,14 @@ import type {
   TreeNode,
   User,
   WeaknessHintResponse,
+  CardNeuroPropsUpdate,
+  ConceptEdge,
+  ConceptGraph,
+  ContrastDrillResponse,
+  GenerateMnemonicResponse,
+  MutatePromptResponse,
+  PretestPredictionResponse,
+  SpreadingActivationResponse,
 } from './types'
 
 // In production (served by FastAPI), use relative path '' so requests match current origin
@@ -530,6 +538,40 @@ export const api = {
     }),
   getRecentLexicon: () => request<RecentLexiconItem[]>('/api/lexicon/recent'),
   syncStatus: () => request<SyncStatus>('/api/sync/status'),
+  // ── Neuroscience Enhancements ──────────────────────────────────────────────
+  getConceptGraph: (deckId?: string) =>
+    request<ConceptGraph>(`/api/graph${deckId ? `?deck_id=${deckId}` : ''}`),
+  createConceptEdge: (body: {
+    source_card_id: string
+    target_card_id: string
+    relationship_type?: string
+    weight?: number
+  }) => post<ConceptEdge>('/api/graph/edges', body),
+  deleteConceptEdge: (edgeId: string) =>
+    request<void>(`/api/graph/edges/${edgeId}`, { method: 'DELETE' }),
+  getRelatedCards: (cardId: string, decay = 0.6, depth = 2) =>
+    request<SpreadingActivationResponse>(
+      `/api/graph/related/${cardId}?decay=${decay}&depth=${depth}`,
+    ),
+  autoLinkConceptGraph: () =>
+    post<{ created_count: number; edges: ConceptEdge[] }>('/api/graph/auto-link', {}),
+  updateCardNeuroProps: (cardId: string, props: CardNeuroPropsUpdate) =>
+    patch<Card>(`/api/decks/cards/${cardId}/neuro-props`, props),
+  autoPalace: (deckId: string) =>
+    post<Card[]>(`/api/decks/${deckId}/auto-palace`, {}),
+  mutatePrompt: (cardId: string, mutationType: string) =>
+    post<MutatePromptResponse>(`/api/review/${cardId}/mutate-prompt`, {
+      mutation_type: mutationType,
+    }),
+  generateMnemonic: (cardId: string) =>
+    post<GenerateMnemonicResponse>(`/api/review/${cardId}/generate-mnemonic`, {}),
+  submitPrediction: (cardId: string, prediction: string, confidence: number) =>
+    post<PretestPredictionResponse>(`/api/review/${cardId}/predict`, {
+      prediction,
+      confidence,
+    }),
+  getContrastDrill: (pairId: string) =>
+    post<ContrastDrillResponse>(`/api/interference/${pairId}/contrast-drill`, {}),
 }
 
 export function createSyncSocket(onMessage: (event: SyncEvent) => void): () => void {

@@ -47,6 +47,10 @@ class UserOut(BaseModel):
     show_thematic_context: bool = True
     tutorial_completed: bool = False
     timezone: str | None = None
+    # Neuroscience enhancements
+    enable_schema_checkpoints: bool = True
+    enable_prompt_mutation: bool = False
+    enable_prediction_mode: bool = False
 
 
 class UserUpdate(BaseModel):
@@ -80,6 +84,9 @@ class UserUpdate(BaseModel):
     show_code_lab: bool | None = None
     show_thematic_context: bool | None = None
     tutorial_completed: bool | None = None
+    enable_schema_checkpoints: bool | None = None
+    enable_prompt_mutation: bool | None = None
+    enable_prediction_mode: bool | None = None
     timezone: str | None = Field(default=None, max_length=64)
 
     @field_validator("timezone")
@@ -236,11 +243,28 @@ class CardOut(BaseModel):
     tags: list[str]
     front: str
     back: str
+    image: str | None = None
+    back_image: str | None = None
     occlusion: dict | None = None
     documentation: str | None = None
     thematic_nature: str | None = None
     source_documents: list[dict | str] = Field(default_factory=list)
     lexicon_glosses: list[dict] = Field(default_factory=list)
+    position: int | None = None
+    # Neuroscience enhancements
+    is_schema_checkpoint: bool = False
+    spatial_x: float | None = None
+    spatial_y: float | None = None
+    spatial_locus: str | None = None
+    mnemonic_vignette: str | None = None
+
+
+class CardNeuroPropsUpdate(BaseModel):
+    is_schema_checkpoint: bool | None = None
+    spatial_x: float | None = None
+    spatial_y: float | None = None
+    spatial_locus: str | None = None
+    mnemonic_vignette: str | None = None
 
 
 class CardLexiconGlossesUpdate(BaseModel):
@@ -261,6 +285,9 @@ class CardReviewLogItemOut(BaseModel):
     is_blitz: bool = False
     weaknesses: list[str] = Field(default_factory=list)
     improvements: list[str] = Field(default_factory=list)
+    is_pretest_prediction: bool = False
+    prediction_error_detected: bool = False
+    mutation_type: str | None = None
 
 
 class CardNextIntervalsOut(BaseModel):
@@ -393,6 +420,7 @@ class SuggestedCard(BaseModel):
     front: str
     back: str
     cloze_text: str | None = None
+    image: str | None = None
 
 
 class GenerateCardsResponse(BaseModel):
@@ -420,6 +448,8 @@ class JsonImportNote(BaseModel):
     front: str | None = Field(default=None, max_length=20_000)
     back: str | None = Field(default=None, max_length=20_000)
     cloze_text: str | None = Field(default=None, max_length=20_000)
+    image: str | None = Field(default=None, max_length=20_000)
+    back_image: str | None = Field(default=None, max_length=20_000)
     starter_code: str | None = Field(default=None, max_length=10_000)
     starter_tests: str | None = Field(default=None, max_length=20_000)
     test_cases: list[dict] = Field(default_factory=list)
@@ -465,6 +495,26 @@ class JsonImportNote(BaseModel):
         answer = data.get("answer") or data.get("solution")
         if answer is not None:
             data.setdefault("back", answer)
+
+        img = (
+            data.get("image")
+            or data.get("image_url")
+            or data.get("picture")
+            or data.get("img")
+            or data.get("photo")
+        )
+        if img is not None and "image" not in data:
+            data["image"] = str(img).strip()
+
+        b_img = (
+            data.get("back_image")
+            or data.get("back_image_url")
+            or data.get("back_picture")
+            or data.get("back_img")
+        )
+        if b_img is not None and "back_image" not in data:
+            data["back_image"] = str(b_img).strip()
+
         return data
 
 

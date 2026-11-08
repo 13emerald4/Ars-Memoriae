@@ -15,20 +15,138 @@ export interface DiffStats {
   recallPercent: number
 }
 
-const TOKEN_REGEX = /(!\[\]\([^)]+\)|\[audio\]\([^)]+\)|[a-zA-Z0-9_$]+(?:-[a-zA-Z0-9_$]+)*|[^\s\w]+|\s+)/g
+const TOKEN_REGEX = /(!\[\]\([^)]+\)|\[audio\]\([^)]+\)|(?<=^|\n)\s*(?:\d+|[a-zA-Z]|[ivxIVX]+)[\.\)]\s*|[\p{L}\p{N}_$]+(?:-[\p{L}\p{N}_$]+)*|[^\s\p{L}\p{N}]+|\s+)/gu
 
 function isWord(token: string): boolean {
-  return /^[a-zA-Z0-9_$]+(?:-[a-zA-Z0-9_$]+)*$/.test(token)
+  if (!token || /^\s+$/.test(token)) return false
+  if (/^\s*(?:\d+|[a-zA-Z]|[ivxIVX]+)[\.\)]\s*$/u.test(token)) return false
+  return /^[\p{L}\p{N}_$]+(?:-[\p{L}\p{N}_$]+)*$/u.test(token)
 }
 
 function normalize(token: string): string {
-  return token.toLowerCase().replace(/[^a-z0-9_$-]/g, '')
+  return token
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}_$-]/gu, '')
+}
+
+const CONTRACTIONS: Record<string, string[]> = {
+  del: ['de', 'el'],
+  al: ['a', 'el'],
+  de: ['del'],
+  a: ['al'],
+}
+
+const STOPWORDS = new Set([
+  // Spanish
+  'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas',
+  'y', 'e', 'o', 'u',
+  'de', 'del', 'a', 'al', 'en', 'con', 'por', 'para', 'sin', 'sobre', 'tras', 'entre', 'hasta', 'desde', 'hacia',
+  'que', 'se', 'su', 'sus', 'mi', 'mis', 'tu', 'tus',
+  // English
+  'the', 'a', 'an', 'and', 'or', 'but', 'nor',
+  'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'into', 'like', 'through',
+  'after', 'over', 'between', 'out', 'against', 'during', 'without', 'before', 'under', 'around', 'among',
+  'is', 'are', 'was', 'were', 'be', 'been', 'being', 'it', 'its', 'that', 'this', 'these', 'those',
+])
+
+function isStopword(token: string): boolean {
+  return STOPWORDS.has(normalize(token))
+}
+
+function stripSuffix(w: string, regex: RegExp, minLen: number = 3): string {
+  const match = w.match(regex)
+  if (match) {
+    const stripped = w.slice(0, -match[0].length)
+    if (stripped.length >= minLen) {
+      return stripped
+    }
+  }
+  return w
 }
 
 function stem(word: string): string {
-  const w = normalize(word)
+  let w = normalize(word)
   if (w.length <= 3) return w
-  return w.replace(/(?:ing|es|ed|s)$/, '')
+
+  // Adverb suffix
+  w = stripSuffix(w, /(?:mente)$/)
+
+  // Spanish derivational suffixes (e.g. joyería -> joy, escultor -> escult, religioso -> religi)
+  w = stripSuffix(w, /(?:erias|eria|eros|ero|istas|ista|ismos|ismo|idades|idad|iciones|icion|aciones|acion|siones|sion)$/)
+  w = stripSuffix(w, /(?:itas|ita|itos|ito|uras|ura|ores|or|osas|osa|osos|oso|icas|ica|icos|ico|ales|al)$/)
+
+  // Inflectional suffixes (plurals, verb endings)
+  w = stripSuffix(w, /(?:ing|es|ed|s)$/)
+  w = stripSuffix(w, /(?:aron|eron|ando|iendo|ados|adas|ado|idos|idas|ido|ar|er|ir|[aeo])$/)
+
+  return w
+}
+
+/**
+ * Suppresses isolated stopwords from turning green when they appear stranded
+ * within entirely missed or unmatched clauses (e.g., "( Dama [de] Elche )").
+ * Stopwords are only kept as matched if they are anchored to at least one adjacent
+ * matched content word within the same clause/sentence.
+ */
+function pruneOrphanedStopwords(tokens: TokenSegment[]): { pruned: TokenSegment[]; revertedCount: number } {
+  const hasContentWords = tokens.some((t) => isWord(t.text) && !isStopword(t.text))
+  if (!hasContentWords) {
+    return { pruned: tokens, revertedCount: 0 }
+  }
+
+  let revertedCount = 0
+  const result = tokens.map((t) => ({ ...t }))
+  const isSentenceBoundary = (text: string) => /[.\n!?;:]/.test(text)
+
+  for (let i = 0; i < result.length; i++) {
+    const curr = result[i]
+    if (curr.type !== 'matched' || !isWord(curr.text) || !isStopword(curr.text)) {
+      continue
+    }
+
+    // Check backwards for an anchored matched content word
+    let precedingMatched = false
+    for (let j = i - 1; j >= 0; j--) {
+      const prev = result[j]
+      if (isSentenceBoundary(prev.text)) {
+        break
+      }
+      if (isWord(prev.text)) {
+        if (!isStopword(prev.text)) {
+          if (prev.type === 'matched') {
+            precedingMatched = true
+          }
+          break
+        }
+      }
+    }
+
+    // Check forwards for an anchored matched content word
+    let succeedingMatched = false
+    for (let j = i + 1; j < result.length; j++) {
+      const next = result[j]
+      if (isSentenceBoundary(next.text)) {
+        break
+      }
+      if (isWord(next.text)) {
+        if (!isStopword(next.text)) {
+          if (next.type === 'matched') {
+            succeedingMatched = true
+          }
+          break
+        }
+      }
+    }
+
+    if (!precedingMatched && !succeedingMatched) {
+      curr.type = 'missing'
+      revertedCount++
+    }
+  }
+
+  return { pruned: result, revertedCount }
 }
 
 /** Merges contiguous tokens of the same type when separated only by whitespace */
@@ -56,7 +174,7 @@ function mergeContiguousTokens(tokens: TokenSegment[]): TokenSegment[] {
 export function computeTokenDiff(
   userText: string,
   refText: string,
-  extraOverlooked: string[] = [],
+  _extraOverlooked: string[] = [],
   extraMatched: string[] = []
 ): {
   userSegments: TokenSegment[]
@@ -66,34 +184,55 @@ export function computeTokenDiff(
   const userRawTokens = userText.match(TOKEN_REGEX) || []
   const refRawTokens = refText.match(TOKEN_REGEX) || []
 
-  // Count user words for reference comparison
-  const userWordCounts = new Map<string, number>()
+  // User word sets
+  const userWords = new Set<string>()
+  const userStems = new Set<string>()
   let userWordCount = 0
   for (const t of userRawTokens) {
     if (isWord(t)) {
       userWordCount++
       const w = normalize(t)
-      userWordCounts.set(w, (userWordCounts.get(w) || 0) + 1)
+      if (w) userWords.add(w)
+      const st = stem(t)
+      if (st.length >= 3) userStems.add(st)
     }
   }
 
-  // Count ref words for user comparison
-  const refWordCounts = new Map<string, number>()
-  let refWordCount = 0
+  // Ref word sets
+  const refWords = new Set<string>()
+  const refStems = new Set<string>()
   for (const t of refRawTokens) {
     if (isWord(t)) {
-      refWordCount++
       const w = normalize(t)
-      refWordCounts.set(w, (refWordCounts.get(w) || 0) + 1)
+      if (w) refWords.add(w)
+      const st = stem(t)
+      if (st.length >= 3) refStems.add(st)
     }
   }
 
-  // Set of semantic phrases from LLM
-  const overlookedSet = new Set(extraOverlooked.map((p) => p.trim().toLowerCase()).filter(Boolean))
-  const matchedSet = new Set(extraMatched.map((p) => p.trim().toLowerCase()).filter(Boolean))
+  function wordMatches(tok: string, targetWords: Set<string>, targetStems: Set<string>): boolean {
+    const w = normalize(tok)
+    if (!w) return false
+    if (targetWords.has(w)) return true
+    const contractions = CONTRACTIONS[w]
+    if (contractions && contractions.some((c) => targetWords.has(c))) return true
+    const st = stem(tok)
+    if (st.length >= 3 && targetStems.has(st)) return true
+    return false
+  }
 
-  let matchedCount = 0
-  let missingCount = 0
+  // Extra semantic matched words from LLM grader
+  const matchedSet = new Set(extraMatched.map((p) => p.trim().toLowerCase()).filter(Boolean))
+  const semanticMatchedWords = new Set<string>()
+  for (const phrase of matchedSet) {
+    const words = phrase.match(TOKEN_REGEX)?.filter(isWord).map(normalize) || []
+    for (const w of words) {
+      if (w) semanticMatchedWords.add(w)
+    }
+  }
+
+  let refMatchedCount = 0
+  let refMissingCount = 0
 
   // 1. Annotate Reference tokens
   const annotatedRef: TokenSegment[] = refRawTokens.map((tok) => {
@@ -104,61 +243,15 @@ export function computeTokenDiff(
       return { text: tok, type: 'punct' }
     }
 
-    const w = normalize(tok)
-
-    // Check if user has this exact word available
-    if ((userWordCounts.get(w) || 0) > 0) {
-      userWordCounts.set(w, (userWordCounts.get(w) || 0) - 1)
-      matchedCount++
+    const isMatch = wordMatches(tok, userWords, userStems) || semanticMatchedWords.has(normalize(tok))
+    if (isMatch) {
+      refMatchedCount++
       return { text: tok, type: 'matched' }
     }
 
-    // Check stem match fallback
-    const st = stem(tok)
-    for (const [uw, cnt] of userWordCounts.entries()) {
-      if (cnt > 0 && stem(uw) === st) {
-        userWordCounts.set(uw, cnt - 1)
-        matchedCount++
-        return { text: tok, type: 'matched' }
-      }
-    }
-
-    // Otherwise, this token was missing from the user answer
-    missingCount++
+    refMissingCount++
     return { text: tok, type: 'missing' }
   })
-
-  // Also enforce extra overlooked phrases from LLM grader
-  if (overlookedSet.size > 0) {
-    for (const phrase of overlookedSet) {
-      if (!phrase) continue
-      const phraseWords = phrase.match(TOKEN_REGEX)?.filter(isWord).map(normalize) || []
-      if (phraseWords.length === 0) continue
-      for (const seg of annotatedRef) {
-        if (seg.type === 'matched' && phraseWords.includes(normalize(seg.text))) {
-          seg.type = 'missing'
-          missingCount++
-          if (matchedCount > 0) matchedCount--
-        }
-      }
-    }
-  }
-
-  // Also enforce extra matched phrases from LLM grader
-  if (matchedSet.size > 0) {
-    for (const phrase of matchedSet) {
-      if (!phrase) continue
-      const phraseWords = phrase.match(TOKEN_REGEX)?.filter(isWord).map(normalize) || []
-      if (phraseWords.length === 0) continue
-      for (const seg of annotatedRef) {
-        if (seg.type === 'missing' && phraseWords.includes(normalize(seg.text))) {
-          seg.type = 'matched'
-          matchedCount++
-          if (missingCount > 0) missingCount--
-        }
-      }
-    }
-  }
 
   // 2. Annotate User tokens
   const annotatedUser: TokenSegment[] = userRawTokens.map((tok) => {
@@ -169,27 +262,26 @@ export function computeTokenDiff(
       return { text: tok, type: 'punct' }
     }
 
-    const w = normalize(tok)
-    if ((refWordCounts.get(w) || 0) > 0) {
-      refWordCounts.set(w, (refWordCounts.get(w) || 0) - 1)
+    const isMatch = wordMatches(tok, refWords, refStems)
+    if (isMatch) {
       return { text: tok, type: 'matched' }
     }
 
-    const st = stem(tok)
-    for (const [rw, cnt] of refWordCounts.entries()) {
-      if (cnt > 0 && stem(rw) === st) {
-        refWordCounts.set(rw, cnt - 1)
-        return { text: tok, type: 'matched' }
-      }
-    }
-
-    return { text: tok, type: 'neutral' }
+    // Unmatched words in user answer are marked missing (rendered in light yellow)
+    return { text: tok, type: 'missing' }
   })
 
-  const mergedRef = mergeContiguousTokens(annotatedRef)
-  const mergedUser = mergeContiguousTokens(annotatedUser)
+  const { pruned: prunedRef, revertedCount } = pruneOrphanedStopwords(annotatedRef)
+  refMatchedCount = Math.max(0, refMatchedCount - revertedCount)
+  refMissingCount += revertedCount
 
-  const recallPercent = refWordCount > 0 ? Math.round((matchedCount / refWordCount) * 100) : 100
+  const { pruned: prunedUser } = pruneOrphanedStopwords(annotatedUser)
+
+  const mergedRef = mergeContiguousTokens(prunedRef)
+  const mergedUser = mergeContiguousTokens(prunedUser)
+
+  const refWordCount = refMatchedCount + refMissingCount
+  const recallPercent = refWordCount > 0 ? Math.round((refMatchedCount / refWordCount) * 100) : 100
 
   return {
     userSegments: mergedUser,
@@ -197,8 +289,8 @@ export function computeTokenDiff(
     stats: {
       refWordCount,
       userWordCount,
-      matchedCount,
-      missingCount,
+      matchedCount: refMatchedCount,
+      missingCount: refMissingCount,
       recallPercent,
     },
   }
@@ -247,7 +339,7 @@ function RenderTokenSegments({
               <mark
                 key={i}
                 className="rounded border-b-2 border-amber-400 bg-amber-500/25 px-1 py-0.5 font-semibold text-amber-200 shadow-sm"
-                title="Missing"
+                title="Missing from your answer"
               >
                 {seg.text}
               </mark>
@@ -266,13 +358,24 @@ function RenderTokenSegments({
           }
           return <span key={i}>{seg.text}</span>
         } else {
-          // User mode: highlight words that matched reference in emerald
+          // User mode: highlight words that matched reference in emerald, and incorrect/unmatched in light yellow
           if (seg.type === 'matched') {
             return (
               <mark
                 key={i}
                 className="rounded border-b border-emerald-500/40 bg-emerald-500/20 px-1 py-0.5 text-emerald-200 font-medium"
                 title="Matches reference"
+              >
+                {seg.text}
+              </mark>
+            )
+          }
+          if (seg.type === 'missing') {
+            return (
+              <mark
+                key={i}
+                className="rounded border-b-2 border-amber-400/80 bg-amber-500/20 px-1 py-0.5 text-amber-200 font-normal shadow-sm"
+                title="Not in reference"
               >
                 {seg.text}
               </mark>
@@ -385,7 +488,7 @@ export function AnswerComparison({
             )}
           </div>
 
-          {hasUserAnswer && stats.matchedCount > 0 && (
+          {hasUserAnswer && stats.refWordCount > 0 && (
             <div className="flex items-center gap-2 text-[11px]">
               <span className="flex items-center gap-1 font-medium text-emerald-300">
                 <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />

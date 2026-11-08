@@ -53,19 +53,26 @@ export function Section({
   )
 }
 
-/** Renders plain text plus `![](url)` image and `[audio](url)` refs. */
+/** Renders plain text plus `![](url)`, `![alt](url)` image and `[audio](url)` refs. */
 export function RichText({ text, className = '' }: { text: string; className?: string }) {
-  const parts = text.split(/(!\[\]\([^)]+\)|\[audio\]\([^)]+\))/g)
+  const parts = text.split(/(!\[[^\]]*\]\([^)]+\)|\[audio\]\([^)]+\))/g)
   return (
     <div className={`whitespace-pre-wrap break-words ${className}`}>
       {parts.map((part, i) => {
-        const img = part.match(/^!\[\]\(([^)]+)\)$/)
+        const img = part.match(/^!\[([^\]]*)\]\(([^)]+)\)$/)
         if (img) {
-          const src = img[1].startsWith('/')
-            ? `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'}${img[1]}`
-            : img[1]
+          const alt = img[1]
+          const rawSrc = img[2]
+          const src = rawSrc.startsWith('/')
+            ? `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'}${rawSrc}`
+            : rawSrc
           return (
-            <img key={i} src={src} alt="" className="my-2 max-h-72 rounded-lg border border-ink-line" />
+            <img
+              key={i}
+              src={src}
+              alt={alt}
+              className="my-2 max-h-72 rounded-lg border border-ink-line object-contain"
+            />
           )
         }
         const audio = part.match(/^\[audio\]\(([^)]+)\)$/)

@@ -38,6 +38,8 @@ class QueueItem(BaseModel):
     note_id: str | None = None
     # Populated for image-occlusion cards so the UI can draw the masks (Phase 4).
     occlusion: dict | None = None
+    image: str | None = None
+    back_image: str | None = None
     # Where this card's answer comes from in the uploaded document. Sent with
     # the card so the reveal can show the reading without a round trip.
     references: list[dict] = Field(default_factory=list)
@@ -54,6 +56,7 @@ class QueueItem(BaseModel):
     # Longitudinal Weakness Memory
     active_weaknesses: list[str] = Field(default_factory=list)
     weakness_history: list[dict] = Field(default_factory=list)
+    failure_reminder: str | None = None
     # Thematic context, documentation & source documents
     deck_documentation: str | None = None
     deck_thematic_nature: str | None = None
@@ -62,6 +65,20 @@ class QueueItem(BaseModel):
     card_thematic_nature: str | None = None
     card_source_documents: list[dict | str] = Field(default_factory=list)
     lexicon_glosses: list[dict] = Field(default_factory=list)
+    position: int | None = None
+    # Card Progression & Memory Metrics
+    stability: float | None = None
+    retrievability: float | None = None
+    fsrs_difficulty: float | None = None
+    last_grade: str | None = None
+    review_count: int = 0
+    lapses: int = 0
+    # Neuroscience enhancements
+    is_schema_checkpoint: bool = False
+    spatial_x: float | None = None
+    spatial_y: float | None = None
+    spatial_locus: str | None = None
+    mnemonic_vignette: str | None = None
 
 
 class SessionSummary(BaseModel):
@@ -259,3 +276,53 @@ class ConfirmReviewResponse(BaseModel):
     leech_flagged: bool = False
     stuck_alert: StuckAlertOut | None = None
     automaticity_exceeded: bool = False
+
+
+# ── Neuroscience Enhancement Schemas ───────────────────────────────────────────
+
+
+class MutatePromptRequest(BaseModel):
+    mutation_type: str = "counterfactual"  # "counterfactual", "scenario", "adversarial", "perspective"
+
+
+class MutatePromptResponse(BaseModel):
+    card_id: str
+    original_front: str
+    mutated_prompt: str
+    mutation_type: str
+    model_used: str | None = None
+
+
+class GenerateMnemonicResponse(BaseModel):
+    card_id: str
+    mnemonic_vignette: str
+    model_used: str | None = None
+
+
+class PretestPredictionRequest(BaseModel):
+    prediction: str
+    confidence: int = Field(ge=1, le=4)  # 1: Wild guess to 4: Solid certainty
+
+
+class PretestPredictionResponse(BaseModel):
+    card_id: str
+    prediction: str
+    reference_answer: str
+    confidence: int
+    is_accurate: bool
+    feedback: str
+    high_confidence_error: bool
+
+
+class ContrastDrillResponse(BaseModel):
+    pair_id: str
+    concept_a_title: str
+    concept_b_title: str
+    front_a: str
+    back_a: str
+    front_b: str
+    back_b: str
+    discriminative_challenge: str
+    key_distinction: str
+    divergent_conditions: list[dict] = Field(default_factory=list)
+

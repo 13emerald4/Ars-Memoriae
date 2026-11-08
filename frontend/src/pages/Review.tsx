@@ -6,11 +6,13 @@ import type {
   Deck,
   Grade,
   Lesson,
+  PretestPredictionResponse,
   QueueItem,
   RunCodeResponse,
   SessionSummary,
   SocraticLineHintResponse,
   SocraticTurn,
+  SpreadingActivationNode,
   StuckAlert,
   SubmitAnswerResponse,
 } from '../api/types'
@@ -27,9 +29,9 @@ import { useTheme } from '../components/ThemeContext'
 import { FullscreenButton } from '../components/FullscreenContext'
 import { DeckReviewStatsBar } from '../components/DeckReviewStatsBar'
 import { CopyLearningSummaryButton } from '../components/CopyLearningSummaryButton'
-import { AnswerComparison } from '../components/AnswerComparison'
+import { AnswerComparison, computeTokenDiff } from '../components/AnswerComparison'
 import { copyLearningSummaryToClipboard } from '../utils/learningSummaryExport'
-import TiledEditorPane, { type TilePaneTab } from '../components/TiledEditorPane'
+import TiledEditorPane, { type TilePaneTab, findIncompleteLineNumber } from '../components/TiledEditorPane'
 import { ResizableSplitter } from '../components/ResizableSplitter'
 import { useWorkbenchLayout } from '../hooks/useWorkbenchLayout'
 import DeckCardsViewer from '../components/DeckCardsViewer'
@@ -167,6 +169,25 @@ ${testBlocks.join('\n\n')}
 }
 
 
+function formatLatencyNote(note: string | null | undefined): string | null | undefined {
+  if (!note) return note
+  const m = note.match(/^answered in (\d+)s$/)
+  if (m) {
+    const s = parseInt(m[1], 10)
+    const mins = Math.floor(s / 60)
+    const rem = s % 60
+    return `answered in ${mins}m ${rem}s`
+  }
+  const m2 = note.match(/^answered in (\d+)m$/)
+  if (m2) {
+    return `answered in ${m2[1]}m 0s`
+  }
+  if (note === 'answered in under a second') {
+    return 'answered in 0m 0s'
+  }
+  return note
+}
+
 /** The unified session view (§9): one endpoint hands back cards *and* extracts,
  *  so this page routes on `kind` rather than the user picking a mode. */
 export default function Review() {
@@ -187,6 +208,8 @@ export default function Review() {
   const [vramDismissed, setVramDismissed] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const [skipReviewRecording, setSkipReviewRecording] = useState(false)
+  const [retryAfterRating, setRetryAfterRating] = useState(false)
+  const [previousCard, setPreviousCard] = useState<QueueItem | null>(null)
   const [lastOutcome, setLastOutcome] = useState<string | null>(null)
   const [confidence, setConfidence] = useState<number | null>(null)
   const [deckStatsTrigger, setDeckStatsTrigger] = useState(0)
@@ -300,6 +323,9 @@ export default function Review() {
   const [codeRunResult, setCodeRunResult] = useState<RunCodeResponse | null>(null)
   const [testCode, setTestCode] = useState('')
   const [activeEditorTab, setActiveEditorTab] = useState<'solution' | 'tests' | 'reference' | 'ref_tests'>('solution')
+  const [singleRefViewMode, setSingleRefViewMode] = useState<'ide' | 'diff' | 'hint'>(() => {
+    return (localStorage.getItem('memorization.refViewMode') as 'ide' | 'diff' | 'hint') || 'ide'
+  })
   const [tiledTabs, setTiledTabs] = useState<boolean>(() => {
     return localStorage.getItem('memorization.tiledEditorTabs') === 'true'
   })
@@ -333,6 +359,30 @@ export default function Review() {
       localStorage.setItem('memorization.tiledEditorTabs', String(next))
       return next
     })
+  }, [])
+
+  const [logicGuardEnabled, setLogicGuardEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('ars_logic_guard_enabled') !== 'false'
+  })
+
+  const handleToggleLogicGuard = useCallback((enabled: boolean) => {
+    setLogicGuardEnabled(enabled)
+    localStorage.setItem('ars_logic_guard_enabled', enabled ? 'true' : 'false')
+  }, [])
+
+  const handleHideSolution = useCallback((mode: 'hint' | 'hide' = 'hide') => {
+    setRevealed(false)
+    setResult(null)
+    if (mode === 'hint') {
+      localStorage.setItem('memorization.refViewMode', 'hint')
+      setSingleRefViewMode('hint')
+    } else {
+      localStorage.setItem('memorization.refViewMode', 'ide')
+      setSingleRefViewMode('ide')
+    }
+    setTimeout(() => {
+      inputRef.current?.focus()
+    }, 50)
   }, [])
 
   const workbenchLayout = useWorkbenchLayout()
@@ -431,8 +481,89 @@ export default function Review() {
   const [lineHintLoading, setLineHintLoading] = useState(false)
   const [editorCursorLine, setEditorCursorLine] = useState(1)
 
+  // Card Failure Memory Reminder (§Feature)
+  const [failureReminderEnabled, setFailureReminderEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('memorization.failureReminderEnabled') !== 'false'
+  })
+  const [dismissedReminderCardId, setDismissedReminderCardId] = useState<string | null>(null)
+
+  const currentFailureReminder = useMemo(() => {
+    if (!item || item.kind !== 'card') return null
+    if (item.failure_reminder) return item.failure_reminder
+    if (item.active_weaknesses && item.active_weaknesses.length > 0) {
+      const w = String(item.active_weaknesses[0]).trim().replace(/\.+$/, '')
+      if (item.active_weaknesses.length > 1) {
+        return `Where you stumbled: ${w} (+${item.active_weaknesses.length - 1} other flaw)`
+      }
+      return `Where you stumbled: ${w}`
+    }
+    return null
+  }, [item])
+
+  const renderFailureReminder = () => {
+    if (!currentFailureReminder || !failureReminderEnabled || dismissedReminderCardId === item?.id) {
+      return null
+    }
+
+    return (
+      <div className="rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 via-[#18130c] to-[#120f0c] p-3 text-xs text-amber-200 shadow-md flex items-start justify-between gap-3 animate-in fade-in duration-200 mb-3">
+        <div className="flex items-start gap-2.5 min-w-0">
+          <span className="text-amber-400 text-sm shrink-0 mt-0.5 select-none">⚠️</span>
+          <div className="space-y-0.5 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-bold uppercase tracking-wider text-[10px] text-amber-400">
+                Past Failure Memory
+              </span>
+              <span className="text-[10px] text-amber-400/60 font-mono">
+                • avoid repeating this mistake
+              </span>
+            </div>
+            <p className="text-amber-100 leading-relaxed break-words font-medium">
+              {currentFailureReminder}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setDismissedReminderCardId(item?.id ?? null)}
+            className="text-amber-400/60 hover:text-amber-200 text-xs px-1.5 py-0.5 rounded hover:bg-amber-500/10 cursor-pointer transition font-mono"
+            title="Dismiss reminder for this card"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   // Deck Cards Quick Browser Drawer (§Feature)
   const [deckViewerOpen, setDeckViewerOpen] = useState(false)
+  // Return to All Cards viewer when a single card was studied via "Study now"
+  const [returnToDeckViewerOnComplete, setReturnToDeckViewerOnComplete] = useState<boolean>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      return Boolean(params.get('card') || params.get('card_id') || params.get('from_viewer'))
+    } catch {
+      return false
+    }
+  })
+  const [lastStudiedCardId, setLastStudiedCardId] = useState<string | null>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      return params.get('card') || params.get('card_id') || null
+    } catch {
+      return null
+    }
+  })
+  const [lastStudiedDeckId, setLastStudiedDeckId] = useState<string | null>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      return params.get('deck') || null
+    } catch {
+      return null
+    }
+  })
 
   // Saved for Later Shelf Drawer (§Feature)
   const [savedDrawerOpen, setSavedDrawerOpen] = useState(false)
@@ -444,6 +575,119 @@ export default function Review() {
     window.addEventListener('savedCardDraftsChanged', handleDraftsChange)
     return () => window.removeEventListener('savedCardDraftsChanged', handleDraftsChange)
   }, [])
+
+  // ── Neuroscience Enhancements State ─────────────────────────────────────────
+  const [showMnemonic, setShowMnemonic] = useState(false)
+  const [mnemonicLoading, setMnemonicLoading] = useState(false)
+  const [mnemonicText, setMnemonicText] = useState<string | null>(null)
+
+  const [mutatedPrompt, setMutatedPrompt] = useState<string | null>(null)
+  const [mutationType, setMutationType] = useState<string>('counterfactual')
+  const [mutationLoading, setMutationLoading] = useState(false)
+
+  const [showAssociative, setShowAssociative] = useState(false)
+  const [associativeLoading, setAssociativeLoading] = useState(false)
+  const [relatedNodes, setRelatedNodes] = useState<SpreadingActivationNode[]>([])
+
+  const [showPretest, setShowPretest] = useState(false)
+  const [pretestPrediction, setPretestPrediction] = useState('')
+  const [pretestConfidence, setPretestConfidence] = useState(2)
+  const [pretestResult, setPretestResult] = useState<PretestPredictionResponse | null>(null)
+  const [pretestSubmitting, setPretestSubmitting] = useState(false)
+
+  useEffect(() => {
+    setShowMnemonic(false)
+    setMnemonicText(item?.mnemonic_vignette || null)
+    setMutatedPrompt(null)
+    setShowAssociative(false)
+    setRelatedNodes([])
+    setPretestPrediction('')
+    setPretestResult(null)
+    if (user?.enable_prediction_mode && item?.state === 'new') {
+      setShowPretest(true)
+    } else {
+      setShowPretest(false)
+    }
+  }, [item?.id, user?.enable_prediction_mode])
+
+  const handleToggleMnemonic = async () => {
+    if (showMnemonic) {
+      setShowMnemonic(false)
+      return
+    }
+    setShowMnemonic(true)
+    if (!mnemonicText && item?.id) {
+      setMnemonicLoading(true)
+      try {
+        const res = await api.generateMnemonic(item.id)
+        setMnemonicText(res.mnemonic_vignette)
+      } catch (err) {
+        console.error('Failed to generate mnemonic:', err)
+      } finally {
+        setMnemonicLoading(false)
+      }
+    }
+  }
+
+  const handleRegenerateMnemonic = async () => {
+    if (!item?.id) return
+    setMnemonicLoading(true)
+    try {
+      const res = await api.generateMnemonic(item.id)
+      setMnemonicText(res.mnemonic_vignette)
+    } catch (err) {
+      console.error('Failed to regenerate mnemonic:', err)
+    } finally {
+      setMnemonicLoading(false)
+    }
+  }
+
+  const handleMutatePrompt = async (mType?: string) => {
+    if (!item?.id) return
+    const targetType = mType || mutationType
+    setMutationLoading(true)
+    try {
+      const res = await api.mutatePrompt(item.id, targetType)
+      setMutatedPrompt(res.mutated_prompt)
+      setMutationType(targetType)
+    } catch (err) {
+      console.error('Failed to mutate prompt:', err)
+    } finally {
+      setMutationLoading(false)
+    }
+  }
+
+  const handleToggleAssociative = async () => {
+    if (showAssociative) {
+      setShowAssociative(false)
+      return
+    }
+    setShowAssociative(true)
+    if (relatedNodes.length === 0 && item?.id) {
+      setAssociativeLoading(true)
+      try {
+        const res = await api.getRelatedCards(item.id)
+        setRelatedNodes(res.activated_nodes)
+      } catch (err) {
+        console.error('Failed to get related cards:', err)
+      } finally {
+        setAssociativeLoading(false)
+      }
+    }
+  }
+
+  const handleSubmitPretest = async () => {
+    if (!item?.id || !pretestPrediction.trim()) return
+    setPretestSubmitting(true)
+    try {
+      const res = await api.submitPrediction(item.id, pretestPrediction.trim(), pretestConfidence)
+      setPretestResult(res)
+    } catch (err) {
+      console.error('Failed to submit pretest prediction:', err)
+    } finally {
+      setPretestSubmitting(false)
+    }
+  }
 
   useEffect(() => {
     if (!item) {
@@ -603,6 +847,7 @@ export default function Review() {
     setActiveLineHint(null)
     setLineHintLoading(false)
     setEditorCursorLine(1)
+    setDismissedReminderCardId(null)
     shownAt.current = Date.now()
     setDeckStatsTrigger((prev) => prev + 1)
   }, [learnMode])
@@ -618,9 +863,12 @@ export default function Review() {
       if (persistActive) {
         setPersistPendingQueue((prev) => [selectedCard.id, ...prev.filter((id) => id !== selectedCard.id)])
       }
+      setLastStudiedCardId(selectedCard.id)
+      setLastStudiedDeckId(selectedCard.deck_or_source_id || deckParam || persistDeckId || null)
+      setReturnToDeckViewerOnComplete(true)
       setDeckViewerOpen(false)
     },
-    [initCardState, persistActive],
+    [initCardState, persistActive, deckParam, persistDeckId],
   )
 
   const load = useCallback(async () => {
@@ -681,10 +929,12 @@ export default function Review() {
           setPersistPendingQueue([])
           setItem(null)
         } else {
-          const queue = cards.map((c) => c.id)
+          const cardParam = params.get('card') || params.get('card_id')
+          const targetCard = (cardParam && cards.find((c) => c.id === cardParam)) || cards[0]
+          const queue = [targetCard.id, ...cards.filter((c) => c.id !== targetCard.id).map((c) => c.id)]
           setPersistPendingQueue(queue)
-          setItem(cards[0])
-          initCardState(cards[0])
+          setItem(targetCard)
+          initCardState(targetCard)
         }
       } catch (err) {
         setError(err)
@@ -1177,17 +1427,18 @@ export default function Review() {
     [item, answer, codeLanguage, testCode, editorCursorLine, activeModel]
   )
 
-  async function confirm(finalGrade: Grade) {
+  async function confirm(finalGrade: Grade, options?: { retryImmediately?: boolean }) {
     if (!item || item.kind !== 'card') return
     if (confirmingRef.current) return
     confirmingRef.current = true
     setConfirming(true)
     const overridden = Boolean(result && !result.degraded_to_manual && result.suggested_grade !== finalGrade)
     const latency = Date.now() - shownAt.current
+    const currentItem = item
 
     try {
       const outcome = await api.confirmReview(
-        item.id,
+        currentItem.id,
         finalGrade,
         overridden,
         answer || undefined,
@@ -1208,8 +1459,35 @@ export default function Review() {
       window.dispatchEvent(new Event(REVIEW_EVENT))
 
       // Remove any saved draft for this completed card
-      removeDraft(item.id)
+      removeDraft(currentItem.id)
       setSavedCount(getSavedDraftsCount())
+
+      if (options?.retryImmediately) {
+        if (persistActive) {
+          setPersistTotalReviews((prev) => prev + 1)
+          setPersistCardAttempts((prev) => ({
+            ...prev,
+            [currentItem.id]: (prev[currentItem.id] || 0) + 1,
+          }))
+          if (finalGrade === 'easy') {
+            setPersistGraspedIds((prev) => new Set([...prev, currentItem.id]))
+          }
+          setPersistPendingQueue((prev) => [currentItem.id, ...prev.filter((id) => id !== currentItem.id)])
+        }
+        initCardState(currentItem)
+        setAnswer(currentItem.starter_code || '')
+        setRevealed(false)
+        setResult(null)
+        setSkipReviewRecording(false)
+        shownAt.current = Date.now()
+        setLastOutcome(
+          `${finalGrade.toUpperCase()} recorded · Retrying card immediately.`
+        )
+        setDeckStatsTrigger((prev) => prev + 1)
+        return
+      }
+
+      setPreviousCard(currentItem)
 
       if (allCardsRunActive) {
         const nextIdx = allCardsRunIndex + 1
@@ -1295,6 +1573,20 @@ export default function Review() {
         )
         await load()
       }
+
+      if (returnToDeckViewerOnComplete) {
+        setReturnToDeckViewerOnComplete(false)
+        setLastStudiedCardId(item.id)
+        setLastStudiedDeckId(item.deck_or_source_id || deckParam || persistDeckId || null)
+        setDeckViewerOpen(true)
+        setParams((p) => {
+          const next = new URLSearchParams(p)
+          next.delete('card')
+          next.delete('card_id')
+          next.delete('from_viewer')
+          return next
+        }, { replace: true })
+      }
     } catch (err) {
       setError(err)
     } finally {
@@ -1305,6 +1597,9 @@ export default function Review() {
 
   const advanceWithoutReview = useCallback(async () => {
     if (!item || item.kind !== 'card') return
+    const currentCardId = item.id
+    const currentDeckId = item.deck_or_source_id || deckParam || persistDeckId || null
+    setPreviousCard(item)
     removeDraft(item.id)
     setSavedCount(getSavedDraftsCount())
     setResult(null)
@@ -1359,11 +1654,31 @@ export default function Review() {
       }
       await load()
     }
+
+    if (returnToDeckViewerOnComplete) {
+      setReturnToDeckViewerOnComplete(false)
+      setLastStudiedCardId(currentCardId)
+      setLastStudiedDeckId(currentDeckId)
+      setDeckViewerOpen(true)
+      setParams((p) => {
+        const next = new URLSearchParams(p)
+        next.delete('card')
+        next.delete('card_id')
+        next.delete('from_viewer')
+        return next
+      }, { replace: true })
+    }
   }, [
     item,
+    deckParam,
+    persistDeckId,
+    returnToDeckViewerOnComplete,
+    setParams,
     allCardsRunActive,
     allCardsRunIndex,
     allCardsRunCards,
+    allCardsRunDeckId,
+    allCardsRunDeckName,
     persistActive,
     persistPendingQueue,
     persistCards,
@@ -1389,6 +1704,123 @@ export default function Review() {
       }
     }
   }, [skipReviewRecording, answer, revealed, grade, advanceWithoutReview])
+
+  const handleRetryWithoutRecording = useCallback(() => {
+    if (!item || item.kind !== 'card') return
+    removeDraft(item.id)
+    setSavedCount(getSavedDraftsCount())
+    initCardState(item)
+    setAnswer(item.starter_code || '')
+    setRevealed(false)
+    setResult(null)
+    setSkipReviewRecording(false)
+    shownAt.current = Date.now()
+    setLastOutcome('Card reset for immediate retry (unrecorded attempt).')
+  }, [item, initCardState])
+
+  const handleRecordAndRetry = useCallback(
+    (gradeOverride?: Grade) => {
+      const g =
+        gradeOverride ||
+        (result && !result.degraded_to_manual ? result.suggested_grade : 'hard') ||
+        'hard'
+      void confirm(g, { retryImmediately: true })
+    },
+    [confirm, result],
+  )
+
+  const handleRetryPreviousCard = useCallback(() => {
+    if (!previousCard) return
+    setItem(previousCard)
+    initCardState(previousCard)
+    setRevealed(false)
+    setSkipReviewRecording(false)
+    setResult(null)
+    setLastOutcome(`Retrying previous card: ${previousCard.title || 'Previous card'}`)
+  }, [previousCard, initCardState])
+
+  const renderRetryActionBar = () => {
+    const suggestedGrade: Grade =
+      (result && !result.degraded_to_manual ? result.suggested_grade : 'hard') || 'hard'
+
+    return (
+      <div className="mt-3 pt-2.5 border-t border-ink-line/60 flex flex-wrap items-center justify-between gap-2.5 text-xs bg-[#101622]/70 -mx-1 px-3 py-2 rounded-xl border border-ink-line/40 shadow-inner">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-amber-400 flex items-center gap-1">
+            <span className="text-sm">🔄</span>
+            <span>Retry Card:</span>
+          </span>
+          <span className="text-[11px] text-slate-400 hidden sm:inline">
+            Try this card again immediately
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Option 1: Retry without recording review */}
+          <button
+            type="button"
+            onClick={handleRetryWithoutRecording}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/90 hover:bg-slate-700 hover:border-slate-500 text-slate-200 hover:text-white transition font-medium text-xs cursor-pointer shadow-xs active:scale-95"
+            title="Clear and retry this card immediately without recording this review to spaced repetition (Alt+R)"
+          >
+            <span className="text-rose-400 font-bold">✕</span>
+            <span>Retry without recording</span>
+            <kbd className="hidden md:inline px-1 py-0.2 rounded bg-black/40 text-[10px] text-slate-400 font-mono">Alt+R</kbd>
+          </button>
+
+          {/* Option 2: Record review and retry */}
+          <div className="inline-flex items-center rounded-lg border border-sky-500/50 bg-sky-950/70 p-0.5 shadow-xs">
+            <button
+              type="button"
+              onClick={() => handleRecordAndRetry()}
+              disabled={confirming}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-sky-600 hover:bg-sky-500 text-white transition font-medium text-xs cursor-pointer disabled:opacity-50 active:scale-95"
+              title={`Record this review as ${suggestedGrade.toUpperCase()} and immediately retry the card (Alt+Shift+R)`}
+            >
+              <span className="text-sky-200 font-bold">✓</span>
+              <span>Record review &amp; retry</span>
+              <span className="text-[10px] font-mono text-sky-100 bg-sky-800/90 px-1.5 py-0.2 rounded uppercase font-semibold">
+                {suggestedGrade}
+              </span>
+            </button>
+
+            {/* Quick selector to choose a different grade before retrying */}
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  handleRecordAndRetry(e.target.value as Grade)
+                }
+              }}
+              disabled={confirming}
+              className="bg-transparent text-sky-300 hover:text-white text-xs py-1 px-1.5 focus:outline-none cursor-pointer border-l border-sky-500/30 font-medium"
+              title="Record with a specific grade and retry immediately"
+            >
+              <option value="" disabled className="bg-[#121622] text-slate-400">▾ Other grade</option>
+              <option value="again" className="bg-[#121622] text-rose-300">Again (1)</option>
+              <option value="hard" className="bg-[#121622] text-amber-300">Hard (2)</option>
+              <option value="good" className="bg-[#121622] text-emerald-300">Good (3)</option>
+              <option value="easy" className="bg-[#121622] text-sky-300">Easy (4)</option>
+            </select>
+          </div>
+
+          {/* Option 3: Auto-retry on rating toggle */}
+          <label
+            className="inline-flex items-center gap-1.5 text-[11px] text-slate-300 hover:text-white cursor-pointer select-none px-2 py-1 rounded-lg bg-slate-800/40 hover:bg-slate-800/80 border border-slate-700/60 transition"
+            title="When enabled, clicking Again/Hard/Good/Easy (or pressing 1-4) records that rating and automatically starts an immediate retry"
+          >
+            <input
+              type="checkbox"
+              checked={retryAfterRating}
+              onChange={(e) => setRetryAfterRating(e.target.checked)}
+              className="rounded border-slate-600 bg-slate-900 text-sky-500 focus:ring-0 w-3.5 h-3.5 cursor-pointer"
+            />
+            <span>Auto-retry on 1–4</span>
+          </label>
+        </div>
+      </div>
+    )
+  }
 
   // Keyboard: 1-4 grade after reveal, Space or Ctrl/Cmd+Enter submits/reveals answer.
   useEffect(() => {
@@ -1417,7 +1849,16 @@ export default function Review() {
       if (revealed && e.key >= '1' && e.key <= '4' && !isTyping && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (!skipReviewRecording) {
           e.preventDefault()
-          void confirm(GRADES[Number(e.key) - 1])
+          void confirm(GRADES[Number(e.key) - 1], { retryImmediately: retryAfterRating })
+        }
+      }
+      // Alt+R or Alt+Shift+R shortcuts to retry current card
+      if (revealed && (e.key === 'r' || e.key === 'R') && e.altKey) {
+        e.preventDefault()
+        if (e.shiftKey) {
+          handleRecordAndRetry()
+        } else {
+          handleRetryWithoutRecording()
         }
       }
       // Space or Enter after reveal in skipReviewRecording mode: advance to next card without recording
@@ -1439,6 +1880,10 @@ export default function Review() {
       if ((e.key === 's' || e.key === 'S') && e.altKey) {
         e.preventDefault()
         toggleTiledTabs()
+      }
+      if (revealed && checkIsCodeCard(item) && (e.key === 'u' || e.key === 'U') && e.altKey) {
+        e.preventDefault()
+        handleHideSolution('hint')
       }
       if ((e.key === 't' || e.key === 'T') && e.altKey) {
         e.preventDefault()
@@ -1809,11 +2254,16 @@ export default function Review() {
                       onChange={(e) => setSelectedPersistDeckId(e.target.value)}
                     >
                       <option value="">-- Choose a deck --</option>
-                      {allDecks.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name} ({d.card_count} {d.card_count === 1 ? 'card' : 'cards'}{d.new_count > 0 ? ` · ${d.new_count} unseen` : ''})
-                        </option>
-                      ))}
+                      {allDecks.map((d) => {
+                        const viewedPct = d.stats && d.stats.total_cards > 0
+                          ? Math.round(d.stats.viewed_ratio * 100)
+                          : null
+                        return (
+                          <option key={d.id} value={d.id}>
+                            {d.name} ({d.card_count} {d.card_count === 1 ? 'card' : 'cards'}{viewedPct !== null ? ` · ${viewedPct}% viewed` : ''}{d.new_count > 0 ? ` · ${d.new_count} unseen` : ''})
+                          </option>
+                        )
+                      })}
                     </select>
                     <div className="flex items-center gap-2">
                       <button
@@ -1936,7 +2386,7 @@ export default function Review() {
             onOpenSavedDrawer={() => setSavedDrawerOpen(true)}
           />
           <div className="flex flex-col xl:flex-row items-start justify-center gap-6 max-w-[1750px] mx-auto px-2 sm:px-4">
-            <div className="flex-1 w-full max-w-4xl min-w-0">
+            <div className="flex-1 w-full max-w-4xl min-w-0 xl:min-w-[500px]">
               <LessonGate
                 item={item}
                 lesson={lesson}
@@ -1947,7 +2397,7 @@ export default function Review() {
                 codeLanguage={codeLanguage}
               />
             </div>
-            <aside className="w-full xl:w-88 2xl:w-96 shrink-0 xl:sticky xl:top-16">
+            <aside className="w-full xl:w-80 2xl:w-96 shrink-0 xl:sticky xl:top-16">
               <MarginLexiconPanel
                 cardId={item.id}
                 deckName={item.deck_name}
@@ -1994,6 +2444,10 @@ export default function Review() {
     const starterTestsCode = buildStarterTestCode(item)
     const cleanRefTestsCode = buildCompletedTestCode(item)
 
+    const singleRefDiff = !cleanRefCode || !answer.trim()
+      ? { refSegments: null, stats: null }
+      : computeTokenDiff(answer, cleanRefCode, overlookedTerms, matchedTerms)
+
     return (
       <div className="space-y-6">
         <SessionHeader
@@ -2028,6 +2482,8 @@ export default function Review() {
           onStartPersist={startPersistMode}
           savedCount={savedCount}
           onOpenSavedDrawer={() => setSavedDrawerOpen(true)}
+          previousCard={previousCard}
+          onRetryPreviousCard={handleRetryPreviousCard}
         />
 
         {/* Prompt to study unseen cards if reviewing a deck with unintroduced material */}
@@ -2338,9 +2794,20 @@ export default function Review() {
                     className="text-[11px] font-semibold text-slate-400 group-hover:text-sky-200 tracking-wider uppercase whitespace-nowrap"
                     style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
                   >
-                    Problem Description
+                    {revealed ? 'Assessment & Specs' : 'Problem Description'}
                   </span>
                 </div>
+                {revealed && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 my-1 shadow-sm ring-2 ring-emerald-500/40 animate-pulse" title="Assessment & Rubric Ready" />
+                )}
+                {currentFailureReminder && (
+                  <span
+                    className="w-5 h-5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 my-1 flex items-center justify-center text-[10px]"
+                    title={currentFailureReminder}
+                  >
+                    ⚠️
+                  </span>
+                )}
                 <span className="text-[10px] text-slate-500 mt-2 font-mono">
                   {item.difficulty || 'Code'}
                 </span>
@@ -2406,7 +2873,28 @@ export default function Review() {
                         <span>{showPrimer ? 'Hide Primer' : 'Primer'}</span>
                       </button>
                     )}
-                    {item.active_weaknesses && item.active_weaknesses.length > 0 && (
+                    {currentFailureReminder ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (dismissedReminderCardId === item.id) {
+                            setDismissedReminderCardId(null)
+                            setFailureReminderEnabled(true)
+                          } else {
+                            setFailureReminderEnabled((prev) => !prev)
+                          }
+                        }}
+                        className={`chip cursor-pointer transition-colors flex items-center gap-1 font-medium ${
+                          failureReminderEnabled && dismissedReminderCardId !== item.id
+                            ? 'border-amber-500/50 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30'
+                            : 'border-ink-line text-slate-400 hover:text-amber-300 hover:border-amber-500/40'
+                        }`}
+                        title={currentFailureReminder}
+                      >
+                        <span>⚠️</span>
+                        <span>{failureReminderEnabled && dismissedReminderCardId !== item.id ? 'Prior Mistake' : 'Show Past Mistake'}</span>
+                      </button>
+                    ) : item.active_weaknesses && item.active_weaknesses.length > 0 ? (
                       <button
                         type="button"
                         onClick={() => {
@@ -2418,7 +2906,7 @@ export default function Review() {
                       >
                         {item.active_weaknesses.length} prior {item.active_weaknesses.length === 1 ? 'mistake' : 'mistakes'}
                       </button>
-                    )}
+                    ) : null}
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -2463,6 +2951,9 @@ export default function Review() {
                   }}
                 />
               )}
+
+              {/* Prior Failure Reminder Banner */}
+              {renderFailureReminder()}
 
               {/* Problem Title & Statement */}
               <div>
@@ -2644,20 +3135,22 @@ export default function Review() {
                     variant="prominent"
                     className="w-full"
                   />
-                  <AnswerComparison
-                    userAnswer={answer}
-                    userTestCode={testCode}
-                    referenceAnswer={result?.reference_answer || item.back || ''}
-                    isCodeCard={isCodeCard}
-                    codeLanguage={codeLanguage}
-                    timeComplexity={item.time_complexity}
-                    overlookedPhrases={overlookedTerms}
-                    matchedPhrases={matchedTerms}
-                  />
+                  {!isCodeCard && (
+                    <AnswerComparison
+                      userAnswer={answer}
+                      userTestCode={testCode}
+                      referenceAnswer={result?.reference_answer || item.back || ''}
+                      isCodeCard={isCodeCard}
+                      codeLanguage={codeLanguage}
+                      timeComplexity={item.time_complexity}
+                      overlookedPhrases={overlookedTerms}
+                      matchedPhrases={matchedTerms}
+                    />
+                  )}
 
                   {result?.latency_note && (
                     <p className="text-xs text-slate-600" title="Informational only — never affects the grade">
-                      {result.latency_note}
+                      {formatLatencyNote(result.latency_note)}
                     </p>
                   )}
 
@@ -2732,6 +3225,14 @@ export default function Review() {
                         </button>
                         <button
                           type="button"
+                          className="btn text-xs px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 cursor-pointer"
+                          onClick={handleRetryWithoutRecording}
+                          title="Clear input and retry card from scratch (unrecorded)"
+                        >
+                          <span>🔄 Fresh Retry</span>
+                        </button>
+                        <button
+                          type="button"
                           className="btn text-xs px-2.5 py-1 text-slate-400 hover:text-slate-200 cursor-pointer"
                           onClick={() => {
                             setSkipReviewRecording(false)
@@ -2744,22 +3245,44 @@ export default function Review() {
                     </div>
                   ) : (
                     <div>
-                      <div className="flex items-center justify-between">
-                        <p className="label">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <p className="label mb-0">
                           {result && !result.degraded_to_manual
                             ? result.needs_confirmation
                               ? 'Confirm or correct the grade'
                               : 'Accept the suggestion, or override'
                             : 'How well did you recall it?'}
                         </p>
-                        <button
-                          type="button"
-                          className="text-[11px] text-slate-500 hover:text-amber-300 underline cursor-pointer"
-                          onClick={() => setSkipReviewRecording(true)}
-                          title="Don't record this card review"
-                        >
-                          Skip recording this review
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {isCodeCard && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleHideSolution('hint')}
+                                className="text-[11px] text-amber-300 hover:text-amber-100 flex items-center gap-1 cursor-pointer bg-amber-500/15 hover:bg-amber-500/25 px-2.5 py-0.5 rounded border border-amber-500/40 transition font-medium shadow-sm"
+                                title="Hide full solution, enable line hints, and return to practice mode (Alt+U)"
+                              >
+                                <span>💡 Use Line Hints &amp; Keep Practicing</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleHideSolution('hide')}
+                                className="text-[11px] text-slate-300 hover:text-white flex items-center gap-1 cursor-pointer bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded border border-white/15 transition font-medium"
+                                title="Lock reference solution and return to practice mode"
+                              >
+                                <span>🔒 Hide Solution</span>
+                              </button>
+                            </>
+                          )}
+                          <button
+                            type="button"
+                            className="text-[11px] text-slate-500 hover:text-amber-300 underline cursor-pointer"
+                            onClick={() => setSkipReviewRecording(true)}
+                            title="Don't record this card review"
+                          >
+                            Skip recording this review
+                          </button>
+                        </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {GRADES.map((g, i) => {
@@ -2768,12 +3291,14 @@ export default function Review() {
                           return (
                             <button
                               key={g}
-                              onClick={() => confirm(g)}
+                              onClick={() => confirm(g, { retryImmediately: retryAfterRating })}
                               disabled={confirming}
                               className={`btn ${GRADE_STYLE[g]} ${
                                 suggested ? 'ring-1 ring-inset ring-current' : ''
                               }`}
+                              title={retryAfterRating ? `Record as ${g.toUpperCase()} and retry card immediately` : `Record as ${g.toUpperCase()} and advance to next card`}
                             >
+                              {retryAfterRating && <span className="text-xs">🔄</span>}
                               <span className="capitalize">{g}</span>
                               <span className="text-xs opacity-50">{GRADE_BAND[g]}</span>
                               <span className="text-xs opacity-50">{i + 1}</span>
@@ -2793,6 +3318,9 @@ export default function Review() {
                           )
                         })}
                       </div>
+
+                      {/* Immediate Retry Action Bar */}
+                      {renderRetryActionBar()}
                     </div>
                   )}
                 </div>
@@ -3084,15 +3612,81 @@ export default function Review() {
                       </div>
                     )}
                     {!tiledTabs && activeEditorTab === 'reference' && (
-                      <button
-                        type="button"
-                        onClick={() => void handleCopyReferenceCode(cleanRefCode)}
-                        disabled={!cleanRefCode}
-                        className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
-                        title="Copy reference code to clipboard"
-                      >
-                        <span>{copiedRef ? 'Copied' : 'Copy ref'}</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {Boolean(cleanRefCode) && (revealed || singleRefViewMode === 'hint') && (
+                          <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line text-[11px] shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSingleRefViewMode('ide')
+                                localStorage.setItem('memorization.refViewMode', 'ide')
+                              }}
+                              className={`px-2 py-0.5 rounded transition cursor-pointer ${
+                                singleRefViewMode === 'ide'
+                                  ? 'bg-sky-600/30 text-sky-200 border border-sky-500/50 font-medium'
+                                  : 'text-slate-400 hover:text-slate-200'
+                              }`}
+                              title="IDE syntax-highlighted code format"
+                            >
+                              IDE
+                            </button>
+                            {revealed && Boolean(answer.trim()) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSingleRefViewMode('diff')
+                                  localStorage.setItem('memorization.refViewMode', 'diff')
+                                }}
+                                className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
+                                  singleRefViewMode === 'diff'
+                                    ? 'bg-amber-600/30 text-amber-200 border border-amber-500/50 font-medium'
+                                    : 'text-slate-400 hover:text-slate-200'
+                                }`}
+                                title="Token-by-token answer comparison diff against your Solution"
+                              >
+                                <span>Diff</span>
+                                {singleRefDiff.stats && singleRefDiff.stats.missingCount > 0 && (
+                                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                )}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSingleRefViewMode('hint')
+                                localStorage.setItem('memorization.refViewMode', 'hint')
+                              }}
+                              className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
+                                singleRefViewMode === 'hint'
+                                  ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50 font-medium'
+                                  : 'text-slate-400 hover:text-slate-200'
+                              }`}
+                              title="Hint-only mode: reveals only the current incomplete line"
+                            >
+                              <span>💡 Hint</span>
+                            </button>
+                          </div>
+                        )}
+                        {revealed && (
+                          <button
+                            type="button"
+                            onClick={() => handleHideSolution('hide')}
+                            className="px-2 py-0.5 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[11px] font-medium transition cursor-pointer flex items-center gap-1 shrink-0"
+                            title="Hide solution and return to active practice"
+                          >
+                            <span>🔒 Hide</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => void handleCopyReferenceCode(cleanRefCode)}
+                          disabled={!cleanRefCode}
+                          className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
+                          title="Copy reference code to clipboard"
+                        >
+                          <span>{copiedRef ? 'Copied' : 'Copy ref'}</span>
+                        </button>
+                      </div>
                     )}
                     {!tiledTabs && activeEditorTab === 'ref_tests' && (
                       <div className="flex items-center gap-2">
@@ -3261,10 +3855,18 @@ export default function Review() {
                         lineHintLoading={lineHintLoading}
                         onRequestLineHint={handleRequestLineHint}
                         onDismissLineHint={() => setActiveLineHint(null)}
-                        onCursorChange={(l) => setEditorCursorLine(l)}
+                        onCursorChange={(l) => {
+                          if (tileLeftTab === 'solution') setEditorCursorLine(l)
+                        }}
                         onGradeSolution={() => void (answer.trim() ? grade() : reveal())}
                         grading={grading}
                         learnMode={learnMode}
+                        overlookedPhrases={overlookedTerms}
+                        matchedPhrases={matchedTerms}
+                        solutionCursorLine={editorCursorLine}
+                        onHide={() => handleHideSolution('hide')}
+                        logicGuardEnabled={logicGuardEnabled}
+                        onLogicGuardToggle={handleToggleLogicGuard}
                       />
                     </div>
 
@@ -3316,27 +3918,65 @@ export default function Review() {
                         lineHintLoading={lineHintLoading}
                         onRequestLineHint={handleRequestLineHint}
                         onDismissLineHint={() => setActiveLineHint(null)}
-                        onCursorChange={(l) => setEditorCursorLine(l)}
+                        onCursorChange={(l) => {
+                          if (tileRightTab === 'solution') setEditorCursorLine(l)
+                        }}
                         onGradeSolution={() => void (answer.trim() ? grade() : reveal())}
                         grading={grading}
                         learnMode={learnMode}
+                        overlookedPhrases={overlookedTerms}
+                        matchedPhrases={matchedTerms}
+                        solutionCursorLine={editorCursorLine}
+                        onHide={() => handleHideSolution('hide')}
+                        logicGuardEnabled={logicGuardEnabled}
+                        onLogicGuardToggle={handleToggleLogicGuard}
                       />
                     </div>
                   </div>
                 ) : (
                   /* Single Tab View */
                   activeEditorTab === 'reference' ? (
-                    revealed ? (
-                      <CodeEditor
-                        code={cleanRefCode}
-                        onChange={() => {}}
-                        language={codeLanguage}
-                        readOnly={true}
-                        height={`${workbenchLayout.editorHeight}px`}
-                        placeholder="// Reference solution"
-                        context={item?.deck_name || item?.front}
-                        deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
-                      />
+                    revealed || singleRefViewMode === 'hint' ? (
+                      <div className="flex flex-col">
+                        {singleRefViewMode === 'hint' && (
+                          <div className="px-3 py-1.5 bg-amber-950/40 border-b border-amber-500/30 flex items-center justify-between text-xs text-amber-200 shrink-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-amber-300">💡 Hint Mode:</span>
+                              <span>
+                                Only line {findIncompleteLineNumber(answer, cleanRefCode, editorCursorLine)} is visible
+                              </span>
+                            </div>
+                            {revealed && (
+                              <button
+                                type="button"
+                                onClick={() => handleHideSolution('hide')}
+                                className="px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-semibold cursor-pointer"
+                                title="Hide the solution and continue practicing"
+                              >
+                                🔒 Unreveal & Practice
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        <CodeEditor
+                          code={cleanRefCode}
+                          onChange={() => {}}
+                          language={codeLanguage}
+                          readOnly={true}
+                          height={
+                            singleRefViewMode === 'hint'
+                              ? `${Math.max(100, workbenchLayout.editorHeight - 33)}px`
+                              : `${workbenchLayout.editorHeight}px`
+                          }
+                          placeholder="// Reference solution"
+                          context={item?.deck_name || item?.front}
+                          deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
+                          diffSegments={singleRefViewMode === 'diff' ? singleRefDiff.refSegments : null}
+                          diffStats={singleRefViewMode === 'diff' ? singleRefDiff.stats : null}
+                          hintOnly={singleRefViewMode === 'hint'}
+                          hintOnlyLine={findIncompleteLineNumber(answer, cleanRefCode, editorCursorLine)}
+                        />
+                      </div>
                     ) : (
                       <div
                         style={{ height: `${workbenchLayout.editorHeight}px` }}
@@ -3351,13 +3991,26 @@ export default function Review() {
                             Hidden until revealed.
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => void reveal()}
-                          className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 mt-2 cursor-pointer"
-                        >
-                          <span>Reveal Solution</span>
-                        </button>
+                        <div className="flex items-center gap-2 mt-2">
+                          <button
+                            type="button"
+                            onClick={() => void reveal()}
+                            className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 cursor-pointer"
+                          >
+                            <span>Reveal Solution</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSingleRefViewMode('hint')
+                              localStorage.setItem('memorization.refViewMode', 'hint')
+                            }}
+                            className="px-3 py-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
+                            title="Peek only the next line of code without revealing full answer"
+                          >
+                            <span>💡 Line Hint</span>
+                          </button>
+                        </div>
                       </div>
                     )
                   ) : activeEditorTab === 'ref_tests' ? (
@@ -3553,7 +4206,7 @@ export default function Review() {
              CLASSIC CARD VIEW WITH MARGIN CONCORDANCE & LEXICON
              ════════════════════════════════════════════════════════════════════ */
           <div className="flex flex-col xl:flex-row items-start justify-center gap-6 max-w-[1750px] mx-auto px-2 sm:px-4">
-            <div className="flex-1 w-full max-w-4xl min-w-0">
+            <div className="flex-1 w-full max-w-4xl min-w-0 xl:min-w-[500px]">
               <div className={`card ${isCodeCard && tiledTabs ? 'max-w-6xl' : 'w-full'} mx-auto`}>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
               <div className="flex flex-wrap items-center gap-2">
@@ -3622,7 +4275,28 @@ export default function Review() {
                     <span>{showPrimer ? 'Hide Primer' : 'Primer'}</span>
                   </button>
                 )}
-                {item.active_weaknesses && item.active_weaknesses.length > 0 && (
+                {currentFailureReminder ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (dismissedReminderCardId === item.id) {
+                        setDismissedReminderCardId(null)
+                        setFailureReminderEnabled(true)
+                      } else {
+                        setFailureReminderEnabled((prev) => !prev)
+                      }
+                    }}
+                    className={`chip cursor-pointer transition-colors flex items-center gap-1 font-medium ${
+                      failureReminderEnabled && dismissedReminderCardId !== item.id
+                        ? 'border-amber-500/50 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30'
+                        : 'border-ink-line text-slate-400 hover:text-amber-300 hover:border-amber-500/40'
+                    }`}
+                    title={currentFailureReminder}
+                  >
+                    <span>⚠️</span>
+                    <span>{failureReminderEnabled && dismissedReminderCardId !== item.id ? 'Prior Mistake' : 'Show Past Mistake'}</span>
+                  </button>
+                ) : item.active_weaknesses && item.active_weaknesses.length > 0 ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -3633,6 +4307,81 @@ export default function Review() {
                     title={item.active_weaknesses.join('; ')}
                   >
                     {item.active_weaknesses.length} prior {item.active_weaknesses.length === 1 ? 'mistake' : 'mistakes'}
+                  </button>
+                ) : null}
+
+                {/* ── Neuroscience Enhancements Badges & Controls ── */}
+                {item.is_schema_checkpoint && (
+                  <span
+                    className="chip border-amber-500/60 bg-amber-500/15 text-amber-300 font-bold flex items-center gap-1 shadow-sm"
+                    title="Neocortical Schema Checkpoint: Foundational Mental Model Anchor"
+                  >
+                    🏛️ Schema Checkpoint
+                  </span>
+                )}
+                {item.spatial_locus && (
+                  <span
+                    className="chip border-emerald-500/40 bg-emerald-950/40 text-emerald-300 font-medium flex items-center gap-1"
+                    title="Memory Palace Spatial Locus"
+                  >
+                    📍 {item.spatial_locus}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleToggleMnemonic}
+                  className={`chip cursor-pointer transition-colors flex items-center gap-1 font-medium ${
+                    showMnemonic
+                      ? 'border-purple-500/60 bg-purple-500/20 text-purple-200'
+                      : 'border-ink-line text-slate-300 hover:text-purple-300 hover:border-purple-500/40'
+                  }`}
+                  title="View or generate bizarre Memory Palace visual mnemonic (Dual-Coding / Von Restorff)"
+                >
+                  <span>🧠</span>
+                  <span>Mnemonic</span>
+                </button>
+                {!revealed && (
+                  <button
+                    type="button"
+                    onClick={() => void handleMutatePrompt()}
+                    disabled={mutationLoading}
+                    className={`chip cursor-pointer transition-colors flex items-center gap-1 font-medium ${
+                      mutatedPrompt
+                        ? 'border-cyan-500/60 bg-cyan-500/20 text-cyan-200'
+                        : 'border-ink-line text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40'
+                    }`}
+                    title="Reconsolidation: Test core invariant from an orthogonal angle"
+                  >
+                    <span>🔄</span>
+                    <span>{mutationLoading ? 'Mutating…' : mutatedPrompt ? 'Mutated Angle' : 'Mutate Prompt'}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleToggleAssociative}
+                  className={`chip cursor-pointer transition-colors flex items-center gap-1 font-medium ${
+                    showAssociative
+                      ? 'border-indigo-500/60 bg-indigo-500/20 text-indigo-200'
+                      : 'border-ink-line text-slate-300 hover:text-indigo-300 hover:border-indigo-500/40'
+                  }`}
+                  title="Spreading activation: explore primed semantic connections"
+                >
+                  <span>🕸️</span>
+                  <span>Associative</span>
+                </button>
+                {!revealed && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPretest((v) => !v)}
+                    className={`chip cursor-pointer transition-colors flex items-center gap-1 font-medium ${
+                      showPretest
+                        ? 'border-emerald-500/60 bg-emerald-500/20 text-emerald-200'
+                        : 'border-ink-line text-slate-300 hover:text-emerald-300 hover:border-emerald-500/40'
+                    }`}
+                    title="Pre-test hypothesis generation: guess before revealing to prime dopaminergic RPE"
+                  >
+                    <span>🔬</span>
+                    <span>{showPretest ? 'Hide Hypothesis' : 'Hypothesize'}</span>
                   </button>
                 )}
               </div>
@@ -3652,6 +4401,9 @@ export default function Review() {
               />
             )}
 
+            {/* Prior Failure Reminder Banner */}
+            {renderFailureReminder()}
+
             {item.title && <h2 className="text-xl font-bold text-slate-100 mb-2">{item.title}</h2>}
 
             {item.occlusion ? (
@@ -3663,6 +4415,220 @@ export default function Review() {
               </div>
             ) : (
               <RichText text={item.front ?? ''} className="text-lg leading-relaxed text-slate-100" />
+            )}
+
+            {/* ── Reconsolidation Mutated Prompt Panel ── */}
+            {mutatedPrompt && (
+              <div className="mt-3 rounded-xl border border-cyan-500/40 bg-gradient-to-r from-cyan-950/40 via-[#0d1820] to-[#0a1218] p-3 text-xs text-cyan-200 shadow-md animate-in fade-in">
+                <div className="flex items-center justify-between gap-2 border-b border-cyan-500/20 pb-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-cyan-300">
+                      🔄 Reconsolidation Variant ({mutationType})
+                    </span>
+                    <span className="text-[10px] text-cyan-400/60 font-mono">
+                      • testing invariant invariance
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={mutationType}
+                      onChange={(e) => void handleMutatePrompt(e.target.value)}
+                      className="text-[11px] bg-slate-900 border border-slate-700 text-slate-200 rounded px-1.5 py-0.5 cursor-pointer"
+                    >
+                      <option value="counterfactual">Counterfactual</option>
+                      <option value="scenario">Scenario</option>
+                      <option value="adversarial">Adversarial</option>
+                      <option value="perspective">Perspective</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setMutatedPrompt(null)}
+                      className="text-xs text-slate-400 hover:text-white px-1 font-mono"
+                      title="Reset to original front prompt"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm text-cyan-100 font-medium leading-relaxed">
+                  {mutatedPrompt}
+                </p>
+              </div>
+            )}
+
+            {/* ── Mnemonic Palace Anchor (Von Restorff / Dual-Coding) ── */}
+            {showMnemonic && (
+              <div className="mt-3 rounded-xl border border-purple-500/40 bg-gradient-to-r from-purple-950/40 via-[#150d1e] to-[#0f0915] p-3.5 text-xs text-purple-200 shadow-md animate-in fade-in">
+                <div className="flex items-center justify-between gap-2 border-b border-purple-500/20 pb-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-purple-300">
+                      🧠 Memory Palace Anchor (Bizarre Visual Vignette)
+                    </span>
+                    {item.spatial_locus && (
+                      <span className="chip text-[10px] border-purple-500/30 text-purple-300 bg-purple-500/10">
+                        {item.spatial_locus}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={mnemonicLoading}
+                      onClick={handleRegenerateMnemonic}
+                      className="text-[11px] text-purple-300 hover:text-white flex items-center gap-1 bg-purple-900/40 border border-purple-500/30 px-2 py-0.5 rounded cursor-pointer transition font-medium"
+                    >
+                      <span>{mnemonicLoading ? 'Synthesizing…' : '↻ Re-synthesize'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowMnemonic(false)}
+                      className="text-xs text-purple-400 hover:text-white font-mono"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+                {mnemonicLoading ? (
+                  <div className="py-2 text-center text-purple-300 flex items-center justify-center gap-2">
+                    <Spinner /> <span>Synthesizing bizarre sensory imagery…</span>
+                  </div>
+                ) : mnemonicText ? (
+                  <p className="text-sm text-purple-100 italic leading-relaxed">
+                    "{mnemonicText}"
+                  </p>
+                ) : (
+                  <p className="text-xs text-purple-400">
+                    No visual mnemonic generated yet. Click Re-synthesize to create an absurd memory palace scene.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* ── Associative Network Spreading Activation ── */}
+            {showAssociative && (
+              <div className="mt-3 rounded-xl border border-indigo-500/40 bg-gradient-to-r from-indigo-950/40 via-[#0e0f1e] to-[#0a0b17] p-3.5 text-xs text-indigo-200 shadow-md animate-in fade-in">
+                <div className="flex items-center justify-between gap-2 border-b border-indigo-500/20 pb-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-indigo-300">
+                      🕸️ Associative Network (Spreading Activation)
+                    </span>
+                    <span className="text-[10px] text-indigo-400/60 font-mono">
+                      • primed semantic representations
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAssociative(false)}
+                    className="text-xs text-slate-400 hover:text-white font-mono"
+                  >
+                    ✕
+                  </button>
+                </div>
+                {associativeLoading ? (
+                  <div className="py-2 text-center text-indigo-300 flex items-center justify-center gap-2">
+                    <Spinner /> <span>Traversing associative edges…</span>
+                  </div>
+                ) : relatedNodes.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                    {relatedNodes.map((node) => (
+                      <div
+                        key={node.card_id}
+                        className="p-2 rounded-lg border border-indigo-500/20 bg-indigo-950/30 space-y-1 text-xs"
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-medium text-slate-200 truncate">{node.title}</span>
+                          <span className="text-[10px] font-mono text-indigo-300 shrink-0">
+                            {Math.round(node.activation * 100)}%
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-slate-400">
+                          <span>{node.deck_name}</span>
+                          <span className="italic text-indigo-300/80">{node.relationship_to_source}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-indigo-400/80">
+                    No active associative edges found for this card yet. Connect related cards in the Decks view.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* ── Pre-Test Prediction Hypothesis Mode ── */}
+            {!revealed && showPretest && (
+              <div className="mt-3 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-950/40 via-[#0d1a12] to-[#09140e] p-3.5 text-xs text-emerald-200 shadow-md animate-in fade-in">
+                <div className="flex items-center justify-between gap-2 border-b border-emerald-500/20 pb-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-emerald-300">
+                      🔬 Pre-Test Hypothesis (Dopaminergic Prediction Error)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPretest(false)}
+                    className="text-xs text-slate-400 hover:text-white font-mono"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <p className="text-xs text-slate-300 mb-2">
+                  Formulate a hypothesis before looking at the reference. Even incorrect predictions prime synaptic plasticity.
+                </p>
+                <div className="space-y-2">
+                  <textarea
+                    value={pretestPrediction}
+                    onChange={(e) => setPretestPrediction(e.target.value)}
+                    placeholder="What do you predict is the core mechanism, reason, or answer?"
+                    rows={2}
+                    className="w-full text-xs bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-slate-400">Confidence:</span>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4].map((lvl) => (
+                          <button
+                            key={lvl}
+                            type="button"
+                            onClick={() => setPretestConfidence(lvl)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold transition ${
+                              pretestConfidence === lvl
+                                ? 'bg-emerald-500 text-slate-950'
+                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                            }`}
+                          >
+                            {lvl === 1 ? '1 Wild Guess' : lvl === 2 ? '2 Low' : lvl === 3 ? '3 Probable' : '4 Solid'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={pretestSubmitting || !pretestPrediction.trim()}
+                      onClick={handleSubmitPretest}
+                      className="btn text-xs py-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded disabled:opacity-50 cursor-pointer"
+                    >
+                      {pretestSubmitting ? 'Evaluating…' : 'Test Prediction'}
+                    </button>
+                  </div>
+                </div>
+                {pretestResult && (
+                  <div className={`mt-3 p-2.5 rounded-lg border text-xs ${
+                    pretestResult.is_accurate
+                      ? 'border-emerald-500/50 bg-emerald-950/50 text-emerald-200'
+                      : pretestResult.high_confidence_error
+                      ? 'border-rose-500/60 bg-rose-950/50 text-rose-200'
+                      : 'border-amber-500/50 bg-amber-950/50 text-amber-200'
+                  }`}>
+                    <div className="font-bold flex items-center gap-1.5 mb-1">
+                      <span>{pretestResult.is_accurate ? '✅ Accurate Prediction!' : pretestResult.high_confidence_error ? '⚡ High-Confidence Prediction Error!' : '💡 Divergent Intuition'}</span>
+                    </div>
+                    <p className="leading-relaxed">{pretestResult.feedback}</p>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Complexity hints if code card in classic view */}
@@ -3918,6 +4884,25 @@ export default function Review() {
                             <option value="python">Python 3</option>
                           </select>
 
+                          {!tiledTabs && activeEditorTab === 'solution' && (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleLogicGuard(!logicGuardEnabled)}
+                              className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium transition cursor-pointer shrink-0 whitespace-nowrap ${
+                                logicGuardEnabled
+                                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
+                                  : 'text-slate-500 hover:text-slate-300 hover:bg-white/5 border border-white/10'
+                              }`}
+                              title={
+                                logicGuardEnabled
+                                  ? 'Logic Guard is ON: Warns if a flawed code line is written (Click to disable)'
+                                  : 'Logic Guard is OFF: Click to enable real-time logic flaw detection'
+                              }
+                            >
+                              <span>{logicGuardEnabled ? '🛡️ Guard: ON' : '🛡️ Guard: OFF'}</span>
+                            </button>
+                          )}
+
                           {!tiledTabs && activeEditorTab === 'solution' && item.starter_code && (
                             <button
                               type="button"
@@ -3951,15 +4936,81 @@ export default function Review() {
                             </div>
                           )}
                           {!tiledTabs && activeEditorTab === 'reference' && (
-                            <button
-                              type="button"
-                              onClick={() => void handleCopyReferenceCode(cleanRefCode)}
-                              disabled={!cleanRefCode}
-                              className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
-                              title="Copy reference code to clipboard"
-                            >
-                              <span>{copiedRef ? 'Copied' : 'Copy ref'}</span>
-                            </button>
+                            <div className="flex items-center gap-2">
+                              {Boolean(cleanRefCode) && (revealed || singleRefViewMode === 'hint') && (
+                                <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line text-[11px] shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSingleRefViewMode('ide')
+                                      localStorage.setItem('memorization.refViewMode', 'ide')
+                                    }}
+                                    className={`px-2 py-0.5 rounded transition cursor-pointer ${
+                                      singleRefViewMode === 'ide'
+                                        ? 'bg-sky-600/30 text-sky-200 border border-sky-500/50 font-medium'
+                                        : 'text-slate-400 hover:text-slate-200'
+                                    }`}
+                                    title="IDE syntax-highlighted code format"
+                                  >
+                                    IDE
+                                  </button>
+                                  {revealed && Boolean(answer.trim()) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSingleRefViewMode('diff')
+                                        localStorage.setItem('memorization.refViewMode', 'diff')
+                                      }}
+                                      className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
+                                        singleRefViewMode === 'diff'
+                                          ? 'bg-amber-600/30 text-amber-200 border border-amber-500/50 font-medium'
+                                        : 'text-slate-400 hover:text-slate-200'
+                                      }`}
+                                      title="Token-by-token answer comparison diff against your Solution"
+                                    >
+                                      <span>Diff</span>
+                                      {singleRefDiff.stats && singleRefDiff.stats.missingCount > 0 && (
+                                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                      )}
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSingleRefViewMode('hint')
+                                      localStorage.setItem('memorization.refViewMode', 'hint')
+                                    }}
+                                    className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
+                                      singleRefViewMode === 'hint'
+                                        ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50 font-medium'
+                                        : 'text-slate-400 hover:text-slate-200'
+                                    }`}
+                                    title="Hint-only mode: reveals only the current incomplete line"
+                                  >
+                                    <span>💡 Hint</span>
+                                  </button>
+                                </div>
+                              )}
+                              {revealed && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleHideSolution('hide')}
+                                  className="px-2 py-0.5 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[11px] font-medium transition cursor-pointer flex items-center gap-1 shrink-0"
+                                  title="Hide solution and return to active practice"
+                                >
+                                  <span>🔒 Hide</span>
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => void handleCopyReferenceCode(cleanRefCode)}
+                                disabled={!cleanRefCode}
+                                className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
+                                title="Copy reference code to clipboard"
+                              >
+                                <span>{copiedRef ? 'Copied' : 'Copy ref'}</span>
+                              </button>
+                            </div>
                           )}
                           {!tiledTabs && activeEditorTab === 'ref_tests' && (
                             <div className="flex items-center gap-2">
@@ -4021,10 +5072,18 @@ export default function Review() {
                             lineHintLoading={lineHintLoading}
                             onRequestLineHint={handleRequestLineHint}
                             onDismissLineHint={() => setActiveLineHint(null)}
-                            onCursorChange={(l) => setEditorCursorLine(l)}
+                            onCursorChange={(l) => {
+                              if (tileLeftTab === 'solution') setEditorCursorLine(l)
+                            }}
                             onGradeSolution={() => void (answer.trim() ? grade() : reveal())}
                             grading={grading}
                             learnMode={learnMode}
+                            overlookedPhrases={overlookedTerms}
+                            matchedPhrases={matchedTerms}
+                            solutionCursorLine={editorCursorLine}
+                            logicGuardEnabled={logicGuardEnabled}
+                            onLogicGuardToggle={handleToggleLogicGuard}
+                            onHide={() => handleHideSolution('hide')}
                           />
                           <TiledEditorPane
                             paneId="right"
@@ -4054,30 +5113,64 @@ export default function Review() {
                             lineHintLoading={lineHintLoading}
                             onRequestLineHint={handleRequestLineHint}
                             onDismissLineHint={() => setActiveLineHint(null)}
-                            onCursorChange={(l) => setEditorCursorLine(l)}
+                            onCursorChange={(l) => {
+                              if (tileRightTab === 'solution') setEditorCursorLine(l)
+                            }}
                             onGradeSolution={() => void (answer.trim() ? grade() : reveal())}
                             grading={grading}
                             learnMode={learnMode}
+                            overlookedPhrases={overlookedTerms}
+                            matchedPhrases={matchedTerms}
+                            solutionCursorLine={editorCursorLine}
+                            logicGuardEnabled={logicGuardEnabled}
+                            onLogicGuardToggle={handleToggleLogicGuard}
+                            onHide={() => handleHideSolution('hide')}
                           />
                         </div>
                       ) : (
                         /* Single Tab View */
                         activeEditorTab === 'reference' ? (
-                          revealed ? (
-                            <CodeEditor
-                              code={cleanRefCode}
-                              onChange={() => {}}
-                              language={codeLanguage}
-                              readOnly={true}
-                              height="320px"
-                              placeholder="// Reference solution"
-                              context={item?.deck_name || item?.front}
-                              deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
-                            />
+                          revealed || singleRefViewMode === 'hint' ? (
+                            <div className="flex flex-col">
+                              {singleRefViewMode === 'hint' && (
+                                <div className="px-3 py-1 bg-amber-950/40 border-b border-amber-500/30 flex items-center justify-between text-xs text-amber-200 shrink-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-amber-300">💡 Hint Mode:</span>
+                                    <span>
+                                      Only line {findIncompleteLineNumber(answer, cleanRefCode, editorCursorLine)} is visible
+                                    </span>
+                                  </div>
+                                  {revealed && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleHideSolution('hide')}
+                                      className="px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-semibold cursor-pointer"
+                                      title="Hide the solution and continue practicing"
+                                    >
+                                      🔒 Unreveal & Practice
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                              <CodeEditor
+                                code={cleanRefCode}
+                                onChange={() => {}}
+                                language={codeLanguage}
+                                readOnly={true}
+                                height={singleRefViewMode === 'hint' ? '288px' : '320px'}
+                                placeholder="// Reference solution"
+                                context={item?.deck_name || item?.front}
+                                deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
+                                diffSegments={singleRefViewMode === 'diff' ? singleRefDiff.refSegments : null}
+                                diffStats={singleRefViewMode === 'diff' ? singleRefDiff.stats : null}
+                                hintOnly={singleRefViewMode === 'hint'}
+                                hintOnlyLine={findIncompleteLineNumber(answer, cleanRefCode, editorCursorLine)}
+                              />
+                            </div>
                           ) : (
                             <div className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-2 h-[320px]">
                               <div className="w-10 h-10 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shadow-inner">
-                                <svg className="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                <svg className="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/></svg>
                               </div>
                               <div className="space-y-0.5">
                                 <h4 className="text-xs font-semibold text-slate-200">Reference Solution</h4>
@@ -4085,13 +5178,26 @@ export default function Review() {
                                    Hidden until revealed.
                                 </p>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => void reveal()}
-                                className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1 mt-1 cursor-pointer"
-                              >
-                                <span>Reveal Solution</span>
-                              </button>
+                              <div className="flex items-center gap-2 mt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => void reveal()}
+                                  className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1 cursor-pointer"
+                                >
+                                  <span>Reveal Solution</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSingleRefViewMode('hint')
+                                    localStorage.setItem('memorization.refViewMode', 'hint')
+                                  }}
+                                  className="px-3 py-1 rounded border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-medium transition cursor-pointer flex items-center gap-1"
+                                  title="Peek only the next line of code without revealing full answer"
+                                >
+                                  <span>💡 Line Hint</span>
+                                </button>
+                              </div>
                             </div>
                           )
                         ) : activeEditorTab === 'ref_tests' ? (
@@ -4145,6 +5251,9 @@ export default function Review() {
                             grading={activeEditorTab === 'solution' ? grading : false}
                             context={item?.deck_name || item?.front}
                             deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
+                            cleanRefCode={activeEditorTab === 'solution' ? cleanRefCode : undefined}
+                            logicGuardEnabled={logicGuardEnabled}
+                            onLogicGuardToggle={handleToggleLogicGuard}
                           />
                         )
                       )}
@@ -4318,20 +5427,22 @@ export default function Review() {
                   variant="prominent"
                   className="w-full"
                 />
-                <AnswerComparison
-                  userAnswer={answer}
-                  userTestCode={testCode}
-                  referenceAnswer={result?.reference_answer || item.back || ''}
-                  isCodeCard={isCodeCard}
-                  codeLanguage={codeLanguage}
-                  timeComplexity={item.time_complexity}
-                  overlookedPhrases={overlookedTerms}
-                  matchedPhrases={matchedTerms}
-                />
+                {!isCodeCard && (
+                  <AnswerComparison
+                    userAnswer={answer}
+                    userTestCode={testCode}
+                    referenceAnswer={result?.reference_answer || item.back || ''}
+                    isCodeCard={isCodeCard}
+                    codeLanguage={codeLanguage}
+                    timeComplexity={item.time_complexity}
+                    overlookedPhrases={overlookedTerms}
+                    matchedPhrases={matchedTerms}
+                  />
+                )}
 
                 {result?.latency_note && (
                   <p className="text-xs text-slate-600" title="Informational only — never affects the grade">
-                    {result.latency_note}
+                    {formatLatencyNote(result.latency_note)}
                   </p>
                 )}
 
@@ -4406,6 +5517,14 @@ export default function Review() {
                       </button>
                       <button
                         type="button"
+                        className="btn text-xs px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 cursor-pointer"
+                        onClick={handleRetryWithoutRecording}
+                        title="Clear input and retry card from scratch (unrecorded)"
+                      >
+                        <span>🔄 Fresh Retry</span>
+                      </button>
+                      <button
+                        type="button"
                         className="btn text-xs px-2.5 py-1 text-slate-400 hover:text-slate-200 cursor-pointer"
                         onClick={() => {
                           setSkipReviewRecording(false)
@@ -4418,22 +5537,44 @@ export default function Review() {
                   </div>
                 ) : (
                   <div>
-                    <div className="flex items-center justify-between">
-                      <p className="label">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <p className="label mb-0">
                         {result && !result.degraded_to_manual
                           ? result.needs_confirmation
                             ? 'Confirm or correct the grade'
                             : 'Accept the suggestion, or override'
                           : 'How well did you recall it?'}
                       </p>
-                      <button
-                        type="button"
-                        className="text-[11px] text-slate-500 hover:text-amber-300 underline cursor-pointer"
-                        onClick={() => setSkipReviewRecording(true)}
-                        title="Don't record this card review"
-                      >
-                        Skip recording this review
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {isCodeCard && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleHideSolution('hint')}
+                              className="text-[11px] text-amber-300 hover:text-amber-100 flex items-center gap-1 cursor-pointer bg-amber-500/15 hover:bg-amber-500/25 px-2.5 py-0.5 rounded border border-amber-500/40 transition font-medium shadow-sm"
+                              title="Hide full solution, enable line hints, and return to practice mode (Alt+U)"
+                            >
+                              <span>💡 Use Line Hints &amp; Keep Practicing</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleHideSolution('hide')}
+                              className="text-[11px] text-slate-300 hover:text-white flex items-center gap-1 cursor-pointer bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded border border-white/15 transition font-medium"
+                              title="Lock reference solution and return to practice mode"
+                            >
+                              <span>🔒 Hide Solution</span>
+                            </button>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          className="text-[11px] text-slate-500 hover:text-amber-300 underline cursor-pointer"
+                          onClick={() => setSkipReviewRecording(true)}
+                          title="Don't record this card review"
+                        >
+                          Skip recording this review
+                        </button>
+                      </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {GRADES.map((g, i) => {
@@ -4442,12 +5583,14 @@ export default function Review() {
                         return (
                           <button
                             key={g}
-                            onClick={() => confirm(g)}
+                            onClick={() => confirm(g, { retryImmediately: retryAfterRating })}
                             disabled={confirming}
                             className={`btn ${GRADE_STYLE[g]} ${
                               suggested ? 'ring-1 ring-inset ring-current' : ''
                             }`}
+                            title={retryAfterRating ? `Record as ${g.toUpperCase()} and retry card immediately` : `Record as ${g.toUpperCase()} and advance to next card`}
                           >
+                            {retryAfterRating && <span className="text-xs">🔄</span>}
                             <span className="capitalize">{g}</span>
                             <span className="text-xs opacity-50">{GRADE_BAND[g]}</span>
                             <span className="text-xs opacity-50">{i + 1}</span>
@@ -4467,6 +5610,9 @@ export default function Review() {
                         )
                       })}
                     </div>
+
+                    {/* Immediate Retry Action Bar */}
+                    {renderRetryActionBar()}
                   </div>
                 )}
               </div>
@@ -4475,7 +5621,7 @@ export default function Review() {
             </div>
 
             {/* Right Margin: Concordance, Lexicon & Persistent Card Memory */}
-            <aside className="w-full xl:w-88 2xl:w-96 shrink-0 xl:sticky xl:top-16">
+            <aside className="w-full xl:w-80 2xl:w-96 shrink-0 xl:sticky xl:top-16">
               <MarginLexiconPanel
                 cardId={item.id}
                 deckName={item.deck_name}
@@ -4526,12 +5672,17 @@ export default function Review() {
 
       <DeckCardsViewer
         isOpen={deckViewerOpen}
-        onClose={() => setDeckViewerOpen(false)}
-        deckId={item?.deck_or_source_id || deckParam || null}
+        onClose={() => {
+          setDeckViewerOpen(false)
+          setLastStudiedCardId(null)
+          setLastStudiedDeckId(null)
+        }}
+        deckId={lastStudiedDeckId || item?.deck_or_source_id || deckParam || null}
         deckName={item?.deck_name || persistDeckName || null}
-        currentCardId={item?.id || null}
+        currentCardId={lastStudiedCardId || item?.id || null}
         onSelectCard={handleJumpToCard}
         codeLanguage={codeLanguage}
+        allDecks={allDecks}
       />
 
       <SavedCardsDrawer
@@ -5411,10 +6562,17 @@ function VramConstraintPrompt({
   )
 }
 
-/** Model metadata formatter for local Ollama coding models */
-/** Model metadata formatter for local Ollama Qwen 2.5 Coder models */
+/** Model metadata formatter for local Ollama Qwen models */
 function getModelInfo(modelName: string): { label: string; short: string; badge?: string; desc?: string } {
   const m = (modelName || '').toLowerCase()
+  if (m.includes('9b')) {
+    return {
+      label: 'Qwen 3.5 9B (Q4_K_M)',
+      short: 'Qwen 3.5 9B',
+      badge: 'Advanced / Multimodal',
+      desc: 'Dense hybrid reasoning & multimodal evaluation (~5.3 GB)',
+    }
+  }
   if (m.includes('7b')) {
     return {
       label: 'Qwen 2.5 Coder 7B',
@@ -5493,10 +6651,10 @@ function DiscreteModelSelector({
     }
   }, [open])
 
-  // Only permit quantized Qwen 2.5 Coder models in 7B, 3B, and 1.5B sizes
+  // Permit quantized Qwen models (Qwen 3.5 9B and Qwen 2.5 Coder in 7B, 3B, and 1.5B)
   const models = useMemo<string[]>(() => {
     const installedAllowed = installedModels.filter(isAllowedQwenCoderModel)
-    const baseStandard = ['qwen2.5-coder:7b', 'qwen2.5-coder:3b', 'qwen2.5-coder:1.5b']
+    const baseStandard = ['qwen3.5:9b', 'qwen2.5-coder:7b', 'qwen2.5-coder:3b', 'qwen2.5-coder:1.5b']
     const active = isAllowedQwenCoderModel(activeModel) ? [activeModel] : []
     return Array.from(new Set([...installedAllowed, ...active, ...baseStandard].filter(isAllowedQwenCoderModel)))
   }, [activeModel, installedModels])
@@ -6272,6 +7430,8 @@ function SessionHeader({
   onStartPersist,
   savedCount,
   onOpenSavedDrawer,
+  previousCard,
+  onRetryPreviousCard,
 }: {
   session: SessionSummary | null
   outcome?: string | null
@@ -6297,6 +7457,8 @@ function SessionHeader({
   onStartPersist?: (deckId: string, deckName?: string, unseenOnly?: boolean) => void
   savedCount?: number
   onOpenSavedDrawer?: () => void
+  previousCard?: QueueItem | null
+  onRetryPreviousCard?: () => void
 }) {
   const [quickPersistUnseenOnly, setQuickPersistUnseenOnly] = useState(false)
   if (!session && !persistActive && !allCardsRunActive) return null
@@ -6424,11 +7586,16 @@ function SessionHeader({
               </option>
               {allDecks
                 .filter((d) => d.card_count > 0)
-                .map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} ({d.card_count} cards{d.new_count > 0 ? ` · ${d.new_count} unseen` : ''})
-                  </option>
-                ))}
+                .map((d) => {
+                  const viewedPct = d.stats && d.stats.total_cards > 0
+                    ? Math.round(d.stats.viewed_ratio * 100)
+                    : null
+                  return (
+                    <option key={d.id} value={d.id}>
+                      {d.name} ({d.card_count} cards{viewedPct !== null ? ` · ${viewedPct}% viewed` : ''}{d.new_count > 0 ? ` · ${d.new_count} unseen` : ''})
+                    </option>
+                  )
+                })}
             </select>
           </div>
         )}
@@ -6453,11 +7620,16 @@ function SessionHeader({
               </option>
               {allDecks
                 .filter((d) => d.card_count > 0)
-                .map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} ({d.card_count} cards)
-                  </option>
-                ))}
+                .map((d) => {
+                  const viewedPct = d.stats && d.stats.total_cards > 0
+                    ? Math.round(d.stats.viewed_ratio * 100)
+                    : null
+                  return (
+                    <option key={d.id} value={d.id}>
+                      {d.name} ({d.card_count} cards{viewedPct !== null ? ` · ${viewedPct}% viewed` : ''})
+                    </option>
+                  )
+                })}
             </select>
           </div>
         )}
@@ -6516,7 +7688,24 @@ function SessionHeader({
         <FullscreenButton size="sm" className="ml-1" />
       </div>
 
-      {outcome && <p className="text-xs text-slate-500">Last: {outcome}</p>}
+      {outcome && (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <p className="text-slate-500">Last: {outcome}</p>
+          {onRetryPreviousCard && previousCard && (
+            <button
+              type="button"
+              onClick={onRetryPreviousCard}
+              className="inline-flex items-center gap-1.5 text-[11px] text-amber-400 hover:text-amber-300 hover:underline cursor-pointer font-medium transition"
+              title={`Retry previous card: "${previousCard.title || previousCard.front?.slice(0, 40)}..."`}
+            >
+              <span>🔄 Retry Previous Card</span>
+              <span className="text-slate-500 text-[10px]">
+                ({previousCard.title || (previousCard.front ? previousCard.front.slice(0, 25) + '…' : 'card')})
+              </span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* §3.1: guardrails must be visible, or a smoothed backlog looks like a bug. */}
       {session?.notes?.map((note, i) => (
@@ -6577,7 +7766,9 @@ function BlitzScorecardModal({
           </div>
           <div className="rounded-lg border border-ink-line bg-ink/60 p-3 text-center">
             <p className="text-xs text-slate-400">Avg Reaction Time</p>
-            <p className="font-mono text-2xl font-bold text-sky-300">{stats.avgLatencySec}s</p>
+            <p className="font-mono text-2xl font-bold text-sky-300">
+              {Math.floor(stats.avgLatencySec / 60)}m {Math.round(stats.avgLatencySec % 60)}s
+            </p>
             <p className="text-[10px] text-slate-500">per retrieval</p>
           </div>
           <div className="rounded-lg border border-ink-line bg-ink/60 p-3 text-center">

@@ -21,6 +21,12 @@ def cloze_indices(text: str) -> list[int]:
 def render_basic(fields: dict, slot: str) -> tuple[str, str]:
     front = str(fields.get("Front", "") or fields.get("front", ""))
     back = str(fields.get("Back", "") or fields.get("back", ""))
+    image = str(fields.get("Image", "") or fields.get("image", "") or "").strip()
+    back_image = str(fields.get("BackImage", "") or fields.get("back_image", "") or "").strip()
+    if image and f"({image})" not in front:
+        front = f"{front}\n\n![]({image})" if front.strip() else f"![]({image})"
+    if back_image and f"({back_image})" not in back:
+        back = f"{back}\n\n![]({back_image})" if back.strip() else f"![]({back_image})"
     # "t1" is the second template of a multi-template note type — standard
     # "Basic (and reversed card)" and friends, which arrive via .apkg import.
     if slot in ("t1", "reverse"):
@@ -50,6 +56,14 @@ def render_cloze(fields: dict, slot: str) -> tuple[str, str]:
     back = ", ".join(answers) if answers else CLOZE_RE.sub(lambda m: m.group(2), text)
     if extra:
         back = f"{back}\n\n{extra}"
+
+    image = str(fields.get("Image", "") or fields.get("image", "") or "").strip()
+    back_image = str(fields.get("BackImage", "") or fields.get("back_image", "") or "").strip()
+    if image and f"({image})" not in front:
+        front = f"{front}\n\n![]({image})" if front.strip() else f"![]({image})"
+    if back_image and f"({back_image})" not in back:
+        back = f"{back}\n\n![]({back_image})" if back.strip() else f"![]({back_image})"
+
     return front, back
 
 

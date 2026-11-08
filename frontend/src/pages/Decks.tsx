@@ -21,6 +21,7 @@ import { CardAnalyticsModal } from '../components/CardAnalyticsModal'
 import { DeckReviewStatsBar, CompactDeckDistributionBars } from '../components/DeckReviewStatsBar'
 import { OcclusionEditor } from '../components/Occlusion'
 import { Empty, ErrorNote, PriorityBar, RichText, Section, Spinner } from '../components/ui'
+import DeckCardsViewer from '../components/DeckCardsViewer'
 
 export default function Decks() {
   const navigate = useNavigate()
@@ -29,6 +30,7 @@ export default function Decks() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<unknown>(null)
   const [selected, setSelected] = useState<string | null>(null)
+  const [viewerDeck, setViewerDeck] = useState<{ id: string; name: string } | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -119,7 +121,13 @@ export default function Decks() {
   return (
     <div className="space-y-6">
       <ErrorNote error={error} />
-      <DeckList decks={decks} selected={selected} onSelect={setSelected} onChange={load} />
+      <DeckList
+        decks={decks}
+        selected={selected}
+        onSelect={setSelected}
+        onChange={load}
+        onOpenCards={(id, name) => setViewerDeck({ id, name })}
+      />
 
       {/* Full Progress & Distribution Bars for Selected Deck or Entire Collection */}
       <DeckReviewStatsBar
@@ -130,14 +138,13 @@ export default function Decks() {
           if (id === '__root__') navigate('/review')
           else navigate(`/review?deck=${id}`)
         }}
-        onOpenDeckViewer={
-          selectedDeck
-            ? () => {
-                const el = document.getElementById('deck-browser-section')
-                if (el) el.scrollIntoView({ behavior: 'smooth' })
-              }
-            : undefined
-        }
+        onOpenDeckViewer={() => {
+          if (selectedDeck) {
+            setViewerDeck({ id: selectedDeck.id, name: selectedDeck.name })
+          } else {
+            setViewerDeck({ id: '__root__', name: 'All Decks' })
+          }
+        }}
       />
 
       {selectedDeck && (
@@ -148,12 +155,34 @@ export default function Decks() {
           <AddNote deckId={selectedDeck.id} noteTypes={noteTypes} deck={selectedDeck} onAdded={load} />
           <SequentialClozePanel deckId={selectedDeck.id} onAdded={load} />
           <AddOcclusion deckId={selectedDeck.id} onAdded={load} />
-          <Browser deckId={selectedDeck.id} deck={selectedDeck} onChange={load} />
+          <Browser
+            deckId={selectedDeck.id}
+            deck={selectedDeck}
+            onChange={load}
+            onOpenCards={(id, name) => setViewerDeck({ id, name: name || selectedDeck.name })}
+          />
         </div>
       )}
       <DocumentDeckPanel onImported={load} />
       <JsonImportPanel onImported={load} />
       <LlmPromptPanel />
+
+      <DeckCardsViewer
+        isOpen={Boolean(viewerDeck)}
+        onClose={() => setViewerDeck(null)}
+        deckId={viewerDeck?.id ?? null}
+        deckName={viewerDeck?.name ?? null}
+        allDecks={decks}
+        onSelectCard={(card) => {
+          setViewerDeck(null)
+          const dId = card.deck_or_source_id || viewerDeck?.id
+          if (dId && dId !== '__root__') {
+            navigate(`/review?deck=${dId}&persist=1&card=${card.id}&from_viewer=1`)
+          } else {
+            navigate(`/review?persist=1&card=${card.id}&from_viewer=1`)
+          }
+        }}
+      />
     </div>
   )
 }
@@ -534,6 +563,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
  *  they came from -> you approve -> the citations are kept and shown during
  *  review, after you answer. Nothing is written until you accept. */
 const GENERATION_MODELS = [
+  { id: 'qwen3.5:9b', name: 'Qwen 3.5 (9B Instruct Q4_K_M)', badge: 'Advanced Local Engine' },
   { id: 'qwen2.5-coder:7b', name: 'Qwen 2.5 Coder (7B Instruct)', badge: 'Local Engine' },
 ]
 
@@ -951,11 +981,13 @@ function DeckList({
   selected,
   onSelect,
   onChange,
+  onOpenCards,
 }: {
   decks: Deck[]
   selected: string | null
   onSelect: (id: string) => void
   onChange: () => void
+  onOpenCards?: (id: string, name: string) => void
 }) {
   const navigate = useNavigate()
   const [name, setName] = useState('')
@@ -1245,7 +1277,14 @@ function DeckList({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sky-200 text-sm">All Decks</span>
-                <span className="chip border-sky-400/40 text-sky-200 bg-sky-500/20">{totalCollectionCards} cards</span>
+                <button
+                  type="button"
+                  onClick={() => onOpenCards?.('__root__', 'All Decks')}
+                  className="chip border-sky-400/40 text-sky-200 bg-sky-500/20 hover:bg-sky-500/30 hover:border-sky-300 transition cursor-pointer"
+                  title="Browse all cards across all decks"
+                >
+                  {totalCollectionCards} cards ↗
+                </button>
                 {totalDue > 0 && <span className="chip text-sky-300 font-semibold">{totalDue} due</span>}
                 {totalNew > 0 && <span className="chip text-emerald-300">{totalNew} new</span>}
               </div>
@@ -1253,14 +1292,29 @@ function DeckList({
                 Study all {decks.length} deck{decks.length === 1 ? '' : 's'} interleaved by FSRS schedule.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => navigate('/review')}
-              className="btn btn-primary text-xs font-bold px-3 py-1.5 shadow-sm"
-              title="Study all decks"
-            >
-              Study All Decks
-            </button>
+            <div className="flex items-center gap-2">
+              {onOpenCards && (
+                <button
+                  type="button"
+                  onClick={() => onOpenCards('__root__', 'All Decks')}
+                  className="btn border border-sky-500/40 bg-sky-500/15 hover:bg-sky-500/25 text-sky-200 text-xs font-semibold px-3 py-1.5 shadow-sm transition cursor-pointer flex items-center gap-1.5"
+                  title="Browse all cards across all decks"
+                >
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-sky-300">
+                    <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+                  </svg>
+                  <span>Browse All Cards</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => navigate('/review')}
+                className="btn btn-primary text-xs font-bold px-3 py-1.5 shadow-sm"
+                title="Study all decks"
+              >
+                Study All Decks
+              </button>
+            </div>
           </div>
         )}
 
@@ -1273,6 +1327,11 @@ function DeckList({
             onSelectNode={(node) => {
               if (node.deckId) onSelect(node.deckId)
               else if (node.id === '__root__') onSelect('__root__')
+            }}
+            onOpenCards={(node) => {
+              if (onOpenCards) {
+                onOpenCards(node.deckId || node.id, node.title)
+              }
             }}
             onStudyNode={(node, mode = 'standard') => {
               if (node.id === '__root__') {
@@ -1403,7 +1462,22 @@ function DeckList({
                   )}
                 </div>
                 <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <span className="chip">{d.card_count} cards</span>
+                  <span
+                    onClick={(e) => {
+                      if (onOpenCards) {
+                        e.stopPropagation()
+                        onOpenCards(d.id, d.name)
+                      }
+                    }}
+                    className={`chip ${
+                      onOpenCards
+                        ? 'hover:border-sky-400 hover:text-sky-300 hover:bg-sky-500/20 cursor-pointer transition'
+                        : ''
+                    }`}
+                    title={onOpenCards ? `Browse all ${d.card_count} cards in ${d.name}` : undefined}
+                  >
+                    {d.card_count} cards ↗
+                  </span>
                   {d.total_card_count !== undefined && d.total_card_count !== d.card_count && (
                     <span className="chip border-sky-500/40 text-sky-300">
                       {d.total_card_count} total (with subdecks)
@@ -1418,6 +1492,22 @@ function DeckList({
               </button>
 
               <div className="flex flex-wrap items-center gap-3">
+                {onOpenCards && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onOpenCards(d.id, d.name)
+                    }}
+                    className="btn border border-sky-500/40 bg-sky-500/10 hover:bg-sky-500/20 text-sky-200 text-xs px-2.5 py-1 font-semibold transition cursor-pointer flex items-center gap-1.5"
+                    title={`Browse all ${d.card_count} cards in ${d.name}`}
+                  >
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-sky-300">
+                      <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+                    </svg>
+                    <span>Browse Cards</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -1551,6 +1641,7 @@ function AddNote({
   const [noteTypeId, setNoteTypeId] = useState(noteTypes[0]?.id ?? '')
   const [front, setFront] = useState('')
   const [back, setBack] = useState('')
+  const [image, setImage] = useState('')
   const [clozeText, setClozeText] = useState('')
   const [tags, setTags] = useState('')
   const [showDocFields, setShowDocFields] = useState(false)
@@ -1613,6 +1704,7 @@ function AddNote({
       }
       setFront('')
       setBack('')
+      setImage('')
       setDecomposedCards(null)
       setAtomicity(null)
       setCardThematicNature('')
@@ -1630,16 +1722,23 @@ function AddNote({
     setBusy(true)
     setError(null)
     try {
+      const fieldValues: Record<string, any> = isCloze
+        ? { Text: clozeText, Extra: back }
+        : { Front: front, Back: back }
+      if (image.trim()) {
+        fieldValues.Image = image.trim()
+      }
       await api.createNote({
         deck_id: deckId,
         note_type_id: noteTypeId,
-        field_values: isCloze ? { Text: clozeText, Extra: back } : { Front: front, Back: back },
+        field_values: fieldValues,
         tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
         thematic_nature: cardThematicNature.trim() || undefined,
         documentation: cardDocumentation.trim() || undefined,
       })
       setFront('')
       setBack('')
+      setImage('')
       setClozeText('')
       setCardThematicNature('')
       setCardDocumentation('')
@@ -1708,6 +1807,34 @@ function AddNote({
             required
           />
         )}
+        <div className="space-y-1.5">
+          <input
+            className="input text-xs"
+            placeholder="Image URL (optional, e.g. https://... or /media/...)"
+            value={image}
+            onChange={(e) => setImage(e.target.value)}
+          />
+          {image.trim() && (
+            <div className="flex items-center gap-3 rounded-lg border border-ink-line/80 bg-ink-soft/50 p-2">
+              <img
+                src={
+                  image.trim().startsWith('/')
+                    ? `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'}${image.trim()}`
+                    : image.trim()
+                }
+                alt="Preview"
+                className="max-h-24 max-w-xs rounded border border-ink-line object-contain"
+                onError={(e) => {
+                  ;(e.target as HTMLElement).style.display = 'none'
+                }}
+                onLoad={(e) => {
+                  ;(e.target as HTMLElement).style.display = 'block'
+                }}
+              />
+              <span className="text-[11px] text-slate-400">Attached to card front</span>
+            </div>
+          )}
+        </div>
         <textarea
           className="input min-h-[4rem]"
           placeholder={isCloze ? 'Extra (optional)' : 'Answer'}
@@ -2101,7 +2228,17 @@ function AddOcclusion({ deckId, onAdded }: { deckId: string; onAdded: () => void
   )
 }
 
-function Browser({ deckId, deck, onChange }: { deckId: string; deck?: Deck | null; onChange: () => void }) {
+function Browser({
+  deckId,
+  deck,
+  onChange,
+  onOpenCards,
+}: {
+  deckId: string
+  deck?: Deck | null
+  onChange: () => void
+  onOpenCards?: (id: string, name?: string) => void
+}) {
   const [cards, setCards] = useState<Card[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -2132,12 +2269,45 @@ function Browser({ deckId, deck, onChange }: { deckId: string; deck?: Deck | nul
       title={`Cards (${cards.length})`}
       description="Everything in this deck, including what the queue isn't showing today. Click any card or Analytics to inspect memory dynamics & weak points."
       actions={
-        <input
-          className="input w-56"
-          placeholder="Search…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className="flex items-center gap-2">
+          {onOpenCards && (
+            <button
+              type="button"
+              onClick={() => onOpenCards(deckId, deck?.name)}
+              className="btn text-xs px-2.5 py-1.5 border border-sky-500/40 text-sky-200 bg-sky-500/10 hover:bg-sky-500/20 flex items-center gap-1.5 font-medium transition cursor-pointer"
+              title="Open full interactive cards viewer (inspection & study)"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-sky-300">
+                <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+              </svg>
+              <span>Full Cards Viewer ↗</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={async () => {
+              if (!confirm('Auto-organize cards in this deck into virtual Memory Palace rooms and loci?')) return
+              try {
+                await api.autoPalace(deckId)
+                await load()
+                onChange()
+              } catch (err: any) {
+                alert(err?.message || 'Failed to auto-palace deck.')
+              }
+            }}
+            className="btn text-xs px-2.5 py-1.5 border border-purple-500/40 text-purple-200 bg-purple-500/10 hover:bg-purple-500/20 flex items-center gap-1.5 font-medium transition cursor-pointer"
+            title="Auto-organize deck cards into virtual memory palace rooms and loci"
+          >
+            <span>🏛️</span>
+            <span>Auto-Palace</span>
+          </button>
+          <input
+            className="input w-56"
+            placeholder="Search…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
       }
     >
       {loading ? (
@@ -2207,6 +2377,30 @@ function Browser({ deckId, deck, onChange }: { deckId: string; deck?: Deck | nul
                 {c.lapse_count > 0 && <span className="chip">{c.lapse_count} lapses</span>}
                 {c.leech_flag && <span className="chip text-rose-300">leech</span>}
                 {c.suspended && <span className="chip text-amber-300">suspended</span>}
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    await api.updateCardNeuroProps(c.id, { is_schema_checkpoint: !c.is_schema_checkpoint })
+                    await load()
+                  }}
+                  className={`chip cursor-pointer transition ${
+                    c.is_schema_checkpoint
+                      ? 'border-amber-500/60 bg-amber-500/20 text-amber-200 font-semibold'
+                      : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                  title="Click to toggle Schema Checkpoint (mPFC foundational scaffold)"
+                >
+                  🏛️ {c.is_schema_checkpoint ? 'Checkpoint' : '+ Checkpoint'}
+                </button>
+                {c.spatial_locus && (
+                  <span
+                    className="chip border-purple-500/40 bg-purple-500/10 text-purple-200 font-mono text-[11px]"
+                    title={`Memory Palace Locus: ${c.spatial_locus}`}
+                  >
+                    📍 {c.spatial_locus}
+                  </span>
+                )}
                 {c.tags.map((t) => (
                   <span key={t} className="chip">
                     #{t}
@@ -2252,12 +2446,14 @@ function Browser({ deckId, deck, onChange }: { deckId: string; deck?: Deck | nul
 
 const JSON_IMPORT_EXAMPLE = `[
   { "front": "hablar", "back": "to speak", "tags": ["verbs"] },
+  { "front": "Identify this structure:", "image": "https://example.com/pic.png", "back": "Mitochondria" },
   { "kind": "cloze", "cloze_text": "The {{c1::mitochondrion}} is the powerhouse." }
 ]
 
 or wrap it: { "deck": "Spanish", "notes": [ ... ] }
-or paste straight from an LLM export: { "card_type": "qa", "question": "...", "answer": "..." }
+or paste straight from an LLM export: { "card_type": "qa", "question": "...", "image": "https://...", "answer": "..." }
 
+add "image" to attach an image URL (https://... or /media/...) to any card
 add "quote" (+ optional "locator"/"source_title") to a note to enable Learn & Practice on it`
 
 // Paste-ready prompts for external LLM chats — kept in sync with
@@ -2285,6 +2481,7 @@ Output ONLY a JSON array containing both types:
   "category": "<e.g. Arrays, Dynamic Programming, Trees, Concurrency, Systems>",
   "difficulty": "Easy" | "Medium" | "Hard",
   "front": "<Problem statement with input/output format, examples, and constraints>",
+  "image": "<Optional URL to a diagram/tree/graph: https://... or /media/...>",
   "starter_code": "<TypeScript or Python function signature and boilerplate for the student to write>",
   "back": "<Optimal TypeScript or Python solution with Time & Space complexity commentary>",
   "test_cases": [
@@ -2302,6 +2499,7 @@ Output ONLY a JSON array containing both types:
 {
   "card_type": "qa",
   "front": "<Clear, checkable conceptual question>",
+  "image": "<Optional URL to a diagram, chart, or visual aid: https://... or /media/...>",
   "back": "<Accurate, complete explanation with essential terminology>",
   "quote": "<Verbatim excerpt from the textbook explaining this principle>",
   "locator": "<Chapter/Section/Page>",
@@ -2310,6 +2508,7 @@ Output ONLY a JSON array containing both types:
 
 Rules:
 - Intelligently classify: Use "code" for algorithms/coding logic; use "qa" for definitions/theorems/concepts.
+- "image" is optional: include a direct image URL whenever a question or answer benefits from a diagram, chart, or graph.
 - "quote" is REQUIRED on every card. It powers the Pre-Answer Primer ("Review Related Content") and reference reading citations.
 - "back" on both types must be precise and comprehensive so the automated LLM grader can highlight any overlooked points.
 - Provide 2-4 realistic "test_cases" on every coding card so it can execute in the sandbox.
@@ -2327,6 +2526,7 @@ Output ONLY a JSON array where each element is an executable coding problem in t
   "category": "<e.g., Arrays & Hashing, Two Pointers, Trees, Dynamic Programming>",
   "difficulty": "Easy" | "Medium" | "Hard",
   "front": "<Problem statement with input/output format, examples, and constraints>",
+  "image": "<Optional URL to a diagram/data structure figure: https://... or /media/...>",
   "starter_code": "<TypeScript function signature (e.g. function solve(...): ReturnType) or Python signature>",
   "back": "<Optimal solution in TypeScript or Python with Time & Space complexity commentary>",
   "test_cases": [
@@ -2343,44 +2543,194 @@ Output ONLY a JSON array where each element is an executable coding problem in t
 Generate coding problems from the material below:
 <PASTE YOUR TOPIC / PROBLEM LIST HERE>`
 
-export const LLM_PROMPT = `You are generating flashcards for a spaced-repetition app. The user types a full answer from memory (not multiple choice), so cards must have one clear, checkable answer with essential terminology — not vague or multi-part.
+export const LLM_PROMPT = `You are an expert in cognitive science, spaced repetition (Anki/SuperMemo), and high-yield active recall.
+The user types a full answer from memory (not multiple choice), so cards must have one clear, checkable answer with essential terminology — not vague or multi-part.
 
 Output ONLY a JSON array, no prose before or after. Each element is one card:
 
 Basic (question/answer):
 {
-  "front": "<question, one clear fact or concept>",
-  "back": "<the complete answer containing key terms and core concept>",
-  "quote": "<1-4 sentence excerpt from the source that explains this fact>",
+  "front": "<Atomic question testing 1-2 facts directly>",
+  "image": "<Optional image URL: https://... or /media/...>",
+  "back": "<Sentence 1: Direct answer. Sentence 2+: Essential context or optional ASCII tree>",
+  "quote": "<1-4 sentence verbatim excerpt from the source that explains this fact>",
   "locator": "<section/heading/page this came from, if known>",
   "source_title": "<title of the source material>",
   "tags": ["<topic>"]
 }
 
-Cloze (fill-in-the-blank, for terms/definitions embedded in a sentence):
+Cloze (fill-in-the-blank, for terms/definitions embedded in a sentence or 4+ item lists):
 {
   "kind": "cloze",
-  "cloze_text": "<sentence with the key term wrapped like {{c1::term}}>",
-  "back": "<extra context shown after grading, optional>",
-  "quote": "<1-4 sentence excerpt from the source this sentence is drawn from>",
+  "cloze_text": "<Sentence with the key term wrapped like {{c1::term}}>",
+  "image": "<Optional image URL: https://... or /media/...>",
+  "back": "<Extra context or hierarchical mini-tree shown after grading, optional>",
+  "quote": "<1-4 sentence verbatim excerpt from the source this sentence is drawn from>",
   "locator": "<section/heading/page>",
   "source_title": "<title of the source material>",
   "tags": ["<topic>"]
 }
 
-Rules:
-- One card = one atomic fact. Split compound facts into separate cards.
-- "front"/"cloze_text" must be answerable without seeing "back" first.
-- "back" should state the core answer clearly with essential terminology. The app automatically evaluates student recall against "back" and highlights any omitted or overlooked concepts.
-- "quote" is REQUIRED on every card. It powers the Pre-Answer Primer ("Review Related Content") and reference reading citations. Write 1-4 self-contained sentences from the source that explain the concept. During review, any concepts the student overlooks are highlighted directly in this quote!
-- "locator" and "source_title" are optional but cheap — include them whenever you know where the fact came from.
-- Keep "front"/"back"/"cloze_text" under ~500 characters; "quote" under ~800 characters.
-- Use {{c1::x}}, {{c2::y}} for multiple deletions in one cloze sentence only when the deletions are genuinely linked; otherwise make separate cards.
-- Do not invent facts. If the source doesn't support a fact, drop the card.
+Strict Cognitive Science & Formatting Rules:
+1. DIRECT FIRST-SENTENCE RULE: The very first sentence of "back" must directly answer the prompt. If asking for a date, century, name, or term, put it first.
+2. ATOMICITY (Minimum Information Principle): One card = one atomic fact. Split compound facts into separate cards. Never combine definition + multi-century history + examples on one card.
+3. NO ESSAY DUMPS: Never output 100+ word essay dumps on "back" (this induces illusion of competence). For multi-step processes or synthesis questions, use a Structural Skeleton Trigger Card formatted as a clean ASCII tree (├──, └──) outlining the core movements in order.
+4. CLOZE DELETIONS FOR LISTS: If 4 or more distinct characteristics or elements must be recalled, format as cloze deletions ({{c1::...}}) rather than a long free-recall list.
+5. DUAL-CODING FOR ART & DIAGRAMS: For visual artworks, architecture, or diagrams, adhere to the 4-step analysis schema:
+   1. Qué es (What it is) -> 2. Dónde y Cuándo (Where & When) -> 3. Qué vemos (Visual Features) -> 4. Función / Significado (Significance / Function).
+6. ASCII CONTEXT ANCHORS: When testing a specific sub-branch, you may include a 2-3 level ASCII tree on the back marking [THIS CARD] to maintain spatial context.
+7. QUOTE IS MANDATORY: Every card MUST carry a verbatim 1-4 sentence excerpt in "quote" to power Ars Memoriae's Pre-Answer Primer reading mode. During review, any concepts the student overlooks are highlighted directly in this quote!
+8. "image" is optional: include an image URL (https://... or /media/...) whenever a diagram, chart, or image helps test or clarify the concept.
+9. "front"/"cloze_text" must be answerable without seeing "back" first.
+10. Do not invent facts. If the source doesn't support a fact, drop the card.
 
 Generate cards from the material below:
 
 <PASTE YOUR SOURCE TEXT / NOTES / TOPIC HERE>`
+
+export const SPAN321_EXAM_PROMPT = `# Context & Task: Flashcard Refactoring for SPAN 321 (Culturas de España)
+
+You are an expert in cognitive science, spaced repetition (Anki/SuperMemo), and Spanish cultural history. Your task is to refactor and optimize a flashcard deck (\`SPAN321_Examen1_Flashcards.json\`) for the course **SPAN 321: Culturas de España** (Instructor: Prof. María Soledad Fernández Utrera / "Marisol").
+
+---
+
+## 1. Instructor Rubric & Exam Constraints (Non-Negotiable)
+
+Marisol evaluates four strict criteria:
+1. **Direct First-Sentence Rule:** The very first sentence must answer the question directly. If a century or date is requested, the century/date goes first.
+2. **Follow PPT / Chronological Progression:** Do not skip steps or alter chronological sequences.
+3. **One Idea Per Sentence:** Concrete facts with explicit names and dates. Never use vague phrases like *"hace mucho"* or *"varios siglos"*.
+4. **No Category Bleed:** Never mix pre-Roman peoples (Iberians, Celts, Celtiberians, Phoenicians, Greeks, Carthaginians) or confuse ancient with modern concepts.
+5. **Mandatory PPT Vocabulary:** Must preserve technical terms:
+   * \`hieratismo\`
+   * \`policromía\`
+   * \`atomismo\`
+   * \`paterfamilias\`
+   * \`Ius Latii\`
+   * \`municipio\`
+   * \`animismo naturista\`
+   * \`estoicismo\`
+   * \`basílica\`
+6. **Instructor Discrepancy Invariants (Overrides standard textbook facts):**
+   * **Constantino:** Siglo IV (313 d. C., Edicto de Milán) — *do not use s. III*.
+   * **Teodosio:** Refer strictly to "Teodosio (s. IV)" — *do not write "Teodosio II"*.
+   * **Córcega y Cerdeña:** Cartago lost Corsica and Sardinia *after* the 1st Punic War and *before* invading Iberia.
+   * **Ius Latii vs. Ciudadanía:** *Ius Latii* granted by Vespasiano (s. I d. C.); universal Roman citizenship granted by Caracalla (s. III d. C.).
+   * **Provincia moderna:** Emerges in the **19th century (1812–1833)**; distinct from Roman administrative provinces.
+
+---
+
+## 2. Cognitive Science & Flashcard Architecture Rules
+
+Refactor the deck following **Piotr Wozniak’s Minimum Information Principle**, **Sweller’s Cognitive Load Theory**, and **Bower’s Hierarchical Semantic Retrieval Theory**:
+
+### Rule A: Atomicity (Eliminate Bloat)
+* No card should require recalling more than 1–2 distinct facts or sentences.
+* Never test definition + date + multi-stage history on a single card. Split into sub-cards (e.g., \`1A\`, \`1B\`, \`1C\`).
+
+### Rule B: Elimination of "Wall-of-Text" Essay Cards
+* **Do not put 200+ word essays on the back of cards.** This induces the illusion of competence.
+* Transform essay questions into **Structural Skeleton Trigger Cards** using hierarchical trees (outlining the 4–5 thematic movements in order).
+
+### Rule C: Use Cloze Deletion for Lists and Characteristics
+* When 4 or more distinct features must be memorized (e.g., Altamira cave art, elements of Roman religion), use Cloze Deletion cards rather than long free-recall lists.
+
+### Rule D: Dual-Coding Schema for Art Pieces
+Every artwork must strictly adhere to the 4-step analysis schema:
+$$\\text{1. Qué es} \\longrightarrow \\text{2. Dónde y Cuándo} \\longrightarrow \\text{3. Qué vemos} \\longrightarrow \\text{4. Qué significa / Función}$$
+
+---
+
+## 3. Tree & Subtree Formatting Rules
+
+Incorporate **ASCII trees** (\`├──\`, \`└──\`) into the cards to provide clear visual chunking and hierarchical organization:
+
+1. **Depth Limit:** 2–3 levels maximum per card (\`Parent\` $\\to$ \`Child\` $\\to$ \`Grandchild\`).
+2. **Context Anchors:** When a card tests a specific atomic node (e.g., *Municipios* or *Ius Latii*), include the mini-tree on the back highlighting \`[ESTA CARTA]\` to show where it fits into the broader framework.
+3. **Macro vs. Micro Testing:**
+   * Test the top branches first on a Macro card.
+   * Test the sub-branches on separate Micro cards.
+
+### Visual Tree Templates
+
+#### Hierarchy of Social Classes:
+\`\`\`text
+Clases sociales (Roma)
+├── 1. Libres
+│   ├── Ciudadanos romanos (Caracalla, s. III d. C.)
+│   ├── Latinos (Ius Latii, Vespasiano, s. I d. C.)
+│   └── Extranjeros
+├── 2. Semilibres (colonos)
+└── 3. Esclavos
+\`\`\`
+
+#### Territorial Organization:
+\`\`\`text
+Organización territorial
+├── Colonias romanas (legionarios veteranos [30 años] + colonos semilibres)
+├── Municipios (ciudades indígenas aliadas, autónomas, leyes propias, gran arraigo)
+└── Provincias (regiones naturales e identidades)
+    ├── Principales: Tarraconense, Lusitana, Bética
+    └── Posteriores: Galaica, Cartaginense, Mauritana, Baleárica
+\`\`\`
+
+#### Composition of Roman Religion:
+\`\`\`text
+Religión romana (mezcla de 4 elementos)
+├── 1. Mitología griega
+├── 2. Culto al emperador (político y religioso)
+├── 3. Animismo naturista (poderes a la naturaleza)
+└── 4. Abstracción de conceptos sociopolíticos (ej. juventud)
+\`\`\`
+
+#### Evolution of the "Provincia" Concept:
+\`\`\`text
+Evolución de la división territorial
+├── 1. Roma: Tarraconense, Lusitana, Bética
+├── 2. Edad Media: Reinos divididos (Asturias, León, Castilla, Aragón, Al-Andalus)
+├── 3. Siglo XVIII: Borbones centralizan y eliminan derechos regionales
+└── 4. Siglo XIX (1812–1833): Surge el concepto moderno (50 provincias / 17 CCAA)
+\`\`\`
+
+#### Universal Essay A Skeleton (Presencia de Roma):
+\`\`\`text
+Ensayo A: Hispania Unida
+├── Tesis: Con Roma empieza España como nación (unidad política y económica)
+├── 1. Llegada: Guerras Púnicas (I, II [218 a.C., Escipiones, Ampurias], III)
+├── 2. Conquista: 2 siglos (Viriato, Numancia, astures y cántabros; 38 a.C. Augusto)
+├── 3. Organización: Derecho romano, clases, colonias/municipios, provincias
+├── 4. Romanización: Unidad frente al atomismo, ritmos, latín, emperadores
+└── Conclusión: Herencia viva (derecho, lengua, municipios, concepto de nación)
+\`\`\`
+
+---
+
+## 4. Target JSON Schema
+
+When generating or refactoring cards, format each item using this JSON schema:
+
+\`\`\`json
+{
+  "card_type": "qa" | "cloze",
+  "front": "Prompt strictly adhering to Marisol's questions or atomic triggers",
+  "image": "/media/image_name.jpg (optional)",
+  "back": "Direct answer in sentence 1 + optional ASCII tree for context",
+  "cloze_text": "Text with {{c1::cloze deletions}} if card_type is cloze",
+  "locator": "Slide or guide reference",
+  "tags": ["topic", "subtopic"]
+}
+\`\`\`
+
+---
+
+## 5. Execution Directive
+
+Parse the provided flashcard deck:
+1. Split every composite/bloated question into single-idea atomic cards.
+2. Convert multi-item lists into Cloze Deletions.
+3. Convert 200+ word essay answers into structural ASCII tree outlines.
+4. Add ASCII context trees to definitions and organizational questions.
+5. Ensure 100% compliance with Marisol's strict vocabulary and historical date invariants.`
 
 /** Bulk-create notes/cards from a hand-written or scripted JSON file — the
  *  direct JSON upload path. One request targets one deck (created if missing).
@@ -2530,13 +2880,15 @@ function JsonImportPanel({ onImported }: { onImported: () => void }) {
 function LlmPromptPanel() {
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const [promptCategory, setPromptCategory] = useState<'course' | 'code' | 'general'>('course')
+  const [promptCategory, setPromptCategory] = useState<'course' | 'code' | 'general' | 'exam_refactor'>('exam_refactor')
 
   const activePrompt =
     promptCategory === 'course'
       ? COURSE_TEXTBOOK_PROMPT
       : promptCategory === 'code'
       ? CODING_ONLY_PROMPT
+      : promptCategory === 'exam_refactor'
+      ? SPAN321_EXAM_PROMPT
       : LLM_PROMPT
 
   async function handleCopy() {
@@ -2562,6 +2914,18 @@ function LlmPromptPanel() {
       <div className="space-y-3">
         {/* Category Tabs */}
         <div className="flex flex-wrap items-center gap-2 border-b border-ink-line/80 pb-2">
+          <button
+            type="button"
+            onClick={() => setPromptCategory('exam_refactor')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              promptCategory === 'exam_refactor'
+                ? 'border border-amber-500/50 bg-amber-500/20 text-amber-200 font-semibold'
+                : 'border border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>SPAN 321 / Exam Refactor</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setPromptCategory('course')}
@@ -2595,7 +2959,7 @@ function LlmPromptPanel() {
                 : 'border border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            <span>Flashcards</span>
+            <span>Cognitive Flashcards</span>
           </button>
         </div>
 
@@ -2625,7 +2989,9 @@ function LlmPromptPanel() {
                   ? 'Hybrid Textbook Prompt (Auto-Classify Code vs Theory):'
                   : promptCategory === 'code'
                   ? 'Pure LeetCode Coding Problem Prompt:'
-                  : 'Standard Flashcard Prompt:'}
+                  : promptCategory === 'exam_refactor'
+                  ? 'SPAN 321 & Humanities Exam Refactoring Prompt (Cognitive Science & Rubric Invariants):'
+                  : 'Cognitive Flashcard Prompt (Atomicity & ASCII Trees):'}
               </span>
               <button
                 onClick={handleCopy}

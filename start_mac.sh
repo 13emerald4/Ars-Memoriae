@@ -56,8 +56,8 @@ if command -v ollama >/dev/null 2>&1; then
         sleep 2
     fi
 
-    # If no Qwen 2.5 Coder model is present yet, inspect hardware and pull the recommended size
-    if ! ollama list 2>/dev/null | grep -qi "qwen2.5-coder"; then
+    # If no supported Qwen model is present yet, inspect hardware and pull the recommended size
+    if ! ollama list 2>/dev/null | grep -qi "qwen"; then
         echo ""
         echo "[Hardware Inspection] Analyzing your system specs for the optimal AI model..."
         backend/.venv/bin/python scripts/detect_hardware.py

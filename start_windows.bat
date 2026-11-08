@@ -87,8 +87,8 @@ if not errorlevel 1 (
         timeout /t 2 /nobreak >nul
     )
 
-    :: If no Qwen 2.5 Coder model is present yet, inspect hardware and pull the recommended size
-    ollama list | findstr /i "qwen2.5-coder" >nul 2>&1
+    :: If no supported Qwen model is present yet, inspect hardware and pull the recommended size
+    ollama list | findstr /i "qwen" >nul 2>&1
     if errorlevel 1 (
         echo.
         echo [Hardware Inspection] Analyzing your system specs for the optimal AI model...

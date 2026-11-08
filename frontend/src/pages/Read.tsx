@@ -210,6 +210,7 @@ function SourceLibrary() {
 // ── the extract workspace ───────────────────────────────────────────────────
 
 const GENERATION_MODELS = [
+  { id: 'qwen3.5:9b', name: 'Qwen 3.5 (9B Instruct Q4_K_M)', badge: 'Advanced Local Engine' },
   { id: 'qwen2.5-coder:7b', name: 'Qwen 2.5 Coder (7B Instruct)', badge: 'Local Engine' },
 ]
 

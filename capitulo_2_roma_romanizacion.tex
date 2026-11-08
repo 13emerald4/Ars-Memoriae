@@ -1,0 +1,546 @@
+\documentclass[11pt,letterpaper]{article}
+
+% --- Paquetes de idioma y codificación ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{microtype}
+
+% --- Tipografía ---
+\usepackage{mathpazo} % Palatino elegante y legible
+
+% --- Geometría y márgenes ---
+\usepackage[letterpaper,
+            left=0.85in,
+            right=0.85in,
+            top=0.9in,
+            bottom=0.9in,
+            headheight=14pt]{geometry}
+
+% --- Colores y cajas temáticas ---
+\usepackage[dvipsnames]{xcolor}
+\usepackage[most]{tcolorbox}
+\tcbuselibrary{skins,breakable}
+
+% Definición de colores clásicos romanos
+\definecolor{romaRed}{RGB}{140, 24, 24}       % Rojo pórfido imperial
+\definecolor{romaGold}{RGB}{184, 134, 11}     % Oro antiguo
+\definecolor{romaBlue}{RGB}{28, 54, 94}       % Azul marino institucional
+\definecolor{romaDark}{RGB}{33, 33, 33}       % Carbón texto principal
+\definecolor{romaBg}{RGB}{250, 249, 246}      % Blanco roto / pergamino claro
+\definecolor{romaBorder}{RGB}{210, 200, 185}  % Borde sutil
+
+% Estilos de Tcolorbox
+\newtcolorbox{headerbox}{
+    enhanced,
+    colback=romaRed!6,
+    colframe=romaRed!85!black,
+    boxrule=1.2pt,
+    arc=4pt,
+    left=12pt, right=12pt, top=10pt, bottom=10pt,
+    shadow={1.5pt}{-1.5pt}{0pt}{black!20}
+}
+
+\newtcolorbox{conceptbox}[1][]{
+    enhanced,
+    colback=white,
+    colframe=romaBlue!80!black,
+    boxrule=0.8pt,
+    arc=3pt,
+    left=10pt, right=10pt, top=7pt, bottom=7pt,
+    fonttitle=\bfseries\color{white},
+    colbacktitle=romaBlue!85!black,
+    #1
+}
+
+\newtcolorbox{notabox}[1][]{
+    enhanced,
+    breakable,
+    colback=romaGold!7,
+    colframe=romaGold!85!black,
+    boxrule=0.7pt,
+    arc=3pt,
+    left=9pt, right=9pt, top=6pt, bottom=6pt,
+    fonttitle=\bfseries\small\color{romaGold!40!black},
+    colbacktitle=romaGold!20,
+    #1
+}
+
+\newtcolorbox{subbox}[1][]{
+    enhanced,
+    colback=romaBg,
+    colframe=gray!60,
+    boxrule=0.5pt,
+    arc=2pt,
+    left=8pt, right=8pt, top=5pt, bottom=5pt,
+    #1
+}
+
+% --- Listas y espaciado ---
+\usepackage{enumitem}
+\setlist{leftmargin=1.4em, itemsep=2.5pt, topsep=2pt, parsep=1pt}
+
+% --- Tablas y utilidades ---
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{amsmath,amssymb}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=romaRed!80!black,
+    citecolor=romaBlue,
+    urlcolor=romaBlue
+}
+
+% Formato de secciones
+\titleformat{\section}
+  {\Large\bfseries\color{romaRed!90!black}}
+  {\thesection.}{0.5em}{}[\titlerule]
+\titlespacing*{\section}{0pt}{14pt}{8pt}
+
+\titleformat{\subsection}
+  {\large\bfseries\color{romaBlue!90!black}}
+  {\thesubsection}{0.5em}{}
+\titlespacing*{\subsection}{0pt}{10pt}{4pt}
+
+\titleformat{\subsubsection}
+  {\normalsize\bfseries\color{romaDark}}
+  {}{0em}{}
+\titlespacing*{\subsubsection}{0pt}{6pt}{2pt}
+
+% Cabecera y pie de página
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{gray}\textsc{Historia de España --- SPAN 321}}
+\fancyhead[R]{\small\color{gray}\textsc{Capítulo 2: Roma y la Romanización}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+
+% ==============================================================================
+\begin{document}
+
+% --- ENCABEZADO DEL DOCUMENTO ---
+\begin{headerbox}
+  \begin{center}
+    {\Huge\bfseries\color{romaRed!90!black} CAPÍTULO 2}\\[4pt]
+    {\LARGE\bfseries\color{romaDark} ROMA Y LA ROMANIZACIÓN DE LA PENÍNSULA}\\[6pt]
+    \rule{0.65\linewidth}{0.6pt}\\[6pt]
+    {\small\color{black!70}\textsc{Transcripción y estructuración integral de los apuntes manuscritos (Págs. 1--5)}}
+  \end{center}
+\end{headerbox}
+
+\vspace{6pt}
+
+% ==============================================================================
+% PÁGINA 1 DEL MANUSCRITO
+% ==============================================================================
+\section{Introducción y Conquista Romana de la Península \hfill\normalfont\small\color{gray}[Pág. 1]}
+
+\begin{conceptbox}[title={Marco General: La dominación de Roma}]
+  \begin{itemize}
+    \item \textbf{Duración histórica:} La dominación de Roma se extendió durante \textbf{7 siglos} (hasta el siglo V d.C.), momento en que sobreviene la caída del Imperio romano.
+    \item \textbf{Trascendencia nacional:} Con los romanos comienza la historia de España como \textbf{NACIÓN}.
+  \end{itemize}
+\end{conceptbox}
+
+\subsection{Confrontación Geopolítica: Roma frente a Cartago}
+
+\begin{notabox}[title={Cronología de las Guerras Púnicas (264 -- 146 a.C. / siglos III--II a.C.)}]
+  \begin{itemize}[leftmargin=1.2em]
+    \item \textbf{I Guerra Púnica (264 -- 241 a.C.):} Pérdida cartaginesa de Córcega y Cerdeña; desplazamiento cartaginés hacia la Península Ibérica.
+    \item \textbf{II Guerra Púnica (218 -- 201 a.C.):} Escenario peninsular y contraofensiva romana decisiva.
+  \end{itemize}
+\end{notabox}
+
+\begin{itemize}
+  \item \textbf{Rivalidad:} $\text{Roma} \iff \text{Cartago}$. Enfrentamiento hegemónico en el Mediterráneo que desemboca en las Guerras Púnicas.
+  \item \textbf{Consecuencia geopolítica central:}
+  \[
+    \text{Caída de Cartago} \implies \begin{cases}
+      \text{Fin del predominio africano en el Mediterráneo.} \\
+      \text{Comienzo formal de la romanización de Europa.}
+    \end{cases}
+  \]
+  \item \textbf{Impacto sobre los pueblos peninsulares ($\#\#$):}
+  \begin{quote}
+    \itshape
+    Los pueblos peninsulares dejan de ser unidades fragmentadas (sometidos bajo idénticos intereses políticos y económicos de Roma) $\longrightarrow$ se forja la \textbf{unidad cultural}.
+  \end{quote}
+  \item \textbf{Motivo del desembarco en la Península:}
+  \begin{itemize}
+    \item Los romanos combaten a los cartagineses en la propia Península y, por esa vía bélica, se emprende su conquista (durante la $2^{\text{a}}$ Guerra Púnica).
+    \item \textit{Antecedente:} La Península había sido ocupada por los cartagineses tras su derrota en la $1^{\text{a}}$ Guerra Púnica y la pérdida de Córcega y Cerdeña.
+    \item $\hookrightarrow$ Las \textbf{colonias griegas} costeras (amenazadas) piden auxilio militar a Roma ($2^{\text{a}}$ Guerra Púnica).
+    \item $\hookrightarrow$ El Senado romano envía a los \textbf{Escipiones} a desembarcar en Ampurias (\textit{Emporion}), quienes terminarán por derrotar definitivamente a Aníbal en el norte de África (Zama).
+    \item \textbf{Alianzas estratégicas locales:} $\text{Íberos} = \text{aliados de Roma}$.
+  \end{itemize}
+\end{itemize}
+
+\subsection{La Conquista Romana de la Península}
+\begin{itemize}
+  \item \textbf{Duración del proceso:} Se prolongó a lo largo de \textbf{dos siglos} ($218 - 19\text{ a.C.}$) $\rightarrow$ proceso bélico largo y penoso, en el que se alternaron periodos de tregua/paz y fases de guerra abierta.
+  \item \textbf{Carácter:} $\text{Conquista} \equiv \text{ocupación territorial y dominación política}$.
+  \item \textbf{Focos de resistencia indígena más tenaz:}
+  \begin{itemize}
+    \item \textbf{Lusitanos y celtíberos:} opusieron una resistencia feroz.
+    \begin{itemize}
+      \item $\hookrightarrow$ \textbf{Viriato} (caudillo lusitano de origen pastoril; táctica de guerra de guerrillas).
+      \item $\hookrightarrow$ $*$ \textbf{Numancia} (Soria): símbolo celtíbero de resistencia numantina heroica e inquebrantable (sitio y posterior intervención de Pompeyo y Julio César en Hispania).
+    \end{itemize}
+    \item \textbf{Pueblos del Norte (Cántabros y Astures):} mantuvieron una encarnizada resistencia en sus refugios montañosos.
+  \end{itemize}
+  \item \textbf{Hito de anexión imperial:} Hacia el \textbf{38 a.C.} (y consolidado definitivamente con Augusto en el 19 a.C.), Hispania queda plenamente integrada como parte formal del Imperio romano.
+\end{itemize}
+
+\subsection{Organización Romana Inicial de la Península}
+\begin{itemize}
+  \item \textbf{Coexistencia de dos órdenes institucionales desde el origen:}
+  \begin{enumerate}
+    \item \textbf{Sistemas políticos indígenas:} marcos y costumbres locales preexistentes.
+    \item \textbf{Organización militar y política romana:} maquinaria administrativa y guarniciones del Senado y los cónsules.
+  \end{enumerate}
+  \item $\hookrightarrow$ \textbf{Objetivo primordial:}
+  \begin{itemize}
+    \item Garantizar la soberanía y autoridad indiscutible de Roma.
+    \item Asegurar de forma prioritaria los privilegios y derechos de los ciudadanos romanos.
+  \end{itemize}
+\end{itemize}
+
+\bigskip
+
+% ==============================================================================
+% PÁGINA 2 DEL MANUSCRITO
+% ==============================================================================
+\newpage
+\section{Organización Política y Social Romana en Hispania \hfill\normalfont\small\color{gray}[Pág. 2]}
+
+\begin{conceptbox}[title={El Pilar Jurídico: El Derecho Romano}]
+  La organización política y social romana se sustenta estructuralmente sobre el \textbf{derecho romano}, considerado unánimemente como \textbf{la mayor contribución de Roma a la civilización occidental}.
+  \begin{itemize}
+    \item \textbf{Universalidad de aplicación:} Se aplicó a todos los pueblos y territorios sometidos a Roma (\textit{sin distinción de su origen étnico}).
+    \item \textbf{El Individuo:} Se erige en el auténtico fundamento y sujeto de la sociedad, quebrando el viejo colectivismo tribal primitivo.
+    \item \textbf{Libertades y garantías básicas:} Reconocimiento expreso de derechos civiles esenciales (ej. derecho de propiedad privada).
+    \item \textbf{Paterfamilias:} Eje y persona jurídica fundamental del orden civil, social y familiar romano.
+  \end{itemize}
+\end{conceptbox}
+
+\subsection{Estratificación Social en los Territorios Conquistados}
+La población se dividía rígidamente en tres estados o clases:
+
+\begin{enumerate}
+  \item \textbf{Libres:} subdivididos según su estatuto jurídico:
+  \begin{itemize}
+    \item \textbf{Ciudadanos romanos:} gozaban de la plenitud de derechos civiles y políticos (\textit{civitas}), idénticos a los de la ciudadanía de Roma.
+    \item \textbf{Latinos:} estrato intermedio; se regían por un sistema de leyes especiales:
+    \begin{subbox}
+      \textbf{El \textit{Jus Latii} (Derecho Latino):}
+      \begin{itemize}
+        \item Permitía el ejercicio de derechos patrimoniales y comerciales, así como cierta participación regulada en los asuntos del Estado romano.
+        \item Concedido de forma generalizada a toda Hispania por el emperador \textbf{Vespasiano} (siglo I d.C.).
+        \item Constituía el paso previo y la antesala jurídica indispensable para adquirir la ciudadanía romana plena.
+        \item $\hookrightarrow$ \textbf{Culminación:} En el \textbf{siglo III d.C.} (212 d.C.), el emperador \textbf{Caracalla} concede la ciudadanía romana universal a todos los hombres libres del Imperio (\textit{Constitutio Antoniniana}).
+      \end{itemize}
+    \end{subbox}
+    \item \textbf{Extranjeros (\textit{peregrini}):} habitantes libres de comunidades sometidas sin derecho latino ni ciudadanía.
+  \end{itemize}
+  \item \textbf{Semilibres:} libertos y colonos vinculados jurídicamente a patronos o a la tierra.
+  \item \textbf{Esclavos:} mano de obra no libre, jurídicamente considerados cosas (\textit{res}), sin derechos.
+\end{enumerate}
+
+\subsection{Articulación del Territorio: Colonias y Municipios}
+La integración urbana de Hispania se desplegó mediante dos modelos complementarios:
+
+\begin{tabularx}{\linewidth}{@{}p{0.46\linewidth} X@{}}
+  \toprule
+  \textbf{Colonias Romanas} & \textbf{Municipios Indígenas} \\
+  \midrule
+  \begin{itemize}[leftmargin=1.1em]
+    \item Asentamientos de nueva planta poblados por \textbf{legionarios veteranos} (licenciados que recibían lotes de tierras tras culminar su servicio militar).
+    \item Convivencia con \textbf{colonos de origen nativo}.
+    \item Difusoras directas del modo de vida y la lengua latina.
+  \end{itemize}
+  &
+  \begin{itemize}[leftmargin=1.1em]
+    \item Vía de integración de las ciudades indígenas mediante un \textbf{estatuto de alianza} y pacto con Roma.
+    \item Gozaban de \textbf{libertad y amplia autonomía local}:
+    \begin{itemize}
+      \item Convocatoria de asambleas populares.
+      \item Promulgación y vigencia de leyes y ordenanzas propias.
+    \end{itemize}
+    \item \textbf{Nota de arraigo ($\#\#\#$):} \textit{Este modelo municipal tuvo un arraigo extraordinario y duradero en Hispania.}
+  \end{itemize}
+  \\ \bottomrule
+\end{tabularx}
+
+\subsection{Evolución de las Provincias Romanas en Hispania}
+\begin{itemize}
+  \item El número y trazado de las provincias varió sensiblemente con el tiempo; las divisiones administrativas se fueron sucediendo sucesivamente.
+  \item \textbf{Criterio geográfico y humano ($***$):} Respondían a divisiones que tendían a reconocer las \textbf{regiones naturales} y la \textbf{identidad específica} de cada grupo y pueblo peninsular.
+\end{itemize}
+
+\begin{notabox}[title={Secuencia Cronológica de la Organización Provincial}]
+  \begin{itemize}
+    \item \textbf{Provincias clásicas de época altoimperial:}
+    \begin{itemize}
+      \item \textbf{Provincia Tarraconense} (\textit{Hispania Citerior / Tarraconensis})
+      \item \textbf{Provincia Lusitania}
+      \item \textbf{Provincia Bética} (\textit{Baetica}, senatorial)
+      \item \textbf{Provincia Gallaetia} (noroeste)
+    \end{itemize}
+    \item \textbf{Ampliaciones y reformas posteriores:}
+    \begin{itemize}
+      \item Con el emperador \textbf{Caracalla} ($+$ tarde): se crea la provincia \textbf{Cartaginense}.
+      \item Con las reformas de \textbf{Diocleciano} ($+$ tarde, Tetrarquía): se incorporan al esquema hispano \textbf{Mauritania} (Tingitana) y la provincia \textbf{Balearica}.
+    \end{itemize}
+  \end{itemize}
+\end{notabox}
+
+\bigskip
+
+% ==============================================================================
+% PÁGINA 3 DEL MANUSCRITO
+% ==============================================================================
+\newpage
+\section{La Romanización Cultural y Material de la Península \hfill\normalfont\small\color{gray}[Pág. 3]}
+
+\begin{conceptbox}[title={Proceso de Romanización: De la Fragmentación a la Unidad}]
+  \begin{itemize}
+    \item \textbf{La forja de la unidad:} Se conformó progresivamente una auténtica unidad en tres niveles:
+    \[
+      \textbf{Unidad} \quad\begin{cases}
+        \text{Social} \\
+        \text{Política} \\
+        \text{Cultural}
+      \end{cases}
+    \]
+    la cual contrastaba de raíz con el \textbf{atomismo previo} característico de los pueblos colonizadores y las heterogéneas tribus indígenas prerromanas.
+    \item \textbf{Matices y ritmos diferenciados:}
+    \begin{itemize}
+      \item Existió una \textbf{adopción peculiar} y particular en cada uno de los pueblos prerromanos.
+      \item Se produjo un \textbf{ritmo muy distinto} en la asimilación del proceso de romanización (rápido en el sur y levante; lento y parcial en el norte cantábrico).
+    \end{itemize}
+    \item \textbf{Maduración histórica ($\#\#$):}
+    \begin{quote}
+      \itshape
+      En el siglo V, al consumarse la caída del Imperio romano de Occidente, las poblaciones peninsulares constituyen ya grupos sociales profundamente unificados en torno al \textbf{concepto político de nación (Hispania)}.
+    \end{quote}
+    \item \textbf{El Latín como matriz lingüística:}
+    El latín vulgar implantado en la Península evolucionó y dio origen ulteriormente a las lenguas romances peninsulares:
+    \[
+      \text{Latín} \;\longrightarrow\; \begin{cases}
+        \textbf{Gallego} \\
+        \textbf{Catalán} \\
+        \textbf{Castellano}
+      \end{cases}
+    \]
+    \item \textbf{Emperadores nacidos en Hispania:} La plena inserción de Hispania en la cúspide romana se evidencia en los emperadores de linaje hispano:
+    \begin{center}
+      \textbf{Adriano} \quad\textbullet\quad \textbf{Trajano} \quad\textbullet\quad \textbf{Marco Aurelio} \quad\textbullet\quad \textbf{Teodosio}
+    \end{center}
+  \end{itemize}
+\end{conceptbox}
+
+\subsection{Urbanismo Romano: El Ocio y la Infraestructura Pública}
+\begin{itemize}
+  \item \textbf{Carácter urbano preponderante:} La civilización romana es esencialmente de cuño urbano.
+  \item \textbf{Infraestructuras de disfrute y comunicación:} proliferación de \textbf{circos}, \textbf{teatros} y \textbf{calzadas/vías} estratégicas (con especial relevancia de la \textbf{Vía Augusta}).
+  \item $\hookrightarrow$ \textbf{Objetivo explícito:} \textit{«Hacer la vida agradable»} (confort, cohesión cívica y bienestar público).
+\end{itemize}
+
+\subsection{Cultura y Manifestaciones Artísticas}
+\begin{itemize}
+  \item \textbf{Arquitectura urbana e ingeniería monumental:} Construcciones civiles para la vida pública, la administración y la propaganda imperial.
+  \item \textbf{Arcos triunfales:} Erigidos específicamente para conmemorar las hazañas bélicas y glorias públicas de los emperadores (ej. el célebre \textbf{Arco de Bará} en Tarragona).
+  \item \textbf{Escultura:}
+  \begin{itemize}
+    \item Representaciones mitológicas e idealizadas: ej. la \textbf{Venus de Itálica}.
+    \item \textbf{Retratos y bustos:} caracterizados por un acentuado \textbf{realismo fisonómico} (en contraste con la abstracción indígena).
+  \end{itemize}
+  \item \textbf{Mosaicos:} Gran riqueza cromática (colorido vivo) y profusión temática de episodios y deidades mitológicas.
+\end{itemize}
+
+\subsection{Literatura y Pensamiento: Los Grandes Autores Hispanos}
+Hispania nutrió con sus figuras más brillantes el Siglo de Plata de las letras romanas:
+
+\begin{description}
+  \item[\textbf{Séneca (Córdoba):}]
+  Autor de insignes obras filosóficas (diálogos, tratados) y obras literarias (tragedias). Ambas vertientes comparten su doctrina moral central:
+  \begin{subbox}
+    \textbf{El Estoicismo:} Corriente ética basada en el autodominio de las pasiones y la templanza interior:
+    \[
+      \text{\guillemotleft\textbf{El individuo es la norma de toda virtud}\guillemotright}
+    \]
+    Figura capital extraordinariamente leída, comentada y admirada durante la \textbf{Edad Media} y el \textbf{Renacimiento}.
+  \end{subbox}
+  \item[\textbf{Lucano:}] Poeta épico cordobés, autor de la \textbf{\textit{Farsalia}}, poema que describe con viveza trágica las cruentas guerras civiles entre Pompeyo y Julio César.
+  \item[\textbf{Marcial:}] Maestro bilbilitano de la \textbf{poesía satírica}; célebre por sus agudos \textbf{epigramas} que retratan la sociedad de su tiempo.
+  \item[\textbf{Quintiliano:}] Insigne tratadista calagurritano; enorme trascendencia de su doctrina pedagógica sobre la \textbf{retórica} y el orador ideal (\textit{Institutio Oratoria}).
+\end{description}
+
+\bigskip
+
+% ==============================================================================
+% PÁGINA 4 DEL MANUSCRITO
+% ==============================================================================
+\newpage
+\section{La Religión en Roma y el Triunfo del Cristianismo \hfill\normalfont\small\color{gray}[Pág. 4]}
+
+\subsection{El Sincretismo Religioso Romano}
+La religión oficial del Estado romano se componía de una compleja amalgama de cuatro elementos fundamentales:
+\begin{enumerate}
+  \item \textbf{Mitología griega:} adopción y latinización del panteón heleno tradicional.
+  \item \textbf{Culto al emperador:} ritual cívico-político obligatorio de lealtad a la figura imperial divinizada.
+  \item \textbf{Animismo naturista:} pervivencia del culto a los espíritus de la naturaleza y fuerzas ancestrales.
+  \item \textbf{Abstracción de virtudes y conceptos sociales/políticos:} divinización de la Juventud (\textit{Iuventas}), la Concordia, la Paz, etc.
+\end{enumerate}
+
+\begin{notabox}[title={Política Romana ante los Cultos Exteriores}]
+  \begin{itemize}
+    \item \textbf{Tolerancia general:} Roma practicaba una amplia tolerancia hacia las religiones y divinidades de los pueblos indígenas sometidos (\textit{con el límite estricto de prohibir los sacrificios humanos}).
+    \item \textbf{Criterio represivo:} Perseguía únicamente a aquellos grupos religiosos que pusieran en jaque la estabilidad del Estado, esto es:
+    \begin{enumerate}
+      \item Grupos que reclamasen activamente la \textbf{independencia política} de los pueblos dominados.
+      \item Sectas o movimientos que \textbf{atacasen o rechazasen el culto imperial}.
+    \end{enumerate}
+  \end{itemize}
+\end{notabox}
+
+\subsection{La Emergencia y Expansión del Cristianismo}
+Progresivamente, la fe cristiana se difunde por las provincias del Imperio:
+
+\begin{conceptbox}[title={Rasgos Fundamentales del Cristianismo Primitivo}]
+  \begin{itemize}
+    \item \textbf{Carácter social comunitario:} Doble mandamiento rector:
+    \[
+      \textbf{Amor a Dios} \quad+\quad \textbf{Amor al prójimo}
+    \]
+    \item \textbf{Jerarquía puramente moral:} Organización apostólica y misionera fundada en la \textbf{igualdad esencial de todos los seres humanos} ante Dios.
+    \item \textbf{Conflicto de soberanía:} \textbf{Niegan categóricamente el carácter divino del emperador}.
+  \end{itemize}
+\end{conceptbox}
+
+\subsubsection{Fases de la Relación entre el Cristianismo y el Estado Romano}
+\begin{itemize}
+  \item \textbf{Fase inicial (Primeros 300 años):}
+  \[
+    \text{Rápida expansión} \;\longrightarrow\; \begin{cases}
+      \text{Percibido como amenaza frontal al Estado,} \\
+      \text{a su tradición política y a su orden social.}
+    \end{cases} \implies \textbf{Violentas persecuciones y conflictos.}
+  \]
+  \item \textbf{Fase de asimilación e institucionalización (Siglos II y III):}
+  \begin{itemize}
+    \item El cristianismo adopta de forma pragmática las \textbf{propias estructuras de organización romanas}:
+    \begin{itemize}
+      \item Su base jurídica y el rigor del derecho romano.
+      \item La estructura jerárquica y administrativa territorial.
+    \end{itemize}
+    \item \textbf{Roma} se consolida como el \textbf{centro espiritual} indiscutible del mundo romano.
+    \item Expresa la mentalidad y las formas artísticas y conceptuales de la cultura grecorromana.
+    \item Es adoptado masivamente por miembros de \textbf{todas las clases sociales} del Imperio.
+  \end{itemize}
+  \item \textbf{Aporte regenerador del Cristianismo al Imperio en declive:}
+  \begin{subbox}
+    El cristianismo suministra los fundamentos que la Roma decadente había perdido:
+    \begin{itemize}
+      \item \textbf{Principios morales:} códigos éticos sólidos, prácticamente extintos en la Roma tardía.
+      \item \textbf{Jerarquía social articulada} y con vocación de cohesión.
+      \item \textbf{Doctrina política de Estado:} dota al poder público de una nueva legitimidad sagrada.
+    \end{itemize}
+    $\hookrightarrow$ Supone la \textbf{reinterpretación cristiana de la cultura romana}: un ideal cohesionador con \textbf{capacidad de salvar el Imperio y la civilización romana}.
+  \end{subbox}
+\end{itemize}
+
+\subsection{El Giro Político-Religioso del Siglo IV}
+\begin{description}
+  \item[\textbf{Emperador Constantino (313 d.C.):}]
+  Promulgación del \textbf{Edicto de Milán}, que sella la aproximación histórica entre la Iglesia y el Imperio:
+  \begin{itemize}
+    \item Fin definitivo de las persecuciones sangrientas contra los cristianos.
+    \item Garantía jurídica formal de \textbf{libertad religiosa} en todo el orbe romano.
+  \end{itemize}
+
+  \item[\textbf{Emperador Teodosio (Siglo IV / 380 d.C.):}]
+  Impone la aceptación obligatoria del cristianismo a todos los súbditos romanos (arrinconando el paganismo).
+  \begin{itemize}
+    \item $\hookrightarrow$ \textbf{Cristianización global:} absorción de los valores cristianos en el \textbf{Estado}, el \textbf{Derecho}, el \textbf{arte}, la \textbf{literatura} y la \textbf{filosofía} (labor teológica y doctrinal de los \textbf{Padres de la Iglesia}).
+    \item A la muerte de Teodosio (395 d.C.), el Imperio romano se divide formal e irreversiblemente en:
+    \[
+      \textbf{Imperio Romano de Oriente} \quad\text{y}\quad \textbf{Imperio Romano de Occidente}
+    \]
+  \end{itemize}
+\end{description}
+
+\bigskip
+
+% ==============================================================================
+% PÁGINA 5 DEL MANUSCRITO
+% ==============================================================================
+\newpage
+\section{El Cristianismo en Hispania y su Legado Cultural \hfill\normalfont\small\color{gray}[Pág. 5]}
+
+\begin{headerbox}
+  \begin{center}
+    \Large\bfseries\color{romaRed!90!black}
+    «Solo la Iglesia logra sobrevivir a la caída del Imperio romano»
+  \end{center}
+  \vskip 2pt
+  \centering\small\itshape
+  Por esta razón de pervivencia institucional e ideológica, la Iglesia desempeñará un papel de extraordinaria trascendencia en la gestación y desarrollo futuro de la \textbf{cultura europea y occidental}.
+\end{headerbox}
+
+\subsection{La Cristianización de la Península Ibérica}
+\begin{itemize}
+  \item \textbf{Pronta difusión y tradición apostólica:} La nueva fe penetra muy tempranamente en Hispania, vinculada por la tradición cristiana a la prédica del \textbf{Apóstol Santiago el Mayor}.
+  \item \textbf{Etapa martirial:} Período marcado por \textbf{violentas persecuciones} imperiales en las ciudades hispanorromanas (dejando un nutrido santoral de mártires locales).
+  \item \textbf{Impacto humanizador sobre las leyes:}
+  \begin{itemize}
+    \item \textbf{Humaniza la aplicación de la legislación romana} clásica (suavizando el trato servil y atemperando penas).
+    \item Promueve y busca activamente una \textbf{mayor inclusión e integración} social de toda la población hispana.
+  \end{itemize}
+\end{itemize}
+
+\subsection{Cultura y Arte Cristiano Primitivo en Hispania}
+La impronta cristiana transformó las artes plásticas y las letras peninsulares:
+
+\begin{description}
+  \item[\textbf{Arquitectura:}]
+  \textbf{La basílica romana} civil se transforma y adopta como espacio canónico para el templo y las asambleas litúrgicas cristianas (modelo de planta basilical adaptado al culto).
+
+  \item[\textbf{Escultura:}]
+  \begin{itemize}
+    \item \textbf{Decadencia material inicial:} La escultura monumental en bulto redondo decae ostensiblemente ante el temor teológico a la \textbf{idolatría pagana}.
+    \item \textbf{Morfología formal:} Se torna en un arte formalmente \textbf{más tosco} y marcadamente \textbf{más hierático} (abandonando el virtuosismo naturalista clásico).
+    \item \textbf{Contrapeso espiritual:}
+    \[
+      \text{\textbf{Pero:}}\quad \begin{cases}
+        \textbf{Mayor misticismo.} \\
+        \textbf{Profundo simbolismo religioso} \text{ (crismones, sarcófagos paleocristianos, peces, palmas).}
+      \end{cases}
+    \]
+  \end{itemize}
+
+  \item[\textbf{Poesía Cristiana:}]
+  Destaca de forma descollante la figura de \textbf{Aurelio Prudencio} (nacido en Calahorra / Hispania Tarraconense):
+  \begin{subbox}
+    \begin{itemize}
+      \item Aclamado unánimemente como \textbf{el mejor poeta cristiano de la Antigüedad clásica}.
+      \item Consiguió aunar la métrica y belleza del verso lírico latino con el fervor dogmático y espiritual del cristianismo.
+      \item \textbf{Pervivencia litúrgica:} Muchos de sus poemas e himnos sacros continúan formando parte viva de la \textbf{liturgia católica} hasta el día de hoy (como en el \textit{Liber Cathemerinon} y el \textit{Peristephanon}).
+    \end{itemize}
+  \end{subbox}
+\end{description}
+
+\vspace{1.5cm}
+\begin{center}
+  \rule{0.4\linewidth}{0.4pt}\\[6pt]
+  {\footnotesize\color{gray}\textsc{Fin de la Transcripción --- Capítulo 2: Roma y la Romanización de la Península}}
+\end{center}
+
+\end{document}

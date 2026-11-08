@@ -58,6 +58,7 @@ def to_schema(item: ComposedItem) -> QueueItem:
         category=item.category,
         active_weaknesses=item.active_weaknesses,
         weakness_history=item.weakness_history,
+        failure_reminder=item.failure_reminder,
         deck_documentation=item.deck_documentation,
         deck_thematic_nature=item.deck_thematic_nature,
         deck_source_documents=item.deck_source_documents,
@@ -65,6 +66,18 @@ def to_schema(item: ComposedItem) -> QueueItem:
         card_thematic_nature=item.card_thematic_nature,
         card_source_documents=item.card_source_documents,
         lexicon_glosses=item.lexicon_glosses,
+        position=item.position,
+        stability=item.stability,
+        retrievability=item.retrievability,
+        fsrs_difficulty=item.fsrs_difficulty,
+        last_grade=item.last_grade,
+        review_count=item.review_count,
+        lapses=item.lapses,
+        is_schema_checkpoint=item.is_schema_checkpoint,
+        spatial_x=item.spatial_x,
+        spatial_y=item.spatial_y,
+        spatial_locus=item.spatial_locus,
+        mnemonic_vignette=item.mnemonic_vignette,
     )
 
 

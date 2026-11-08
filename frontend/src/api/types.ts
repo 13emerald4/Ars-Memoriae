@@ -111,6 +111,8 @@ export interface QueueItem {
   grading_profile: string | null
   note_id: string | null
   occlusion: OcclusionPayload | null
+  image?: string | null
+  back_image?: string | null
   references: CardReference[]
   starter_code?: string | null
   starter_tests?: string | null
@@ -123,6 +125,7 @@ export interface QueueItem {
   category?: string | null
   active_weaknesses?: string[]
   weakness_history?: Array<Record<string, any>>
+  failure_reminder?: string | null
   deck_documentation?: string | null
   deck_thematic_nature?: string | null
   deck_source_documents?: Array<Record<string, any>>
@@ -130,6 +133,18 @@ export interface QueueItem {
   card_thematic_nature?: string | null
   card_source_documents?: Array<Record<string, any>>
   lexicon_glosses?: LexiconGlossItem[]
+  position?: number | null
+  stability?: number | null
+  retrievability?: number | null
+  fsrs_difficulty?: number | null
+  last_grade?: string | null
+  review_count?: number
+  lapses?: number
+  is_schema_checkpoint?: boolean
+  spatial_x?: number | null
+  spatial_y?: number | null
+  spatial_locus?: string | null
+  mnemonic_vignette?: string | null
 }
 
 export interface LexiconGlossItem {
@@ -270,6 +285,9 @@ export interface User {
   tutorial_completed?: boolean
   /** IANA zone for the study-day boundary; null until first set. */
   timezone?: string | null
+  enable_schema_checkpoints?: boolean
+  enable_prompt_mutation?: boolean
+  enable_prediction_mode?: boolean
 }
 
 export interface Deck {
@@ -417,11 +435,19 @@ export interface Card {
   tags: string[]
   front: string
   back: string
+  image?: string | null
+  back_image?: string | null
   occlusion: OcclusionPayload | null
   documentation?: string | null
   thematic_nature?: string | null
   source_documents?: Array<Record<string, any>>
   lexicon_glosses?: LexiconGlossItem[]
+  position?: number | null
+  is_schema_checkpoint?: boolean
+  spatial_x?: number | null
+  spatial_y?: number | null
+  spatial_locus?: string | null
+  mnemonic_vignette?: string | null
 }
 
 export interface CardReviewLogItem {
@@ -527,12 +553,22 @@ export interface Stats {
 }
 
 export interface JsonImportNote {
-  kind?: 'basic' | 'cloze'
+  kind?: 'basic' | 'cloze' | 'code'
+  card_type?: string
   front?: string
   back?: string
   cloze_text?: string
+  image?: string
+  back_image?: string
   tags?: string[]
   priority?: number
+  quote?: string
+  locator?: string
+  source_title?: string
+  starter_code?: string
+  starter_tests?: string
+  time_complexity?: string
+  space_complexity?: string
 }
 
 export interface JsonImportRequest {
@@ -865,13 +901,21 @@ export interface RecentLexiconItem {
 export interface QwenCoderModelOption {
   id: string
   name: string
-  size: '7B' | '3B' | '1.5B'
+  size: '9B' | '7B' | '3B' | '1.5B' | string
   vramApprox: string
   badge: string
   desc: string
 }
 
 export const ALLOWED_QWEN_CODER_MODELS: QwenCoderModelOption[] = [
+  {
+    id: 'qwen3.5:9b',
+    name: 'Qwen 3.5 9B (Q4_K_M)',
+    size: '9B',
+    vramApprox: '~5.3 GB',
+    badge: 'Advanced / Multimodal',
+    desc: 'Dense hybrid reasoning & multimodal evaluation',
+  },
   {
     id: 'qwen2.5-coder:7b',
     name: 'Qwen 2.5 Coder 7B',
@@ -901,8 +945,11 @@ export const ALLOWED_QWEN_CODER_MODELS: QwenCoderModelOption[] = [
 export function isAllowedQwenCoderModel(modelName: string): boolean {
   if (!modelName) return false
   const m = modelName.toLowerCase().trim()
-  if (!m.includes('qwen2.5-coder')) return false
   if (m.includes('embed') || m.includes('rerank')) return false
+  if (m.includes('qwen3.5') || m.includes('qwen-3.5')) {
+    return /(?:^|[:\-_])(9b)(?:[:\-_]|$)/i.test(m)
+  }
+  if (!m.includes('qwen2.5-coder')) return false
   return /(?:^|[:\-_])(7b|3b|1\.5b)(?:[:\-_]|$)/i.test(m)
 }
 
@@ -1050,5 +1097,107 @@ export interface AskDeckQuestionResponse {
   model_used: string
   available_models?: string[]
 }
+
+
+// ── Neuroscience Enhancements (§Neuroscience) ─────────────────────────────────
+
+export interface ConceptEdge {
+  id: string
+  source_card_id: string
+  target_card_id: string
+  relationship_type: string
+  weight: number
+  created_at: string
+}
+
+export interface GraphNode {
+  id: string
+  card_id: string
+  title: string
+  deck_id: string
+  deck_name: string
+  state: string
+  is_schema_checkpoint: boolean
+  spatial_x: number | null
+  spatial_y: number | null
+  spatial_locus: string | null
+  activation: number
+}
+
+export interface GraphEdge {
+  id: string
+  source: string
+  target: string
+  relationship_type: string
+  weight: number
+}
+
+export interface ConceptGraph {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+  total_nodes: number
+  total_edges: number
+}
+
+export interface SpreadingActivationNode {
+  card_id: string
+  title: string
+  deck_name: string
+  activation: number
+  path_depth: number
+  relationship_to_source?: string | null
+}
+
+export interface SpreadingActivationResponse {
+  source_card_id: string
+  source_title: string
+  activated_nodes: SpreadingActivationNode[]
+}
+
+export interface MutatePromptResponse {
+  card_id: string
+  original_front: string
+  mutated_prompt: string
+  mutation_type: string
+  model_used: string | null
+}
+
+export interface GenerateMnemonicResponse {
+  card_id: string
+  mnemonic_vignette: string
+  model_used: string | null
+}
+
+export interface PretestPredictionResponse {
+  card_id: string
+  prediction: string
+  reference_answer: string
+  confidence: number
+  is_accurate: boolean
+  feedback: string
+  high_confidence_error: boolean
+}
+
+export interface ContrastDrillResponse {
+  pair_id: string
+  concept_a_title: string
+  concept_b_title: string
+  front_a: string
+  back_a: string
+  front_b: string
+  back_b: string
+  discriminative_challenge: string
+  key_distinction: string
+  divergent_conditions: Array<{ condition: string; choice_a: string; choice_b: string }>
+}
+
+export interface CardNeuroPropsUpdate {
+  is_schema_checkpoint?: boolean | null
+  spatial_x?: number | null
+  spatial_y?: number | null
+  spatial_locus?: string | null
+  mnemonic_vignette?: string | null
+}
+
 
 

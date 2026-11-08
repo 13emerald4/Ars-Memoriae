@@ -145,21 +145,22 @@ ALLOWED_QWEN_CODER_SIZES: tuple[str, ...] = ("7b", "3b", "1.5b")
 
 
 def is_allowed_qwen_coder_model(model_name: str | None) -> bool:
-    """Returns True only for quantized Qwen 2.5 Coder models in 7B, 3B, or 1.5B sizes."""
+    """Returns True for approved local Qwen models (Qwen 2.5 Coder in 7B, 3B, 1.5B or Qwen 3.5 in 9B)."""
     if not model_name:
         return False
     m = model_name.lower().strip()
-    # Must be in the Qwen 2.5 Coder family
-    if "qwen2.5-coder" not in m:
-        return False
     # Never allow embeddings or rerankers
     if "embed" in m or "rerank" in m:
         return False
-    # Must match one of the permitted sizes (7b, 3b, 1.5b)
-    for size in ALLOWED_QWEN_CODER_SIZES:
-        pattern = rf"(^|[:\-_]){re.escape(size)}([:\-_]|$)"
-        if re.search(pattern, m):
-            return True
+    # Support Qwen 3.5 9B
+    if "qwen3.5" in m or "qwen-3.5" in m:
+        return bool(re.search(r"(^|[:\-_])(9b)([:\-_]|$)", m))
+    # Support Qwen 2.5 Coder
+    if "qwen2.5-coder" in m:
+        for size in ALLOWED_QWEN_CODER_SIZES:
+            pattern = rf"(^|[:\-_]){re.escape(size)}([:\-_]|$)"
+            if re.search(pattern, m):
+                return True
     return False
 
 
@@ -818,12 +819,15 @@ def _normalize_generated_card(c: dict) -> dict:
     """One model-proposed card, coerced to the shape the accept endpoints take."""
     is_cloze = c.get("kind") == "cloze" and bool(c.get("cloze_text"))
     is_code = c.get("kind") == "code" or bool(c.get("starter_code")) or bool(c.get("starter_tests"))
+    image = str(c.get("image") or c.get("image_url") or c.get("picture") or "").strip() or None
     item = {
         "kind": "cloze" if is_cloze else ("code" if is_code else "qa"),
         "front": str(c.get("front", "")).strip(),
         "back": str(c.get("back", "")).strip(),
         "cloze_text": str(c.get("cloze_text", "")).strip() or None,
     }
+    if image:
+        item["image"] = image
     if is_code:
         item["title"] = c.get("title")
         item["starter_code"] = c.get("starter_code")
@@ -833,11 +837,12 @@ def _normalize_generated_card(c: dict) -> dict:
 
 
 def parse_json(raw: str) -> dict:
-    """Tolerant JSON extraction — models wrap output in prose or code fences
+    """Tolerant JSON extraction — models wrap output in prose, think blocks, or code fences
     when structured output isn't enforced by the schema path."""
     if not raw:
         raise GradingUnavailable("empty response")
     text = raw.strip()
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
     fence = re.search(r"```(?:json)?\s*(.*?)```", text, re.S)
     if fence:
         text = fence.group(1).strip()

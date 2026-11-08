@@ -8,6 +8,7 @@ import type {
   LearningAnalytics,
   Leech,
   SisterPair,
+  ContrastDrillResponse,
   Stats as StatsData,
   YieldPoint,
 } from '../api/types'
@@ -214,7 +215,9 @@ function CognitiveFatigue({ fatigue }: { fatigue: LearningAnalytics['fatigue'] }
                 </div>
                 <span className="w-12 text-right tabular-nums text-slate-300">{accPct}%</span>
                 <span className="w-16 text-right tabular-nums text-slate-500">
-                  {pt.avg_latency_ms ? `${Math.round(pt.avg_latency_ms / 100) / 10}s` : '—'}
+                  {pt.avg_latency_ms
+                    ? `${Math.floor(Math.round(pt.avg_latency_ms / 1000) / 60)}m ${Math.round(pt.avg_latency_ms / 1000) % 60}s`
+                    : '—'}
                 </span>
               </div>
             )
@@ -613,6 +616,12 @@ function Interference() {
   const [summary, setSummary] = useState<string | null>(null)
   const [error, setError] = useState<unknown>(null)
 
+  // Dentate Gyrus Contrast Drill state
+  const [activeDrillPair, setActiveDrillPair] = useState<SisterPair | null>(null)
+  const [drillLoading, setDrillLoading] = useState(false)
+  const [drillData, setDrillData] = useState<ContrastDrillResponse | null>(null)
+  const [drillError, setDrillError] = useState<string | null>(null)
+
   const load = useCallback(async () => {
     try {
       setPairs(await api.sisterPairs())
@@ -624,6 +633,21 @@ function Interference() {
   useEffect(() => {
     void load()
   }, [load])
+
+  async function handleStartDrill(pair: SisterPair) {
+    setActiveDrillPair(pair)
+    setDrillLoading(true)
+    setDrillError(null)
+    setDrillData(null)
+    try {
+      const res = await api.getContrastDrill(pair.id)
+      setDrillData(res)
+    } catch (err: any) {
+      setDrillError(err?.message || 'Failed to generate contrast drill.')
+    } finally {
+      setDrillLoading(false)
+    }
+  }
 
   async function scan() {
     setScanning(true)
@@ -688,18 +712,160 @@ function Interference() {
                   ))}
                 </div>
 
-                <button
-                  className="btn mt-3 px-2.5 py-1 text-xs"
-                  onClick={async () => {
-                    await api.dismissPair(p.id)
-                    await load()
-                  }}
-                >
-                  These don't confuse me
-                </button>
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <button
+                    type="button"
+                    className="btn btn-primary px-3 py-1 text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    onClick={() => void handleStartDrill(p)}
+                  >
+                    <span>🔬</span>
+                    <span>Dentate Gyrus Contrast Drill</span>
+                  </button>
+                  <button
+                    className="btn px-2.5 py-1 text-xs"
+                    onClick={async () => {
+                      await api.dismissPair(p.id)
+                      await load()
+                    }}
+                  >
+                    These don't confuse me
+                  </button>
+                </div>
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Dentate Gyrus Pattern Separation Modal */}
+      {activeDrillPair && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="relative flex flex-col w-full max-w-2xl max-h-[90vh] rounded-2xl border border-sky-500/40 bg-[#0f1728] text-slate-100 shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-ink-line/80 bg-[#142034] px-5 py-3.5">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl">🔬</span>
+                <div>
+                  <h3 className="text-sm font-bold text-sky-200">
+                    Dentate Gyrus Pattern Separation Drill
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Contrastive minimal pair drill to sharpen orthogonal representations and abolish proactive interference
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveDrillPair(null)}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 text-lg cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+              {drillLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                  <Spinner />
+                  <p className="text-slate-300 text-xs font-medium">Synthesizing discriminative contrast challenge…</p>
+                  <p className="text-slate-500 text-[11px]">Computing orthogonal boundary conditions via local Ollama</p>
+                </div>
+              ) : drillError ? (
+                <div className="p-4 rounded-xl border border-rose-500/30 bg-rose-950/30 text-rose-300 space-y-1">
+                  <p className="font-semibold text-xs">Failed to load contrast drill</p>
+                  <p className="text-[11px] text-rose-400">{drillError}</p>
+                </div>
+              ) : drillData ? (
+                <>
+                  {/* The 2 Confusable Concepts */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="p-3.5 rounded-xl border border-sky-500/30 bg-[#131d2e] space-y-1.5">
+                      <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-mono text-[10px] uppercase font-bold tracking-wide">
+                        Concept A: {drillData.concept_a_title}
+                      </span>
+                      <p className="text-slate-200 text-xs font-semibold pt-1">{drillData.front_a}</p>
+                      <p className="text-slate-400 text-[11px] leading-relaxed">{drillData.back_a}</p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl border border-indigo-500/30 bg-[#171b30] space-y-1.5">
+                      <span className="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono text-[10px] uppercase font-bold tracking-wide">
+                        Concept B: {drillData.concept_b_title}
+                      </span>
+                      <p className="text-slate-200 text-xs font-semibold pt-1">{drillData.front_b}</p>
+                      <p className="text-slate-400 text-[11px] leading-relaxed">{drillData.back_b}</p>
+                    </div>
+                  </div>
+
+                  {/* Discriminative Challenge */}
+                  <div className="p-4 rounded-xl border border-amber-500/30 bg-[#211a12]/50 space-y-2">
+                    <div className="flex items-center gap-1.5 text-amber-300 font-semibold text-xs">
+                      <span>⚡</span>
+                      <span>Discriminative Challenge (Where Confusions Happen)</span>
+                    </div>
+                    <p className="text-slate-100 text-xs sm:text-sm font-medium leading-relaxed">
+                      {drillData.discriminative_challenge}
+                    </p>
+                  </div>
+
+                  {/* Key Distinction Boundary Rule */}
+                  <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-[#0f241d]/50 space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-emerald-300 font-semibold text-xs">
+                      <span>🔑</span>
+                      <span>Orthogonal Boundary Condition</span>
+                    </div>
+                    <p className="text-emerald-100 text-xs leading-relaxed">
+                      {drillData.key_distinction}
+                    </p>
+                  </div>
+
+                  {/* Divergent Conditions Interactive Drill */}
+                  {drillData.divergent_conditions && drillData.divergent_conditions.length > 0 && (
+                    <div className="space-y-3 pt-2 border-t border-ink-line/60">
+                      <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                        <span>🎯</span>
+                        <span>Boundary Divergence Conditions</span>
+                      </h4>
+                      <div className="space-y-3">
+                        {drillData.divergent_conditions.map((dc, idx) => (
+                          <div key={idx} className="p-3.5 rounded-xl border border-ink-line/80 bg-[#141b29] space-y-2.5">
+                            <p className="text-slate-200 font-semibold text-xs">
+                              Scenario {idx + 1}: <span className="text-sky-300 font-normal">{dc.condition}</span>
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                              <div className="p-2.5 rounded-lg border border-sky-500/25 bg-sky-950/30 text-sky-200 space-y-1">
+                                <strong className="block text-[10px] text-sky-400 font-mono uppercase tracking-wider">
+                                  Under {drillData.concept_a_title}:
+                                </strong>
+                                <span className="text-[11px] leading-relaxed block">{dc.choice_a}</span>
+                              </div>
+                              <div className="p-2.5 rounded-lg border border-indigo-500/25 bg-indigo-950/30 text-indigo-200 space-y-1">
+                                <strong className="block text-[10px] text-indigo-400 font-mono uppercase tracking-wider">
+                                  Under {drillData.concept_b_title}:
+                                </strong>
+                                <span className="text-[11px] leading-relaxed block">{dc.choice_b}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end border-t border-ink-line/80 bg-[#142034] px-5 py-3">
+              <button
+                type="button"
+                onClick={() => setActiveDrillPair(null)}
+                className="btn px-4 py-1.5 text-xs font-medium cursor-pointer"
+              >
+                Close Drill
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </Section>

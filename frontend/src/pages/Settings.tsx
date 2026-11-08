@@ -39,6 +39,7 @@ export default function Settings() {
       <ErrorNote error={error} />
       <QwenCoderPanel user={user} onChange={refresh} />
       <MemoryChampionPanel user={user} onChange={refresh} />
+      <NeurosciencePanel user={user} onChange={refresh} />
       <CognitiveThemePanel />
       <TypographyPanel />
       <DisplayFocusPanel />
@@ -267,12 +268,12 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
             </div>
           )}
 
-          {/* Supported Quantized Qwen 2.5 Coder Specs */}
+          {/* Supported Local Quantized Qwen Models */}
           <div className="mt-4 pt-3 border-t border-ink-line space-y-2">
             <span className="text-xs font-semibold text-slate-300">
               Supported Models:
             </span>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
               {ALLOWED_QWEN_CODER_MODELS.map((opt) => {
                 const isInstalled = status?.models_installed?.some(
                   (im) => im.toLowerCase() === opt.id.toLowerCase() || im.toLowerCase().startsWith(opt.id.toLowerCase())
@@ -1393,6 +1394,188 @@ function NavigationModulesPanel({ user, onChange }: { user: User; onChange: () =
   )
 }
 
+function NeurosciencePanel({ user, onChange }: { user: User; onChange: () => Promise<void> }) {
+  const [savingSchema, setSavingSchema] = useState(false)
+  const [savingMutation, setSavingMutation] = useState(false)
+  const [savingPrediction, setSavingPrediction] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+
+  const toggleSchemaCheckpoints = async () => {
+    setSavingSchema(true)
+    setError(null)
+    try {
+      await api.updateMe({
+        enable_schema_checkpoints: user.enable_schema_checkpoints === false ? true : false,
+      })
+      await onChange()
+    } catch (err) {
+      setError(err)
+    } finally {
+      setSavingSchema(false)
+    }
+  }
+
+  const togglePromptMutation = async () => {
+    setSavingMutation(true)
+    setError(null)
+    try {
+      await api.updateMe({ enable_prompt_mutation: !user.enable_prompt_mutation })
+      await onChange()
+    } catch (err) {
+      setError(err)
+    } finally {
+      setSavingMutation(false)
+    }
+  }
+
+  const togglePredictionMode = async () => {
+    setSavingPrediction(true)
+    setError(null)
+    try {
+      await api.updateMe({ enable_prediction_mode: !user.enable_prediction_mode })
+      await onChange()
+    } catch (err) {
+      setError(err)
+    } finally {
+      setSavingPrediction(false)
+    }
+  }
+
+  return (
+    <Section
+      title="Neuroscience & Cognitive Optimization"
+      description="Biologically grounded memory mechanisms: Neocortical Schema Scaffolding, Engram Reconsolidation, and Prediction Error."
+    >
+      <div className="space-y-4">
+        {/* Schema Checkpoints Toggle */}
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-ink-line/60 bg-ink-soft/40 p-4">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm text-slate-200">
+                Schema Checkpoints (mPFC Scaffolding)
+              </span>
+              <span
+                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                  user.enable_schema_checkpoints !== false
+                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'
+                }`}
+              >
+                {user.enable_schema_checkpoints !== false ? 'Enabled' : 'Disabled'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400">
+              Prioritizes foundational mental model cards before detailed leaf items appear in the queue. Rooted in medial prefrontal cortex schema assimilation (Tse et al., van Kesteren et al.).
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={user.enable_schema_checkpoints !== false}
+            aria-label="Toggle Schema Checkpoints"
+            disabled={savingSchema}
+            onClick={toggleSchemaCheckpoints}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 ${
+              user.enable_schema_checkpoints !== false ? 'bg-sky-500' : 'bg-slate-700'
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                user.enable_schema_checkpoints !== false ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Prompt Mutation (Reconsolidation Variant Cueing) */}
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-ink-line/60 bg-ink-soft/40 p-4">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm text-slate-200">
+                Reconsolidation Variant Cueing
+              </span>
+              <span
+                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                  user.enable_prompt_mutation
+                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'
+                }`}
+              >
+                {user.enable_prompt_mutation ? 'Enabled' : 'Disabled'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400">
+              Enables dynamic orthogonal prompt mutation (counterfactual, adversarial, scenario) during the post-retrieval labile window to prevent superficial wording-overfitting.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={Boolean(user.enable_prompt_mutation)}
+            aria-label="Toggle Prompt Mutation"
+            disabled={savingMutation}
+            onClick={togglePromptMutation}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 ${
+              user.enable_prompt_mutation ? 'bg-sky-500' : 'bg-slate-700'
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                user.enable_prompt_mutation ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Pre-Test Hypothesis Mode (Prediction Error / RPE) */}
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-ink-line/60 bg-ink-soft/40 p-4">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm text-slate-200">
+                Pre-Test Prediction Mode (Dopaminergic RPE)
+              </span>
+              <span
+                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                  user.enable_prediction_mode
+                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'
+                }`}
+              >
+                {user.enable_prediction_mode ? 'Enabled' : 'Disabled'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400">
+              Requires a blind hypothesis before learning new cards or extracts. Refuted high-confidence guesses trigger dopaminergic plasticity and accelerate long-term retention.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={Boolean(user.enable_prediction_mode)}
+            aria-label="Toggle Pre-Test Prediction Mode"
+            disabled={savingPrediction}
+            onClick={togglePredictionMode}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 ${
+              user.enable_prediction_mode ? 'bg-sky-500' : 'bg-slate-700'
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                user.enable_prediction_mode ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        <ErrorNote error={error} />
+      </div>
+    </Section>
+  )
+}
+
 function CognitiveThemePanel() {
   const {
     themeMode,
@@ -1405,6 +1588,10 @@ function CognitiveThemePanel() {
     setEnableNightAutoShift,
     enableOledBlack,
     setEnableOledBlack,
+    enableGreyscaleFriendly,
+    setEnableGreyscaleFriendly,
+    simulateGreyscale,
+    setSimulateGreyscale,
   } = useTheme()
 
   return (
@@ -1519,6 +1706,100 @@ function CognitiveThemePanel() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Greyscale & High-Contrast Accessibility Mode Panel */}
+        <div className="rounded-2xl border border-ink-line bg-ink/60 p-4 transition-all">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">🔲</span>
+              <div>
+                <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                  <span>Greyscale &amp; High-Contrast Mode</span>
+                  {enableGreyscaleFriendly && (
+                    <span className="rounded-full bg-white/20 border border-white/40 px-2 py-0.5 text-[10px] font-semibold text-white">
+                      Active
+                    </span>
+                  )}
+                </h4>
+                <p className="text-xs text-slate-400">
+                  Enhanced visibility for monochrome displays, Windows/macOS greyscale filters, e-ink monitors, and high-contrast accessibility.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={enableGreyscaleFriendly}
+              onClick={() => setEnableGreyscaleFriendly(!enableGreyscaleFriendly)}
+              className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+                enableGreyscaleFriendly ? 'bg-white' : 'bg-slate-700'
+              }`}
+              title="Toggle Greyscale & High-Contrast UI Mode"
+            >
+              <span
+                className={`w-5 h-5 rounded-full absolute top-0.5 transition-transform ${
+                  enableGreyscaleFriendly ? 'left-5.5 bg-black' : 'left-0.5 bg-white'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-ink-line/50 text-xs">
+            <div className="space-y-1.5 text-slate-300">
+              <p className="font-semibold text-slate-200">How Greyscale Mode enhances visibility:</p>
+              <ul className="space-y-1 text-slate-400 text-[11px] list-disc list-inside">
+                <li>
+                  <strong className="text-slate-200">Token Diffs:</strong> Solid underline (—) and <span className="font-bold">✓</span> for recalled tokens vs. dashed underline (- -) and <span className="font-bold">✗</span> for missing/unmatched tokens.
+                </li>
+                <li>
+                  <strong className="text-slate-200">Borders:</strong> Elevated high-contrast outlines on cards, panes, code viewports, and dialogs.
+                </li>
+                <li>
+                  <strong className="text-slate-200">Active States:</strong> High-luminance solid indicators for selected tabs, grading buttons, and toggles.
+                </li>
+                <li>
+                  <strong className="text-slate-200">Typography:</strong> Boosted text luminance on secondary and muted descriptions to eliminate blur.
+                </li>
+              </ul>
+            </div>
+
+            <div className="rounded-xl border border-ink-line bg-ink-soft/60 p-3 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-slate-300">Simulate Greyscale View</span>
+                <button
+                  type="button"
+                  onClick={() => setSimulateGreyscale(!simulateGreyscale)}
+                  className={`px-2.5 py-1 rounded text-xs font-semibold transition cursor-pointer ${
+                    simulateGreyscale
+                      ? 'bg-white text-black border border-white'
+                      : 'bg-slate-800 text-slate-300 border border-slate-700 hover:text-white'
+                  }`}
+                  title="Apply 100% monochrome CSS filter in browser to preview"
+                >
+                  {simulateGreyscale ? 'Simulating (ON)' : 'Preview (OFF)'}
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                Turns on an in-browser 100% monochrome filter so you can verify contrast and pattern legibility even when your OS color filter is turned off.
+              </p>
+
+              {/* Live Mini Preview */}
+              <div className="pt-2 border-t border-ink-line/50">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1.5">Live Token Diff Preview:</span>
+                <div className="p-2 rounded bg-ink border border-ink-line text-xs font-mono flex flex-wrap gap-2 items-center">
+                  <mark className="rounded px-1.5 py-0.5 text-xs font-medium" title="Recalled">
+                    Recalled Term
+                  </mark>
+                  <mark className="rounded px-1.5 py-0.5 text-xs font-normal" title="Missing">
+                    Missing Term
+                  </mark>
+                  <span className="text-slate-400 text-xs">Punctuation &amp; context</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

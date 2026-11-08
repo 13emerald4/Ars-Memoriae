@@ -281,6 +281,14 @@ def detect_hardware() -> HardwareProfile:
             status="recommended" if recommended_size == "7b" else ("heavy" if (vram_gb and vram_gb >= 6.0) or ram_gb >= 16.0 else "too_large"),
             suitability="Maximum reasoning depth. Recommended for desktop GPUs with >= 12 GB VRAM or Apple Silicon with >= 16 GB RAM.",
         ),
+        ModelOptionInfo(
+            id="qwen3.5:9b",
+            name="Qwen 3.5 9B (Q4_K_M)",
+            size="9b",
+            vram_approx="~5.3 GB VRAM",
+            status="supported" if (vram_gb and vram_gb >= 7.5) or (is_apple_silicon and ram_gb >= 16.0) or ram_gb >= 24.0 else ("heavy" if (vram_gb and vram_gb >= 5.5) or ram_gb >= 16.0 else "too_large"),
+            suitability="Advanced dense multimodal foundation model with hybrid reasoning. Runs comfortably with Q4_K_M quantization on 8 GB+ VRAM or 16 GB+ unified memory.",
+        ),
     ]
 
     return HardwareProfile(

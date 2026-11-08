@@ -384,7 +384,7 @@ class TestReviewIntegration:
         assert body["cached"] is False
         # The response carries a latency note for the UI, but the grading call
         # itself never receives latency — the whole point of this change.
-        assert body["latency_note"] == "answered in 2s"
+        assert body["latency_note"] == "answered in 0m 2s"
         assert "latency_ms" not in seen_kwargs
 
         # §4.3: an identical resubmit must not burn a second API call.
@@ -452,7 +452,7 @@ class TestReviewIntegration:
         assert resp.json()["score"] is None
         # The note is informational and shows up on every fallback path too —
         # it isn't gated behind grading actually succeeding.
-        assert resp.json()["latency_note"] == "answered in under a second"
+        assert resp.json()["latency_note"] == "answered in 0m 0s"
 
     async def test_resubmitting_with_a_model_reuses_or_replaces_the_cache(
         self, auth_client, monkeypatch
@@ -548,14 +548,14 @@ class TestLatencyNote:
         assert format_latency(-500) is None
 
     def test_sub_second(self):
-        assert format_latency(400) == "answered in under a second"
+        assert format_latency(400) == "answered in 0m 0s"
 
     def test_whole_seconds(self):
-        assert format_latency(2_400) == "answered in 2s"
-        assert format_latency(59_000) == "answered in 59s"
+        assert format_latency(2_400) == "answered in 0m 2s"
+        assert format_latency(59_000) == "answered in 0m 59s"
 
     def test_minutes_with_and_without_remainder(self):
-        assert format_latency(60_000) == "answered in 1m"
+        assert format_latency(60_000) == "answered in 1m 0s"
         assert format_latency(75_000) == "answered in 1m 15s"
         assert format_latency(125_000) == "answered in 2m 5s"
 

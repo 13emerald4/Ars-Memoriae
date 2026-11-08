@@ -178,3 +178,128 @@ html[data-oled='true'] {
     color: #ff3b6b;
   }
 }
+
+/* ==========================================================================
+   Greyscale & High-Contrast Accessibility Mode
+   Optimized for users on monochrome/greyscale OS display filters, e-ink,
+   and high-contrast accessibility.
+   ========================================================================== */
+
+/* In-browser greyscale preview simulation */
+html[data-simulate-greyscale='true'] {
+  filter: grayscale(100%);
+}
+
+html[data-greyscale='true'] {
+  --theme-border: #64748b !important;
+}
+
+/* Elevated border visibility on cards and containers */
+html[data-greyscale='true'] .card {
+  border-color: #64748b !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+html[data-greyscale='true'] .border-ink-line {
+  border-color: #52525b !important;
+}
+
+html[data-greyscale='true'] .border-ink-line\/80,
+html[data-greyscale='true'] .border-ink-line\/60,
+html[data-greyscale='true'] .border-ink-line\/40 {
+  border-color: #52525b !important;
+}
+
+/* Elevated text contrast for secondary, muted, and slate text */
+html[data-greyscale='true'] .text-slate-500 {
+  color: #cbd5e1 !important;
+}
+
+html[data-greyscale='true'] .text-slate-400 {
+  color: #e2e8f0 !important;
+}
+
+/* Distinct Solid vs Dashed Underline Patterns for Token Diffs */
+/* Recalled / Matched: Solid high-contrast white underline with clear background and bold checkmark */
+html[data-greyscale='true'] mark[title='Recalled'],
+html[data-greyscale='true'] mark[title='Matches reference'] {
+  background-color: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  border-bottom: 2.5px solid #ffffff !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+}
+
+html[data-greyscale='true'] mark[title='Recalled']::before,
+html[data-greyscale='true'] mark[title='Matches reference']::before {
+  content: '✓ ';
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+/* Missing / Unmatched: Distinctive Dashed underline with dark textured background and cross prefix */
+html[data-greyscale='true'] mark[title='Missing'],
+html[data-greyscale='true'] mark[title='Missing from your answer'],
+html[data-greyscale='true'] mark[title='Not in reference'] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #e4e4e7 !important;
+  border-bottom: 2.5px dashed #a1a1aa !important;
+  font-weight: normal !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+}
+
+html[data-greyscale='true'] mark[title='Missing']::before,
+html[data-greyscale='true'] mark[title='Missing from your answer']::before,
+html[data-greyscale='true'] mark[title='Not in reference']::before {
+  content: '✗ ';
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+/* Code Diff Segments in CodeEditor */
+html[data-greyscale='true'] .diff-segment-matched {
+  background-color: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  border-bottom: 2.5px solid #ffffff !important;
+  font-weight: 700 !important;
+}
+
+html[data-greyscale='true'] .diff-segment-missing {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #d4d4d8 !important;
+  border-bottom: 2.5px dashed #a1a1aa !important;
+  font-weight: normal !important;
+}
+
+/* High-contrast active tab and button states */
+html[data-greyscale='true'] .btn-primary {
+  border-color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+html[data-greyscale='true'] .btn {
+  border-color: #64748b !important;
+}
+
+/* Status Dots & Badge Indicators */
+html[data-greyscale='true'] .bg-emerald-400 {
+  background-color: #ffffff !important;
+  border: 1.5px solid #ffffff !important;
+}
+
+html[data-greyscale='true'] .bg-amber-400 {
+  background-color: #3f3f46 !important;
+  border: 1.5px dashed #ffffff !important;
+}
+
+html[data-greyscale='true'] .text-emerald-300 {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+html[data-greyscale='true'] .text-amber-300 {
+  color: #d4d4d8 !important;
+  font-weight: 500 !important;
+}

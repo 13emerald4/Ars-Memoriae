@@ -26,8 +26,13 @@ from app.routers.deps import current_user, parse_uuid
 from app.schemas.review import (
     ConfirmReviewRequest,
     ConfirmReviewResponse,
+    GenerateMnemonicResponse,
     Grade,
     LessonOut,
+    MutatePromptRequest,
+    MutatePromptResponse,
+    PretestPredictionRequest,
+    PretestPredictionResponse,
     RunReviewCodeRequest,
     SocraticLineHintRequest,
     SocraticLineHintResponse,
@@ -38,7 +43,7 @@ from app.schemas.review import (
     SubmitAnswerResponse,
     WeaknessHintResponse,
 )
-from app.services import leech_service, lesson_service, stuck_service
+from app.services import leech_service, lesson_service, neuro_service, stuck_service
 from app.services.code_runner_service import run_code
 from app.services.fsrs_service import GRADE_TO_RATING, FSRSService
 from app.services.grading_service import (
@@ -97,12 +102,8 @@ def format_latency(latency_ms: int | None) -> str | None:
     if not latency_ms or latency_ms <= 0:
         return None
     seconds = latency_ms // 1000
-    if seconds < 1:
-        return "answered in under a second"
-    if seconds < 60:
-        return f"answered in {seconds}s"
     minutes, rem = divmod(seconds, 60)
-    return f"answered in {minutes}m {rem}s" if rem else f"answered in {minutes}m"
+    return f"answered in {minutes}m {rem}s"
 
 
 def _manual(
@@ -160,8 +161,13 @@ async def submit_answer(
         and body.latency_ms
         and body.latency_ms > user.automaticity_threshold_ms
     )
+    def _fmt_min_sec(ms: int) -> str:
+        s = ms // 1000
+        m, rem = divmod(s, 60)
+        return f"{m}m {rem}s"
+
     auto_note = (
-        f"Latency ({round(body.latency_ms / 1000.0, 1)}s) exceeded automaticity threshold ({round(user.automaticity_threshold_ms / 1000.0, 1)}s)."
+        f"Latency ({_fmt_min_sec(body.latency_ms)}) exceeded automaticity threshold ({_fmt_min_sec(user.automaticity_threshold_ms)})."
         if auto_exceeded and user.automaticity_threshold_ms
         else None
     )
@@ -727,3 +733,70 @@ async def run_card_code(
         timeout_sec=4.0,
     )
     return res
+
+
+# ── Neuroscience Review Operations ──────────────────────────────────────────
+
+
+@router.post("/{card_id}/mutate-prompt", response_model=MutatePromptResponse)
+async def mutate_card_prompt(
+    card_id: str,
+    body: MutatePromptRequest,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> MutatePromptResponse:
+    """Generates an orthogonal prompt variant for reconsolidation invariant generalization."""
+    card = await _owned_card(db, user, parse_uuid(card_id))
+    orig_front, mutated, model = await neuro_service.mutate_prompt(
+        db, user, card, mutation_type=body.mutation_type
+    )
+    return MutatePromptResponse(
+        card_id=str(card.id),
+        original_front=orig_front,
+        mutated_prompt=mutated,
+        mutation_type=body.mutation_type,
+        model_used=model,
+    )
+
+
+@router.post("/{card_id}/generate-mnemonic", response_model=GenerateMnemonicResponse)
+async def generate_card_mnemonic(
+    card_id: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GenerateMnemonicResponse:
+    """Synthesizes a bizarre, sensory-rich 2-sentence visual mnemonic vignette for this card."""
+    card = await _owned_card(db, user, parse_uuid(card_id))
+    vignette, model = await neuro_service.generate_mnemonic_vignette(db, user, card)
+    return GenerateMnemonicResponse(
+        card_id=str(card.id),
+        mnemonic_vignette=vignette,
+        model_used=model,
+    )
+
+
+@router.post("/{card_id}/predict", response_model=PretestPredictionResponse)
+async def submit_pretest_prediction(
+    card_id: str,
+    body: PretestPredictionRequest,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> PretestPredictionResponse:
+    """Evaluates a learner's pre-test hypothesis and logs prediction error (RPE)."""
+    card = await _owned_card(db, user, parse_uuid(card_id))
+    result = await neuro_service.evaluate_pretest_prediction(
+        db, user, card, prediction=body.prediction, confidence=body.confidence
+    )
+    db.add(
+        ReviewLog(
+            card_id=card.id,
+            final_grade="good" if result["is_accurate"] else "again",
+            typed_answer=body.prediction,
+            user_confidence=body.confidence,
+            is_pretest_prediction=True,
+            prediction_error_detected=result["high_confidence_error"],
+        )
+    )
+    await db.commit()
+    return PretestPredictionResponse(**result)
+

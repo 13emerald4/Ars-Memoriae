@@ -471,22 +471,18 @@ export function KnowledgeTree({
             </svg>
           </button>
 
-          {/* Inspect Cards */}
-          {selectedNode?.deckId && onOpenCards && (
+          {/* Inspect / Browse Cards */}
+          {selectedNode && onOpenCards && (
             <button
               type="button"
-              className="p-1.5 rounded-md hover:bg-slate-800 text-slate-300 hover:text-white transition"
-              title="Inspect cards"
+              className="px-2 py-1 rounded-md border border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/20 text-sky-200 hover:text-white transition flex items-center gap-1.5 text-xs font-medium cursor-pointer shadow-xs"
+              title={`Browse all cards in ${selectedNode.title}`}
               onClick={() => onOpenCards(selectedNode)}
             >
-              <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
-                <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                <path
-                  fillRule="evenodd"
-                  d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                  clipRule="evenodd"
-                />
+              <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-sky-300">
+                <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
               </svg>
+              <span>Browse Cards</span>
             </button>
           )}
 
@@ -712,10 +708,59 @@ export function KnowledgeTree({
               <span className="font-semibold truncate">
                 {rootTitle}
               </span>
-              <span className="text-xs text-slate-400 font-mono tabular-nums">
+              <span
+                onClick={(e) => {
+                  if (onOpenCards) {
+                    e.stopPropagation()
+                    onOpenCards({
+                      id: '__root__',
+                      title: rootTitle,
+                      kind: 'root',
+                      parentId: null,
+                      elementCount: rootTotals.elements,
+                      dueCount: rootTotals.due,
+                      newCount: rootTotals.newCards,
+                      children: nodes,
+                    })
+                  }
+                }}
+                className={`text-xs font-mono tabular-nums px-1 py-0.5 rounded transition ${
+                  onOpenCards
+                    ? 'text-slate-400 hover:text-sky-300 hover:bg-sky-500/20 hover:ring-1 hover:ring-sky-500/40 cursor-pointer'
+                    : 'text-slate-400'
+                }`}
+                title={onOpenCards ? `Browse all ${rootTotals.elements} cards across all decks` : undefined}
+              >
                 ({rootTotals.elements})
               </span>
             </button>
+
+            {/* Quick jump to cards viewer button on Root */}
+            {onOpenCards && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onOpenCards({
+                    id: '__root__',
+                    title: rootTitle,
+                    kind: 'root',
+                    parentId: null,
+                    elementCount: rootTotals.elements,
+                    dueCount: rootTotals.due,
+                    newCount: rootTotals.newCards,
+                    children: nodes,
+                  })
+                }}
+                className="p-1 rounded text-slate-400 hover:text-sky-300 hover:bg-sky-500/15 transition opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0 cursor-pointer"
+                title={`Browse all ${rootTotals.elements} cards across all decks`}
+                aria-label="Browse all cards across all decks"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                  <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+                </svg>
+              </button>
+            )}
 
             {/* Distribution bars on Root */}
             {showBars && rootStats.total_cards > 0 && (
@@ -790,6 +835,7 @@ export function KnowledgeTree({
                     onDragOver={handleDragOverNode}
                     onDrop={handleDropOnNode}
                     onStudy={handleStudyAction}
+                    onOpenCards={onOpenCards}
                   />
                 ))}
             </div>
@@ -815,6 +861,19 @@ export function KnowledgeTree({
         </div>
 
         <div className="flex items-center gap-2">
+          {onOpenCards && (
+            <button
+              type="button"
+              onClick={() => onOpenCards(selectedNode)}
+              className="flex items-center gap-1.5 rounded-md border border-sky-500/40 bg-sky-500/15 hover:bg-sky-500/25 px-2.5 py-1 text-xs font-semibold text-sky-200 transition shadow-xs cursor-pointer"
+              title={`Browse all cards in ${selectedNode.title}`}
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-sky-300">
+                <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+              </svg>
+              <span>Browse All Cards</span>
+            </button>
+          )}
           {selectedNode.newCount !== undefined && selectedNode.newCount > 0 && (
             <button
               type="button"
@@ -941,6 +1000,34 @@ export function KnowledgeTree({
                   Review all cards consecutively from easiest to hardest, then FSRS takes over.
                 </p>
               </button>
+
+              {/* Option 4: Browse All Cards */}
+              {onOpenCards && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const node = studyModalNode
+                    setStudyModalNode(null)
+                    onOpenCards(node)
+                  }}
+                  className="w-full text-left p-3.5 rounded-xl border border-teal-500/30 bg-teal-500/10 hover:bg-teal-500/20 hover:border-teal-400 transition group cursor-pointer"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-sm text-teal-200 group-hover:text-teal-100 flex items-center gap-2">
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-teal-300">
+                        <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+                      </svg>
+                      Browse All Cards (Inspector & Notes)
+                    </span>
+                    <span className="rounded-full bg-teal-500/20 px-2 py-0.5 text-[10px] font-mono text-teal-300">
+                      {studyModalNode.elementCount} cards
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Explore all cards, question prompts, reference solutions, hints, and comments in this deck without starting a timed review session.
+                  </p>
+                </button>
+              )}
             </div>
 
             <div className="flex justify-end pt-1">
@@ -980,6 +1067,7 @@ interface KnowledgeTreeNodeProps {
   onDragOver: (node: KnowledgeTreeNode, e: React.DragEvent) => void
   onDrop: (node: KnowledgeTreeNode, e: React.DragEvent) => void
   onStudy?: (node: KnowledgeTreeNode, mode: 'standard' | 'unseen' | 'all_run' | 'persist_all') => void
+  onOpenCards?: (node: KnowledgeTreeNode) => void
 }
 
 function KnowledgeTreeNodeComponent({
@@ -1002,6 +1090,7 @@ function KnowledgeTreeNodeComponent({
   onDragOver,
   onDrop,
   onStudy,
+  onOpenCards,
 }: KnowledgeTreeNodeProps) {
   const isSelected = selectedId === node.id
   const hasChildren = node.children && node.children.length > 0
@@ -1098,10 +1187,41 @@ function KnowledgeTreeNodeComponent({
           </span>
 
           {/* Count */}
-          <span className="text-[11px] text-slate-400 font-mono tabular-nums shrink-0">
+          <span
+            onClick={(e) => {
+              if (onOpenCards) {
+                e.stopPropagation()
+                onOpenCards(node)
+              }
+            }}
+            className={`text-[11px] font-mono tabular-nums shrink-0 px-1 py-0.5 rounded transition ${
+              onOpenCards
+                ? 'text-slate-400 hover:text-sky-300 hover:bg-sky-500/20 hover:ring-1 hover:ring-sky-500/40 cursor-pointer'
+                : 'text-slate-400'
+            }`}
+            title={onOpenCards ? `Browse all ${node.elementCount} cards in ${node.title}` : undefined}
+          >
             ({node.elementCount})
           </span>
         </button>
+
+        {/* Quick jump to cards viewer button */}
+        {onOpenCards && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onOpenCards(node)
+            }}
+            className="p-1 rounded text-slate-400 hover:text-sky-300 hover:bg-sky-500/15 transition opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0 cursor-pointer"
+            title={`Browse all ${node.elementCount} cards in ${node.title}`}
+            aria-label={`Browse cards in ${node.title}`}
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+              <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+            </svg>
+          </button>
+        )}
 
         {/* Inline Compact Distribution Bars */}
         {showBars && node.stats && node.stats.total_cards > 0 && (
@@ -1191,6 +1311,7 @@ function KnowledgeTreeNodeComponent({
                 onDragOver={onDragOver}
                 onDrop={onDrop}
                 onStudy={onStudy}
+                onOpenCards={onOpenCards}
               />
             ))}
         </div>

@@ -87,6 +87,8 @@ class ComposedItem:
     estimated_seconds: float = 12.0
     note_id: str | None = None
     occlusion: dict | None = None
+    image: str | None = None
+    back_image: str | None = None
     references: list[dict] = field(default_factory=list)
     starter_code: str | None = None
     starter_tests: str | None = None
@@ -99,6 +101,7 @@ class ComposedItem:
     category: str | None = None
     active_weaknesses: list[str] = field(default_factory=list)
     weakness_history: list[dict] = field(default_factory=list)
+    failure_reminder: str | None = None
     deck_documentation: str | None = None
     deck_thematic_nature: str | None = None
     deck_source_documents: list = field(default_factory=list)
@@ -106,6 +109,20 @@ class ComposedItem:
     card_thematic_nature: str | None = None
     card_source_documents: list = field(default_factory=list)
     lexicon_glosses: list = field(default_factory=list)
+    position: int | None = None
+    # Card Progression & Memory Metrics
+    stability: float | None = None
+    retrievability: float | None = None
+    fsrs_difficulty: float | None = None
+    last_grade: str | None = None
+    review_count: int = 0
+    lapses: int = 0
+    # Neuroscience enhancements
+    is_schema_checkpoint: bool = False
+    spatial_x: float | None = None
+    spatial_y: float | None = None
+    spatial_locus: str | None = None
+    mnemonic_vignette: str | None = None
 
 
 @dataclass
@@ -417,6 +434,8 @@ def _card_item(card: Card, effective: float, seconds: float) -> ComposedItem:
         occlusion=occlusion_payload(fv, card.template_slot)
         if kind == "image_occlusion"
         else None,
+        image=str(fv.get("Image", "") or fv.get("image", "")).strip() or None,
+        back_image=str(fv.get("BackImage", "") or fv.get("back_image", "")).strip() or None,
         starter_code=fv.get("starter_code"),
         starter_tests=fv.get("starter_tests"),
         test_cases=fv.get("test_cases") or [],
@@ -435,6 +454,15 @@ def _card_item(card: Card, effective: float, seconds: float) -> ComposedItem:
         card_thematic_nature=card.thematic_nature or (card.deck.thematic_nature if card.deck else None),
         card_source_documents=list(card.source_documents or (card.deck.source_documents if card.deck else [])),
         lexicon_glosses=list(card.lexicon_glosses or []),
+        position=card.position,
+        stability=card.stability,
+        fsrs_difficulty=card.difficulty,
+        lapses=card.lapse_count or 0,
+        is_schema_checkpoint=getattr(card, "is_schema_checkpoint", False),
+        spatial_x=getattr(card, "spatial_x", None),
+        spatial_y=getattr(card, "spatial_y", None),
+        spatial_locus=getattr(card, "spatial_locus", None),
+        mnemonic_vignette=getattr(card, "mnemonic_vignette", None),
     )
 
 
@@ -477,6 +505,144 @@ async def attach_references(db: AsyncSession, items: list[ComposedItem]) -> None
     for item in items:
         if item.kind == "card":
             item.references = by_card.get(item.id, [])
+
+
+async def attach_failure_memories(db: AsyncSession, items: list[ComposedItem]) -> None:
+    """Populate concise failure reminder for each card with prior failure memory.
+
+    Tiers of memory inspected:
+      1. card.active_weaknesses: If present, format the primary active flaw.
+      2. card.weakness_history: If present, extract the latest identified weakness.
+      3. ReviewLog: Query recent review logs for 'again'/'hard' reviews with critique or weaknesses.
+    """
+    card_items = [i for i in items if i.kind == "card"]
+    if not card_items:
+        return
+
+    cards_needing_log_lookup: list[uuid.UUID] = []
+    card_by_uuid: dict[uuid.UUID, ComposedItem] = {}
+
+    for item in card_items:
+        uid = _as_uuid(item.id)
+        card_by_uuid[uid] = item
+
+        # Tier 1: Check active_weaknesses
+        if item.active_weaknesses:
+            w = str(item.active_weaknesses[0]).strip().rstrip(".")
+            if len(item.active_weaknesses) > 1:
+                item.failure_reminder = f"Where you stumbled: {w} (+{len(item.active_weaknesses) - 1} other flaw)"
+            else:
+                item.failure_reminder = f"Where you stumbled: {w}"
+            continue
+
+        # Tier 2: Check weakness_history
+        if item.weakness_history:
+            found = False
+            for entry in reversed(item.weakness_history):
+                identified = entry.get("weaknesses_identified") or entry.get("persistent_weaknesses") or []
+                if identified and isinstance(identified, list) and str(identified[0]).strip():
+                    w = str(identified[0]).strip().rstrip(".")
+                    item.failure_reminder = f"Recent stumbling block: {w}"
+                    found = True
+                    break
+            if found:
+                continue
+
+        cards_needing_log_lookup.append(uid)
+
+    if not cards_needing_log_lookup:
+        return
+
+    # Tier 3: Batch query the most recent failed review log (again/hard) for remaining cards
+    stmt = (
+        select(
+            ReviewLog.card_id,
+            ReviewLog.final_grade,
+            ReviewLog.weaknesses,
+            ReviewLog.llm_reasoning,
+        )
+        .where(
+            ReviewLog.card_id.in_(cards_needing_log_lookup),
+            ReviewLog.final_grade.in_(["again", "hard"]),
+        )
+        .order_by(ReviewLog.card_id, ReviewLog.reviewed_at.desc())
+    )
+    rows = (await db.execute(stmt)).all()
+
+    seen_cards: set[uuid.UUID] = set()
+    for card_id, final_grade, weaknesses, llm_reasoning in rows:
+        if card_id in seen_cards:
+            continue
+        seen_cards.add(card_id)
+        item = card_by_uuid.get(card_id)
+        if not item or item.failure_reminder:
+            continue
+
+        if weaknesses and isinstance(weaknesses, list) and len(weaknesses) > 0 and str(weaknesses[0]).strip():
+            w = str(weaknesses[0]).strip().rstrip(".")
+            item.failure_reminder = f"Previous difficulty: {w}"
+        elif llm_reasoning and llm_reasoning.strip():
+            # Preserve complete review reasoning; wrap lines cleanly
+            clean_reason = " ".join(line.strip() for line in llm_reasoning.strip().splitlines() if line.strip())
+            if len(clean_reason) > 350:
+                clean_reason = clean_reason[:347].rsplit(" ", 1)[0].rstrip(",.;:") + "..."
+            item.failure_reminder = f"Last review note: {clean_reason}"
+        elif final_grade == "again":
+            item.failure_reminder = "Lapsed on previous review."
+
+
+async def attach_card_progression(
+    db: AsyncSession, items: list[ComposedItem], cards: list[Card]
+) -> None:
+    """Enrich ComposedItems with review counts, latest rating, and live FSRS retrievability."""
+    if not items or not cards:
+        return
+    card_ids = [c.id for c in cards]
+    if not card_ids:
+        return
+
+    count_rows = (
+        await db.execute(
+            select(ReviewLog.card_id, func.count(ReviewLog.id))
+            .where(ReviewLog.card_id.in_(card_ids))
+            .group_by(ReviewLog.card_id)
+        )
+    ).all()
+    counts_by_id = dict(count_rows)
+
+    latest_logs = (
+        await db.scalars(
+            select(ReviewLog)
+            .where(ReviewLog.card_id.in_(card_ids))
+            .order_by(ReviewLog.reviewed_at.desc())
+        )
+    ).all()
+    latest_grade_by_id: dict[uuid.UUID, str] = {}
+    for log in latest_logs:
+        if log.card_id not in latest_grade_by_id:
+            latest_grade_by_id[log.card_id] = log.final_grade
+
+    now = datetime.now(UTC)
+    for item, c in zip(items, cards):
+        item.review_count = counts_by_id.get(c.id, 0)
+        item.last_grade = latest_grade_by_id.get(c.id)
+        if c.stability is not None and c.last_review is not None and c.state == "review":
+            c_last = c.last_review if c.last_review.tzinfo else c.last_review.replace(tzinfo=UTC)
+            delta_days = (now - c_last).total_seconds() / 86400.0
+            if delta_days >= 0 and c.stability > 0:
+                ret = 0.9 ** (delta_days / c.stability)
+                item.retrievability = round(min(1.0, max(0.0, ret)), 4)
+            else:
+                item.retrievability = 1.0
+        elif c.state == "review":
+            item.retrievability = 1.0
+        elif c.state == "learning":
+            reps = item.review_count or 1
+            item.retrievability = round(min(0.85, max(0.40, 0.45 + reps * 0.15)), 2)
+        elif c.state == "relearning":
+            item.retrievability = 0.35
+        else:
+            item.retrievability = 0.0
 
 
 def space_sisters(
@@ -632,11 +798,30 @@ async def compose_session(
     ir_total = await count_eligible_extracts(db, user, now, scope, locked_source_ids)
 
     # ── §9.2 ranking ────────────────────────────────────────────────────────
+    checkpoint_boost = 100.0 if getattr(user, "enable_schema_checkpoints", True) else 0.0
     ranked_due = sorted(
-        ((c, c.effective_priority + _overdue_boost(c, fsrs, now)) for c in due_cards),
+        (
+            (
+                c,
+                c.effective_priority
+                + _overdue_boost(c, fsrs, now)
+                + (checkpoint_boost if getattr(c, "is_schema_checkpoint", False) else 0.0),
+            )
+            for c in due_cards
+        ),
         key=lambda t: -t[1],
     )[:review_cap]
-    ranked_new = [(c, float(c.effective_priority)) for c in new_cards]  # already ordered in SQL
+    ranked_new = sorted(
+        (
+            (
+                c,
+                float(c.effective_priority)
+                + (checkpoint_boost if getattr(c, "is_schema_checkpoint", False) else 0.0),
+            )
+            for c in new_cards
+        ),
+        key=lambda t: -t[1],
+    )
     ranked_ir = sorted(
         (
             (e, s, float(e.priority if e.priority is not None else s.priority))
@@ -717,6 +902,7 @@ async def compose_session(
     if limit:
         items = items[:limit]
     await attach_references(db, items)
+    await attach_failure_memories(db, items)
 
     notes: list[str] = []
     if overdue_total and review_cap < counts["due_total"]:
@@ -810,6 +996,7 @@ async def compose_due_date_only(
     if limit:
         items = items[:limit]
     await attach_references(db, items)
+    await attach_failure_memories(db, items)
     return SessionPlan(
         items=items,
         counts={"review": len(due_cards), "new": len(new_cards)},
@@ -823,21 +1010,27 @@ registry.register("queue_composer", "due_date_only", compose_due_date_only)
 async def compose_deck_persist_queue(
     db: AsyncSession,
     user: User,
-    deck_id: uuid.UUID,
+    deck_id: uuid.UUID | None = None,
     unseen_only: bool = False,
 ) -> list[ComposedItem]:
-    """Load all active (non-suspended) cards in a deck formatted as ComposedItems for persist mode.
+    """Load all active (non-suspended) cards in a deck (or all decks if deck_id is None) formatted as ComposedItems for persist mode.
 
     If unseen_only is True, filters to only cards that have not yet been reviewed (Card.state == 'new').
     """
-    deck = await db.get(Deck, deck_id)
-    if deck is None or deck.user_id != user.id:
-        return []
-
     conditions = [
-        Card.deck_id == deck.id,
+        Deck.user_id == user.id,
         Card.suspended.is_(False),
     ]
+    if deck_id is not None:
+        deck = await db.get(Deck, deck_id)
+        if deck is None or deck.user_id != user.id:
+            return []
+        scope = await deck_scope(db, user, deck_id)
+        if scope and scope.deck_ids:
+            conditions.append(Card.deck_id.in_(scope.deck_ids))
+        else:
+            conditions.append(Card.deck_id == deck.id)
+
     if unseen_only:
         conditions.append(Card.state == "new")
 
@@ -846,6 +1039,7 @@ async def compose_deck_persist_queue(
         .join(Deck, Deck.id == Card.deck_id)
         .where(*conditions)
         .order_by(
+            Card.position.asc().nulls_last(),
             Card.due.is_(None),
             Card.due.asc(),
             _effective_priority_sql().desc(),
@@ -856,6 +1050,8 @@ async def compose_deck_persist_queue(
     cards = list(rows.scalars())
     items = [_card_item(c, float(c.effective_priority), 12.0) for c in cards]
     await attach_references(db, items)
+    await attach_failure_memories(db, items)
+    await attach_card_progression(db, items, cards)
     return items
 
 
@@ -885,12 +1081,15 @@ async def compose_deck_all_cards_run_queue(
     if deck is None or deck.user_id != user.id:
         return []
 
+    scope = await deck_scope(db, user, deck_id)
+    target_deck_ids = list(scope.deck_ids) if (scope and scope.deck_ids) else [deck.id]
+
     stmt = (
         select(Card, Note)
         .join(Deck, Deck.id == Card.deck_id)
         .join(Note, Note.id == Card.note_id)
         .where(
-            Card.deck_id == deck.id,
+            Card.deck_id.in_(target_deck_ids),
             Card.suspended.is_(False),
         )
     )
@@ -903,7 +1102,7 @@ async def compose_deck_all_cards_run_queue(
     latest = (
         select(ReviewLog.card_id, func.max(ReviewLog.reviewed_at).label("at"))
         .join(Card, Card.id == ReviewLog.card_id)
-        .where(Card.deck_id == deck.id)
+        .where(Card.deck_id.in_(target_deck_ids))
         .group_by(ReviewLog.card_id)
         .subquery()
     )
@@ -963,5 +1162,7 @@ async def compose_deck_all_cards_run_queue(
 
     items = [_card_item(c, float(c.effective_priority), 12.0) for c in cards]
     await attach_references(db, items)
+    await attach_failure_memories(db, items)
+    await attach_card_progression(db, items, cards)
     return items
 

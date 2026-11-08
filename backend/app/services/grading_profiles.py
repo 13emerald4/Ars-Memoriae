@@ -148,6 +148,19 @@ CARD_GEN_PROMPT = """You are helping build spaced-repetition flashcards from a p
 the user is reading. Produce at most {max_cards} cards testing the most
 important, self-contained facts, mechanisms, and specifications in the passage.
 
+Cognitive Science & Architecture Rules:
+1. DIRECT FIRST-SENTENCE RULE: The very first sentence of "back" must directly answer the prompt. If a date, century, name, or term is requested, that element goes first.
+2. ATOMICITY (Minimum Information Principle): Each card must test only 1–2 distinct facts. Never combine a definition, date, and multi-stage history on one card. Split compound facts into discrete sub-cards.
+3. NO ESSAY DUMPS: Never output 100+ word essay dumps on "back" (this induces illusion of competence). For multi-step processes or synthesis questions, use a Structural Skeleton Trigger Card formatted as a clean ASCII tree:
+   Topic Outline
+   ├── 1. First Phase / Concept
+   ├── 2. Second Phase / Concept
+   └── 3. Synthesis / Outcome
+4. CLOZE DELETIONS FOR LISTS: If 4 or more distinct characteristics or elements must be recalled, format as cloze deletions ({{{{c1::...}}}}) rather than a long free-recall list.
+5. DUAL-CODING FOR ART & DIAGRAMS: For visual artworks, architecture, or diagrams, adhere to the 4-step analysis schema:
+   1. What it is -> 2. Where & When -> 3. Visual Features -> 4. Significance / Function.
+6. ASCII CONTEXT ANCHORS: When testing a specific atomic sub-node, you may include a 2-3 level ASCII tree on the back marking [THIS CARD] to maintain spatial context.
+
 Card Type Guidelines:
 1. Prefer cloze deletions for definitions, core syntax, and enumerations.
 2. Use Q&A for causal mechanisms, conceptual principles, or test-suite design:
@@ -169,7 +182,7 @@ Passage:
 \"\"\"{passage}\"\"\"
 
 Respond with ONLY a JSON object, no prose and no code fences:
-{{"cards": [{{"kind": "cloze|qa|code", "title": "...", "front": "...", "back": "...",
+{{"cards": [{{"kind": "cloze|qa|code", "title": "...", "front": "...", "image": "optional diagram URL — https://... or /media/...", "back": "...",
   "cloze_text": "text with {{{{c1::deletions}}}} — only when kind is cloze",
   "starter_code": "optional starter code — only when kind is code",
   "starter_tests": "optional unit tests — only when kind is code",
@@ -179,6 +192,15 @@ Respond with ONLY a JSON object, no prose and no code fences:
 DOC_CARD_GEN_PROMPT = """You are building spaced-repetition flashcards from one passage of a
 document the user is studying. Produce at most {max_cards} cards testing the most
 important, self-contained facts, mechanisms, and specifications in THIS passage.
+
+Cognitive Science & Architecture Rules:
+1. DIRECT FIRST-SENTENCE RULE: The very first sentence of "back" must directly answer the prompt. If asking for a date, century, or term, put it first.
+2. ATOMICITY (Minimum Information Principle): Each card must test only 1–2 distinct facts. Never combine definition + multi-century history + examples on one card. Split into atomic sub-cards.
+3. NO ESSAY DUMPS: Never output 100+ word essay dumps on "back". For multi-phase processes or synthesis questions, output a Structural Skeleton Trigger Card using an ASCII tree outline (├──, └──).
+4. CLOZE FOR LISTS: If 4 or more distinct characteristics or elements must be recalled, format as cloze deletions ({{{{c1::...}}}}) rather than a long free-recall list.
+5. DUAL-CODING FOR ART & DIAGRAMS: For visual artworks or diagrams, adhere to the 4-step schema:
+   1. What it is -> 2. Where & When -> 3. Visual Features -> 4. Significance / Function.
+6. ASCII CONTEXT ANCHORS: When testing a specific sub-branch, you may include a 2-3 level ASCII tree on the back marking [THIS CARD] to maintain spatial context.
 
 Card Type Guidelines:
 1. Prefer cloze deletions for definitions and enumerations, Q&A for conceptual material and test boundary analysis.
@@ -198,7 +220,7 @@ Passage (from {locator}):
 \"\"\"{passage}\"\"\"
 
 Respond with ONLY a JSON object, no prose and no code fences:
-{{"cards": [{{"kind": "cloze|qa|code", "title": "...", "front": "...", "back": "...",
+{{"cards": [{{"kind": "cloze|qa|code", "title": "...", "front": "...", "image": "optional diagram URL — https://... or /media/...", "back": "...",
   "cloze_text": "text with {{{{c1::deletions}}}} — only when kind is cloze",
   "starter_code": "optional starter code — only when kind is code",
   "starter_tests": "optional unit tests — only when kind is code",

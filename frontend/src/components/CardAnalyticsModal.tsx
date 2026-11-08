@@ -11,6 +11,14 @@ export interface CardAnalyticsModalProps {
   onCardUpdated?: () => void
 }
 
+export function formatLatencyMinSec(ms: number | null | undefined): string {
+  if (ms == null || ms <= 0) return '--'
+  const totalSec = Math.round(ms / 1000)
+  const mins = Math.floor(totalSec / 60)
+  const secs = totalSec % 60
+  return `${mins}m ${secs}s`
+}
+
 export function CardAnalyticsModal({
   cardId,
   isOpen,
@@ -641,12 +649,12 @@ export function CardAnalyticsModal({
                       )}
                     </div>
                     <div className="text-2xl font-black text-slate-100 font-mono">
-                      {data.avg_latency_ms != null ? `${(data.avg_latency_ms / 1000).toFixed(1)}s` : '--'}
+                      {formatLatencyMinSec(data.avg_latency_ms)}
                       <span className="text-xs font-normal text-slate-400 ml-1">avg</span>
                     </div>
                     <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                      <span>Fastest: {data.fastest_latency_ms ? `${(data.fastest_latency_ms / 1000).toFixed(1)}s` : '--'}</span>
-                      <span>Slowest: {data.slowest_latency_ms ? `${(data.slowest_latency_ms / 1000).toFixed(1)}s` : '--'}</span>
+                      <span>Fastest: {formatLatencyMinSec(data.fastest_latency_ms)}</span>
+                      <span>Slowest: {formatLatencyMinSec(data.slowest_latency_ms)}</span>
                     </div>
                   </div>
                 </div>
@@ -696,7 +704,7 @@ export function CardAnalyticsModal({
                               </div>
                               <div className="flex items-center gap-3 text-xs text-slate-400 font-mono">
                                 {log.latency_ms && (
-                                  <span>{(log.latency_ms / 1000).toFixed(1)}s latency</span>
+                                  <span>{formatLatencyMinSec(log.latency_ms)} latency</span>
                                 )}
                                 <span>{new Date(log.reviewed_at).toLocaleString()}</span>
                               </div>

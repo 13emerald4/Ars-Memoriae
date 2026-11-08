@@ -326,3 +326,27 @@ async def test_subdeck_inherits_parent_deck_documents(auth_client: AsyncClient, 
     bad_resp = await auth_client.post("/api/code/ask-docs", json={"question": "   "})
     assert bad_resp.status_code == 400
 
+    # 6. Ask question without any attached deck documents (verifying pre-training fallback)
+    async def fake_qa_generate_nodocs(self, prompt, model=None, schema=None, **kwargs):
+        assert "Synthesize BOTH the attached course documentation and your general pre-trained programming knowledge" in prompt
+        assert "No attached course documentation extracts found" in prompt
+        assert "What does account.balance >= 0 check?" in prompt
+        return "It checks that the balance is non-negative before proceeding with the operation."
+
+    monkeypatch.setattr(GradingService, "_generate", fake_qa_generate_nodocs)
+
+    nodocs_resp = await auth_client.post(
+        "/api/code/ask-docs",
+        json={
+            "question": "What does account.balance >= 0 check?",
+            "selected_code": "if (!(account.balance >= 0)) throw new Error('Account balance must be >= 0');",
+            "language": "typescript",
+        },
+    )
+    assert nodocs_resp.status_code == 200, nodocs_resp.text
+    nodocs_data = nodocs_resp.json()
+    assert "non-negative" in nodocs_data["answer"]
+    assert nodocs_data["doc_citation"] is None
+    assert len(nodocs_data["citations"]) == 0
+
+

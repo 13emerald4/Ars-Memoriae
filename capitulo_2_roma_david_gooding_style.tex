@@ -1,0 +1,615 @@
+\documentclass[11pt,letterpaper]{article}
+
+% =====================================================================
+% PAQUETES Y CONFIGURACIÓN BÁSICA
+% =====================================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+
+% --- Tipografía al estilo David Gooding / Myrtlefield House ---
+% David Gooding publica con Palatino Linotype, proporciones clásicas y microtipografía refinada.
+\usepackage{mathpazo}
+\usepackage{microtype}
+\linespread{1.06} % Interlineado abierto característico de Palatino
+
+% --- Geometría y Márgenes de Libro Académico ---
+\usepackage[letterpaper,
+            top=1in,
+            bottom=1in,
+            left=1in,
+            right=1in,
+            headheight=14pt]{geometry}
+
+% --- Paquetes Estructurales, Tablas y Listas ---
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{hyperref}
+
+% --- Definición de Colores Académicos Clásicos ---
+\definecolor{goodingWine}{RGB}{130, 20, 20}       % Borgoña clásico de encuadernación Myrtlefield
+\definecolor{goodingDark}{RGB}{30, 30, 30}        % Tinta de impresión tradicional
+\definecolor{goodingSlate}{RGB}{75, 85, 95}       % Pizarra para subtítulos y metadatos
+\definecolor{goodingCrimson}{RGB}{150, 25, 25}    % Rojo editorial para notas críticas de examen
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=goodingWine,
+    citecolor=goodingWine,
+    urlcolor=goodingWine
+}
+
+% --- Configuración de Párrafos y Espaciado ---
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45em}
+
+% --- Encabezados y Pies de Página (Estilo Myrtlefield) ---
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\scshape SPAN 321 \quad\textbullet\quad Historia de España}
+\fancyhead[R]{\small\scshape Cap.~2: Roma y la Romanización}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% --- Formato Tipográfico de Títulos (Estilo David Gooding) ---
+\titleformat{\section}
+  {\large\bfseries\scshape\color{goodingDark}}
+  {\thesection.}{0.6em}{}[\vspace{0.2em}\titlerule]
+\titlespacing*{\section}{0pt}{16pt}{8pt}
+
+\titleformat{\subsection}
+  {\normalsize\bfseries\itshape\color{goodingDark}}
+  {\thesubsection}{0.5em}{}
+\titlespacing*{\subsection}{0pt}{12pt}{4pt}
+
+% --- Listas de Preguntas y Respuestas ---
+\setlist[enumerate,1]{label=\textbf{\arabic*.}, leftmargin=1.8em, itemsep=0.9em, topsep=0.4em, parsep=0.25em}
+\setlist[enumerate,2]{label=(\alph*), leftmargin=1.4em, itemsep=0.2em, topsep=0.2em}
+\setlist[description]{leftmargin=1.4em, itemsep=0.4em, topsep=0.3em, font=\normalfont\bfseries}
+
+% --- Macros de Aparato Crítico y Metodológico ---
+% Fuente bibliográfica / documental (al margen o entre corchetes discretos)
+\newcommand{\fuente}[1]{\nolinebreak\hfill{\footnotesize\color{black!55}\textsc{[#1]}}}
+
+% Nota del primer examen (escolio crítico / corrección de Marisol)
+\newcommand{\examen}[1]{%
+  \par\vspace{0.35em}%
+  \noindent\hspace*{0.8em}%
+  {\color{goodingCrimson}\vrule width 1.3pt}\hspace{0.7em}%
+  \parbox{\dimexpr\linewidth-2.2em}{%
+    \footnotesize\color{goodingCrimson}%
+    \textbf{\textsc{Primer examen (Corrección de Marisol):}} #1%
+  }%
+  \par\vspace{0.35em}%
+}
+
+% Aviso crítico / discrepancia de fuentes
+\newcommand{\aviso}[1]{%
+  \par\vspace{0.3em}%
+  \noindent\hspace*{0.8em}%
+  {\color{black!40}\vrule width 1.1pt}\hspace{0.7em}%
+  \parbox{\dimexpr\linewidth-2.2em}{%
+    \footnotesize\color{black!75}%
+    \textbf{\textsc{Aviso textual / conflicto de fuentes:}} #1%
+  }%
+  \par\vspace{0.3em}%
+}
+
+% Comando para enunciar la pregunta
+\newcommand{\preg}[1]{\item \textbf{#1}\par\nopagebreak\vspace{0.2em}}
+
+% =====================================================================
+% ENCABEZADO Y TÍTULO DEL DOCUMENTO
+% =====================================================================
+\title{%
+  \vspace{-1.2em}
+  {\normalsize\scshape\color{goodingSlate} Universidad de Columbia Británica \quad\textbullet\quad SPAN 321}\\[0.5em]
+  {\LARGE\bfseries\scshape Capítulo 2. Roma y la Romanización de la Península}\\[0.35em]
+  {\large\itshape Guía de Estudio Expositiva y Análisis Estructural para el Examen de Recuperación}
+}
+\author{\normalsize\scshape Michael Polley}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.8em}
+
+% --- Epígrafe y Tesis Central (Al estilo de las aperturas de David Gooding) ---
+\begin{center}
+  \parbox{0.9\linewidth}{%
+    \centering\itshape\small
+    «¿Cómo convirtió Roma a los pueblos fragmentados de la Península\\
+    en una Hispania unida que sobrevivió a la caída del Imperio?»
+  }
+\end{center}
+
+\vspace{0.4em}
+\noindent\rule{\linewidth}{0.4pt}
+
+% =====================================================================
+% TABLA DE CONTENIDO (ESTILO MYRTLEFIELD / DAVID GOODING)
+% =====================================================================
+\begin{center}
+  {\Large\bfseries\scshape Contenido}
+\end{center}
+\vspace{0.3em}
+\begin{center}
+\parbox{0.88\linewidth}{
+  \small
+  % Bloque 1: Materia preliminar
+  \begin{tabular*}{\linewidth}{@{\hspace{2.2em}}l@{\extracolsep{\fill}}r@{}}
+    Fuentes y Criterio Documental & 1 \\
+    Antecedentes del Primer Examen (21 de octubre) & 1 \\
+    Plan General y Análisis Estructural & 2 \\
+    \quad Tabla 1. Estructura Simétrica y Correspondencia Temática & 2 \\
+    \quad Esquema Analítico Detallado & 3 \\
+  \end{tabular*}
+
+  \vspace{1.0em}
+
+  % Bloque 2: Secciones numeradas
+  \begin{tabular*}{\linewidth}{@{}r@{\hspace{0.8em}}l@{\extracolsep{\fill}}r@{}}
+    \multicolumn{3}{@{}l}{\footnotesize\bfseries\scshape\color{goodingWine} Parte Primera: La Formación Política, Jurídica y Social} \\
+    \addlinespace[0.2em]
+    1. & Roma y Cartago: El Génesis Geopolítico (qq.~1--5) & 4 \\
+    2. & La Conquista Romana: El Sometimiento Territorial (qq.~6--8) & 5 \\
+    3. & La Organización Romana: Las Estructuras del Estado (qq.~9--16) & 6 \\
+    4. & La Romanización: La Forja de la Unidad Nacional (qq.~17--20) & 8 \\
+    \addlinespace[0.6em]
+    \multicolumn{3}{@{}l}{\footnotesize\bfseries\scshape\color{goodingWine} Parte Segunda: La Transformación Cultural y Pervivencia} \\
+    \addlinespace[0.2em]
+    5. & Cultura y Arte: El Urbanismo Cívico y las Letras (qq.~21--24) & 9 \\
+    6. & La Religión de Roma: Del Paganismo a la Iglesia Imperial (qq.~25--35) & 12 \\
+    7. & La Cristianización de la Península: Humanización y Arte (qq.~36--37) & 14 \\
+    8. & Conclusión Histórica: La Síntesis Perenne de Hispania (qq.~38--39) & 15 \\
+  \end{tabular*}
+
+  \vspace{1.0em}
+
+  % Bloque 3: Guía de estudio y aparato final
+  \begin{tabular*}{\linewidth}{@{\hspace{2.2em}}l@{\extracolsep{\fill}}r@{}}
+    Guía de Estudio y Repaso & 16 \\
+    Fuentes y Aparato Bibliográfico & 18 \\
+  \end{tabular*}
+}
+\end{center}
+
+\vspace{0.4em}
+\noindent\rule{\linewidth}{0.4pt}
+\vspace{0.6em}
+
+\textbf{\textsc{Fuentes y Criterio Documental.}} La materia examinable procede de las presentaciones de PowerPoint de la profesora Marisol. Por tanto, el \textsc{ppt} constituye la fuente primaria normativa, quedando los apuntes manuscritos de clase y el manual de Carmen Pereira-Muro como autoridades complementarias de apoyo. Las referencias entre corchetes identifican la diapositiva del \textsc{ppt}, la página de los apuntes o la página del libro. Las siglas «Intro» y «T1» remiten a las presentaciones de la Introducción y del Tema~1 respectivamente.
+
+\textbf{\textsc{Antecedentes del Primer Examen (21 de octubre).}} La pregunta~2 evaluó la primera mitad del tema romano hasta antes de abordar el arte, excluyendo cultura, arte y cristianismo (materia correspondiente a las Secciones~1--4 de este documento). La pregunta~1.3 (sobre la génesis del concepto moderno de provincia) corresponde a la Sección~3. La corrección de la profesora enfatizó la necesidad de rigor conceptual y orden expositivo: \emph{«Falta precisión. Vaguedad, presentación caótica de la información. Falta estudiar y estudiar de otra manera.»} Siguiendo el método de análisis estructural de David Gooding, este documento reemplaza la vaguedad memorística por una exposición orgánica donde cada etapa histórica se articula en su secuencia cronológica, causal y simétrica. Las líneas destacadas en el margen izquierdo registran textualmente las respuestas originales y sus correcciones.
+
+\vspace{0.8em}
+
+% =====================================================================
+% ESQUEMA GENERAL: PLAN Y ANÁLISIS ESTRUCTURAL (ESTILO DAVID GOODING)
+% =====================================================================
+\section*{Plan General y Análisis Estructural}
+
+\noindent Como observa David Gooding en sus análisis expositivos, un proceso histórico complejo no debe concebirse como una simple agregación de datos aislados, sino como un desarrollo arquitectónico articulado en fases coherentes y simétricas. La romanización de Hispania comprende dos movimientos fundamentales:
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}p{0.48\linewidth}@{\hspace{0.04\linewidth}}p{0.48\linewidth}@{}}
+  \toprule
+  \multicolumn{1}{c}{\textbf{\textsc{Parte Primera: El Orden Político y Jurídico}}} & 
+  \multicolumn{1}{c}{\textbf{\textsc{Parte Segunda: La Transformación Cultural}}} \\
+  \multicolumn{1}{c}{\footnotesize\color{goodingSlate}(Fundamento secular y unificación territorial: §§1--4)} & 
+  \multicolumn{1}{c}{\footnotesize\color{goodingSlate}(Interiorización espiritual y pervivencia perenne: §§5--8)} \\
+  \midrule
+  \textbf{\S1. Roma y Cartago (qq.~1--5)} \hfill {\scriptsize\color{goodingCrimson}[1.\textsuperscript{er} ex.]}\newline
+  Ruptura geopolítica: la derrota cartaginesa inicia la romanización de Europa y el fin del atomismo indígena. &
+  \textbf{\S5. Cultura y Arte (qq.~21--24)}\newline
+  La consolidación urbana: monumentos cívicos, el realismo estético y el estoicismo de Séneca. \\
+  \addlinespace[0.6em]
+  \textbf{\S2. La Conquista Romana (qq.~6--8)} \hfill {\scriptsize\color{goodingCrimson}[1.\textsuperscript{er} ex.]}\newline
+  Conflicto armado de dos siglos: resistencia heroica (Viriato, Numancia) hasta la pacificación con Augusto. &
+  \textbf{\S6. La Religión y el Cristianismo (qq.~25--35)}\newline
+  Conflicto ideológico de tres siglos: persecución del Estado, romanización de la Iglesia y oficialización. \\
+  \addlinespace[0.6em]
+  \textbf{\S3. La Organización Romana (qq.~9--16)} \hfill {\scriptsize\color{goodingCrimson}[1.\textsuperscript{er} ex.]}\newline
+  Estructuras del Estado: el Derecho romano centrado en el individuo, autonomía municipal y provincias. &
+  \textbf{\S7. La Cristianización de Hispania (qq.~36--37)}\newline
+  Asimilación institucional: humanización de la ley romana, liturgia de Prudencio y la basílica sacra. \\
+  \addlinespace[0.6em]
+  \textbf{\S4. La Romanización (qq.~17--20)} \hfill {\scriptsize\color{goodingCrimson}[1.\textsuperscript{er} ex.]}\newline
+  Culminación política: en el siglo~V se consolida la unidad nacional mediante las vías, el latín y emperadores hispanos. &
+  \textbf{\S8. Conclusión Histórica (qq.~38--39)}\newline
+  Culminación perenne: al derrumbarse el Imperio, la Iglesia preserva intacta la identidad hispanorromana. \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\vspace{0.2em}
+
+% --- Tabla Estructural Sincrónica de David Gooding ---
+\subsection*{Tabla 1. Estructura Simétrica y Correspondencia Temática de Hispania}
+
+\noindent La tabla siguiente ilustra el paralelismo deliberado entre la formación externa del Imperio y su asimilación interior:
+
+\begin{center}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{}l X l X@{}}
+  \toprule
+  \multicolumn{2}{c}{\textbf{\textsc{Parte I: La Formación Institucional (Secular)}}} & 
+  \multicolumn{2}{c}{\textbf{\textsc{Parte II: La Transformación Cultural (Espiritual)}}} \\
+  \midrule
+  \textbf{A} & \textbf{Llegada hegemónica (§1):} Las Guerras Púnicas desplazan a África e introducen a Roma en la Península. &
+  \textbf{A$'$} & \textbf{Cultura urbana y letras (§5):} El confort cívico y la moral estoica reorientan la vida peninsular. \\
+  \addlinespace[0.4em]
+  \textbf{B} & \textbf{Resistencia armada indígena (§2):} Dos siglos de confrontación bélica frente a las legiones romanas. &
+  \textbf{B$'$} & \textbf{Resistencia del cristianismo primitivo (§6):} Tres siglos de martirio frente a la divinización del César. \\
+  \addlinespace[0.4em]
+  \textbf{C} & \textbf{El Derecho y la articulación civil (§3):} Estatuto de colonias frente a municipios; régimen provincial. &
+  \textbf{C$'$} & \textbf{La cristianización del orden (§7):} La Iglesia asume la basílica civil y suaviza la aplicación penal romana. \\
+  \addlinespace[0.4em]
+  \textbf{D} & \textbf{Unidad política en el siglo~V (§4):} Nacimiento de Hispania como nación política antes de las invasiones. &
+  \textbf{D$'$} & \textbf{Supervivencia institucional en el siglo~V (§8):} Solo la Iglesia sobrevive y perpetúa la herencia romana. \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\vspace{0.4em}
+
+% --- Esquema Analítico Detallado ---
+\subsection*{Esquema Analítico Detallado}
+
+\begin{enumerate}[label=\textbf{\Roman*.}, leftmargin=1.5em, itemsep=0.5em]
+  \item \textbf{Parte Primera: La Formación Política, Jurídica y Social de Hispania (§§1--4)}
+  \begin{enumerate}[label=\textbf{\Alph*.}, leftmargin=1.4em, itemsep=0.35em]
+    \item \textbf{Roma y Cartago: El Génesis Geopolítico (Preguntas 1--5)} \hfill {\footnotesize\color{goodingCrimson}\textsc{[primer examen]}}
+    \begin{itemize}[leftmargin=1.2em, itemsep=0.15em]
+      \item Quiebra del atomismo prerromano: inauguración de España como proyecto histórico unitario.
+      \item Marco temporal: siete siglos de dominación (s.~II~a.\,C. al s.~V~d.\,C.).
+      \item Causa eficiente: las Guerras Púnicas por la hegemonía comercial del Mediterráneo (I: 264--241~a.\,C.; II: 218--201~a.\,C., desembarco de los Escipiones; III: 149--146~a.\,C.).
+      \item Consecuencia trascendente: extinción del influjo africano e inicio de la romanización europea.
+    \end{itemize}
+
+    \item \textbf{La Conquista Romana: El Sometimiento Territorial (Preguntas 6--8)} \hfill {\footnotesize\color{goodingCrimson}\textsc{[primer examen]}}
+    \begin{itemize}[leftmargin=1.2em, itemsep=0.15em]
+      \item Cronología de la ocupación: un proceso dilatado y cruento de dos siglos (218 al 19~a.\,C.).
+      \item Focos de resistencia indígena: lusitanos (guerra de guerrillas con Viriato), celtíberos (sacrificio heroico en Numancia), y pueblos del norte (cántabros y astures).
+      \item Incorporación jurídica imperial: 38~a.\,C. bajo el principado de Augusto (según \textsc{ppt}).
+    \end{itemize}
+
+    \item \textbf{La Organización Romana: Las Estructuras del Estado (Preguntas 9--16)} \hfill {\footnotesize\color{goodingCrimson}\textsc{[primer examen]}}
+    \begin{itemize}[leftmargin=1.2em, itemsep=0.15em]
+      \item Coexistencia institucional originaria entre ordenanzas indígenas y administración romana.
+      \item El Derecho romano: fundamento supremo centrado en el individuo (frente al colectivismo tribal) y el \emph{paterfamilias}.
+      \item Jerarquía civil: hombres libres (ciudadanos, latinos, extranjeros), semilibres (colonos) y esclavos.
+      \item Progresión de derechos: el \emph{Ius Latii} con Vespasiano (s.~I~d.\,C.) y ciudadanía universal con Caracalla (212~d.\,C. / s.~III).
+      \item Tipología urbana: colonias de veteranos frente a municipios indígenas (autonomía y gran arraigo).
+      \item Régimen provincial: provincias originales (Tarraconense, Lusitana, Bética) y reformas bajo Diocleciano.
+      \item Génesis del concepto moderno de provincia: creación liberal del siglo~XIX (1812--1833), no romana.
+    \end{itemize}
+
+    \item \textbf{La Romanización: La Forja de la Unidad Nacional (Preguntas 17--20)} \hfill {\footnotesize\color{goodingCrimson}\textsc{[primer examen]}}
+    \begin{itemize}[leftmargin=1.2em, itemsep=0.15em]
+      \item Definición: proceso histórico de cohesión social, política y cultural frente al atomismo primitivo.
+      \item Asimilación heterogénea: ritmos diferenciados según pueblos; fragmentación romance del latín (gallego, catalán, castellano); pervivencia no asimilada del pueblo vasco.
+      \item Red viaria: las calzadas (Vía Augusta) y puentes como agentes de cohesión económica y militar.
+      \item Participación en la cúspide imperial: emperadores de linaje hispano (Trajano, Adriano, Marco Aurelio, Teodosio).
+    \end{itemize}
+  \end{enumerate}
+
+  \item \textbf{Parte Segunda: La Transformación Cultural, Espiritual y Pervivencia (§§5--8)}
+  \begin{enumerate}[label=\textbf{\Alph*.}, leftmargin=1.4em, itemsep=0.35em]
+    \item \textbf{Cultura y Arte: El Urbanismo Cívico y las Letras (Preguntas 21--24)}
+    \begin{itemize}[leftmargin=1.2em, itemsep=0.15em]
+      \item El urbanismo de ocio y cohesión social: teatros, circos y termas.
+      \item Ingeniería civil y propaganda imperial: acueductos (Segovia), puentes (Mérida, Córdoba) y arcos conmemorativos (Bará).
+      \item Síntesis artística: realismo escultórico fisonómico y polícromo; motivos de mosaicos domésticos (Medusa, deidades).
+      \item Letras hispanorromanas: Séneca y la moral estoica del individuo; Lucano (\emph{Farsalia}); Marcial (sátira social); Quintiliano (pedagogía retórica).
+    \end{itemize}
+
+    \item \textbf{La Religión de Roma: Del Paganismo a la Iglesia Imperial (Preguntas 25--35)}
+    \begin{itemize}[leftmargin=1.2em, itemsep=0.15em]
+      \item Sincretismo politeísta romano: mitología griega traducida, culto político al emperador y animismo naturista.
+      \item Criterio romano de tolerancia: permisividad sujeta a la lealtad política; proscripción de sacrificios humanos.
+      \item Cristianismo primitivo: fraternidad igualitaria y rechazo tajante de la divinidad del César como factor de persecución.
+      \item Romanización eclesiástica (ss.~II--III): adopción del Derecho romano y jerarquía territorial del Imperio; el cristianismo como salvaguarda moral y regeneradora.
+      \item Giro imperial del siglo~IV: Edicto de Milán con Constantino (313~d.\,C., tolerancia) e imposición oficial con Teodosio (380~d.\,C.); los Padres de la Iglesia.
+    \end{itemize}
+
+    \item \textbf{La Cristianización de la Península: Humanización y Expresión Sacra (Preguntas 36--37)}
+    \begin{itemize}[leftmargin=1.2em, itemsep=0.15em]
+      \item Penetración apostólica temprana (Santiago) y mitigación humanizadora de la severidad legal romana.
+      \item Reconfiguración artística: transmutación de la basílica civil en templo; escultura hierática y simbólica; la poesía sacra de Aurelio Prudencio en la liturgia perenne.
+    \end{itemize}
+
+    \item \textbf{Conclusión Histórica: La Síntesis Perenne de Hispania (Preguntas 38--39)}
+    \begin{itemize}[leftmargin=1.2em, itemsep=0.15em]
+      \item Respuesta resolutiva a la pregunta central: concurrencia del Derecho, el orden municipal, las calzadas y la Iglesia romanizada.
+      \item Compatibilidad entre pluralismo regional e identidad nacional: la unidad política no supuso homogeneidad cultural.
+    \end{itemize}
+  \end{enumerate}
+
+  \item \textbf{Guía de Estudio y Repaso}: banco pedagógico estructurado por categorías de examen.
+\end{enumerate}
+
+\vspace{0.8em}
+\noindent\rule{\linewidth}{0.4pt}
+\vspace{0.8em}
+
+% =====================================================================
+% EXPOSICIÓN DOCTRINAL: PREGUNTAS Y RESPUESTAS
+% =====================================================================
+
+\begin{center}
+  {\Large\scshape\color{goodingWine} Parte Primera}\\[0.2em]
+  {\large\bfseries\scshape La Formación Política, Jurídica y Social de Hispania}\\[0.2em]
+  {\footnotesize\color{goodingSlate}\textsc{Materia del Primer Examen Parcial \quad\textbullet\quad Secciones 1 a 4}}
+\end{center}
+\vspace{0.4em}
+
+% ---------------------------------------------------------------------
+\section{Roma y Cartago: El Génesis Geopolítico}
+
+\begin{enumerate}
+  \preg{¿Qué quiere decir que con los romanos empieza la historia de España como nación?}
+  Quiere decir que los pueblos peninsulares dejan de ser unidades fragmentadas. Se unen bajo un idéntico interés político, económico y cultural: el de Roma. \fuente{PPT 4}
+
+  \preg{¿Cuánto duró la dominación romana?}
+  Duró siete siglos, del siglo~II~a.\,C. al siglo~V~d.\,C. Terminó formalmente con la caída del Imperio romano de Occidente. \fuente{PPT 4; Apuntes 1}
+  \examen{Escribí «hasta el siglo VIII d.\,C.» y Marisol lo tachó con severidad. El límite cronológico correcto es el siglo V d.\,C.}
+
+  \preg{¿Por qué llegaron los romanos a Iberia?}
+  Llegaron a causa de las Guerras Púnicas, contiendas libradas entre Roma y Cartago por la hegemonía comercial en el Mediterráneo entre los siglos~III y~II~a.\,C. El manual añade que la celebrada riqueza minera de oro y plata de Iberia convertía a la Península en una presa estratégica codiciable para el Senado romano. \fuente{PPT 4; Libro 28}
+  \examen{Escribí erróneamente que los romanos llegaron «en el siglo VIII a.\,C. en busca de recursos naturales», y en la pregunta 1.3 reiteré «siglo VII a.\,C.». Marisol tachó ambas fechas y el planteamiento causal. La causa motriz estricta son las Guerras Púnicas en los siglos III y II a.\,C.}
+
+  \preg{¿Qué pasó en cada Guerra Púnica?}
+  En la \textbf{I Guerra Púnica} (264--241~a.\,C.), Cartago resultó derrotada. Tras perder Córcega y Cerdeña, los cartagineses desplazaron sus fuerzas hacia Iberia para explotar sus recursos, motivando que las colonias griegas aliadas solicitaran auxilio a Roma. En la \textbf{II Guerra Púnica} (218--201~a.\,C.), el conflicto se libró en suelo peninsular. Los romanos desembarcaron por primera vez en Ampurias en el 218~a.\,C. bajo el mando de los Escipiones, quienes expulsaron a los cartagineses y derrotaron finalmente a Aníbal en África (Zama). En este proceso, los íberos pasaron de ser aliados de Cartago a aliados de Roma; los celtíberos, pueblo belicoso, sirvieron como mercenarios para ambos contendientes. La \textbf{III Guerra Púnica} (149--146~a.\,C.) culminó con la destrucción total de Cartago. \fuente{PPT 5; Apuntes 1; Libro 28; T1 88}
+  \aviso{La diapositiva~5 puede inducir a confusión al sugerir que Cartago invadió Córcega y Cerdeña; los apuntes aclaran con precisión que Cartago las perdió ante Roma.}
+  \examen{Escribí el barbarismo «cartagos»; Marisol lo marcó en rojo. El gentilicio preceptivo es cartagineses.}
+
+  \preg{¿Qué supuso la caída de Cartago?}
+  Supuso dos transformaciones geopolíticas transcendentales: el fin definitivo del predominio africano en el Mediterráneo occidental y el comienzo formal del proceso de romanización de Europa. \fuente{PPT 5}
+\end{enumerate}
+
+% ---------------------------------------------------------------------
+\section{La Conquista Romana: El Sometimiento Territorial}
+
+\begin{enumerate}[resume]
+  \preg{¿Qué fue la conquista?}
+  Fue el dilatado proceso de ocupación militar y dominación política de los pueblos peninsulares. Se prolongó durante dos siglos (218 al 19~a.\,C.). Constituyó un proceso arduo y discontinuo en el que alternaron fases de pacificación y recrudecimientos bélicos, condicionados asimismo por las guerras civiles romanas (Pompeyo frente a Julio César). El manual subraya que la etapa más violenta correspondió al sometimiento de las tribus célticas del norte y noroeste, caracterizadas por su estructura tribal indómita. \fuente{PPT 7; Libro 33}
+  \examen{Escribí que la conquista «duro entre 200--300 años por problemas politicas entre los romanos peleando entre ellos mismos». Marisol lo tachó íntegramente. La cronología canónica son exactamente dos siglos.}
+
+  \preg{¿Qué pueblos resistieron?}
+  Resistieron de forma señera los lusitanos bajo la dirección de Viriato, un caudillo pastoril que empleó con maestría la guerra de guerrillas. Resistieron los celtíberos en la célebre gesta de Numancia (Soria), cuyos habitantes escogieron el suicidio colectivo antes que rendirse al asedio romano. Asimismo, opusieron una feroz resistencia final los cántabros y los astures en el norte montañoso. \fuente{PPT 7; Libro 32}
+
+  \preg{¿Cuándo pasó Hispania a formar parte del Imperio?}
+  El \textsc{ppt} establece que en el 38~a.\,C. bajo el principado de Augusto. \fuente{PPT 7}
+  \aviso{El manual sitúa la conclusión definitiva de la conquista cántabra en el 19~a.\,C. Para el examen rige la fecha señalada en el \textsc{ppt} (38~a.\,C.).}
+\end{enumerate}
+
+% ---------------------------------------------------------------------
+\section{La Organización Romana: Las Estructuras del Estado}
+
+\begin{enumerate}[resume]
+  \preg{¿Cómo organizó Roma la Península?}
+  Desde el inicio coexistieron los sistemas consuetudinarios indígenas con la estructura administrativa y militar romana. Los propósitos fundamentales de Roma consistían en asegurar la soberanía incontestable del Estado y garantizar de forma prioritaria los privilegios de los ciudadanos romanos. Todo el edificio institucional descansaba sobre el Derecho romano. \fuente{PPT 10}
+
+  \preg{¿Qué es el derecho romano?}
+  Es el sistema jurídico universal que regula tanto las relaciones interpersonales de los particulares entre sí como las de estos con el poder público. Su innovación capital radica en erigir al individuo como sujeto y fundamento del orden social, superando el colectivismo tribal primitivo. Consagra garantías civiles inalienables (como el derecho de propiedad privada) y sitúa al \emph{paterfamilias} como la persona jurídica nuclear. Se aplicó a todas las comunidades sometidas sin distinción étnica, constituyendo la mayor contribución de Roma a la civilización occidental y el cimiento del actual derecho español. \fuente{PPT 11; Libro 33}
+
+  \preg{¿Qué clases sociales había en los territorios conquistados?}
+  La estratificación social comprendía tres órdenes rígidos: \textbf{libres}, \textbf{semilibres} y \textbf{esclavos}. Dentro de los hombres libres existían tres estatus jurídicos diferenciados: ciudadanos romanos (plenitud de prerrogativas civiles y políticas idénticas a las de la metrópoli), latinos y extranjeros (\emph{peregrini}). Los semilibres estaban constituidos por libertos y colonos vinculados al trabajo de la tierra. \fuente{PPT 12}
+  \aviso{Los apuntes tienden a asimilar indebidamente latinos y extranjeros, mientras que el \textsc{ppt} los distingue taxativamente como categorías jurídicas separadas.}
+
+  \preg{¿Qué era el Ius Latii?}
+  El \emph{Ius Latii} o Derecho Latino era un estatuto legal intermedio conferido a los latinos que otorgaba derechos patrimoniales y comerciales, junto con cierta participación acotada en la vida del Estado. Hispania lo recibió de modo generalizado bajo el emperador Vespasiano en el siglo~I~d.\,C., sirviendo de antesala jurídica a la plena ciudadanía romana. La ciudadanía universal fue concedida finalmente en el siglo~III~d.\,C. (212~d.\,C.) por Caracalla (\emph{Constitutio Antoniniana}). \fuente{PPT 12}
+  \examen{Escribí confusamente: «El derecho romano, el Jus Latii, dio a hombres libres ciertos derechos». La profesora enmarcó el pasaje con la nota crítica: «Esto no se preguntaba». Debe distinguirse con precisión: el Ius Latii es un derecho latino intermedio y no el derecho romano universal.}
+
+  \preg{Si el derecho romano dice que todos son ciudadanos, ¿por qué había latinos y extranjeros?}
+  Porque la universalidad jurídica constituyó la meta histórica del proceso civilizador, no su punto de partida. La extensión de derechos se desplegó de forma gradual: primero se concedió el Derecho Latino con Vespasiano (siglo~I) y solo posteriormente la ciudadanía plena con Caracalla (siglo~III). Además, dicho principio de igualdad civil amparaba exclusivamente a los hombres libres, quedando excluidos los semilibres y los esclavos. \fuente{PPT 11--12}
+
+  \preg{¿En qué se diferenciaban las colonias romanas de las ciudades indígenas?}
+  Las \textbf{colonias romanas} eran fundaciones de nueva planta adjudicadas a legionarios veteranos tras cumplir 30~años de servicio militar; en ellas, los nativos operaban como colonos semilibres dedicados al cultivo de las tierras señoriales. Por el contrario, las \textbf{ciudades indígenas} (municipios) conservaban un estatuto pactado de alianza con Roma que les aseguraba una notable autonomía interna: celebraban asambleas populares y regían su convivencia mediante leyes y ordenanzas propias. El régimen municipal arraigó de forma extraordinaria y duradera en la tradición hispana. \fuente{PPT 13}
+
+  \preg{¿Cómo se dividía Hispania en provincias?}
+  El trazado provincial fue dinámico y creció progresivamente para responder a las realidades geográficas naturales y a la personalidad étnica de cada región. La división inicial republicana y altoimperial consagró tres provincias fundamentales: \textbf{Tarraconense}, \textbf{Lusitana} y \textbf{Bética}. Más adelante se incorporaron \textbf{Galaica}, \textbf{Cartaginense}, \textbf{Mauritana} (Tingitana) y \textbf{Baleárica}. El manual sitúa estas ampliaciones entre los años 50 y 300~d.\,C., reflejando el mapa del \textsc{ppt} la reorganización de Diocleciano hacia el año 300~d.\,C. \fuente{PPT 16--17, 28; Libro 33}
+
+  \preg{¿En qué siglo surge el concepto moderno de provincia?}
+  Surge taxativamente en el \textbf{siglo~XIX}, entre las Cortes de Cádiz (1812) y la división territorial de Javier de Burgos (1833). Una provincia moderna es una circunscripción administrativa trazada por el poder central del Estado moderno que, si bien procura apoyarse en la coherencia geográfica o lingüística, responde primordialmente a criterios políticos y de gestión burocrática. Aunque los romanos establecieron divisiones territoriales homónimas, en el medioevo rigió el mosaico de reinos y en el siglo~XVIII la dinastía borbónica centralizó el gobierno aboliendo fueros regionales. El mapa actual de España consta de 50~provincias. \fuente{Intro 8, 24--25}
+  \examen{Correspondía a la pregunta 1.3 del primer examen. Respondí que las provincias databan de «cuando llegaron los romanos en el siglo VII a.\,C.» extrapolando las provincias modernas a la Antigüedad. Marisol anuló toda la respuesta (0/10). El concepto moderno de provincia es una institución del siglo XIX, radicalmente ajena al régimen provincial romano.}
+\end{enumerate}
+
+% ---------------------------------------------------------------------
+\section{La Romanización: La Forja de la Unidad Nacional}
+
+\begin{enumerate}[resume]
+  \preg{¿Qué es la romanización?}
+  Es el proceso histórico integral mediante el cual las poblaciones peninsulares fueron asimilando gradualmente los modos de vida, el derecho, la lengua y los valores culturales de Roma, disolviendo el atomismo prerromano previo. Para el siglo~V~d.\,C., Hispania constituía ya una comunidad articulada en torno al concepto político de nación, por encima de la pluralidad de sus orígenes étnicos. \fuente{PPT 19}
+
+  \preg{¿Fue igual la romanización en todos los pueblos?}
+  No. Operó a ritmos profundamente desiguales y con intensidades heterogéneas según la ubicación geográfica y la receptividad social (muy profunda en el sur bético y levante; débil y tardía en la cornisa cantábrica). De esta asimilación dialectal del latín vulgar surgieron posteriormente las lenguas romances peninsulares: el gallego, el catalán y el castellano. El caso más extremo de resistencia cultural fue el pueblo vasco, cuya lengua prerromana sobrevivió indemne al preferir los romanos marginar su territorio montañoso. \fuente{PPT 20; Libro 28; T1 32}
+  \examen{Escribí en el examen: «Los romanos por mayor parte dejaron a los vascos en paz durante la conquista». La profesora trazó un corchete rojo marginal indicando necesidad de formulación académica rigurosa.}
+
+  \preg{¿Qué unió físicamente el territorio?}
+  La estructuración territorial fue vertebrada por la extensa red de calzadas o vías militares y comerciales, destacando singularmente la \textbf{Vía Augusta}. Esta impresionante obra ingenieril exigió la edificación de multitud de puentes que perduran hasta hoy. Por estas calzadas transitaron no solo las legiones, sino el comercio, la lengua latina, las doctrinas religiosas y los modelos constructivos imperiales. \fuente{PPT 27, 30, 35; Libro 29}
+
+  \preg{¿Qué emperadores nacieron en Hispania?}
+  Nacieron en suelo peninsular cuatro emperadores de relieve universal: \textbf{Adriano}, \textbf{Trajano}, \textbf{Marco Aurelio} y \textbf{Teodosio}. \fuente{PPT 21--24}
+  \aviso{La historiografía general puntualiza que Marco Aurelio nació materialmente en Roma en el seno de una ilustre estirpe originaria de la Bética hispana.}
+\end{enumerate}
+
+\vspace{0.8em}
+\noindent\rule{\linewidth}{0.4pt}
+\vspace{0.8em}
+
+\begin{center}
+  {\Large\scshape\color{goodingWine} Parte Segunda}\\[0.2em]
+  {\large\bfseries\scshape La Transformación Cultural, Espiritual y Pervivencia}\\[0.2em]
+  {\footnotesize\color{goodingSlate}\textsc{Materia No Evaluada en el Primer Examen \quad\textbullet\quad Secciones 5 a 8}}
+\end{center}
+\vspace{0.4em}
+
+% ---------------------------------------------------------------------
+\section{Cultura y Arte: El Urbanismo Cívico y las Letras}
+
+\begin{enumerate}[resume]
+  \preg{¿Cómo era la cultura romana?}
+  Era una civilización esencialmente urbana cuyo diseño perseguía embellecer la existencia colectiva y «hacer la vida agradable» al ciudadano mediante infraestructuras cívicas: circos, teatros, termas y vías públicas. El manual destaca que estos espectáculos de masas proyectaban la grandeza y el prestigio civilizador de Roma, afianzando el control social de las muchedumbres urbanas. \fuente{PPT 30; Libro 31}
+
+  \preg{¿Qué obras públicas construyó Roma?}
+  Erigió recintos defensivos como las murallas de Zaragoza; arcos de triunfo destinados a consagrar las victorias militares y glorias imperiales (Arco de Bará en Tarragona); conducciones hidráulicas monumentales para abastecer los centros urbanos (acueductos); y complejas infraestructuras de transporte (puentes y calzadas). \fuente{PPT 32--35}
+
+  \preg{¿Qué elementos requiere un análisis formal breve de obras de arte?}
+  Debe consignar con estricta precisión cuatro parámetros: \textbf{denominación formal}, \textbf{localización geográfica}, \textbf{cronología} y el \textbf{rasgo estético o constructivo distintivo} subrayado por la cátedra. \fuente{PPT 34--57}
+
+  \subsection*{Catálogo Monumental de Hispania Romana}
+
+  \textit{Arquitectura e Ingeniería Civil}
+  \begin{description}
+    \item[Arco de Bará (Tarragona).] Arco triunfal conmemorativo de vano único, erigido para celebrar la soberanía de los emperadores.
+    \item[Murallas de Zaragoza.] Testimonio preclaro de la arquitectura militar y defensiva integrada en el trazado urbano.
+    \item[Puente romano de Mérida (Badajoz).] Emplazado sobre el río Guadiana; constituye uno de los puentes más extensos del orbe romano (siglo~I~a.\,C.; 792~metros de longitud y alrededor de 60 arcos ejecutados con recios sillares de granito).
+    \item[Puente romano sobre el Guadalquivir (Córdoba).] Obra civil capital para la articulación viaria de la Bética sobre la que circulaba la Vía Augusta.
+    \item[Acueducto de Segovia.] Prodigio hidráulico que conducía el agua desde Riofrío a lo largo de 17~kilómetros. Levantado bajo los mandatos de Vespasiano y Trajano (siglos~I~a.\,C.--I~d.\,C.); mide más de 800~metros con arquerías superpuestas en dos órdenes que alcanzan 30~metros de altitud, ensamblado en sillería de granito en seco sin argamasa.
+    \item[Teatro de Mérida (Badajoz).] El conjunto teatral mejor preservado de la Península, promovido por Agripa en el siglo~I~a.\,C.; disponía de capacidad para 5.000~espectadores, un diámetro de 90~metros y un imponente proscenio monumental.
+    \item[Casa romana de Mérida (Badajoz).] Domus señorial de la segunda mitad del siglo~I~d.\,C., organizada en torno a un peristilo central porticado y embellecida con ricos pavimentos musivarios.
+  \end{description}
+
+  \textit{Escultura: Realismo fisonómico y mímesis clásica}
+  \begin{description}
+    \item[Busto de César Augusto de Azaila (Teruel).] Retrato de bulto redondo del siglo~I~d.\,C.; evidencia la policromía original en el tratamiento liso de las cuencas oculares, diseñadas para recibir pigmentos cromáticos.
+    \item[Cabeza de mujer de Itálica (Sevilla).] Obra esculpida en mármol blanco del siglo~I~d.\,C., atribuida a la diosa Ceres; destaca por su acusado realismo fisonómico y un peinado minuciosamente esculpido.
+    \item[Busto del emperador Augusto (Mérida).] Retrato oficial del siglo~I~d.\,C. donde adquiere relevancia institucional la toga consular, plasmando la doble majestad de Augusto como emperador político y pontífice máximo.
+    \item[Venus de Itálica (Sevilla).] Estatua de mármol del siglo~I~a.\,C. que reproduce fielmente un arquetipo griego clásico; documenta cómo el taller romano priorizaba la perfección técnica y la copia selectiva sobre la originalidad creadora pura.
+  \end{description}
+
+  \textit{Mosaicos: Iconografía mitológica y pavimentación suntuaria}
+  \begin{description}
+    \item[Mosaico romano de Córdoba.] Pavimento musivario polícromo de gran complejidad geométrica y figurativa.
+    \item[Mosaico de Ceres (Mérida).] Representación alegórica de la divinidad de la agricultura y la fertilidad de los campos.
+    \item[Cabeza de la Medusa (Tarragona).] Motivo recurrente en la musivaria hispana dotado de función apotropaica (protección del hogar para ahuyentar malas influencias); evoca el mito de Medusa, cuya mirada petrificaba a los hombres y cuya cabeza fue incorporada por Perseo al escudo de Atenea.
+    \item[Otras piezas de relieve:] Medusa de Itálica (Sevilla), mosaico de la cuadriga circense y mosaicos funerarios paleocristianos de Tarragona.
+  \end{description}
+
+  \preg{¿Qué escritores hispanorromanos destacan?}
+  \textbf{Séneca} (Córdoba), insigne filósofo y dramaturgo cuya obra descuella en la doctrina del \emph{estoicismo}: afirmaba que la conciencia del individuo constituye la suprema norma ética de la virtud («Importa mucho más lo que tú piensas de ti mismo que lo que los otros opinen de ti»), ejerciendo una influencia inmensa sobre el pensamiento medieval y renacentista. \textbf{Lucano}, autor del poema épico \emph{Farsalia}, consagrado a narrar las guerras civiles entre Pompeyo y César. \textbf{Marcial}, maestro indiscutible de la poesía satírica y autor de los \emph{Epigramas}, agudo retrato de la sociedad romana. \textbf{Quintiliano}, cumbre de la pedagogía clásica a través de su tratado de oratoria y retórica. \fuente{PPT 59--61}
+\end{enumerate}
+
+% ---------------------------------------------------------------------
+\section{La Religión de Roma: Del Paganismo a la Iglesia Imperial}
+
+\begin{enumerate}[resume]
+  \preg{¿Qué era la religión romana?}
+  Constituía una amalgama sincrética integrada por tres componentes esenciales: la mitología clásica griega latinizada (Zeus como Júpiter, Hera como Juno), el culto cívico y sacrificial a la figura del emperador divinizado, y el animismo naturista tradicional que veneraba las fuerzas numinosas del entorno. Los apuntes agregan la deificación abstracta de virtudes colectivas (la Concordia, la Juventud). \fuente{PPT 63; Apuntes 4; Libro 29}
+
+  \preg{¿Toleraba Roma otras religiones?}
+  Sí, bajo un principio de tolerancia pragmática condicionada. Respetaba los cultos indígenas a condición de que no realizaran sacrificios humanos ni pusieran en peligro la estabilidad del Estado. Perseguía implacablemente dos actitudes: los movimientos que reivindicaban la independencia política de los pueblos sometidos y aquellos cultos que rehusaban rendir adoración a la majestad divina del emperador. \fuente{PPT 63; Apuntes 4}
+  \examen{Desarrollé esta respuesta en la pregunta 2 del primer examen, quedando encuadrada con la advertencia «Esto no se preguntaba», dado que la materia de religión correspondía al temario posterior al arte. Asimismo, la profesora corrigió la expresión «poblaciones indígenas» por «pueblos».}
+
+  \preg{¿Cómo era el cristianismo en sus inicios?}
+  Poseía una profunda vocación moral y social fundada en el doble mandamiento de amor a Dios y al prójimo. Proclamaba la igualdad esencial de todos los seres humanos bajo una jerarquía puramente espiritual, y rechazaba categóricamente conferir honores divinos a la investidura del emperador. \fuente{PPT 66}
+
+  \preg{¿Por qué Roma persiguió al cristianismo?}
+  Porque su vertiginosa expansión representaba una amenaza frontal a los fundamentos sociopolíticos del Estado, al orden tradicional de clases y al culto imperial. Al negarse los cristianos a adorar al César como a un dios, su fidelidad fue considerada sedición civil, provocando trescientos años de hostilidad y martirios. \fuente{PPT 64}
+
+  \preg{¿Qué cambió en los siglos II y III?}
+  El cristianismo experimentó un proceso profundo de «romanización»: adoptó los rigores conceptuales del Derecho romano y reprodujo fielmente la estructura administrativa y territorial del Imperio, consolidando a Roma como centro espiritual universal. De este modo, la fe cristiana se impregnó de las formas culturales grecorromanas, siendo abrazada por miembros de todos los estratos sociales. \fuente{PPT 66; Libro 29}
+
+  \preg{¿Cómo pudo el cristianismo amenazar las jerarquías y después mantenerlas?}
+  Merced a su evolución histórica: en sus orígenes combatió el orden establecido al defender la igualdad radical de los hombres ante Dios; mas al romanizarse, la Iglesia asumió y legitimó las jerarquías orgánicas romanas, mutando de amenaza revolucionaria en principio estabilizador para el Imperio. \fuente{PPT 64, 66--67}
+
+  \preg{¿Por qué lo adoptaron muchos en todas las clases sociales?}
+  Por tres factores cardinales: suministró principios morales sólidos a una sociedad paganizada en descomposición ética; legitimó la continuidad de la jerarquía social; y aportó una teología política capaz de dotar de nueva savia trascendente a la debilitada civilización imperial. \fuente{PPT 67}
+
+  \preg{¿Qué hicieron Constantino y Teodosio?}
+  \textbf{Constantino} puso fin a las persecuciones y proclamó la libertad religiosa formal mediante el \textbf{Edicto de Milán} (313~d.\,C.), propiciando la reconciliación entre la Iglesia y el Estado. \textbf{Teodosio} dio el paso definitivo en el año 380~d.\,C. al imponer el cristianismo como la \textbf{única religión oficial} del Imperio, cristianizando las leyes, el arte y el pensamiento mediante el influjo de los Padres de la Iglesia. A la muerte de Teodosio (395~d.\,C.), el Imperio se escindió de forma definitiva en el Imperio de Oriente y el de Occidente. En síntesis: \emph{Constantino toleró el cristianismo; Teodosio lo impuso}. \fuente{PPT 68; Apuntes 4}
+  \aviso{El \textsc{ppt} sitúa a Constantino en el siglo~III a pesar de fechar correctamente el Edicto de Milán en el 313 (siglo~IV), y alude erróneamente a «Teodosio II» en lugar de Teodosio~I el Grande.}
+
+  \preg{¿Quiénes fueron los Padres de la Iglesia?}
+  Fueron los insignes teólogos, filósofos y obispos de los siglos~I al~VIII que fijaron las bases doctrinales, exegéticas y filosóficas del cristianismo clásico. Destacan figuras como Clemente de Roma, Ignacio de Antioquía, Cirilo de Alejandría e Isidoro de Sevilla. \fuente{PPT 70}
+
+  \preg{¿Por qué fue tan importante la Iglesia en la cultura europea?}
+  Porque constituyó la \textbf{única institución} del mundo clásico que logró sobrevivir incólume al colapso militar y político del Imperio romano de Occidente, salvaguardando y transmitiendo la herencia civilizatoria grecolatina a la Edad Media. \fuente{PPT 71}
+
+  \preg{¿Por qué cayó el Imperio en Occidente?}
+  Aunque el \textsc{ppt} omite su desarrollo analítico, el manual explica que la desmesurada extensión territorial del Imperio debilitó sus fronteras internas, volviéndolo vulnerable desde el siglo~III frente a la presión de las migraciones de los pueblos germánicos, que desbordaron definitivamente las defensas romanas a inicios del siglo~V. \fuente{Libro 30}
+\end{enumerate}
+
+% ---------------------------------------------------------------------
+\section{La Cristianización de la Península: Humanización y Expresión Sacra}
+
+\begin{enumerate}[resume]
+  \preg{¿Cómo fue la cristianización de la Península?}
+  Tuvo una implantación muy temprana, vinculada tradicionalmente a la predicación del apóstol Santiago el Mayor. Tras superar cruentas persecuciones locales, el cristianismo ejerció dos transformaciones primordiales: humanizó la aplicación de la rigurosa legislación romana y favoreció la cohesión social mediante la inclusión integral de las poblaciones hispanas. \fuente{PPT 74}
+
+  \preg{¿Qué cultura cristiana surgió?}
+  En \textbf{arquitectura}, la planta de la basílica judicial romana fue reconvertida en templo para la liturgia congregacional. En \textbf{escultura}, la figuración monumental decayó temporalmente por temor a la idolatría gentilicia, adquiriendo formas toscas y un acusado hieratismo compensado por una densa carga simbólica y mística (sarcófagos paleocristianos con crismones). En las \textbf{letras}, descuella la magna figura de \textbf{Aurelio Prudencio}, cuyos poemas espirituales perduran hasta hoy como himnos de la liturgia católica universal. \fuente{PPT 75--76; Apuntes 5}
+\end{enumerate}
+
+% ---------------------------------------------------------------------
+\section{Conclusión Histórica: La Síntesis Perenne de Hispania}
+
+\begin{enumerate}[resume]
+  \preg{¿Cómo convirtió Roma a los pueblos de la Península en una Hispania unida?}
+  Roma transformó el mosaico de pueblos fragmentados integrándolos en un sistema armónico cuádruple: un \textbf{Derecho común} fundado en las libertades individuales; una administración descentralizada que reconoció la autonomía de los \textbf{municipios}; una densa red de \textbf{calzadas} y la adopción de la \textbf{lengua latina}; y, finalmente, la adopción de un \textbf{cristianismo romanizado} que heredó las estructuras organizativas del Estado. Al desplomarse la superestructura militar del Imperio en el siglo~V, la Iglesia sobrevivió y preservó dicha cosmovisión, cristalizando para la posteridad una Hispania cohesionada en torno al concepto político de nación. \fuente{PPT 11, 13, 19, 66, 71}
+
+  \preg{Objeción: si cada pueblo se romanizó a su ritmo y a su manera, ¿se puede hablar de una nación?}
+  Sí, con pleno rigor histórico. La cátedra define «nación» no como una uniformidad étnica o lingüística ciega, sino como un concepto y marco político que articula solidariamente a comunidades diversas bajo una misma ley y destino compartido. La diversidad de ritmos en la romanización enriqueció la pluralidad peninsular (manifiesta en las lenguas romances que brotaron del latín), sin fracturar la identidad común forjada bajo el sello de Roma. \fuente{PPT 19--20}
+\end{enumerate}
+
+\vspace{0.8em}
+\noindent\rule{\linewidth}{0.4pt}
+\vspace{0.8em}
+
+% =====================================================================
+% GUÍA DE ESTUDIO Y REPASO (ESTILO STUDY GUIDE DE DAVID GOODING)
+% =====================================================================
+\section*{Guía de Estudio y Repaso}
+
+\noindent\textit{Instrucciones: autoevaluación sin consulta de apuntes. Los números entre corchetes indican la sección analítica que fundamenta la respuesta.}
+
+\subsection*{I. Definiciones y Conceptos Fundamentales}
+\begin{enumerate}
+  \item \textbf{Romanización y Atomismo}: defina ambos conceptos en oposición dialéctica y señale en qué siglo culmina la unificación de Hispania como nación. [§4]
+  \item \textbf{Ius Latii (Derecho Latino)}: exponga su naturaleza intermedia, su diferencia respecto al derecho romano universal y el emperador que lo concedió a Hispania. [§3]
+  \item \textbf{Municipio Romano}: explique el estatuto de alianza indígena y las dos prerrogativas autonómicas que explican su extraordinario arraigo en España. [§3]
+  \item \textbf{Colonos o Semilibres}: defina su estatuto socioeconómico y su relación con los legionarios veteranos en las colonias. [§3]
+  \item \textbf{Estoicismo de Séneca}: enuncie la máxima ética seneciana y explique el papel del individuo como norma de toda virtud. [§5]
+  \item \textbf{Animismo Naturista}: sintetice en qué consistía este componente de la religiosidad pagana romana. [§6]
+  \item \textbf{Padres de la Iglesia}: precise su cronología histórica, condición eclesiástica y su trascendencia doctrinal en la cristianización del Estado. [§6]
+\end{enumerate}
+
+\subsection*{II. Cuestiones Específicas del Desarrollo Histórico}
+\begin{enumerate}[resume]
+  \item \textbf{Génesis del Concepto de Provincia}: ¿En qué siglo surge el concepto moderno de provincia, qué reformas lo configuraron en el siglo~XIX y en qué se diferencia del esquema provincial romano? [§3]
+  \item \textbf{Causas de la Llegada Romana}: ¿Por qué desembarcaron los romanos en Iberia, qué contienda geopolítica libraban y qué colonias solicitaron su intervención militar? [§1]
+  \item \textbf{Focos de Resistencia Indígena}: ¿Qué caudillo encabezó la guerra lusitana, qué aconteció en el asedio de Numancia y qué pueblos del norte mantuvieron la última resistencia? [§2]
+  \item \textbf{Evolución de la Ciudadanía}: ¿Por qué coexistían latinos y extranjeros si el derecho romano proclamaba la igualdad individual? [§3]
+  \item \textbf{Doble Fase del Cristianismo ante el Imperio}: ¿Por qué fue percibida la Iglesia primitiva como una amenaza sediciosa y por qué siglos más tarde pasó a considerarse el pilar de salvación del Imperio? [§6]
+  \item \textbf{Comparativa Imperial}: Distinga con exactitud la trascendencia de la intervención del emperador Constantino (313~d.\,C.) frente a la del emperador Teodosio (380~d.\,C.). [§6]
+  \item \textbf{Humanización Jurídica}: ¿De qué maneras tangibles transformó la temprana cristianización la aplicación del derecho romano en la Península Ibérica? [§7]
+\end{enumerate}
+
+\subsection*{III. Análisis Breve de Obras de Arte y Monumentos}
+\begin{enumerate}[resume]
+  \item \textbf{Acueducto de Segovia}: procedencia de las aguas, emperadores bajo los que se edificó, dimensiones y técnica constructiva sin argamasa. [§5]
+  \item \textbf{Venus de Itálica}: datación, dependencia de modelos griegos clásicos y concepción romana del arte de la copia. [§5]
+  \item \textbf{Mosaico de la Medusa (Tarragona)}: origen mitológico, significado apotropaico en las viviendas y difusión peninsular. [§5]
+  \item \textbf{Teatro de Mérida}: promotor, capacidad de aforo y elementos arquitectónicos de la cávea y el proscenio. [§5]
+  \item \textbf{Busto de Augusto de Azaila}: tratamiento de las cuencas oculares y técnica de policromía en el retrato escultórico republicano/imperial. [§5]
+\end{enumerate}
+
+\subsection*{IV. Preguntas de Síntesis y Ensayo Histórico}
+\begin{enumerate}[resume]
+  \item \textbf{Pregunta de Ensayo Parcial (Primer Examen)}: Exponga metódicamente la primera fase histórica de Roma en Hispania (Roma y Cartago, la Conquista, las Estructuras de Organización y la Romanización), indicando nombres, siglos y orden causal sin incurrir en anacronismos. [§§1--4]
+  \item \textbf{Pregunta de Ensayo Final (Tesis Central)}: Responda exhaustivamente a la pregunta directriz del capítulo: ¿Cómo convirtió Roma a los pueblos fragmentados de la Península en una Hispania unida que sobrevivió a la caída del Imperio romano en Occidente? [§8]
+\end{enumerate}
+
+\vfill
+\noindent\rule{\linewidth}{0.4pt}\\[0.3em]
+{\footnotesize\color{black!60}%
+\textbf{\textsc{Fuentes y Aparato Bibliográfico:}} María Soledad Fernández Utrera, \emph{Topic 2. Rome and Romanization}, PowerPoint, SPAN 321, University of British Columbia, 2026. Apuntes de clase, \emph{Capítulo 2. Roma y la romanización de la Península}, págs.~1--5. Carmen Pereira-Muro, \emph{Culturas de España}, 2.\textsuperscript{a} ed., Boston/Stamford, CT: Cengage Learning, 2013, págs.~28--33. María Soledad Fernández Utrera, \emph{Introduction} y \emph{Topic 1. Prehistoric Spain}, PowerPoint, SPAN 321, UBC. Transcripción y anotaciones críticas del examen parcial del 21 de octubre de 2026. Redacción y análisis estructural inspirados en los cánones literarios y expositivos del Dr.~David W. Gooding (\emph{Myrtlefield House}).}
+
+\end{document}

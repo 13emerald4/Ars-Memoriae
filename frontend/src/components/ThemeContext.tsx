@@ -165,6 +165,10 @@ interface ThemeContextValue {
   setEnableNightAutoShift: (enabled: boolean) => void
   enableOledBlack: boolean
   setEnableOledBlack: (enabled: boolean) => void
+  enableGreyscaleFriendly: boolean
+  setEnableGreyscaleFriendly: (enabled: boolean) => void
+  simulateGreyscale: boolean
+  setSimulateGreyscale: (enabled: boolean) => void
   activeThemeMeta: ThemeMeta
   fontSize: FontSize
   setFontSize: (size: FontSize) => void
@@ -202,6 +206,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem('memorization.oledDark') === '1'
   })
 
+  // Greyscale & High-Contrast Mode for monochrome displays, OS color filters, and e-ink
+  const [enableGreyscaleFriendly, setEnableGreyscaleFriendlyState] = useState<boolean>(() => {
+    if (typeof localStorage === 'undefined') return false
+    return localStorage.getItem('memorization.greyscaleFriendly') === '1'
+  })
+
+  // In-browser greyscale simulation preview (filter: grayscale(100%))
+  const [simulateGreyscale, setSimulateGreyscaleState] = useState<boolean>(() => {
+    if (typeof localStorage === 'undefined') return false
+    return localStorage.getItem('memorization.simulateGreyscale') === '1'
+  })
+
   // Font Size scale: 10, 12, 14, 16, 18, 20
   const [fontSize, setFontSizeState] = useState<FontSize>(() => {
     if (typeof localStorage === 'undefined') return 16
@@ -227,6 +243,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setEnableOledBlack = useCallback((enabled: boolean) => {
     setEnableOledBlackState(enabled)
     localStorage.setItem('memorization.oledDark', enabled ? '1' : '0')
+  }, [])
+
+  const setEnableGreyscaleFriendly = useCallback((enabled: boolean) => {
+    setEnableGreyscaleFriendlyState(enabled)
+    localStorage.setItem('memorization.greyscaleFriendly', enabled ? '1' : '0')
+  }, [])
+
+  const setSimulateGreyscale = useCallback((enabled: boolean) => {
+    setSimulateGreyscaleState(enabled)
+    localStorage.setItem('memorization.simulateGreyscale', enabled ? '1' : '0')
   }, [])
 
   const setFontSize = useCallback((size: FontSize) => {
@@ -265,6 +291,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const root = document.documentElement
     root.setAttribute('data-theme', activeTheme)
     root.setAttribute('data-oled', enableOledBlack ? 'true' : 'false')
+    root.setAttribute('data-greyscale', enableGreyscaleFriendly ? 'true' : 'false')
+    root.setAttribute('data-simulate-greyscale', simulateGreyscale ? 'true' : 'false')
     root.setAttribute('data-font-size', String(fontSize))
 
     // Set root rem base and font-size CSS variable
@@ -275,14 +303,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const isPureBlack = enableOledBlack || activeTheme === 'dark'
     const bgCanvas = isPureBlack ? '#000000' : meta.bgCanvas
     const bgCard = isPureBlack ? '#090a0f' : meta.bgCard
-    const border = isPureBlack ? '#1a1d27' : meta.borderColor
+    const border = enableGreyscaleFriendly ? '#64748b' : isPureBlack ? '#1a1d27' : meta.borderColor
 
     root.style.setProperty('--theme-bg-canvas', bgCanvas)
     root.style.setProperty('--theme-bg-card', bgCard)
     root.style.setProperty('--theme-border', border)
     root.style.setProperty('--theme-accent', meta.primaryColor)
     root.style.setProperty('--theme-accent-secondary', meta.secondaryColor)
-  }, [activeTheme, enableOledBlack, fontSize])
+  }, [activeTheme, enableOledBlack, enableGreyscaleFriendly, simulateGreyscale, fontSize])
 
   const activeThemeMeta = THEME_REGISTRY[activeTheme] || THEME_REGISTRY.dark
 
@@ -299,6 +327,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setEnableNightAutoShift,
       enableOledBlack,
       setEnableOledBlack,
+      enableGreyscaleFriendly,
+      setEnableGreyscaleFriendly,
+      simulateGreyscale,
+      setSimulateGreyscale,
       activeThemeMeta,
       fontSize,
       setFontSize,
@@ -315,6 +347,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setEnableNightAutoShift,
       enableOledBlack,
       setEnableOledBlack,
+      enableGreyscaleFriendly,
+      setEnableGreyscaleFriendly,
+      simulateGreyscale,
+      setSimulateGreyscale,
       activeThemeMeta,
       fontSize,
       setFontSize,

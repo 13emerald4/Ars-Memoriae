@@ -358,3 +358,59 @@ async def test_import_cpsc210_mt2_supplemental_deck(auth_client):
     assert body["warnings"] == []
 
 
+async def test_import_notes_with_dedicated_image_fields(auth_client):
+    resp = await auth_client.post(
+        "/api/import/json",
+        json={
+            "deck": "Anatomy",
+            "notes": [
+                {
+                    "front": "What organelle is shown?",
+                    "image": "https://example.com/mitochondria.png",
+                    "back": "Mitochondria",
+                    "back_image": "https://example.com/diagram.png",
+                    "tags": ["biology"],
+                },
+                {
+                    # Picture-only front using image_url alias
+                    "image_url": "https://example.com/cell_wall.jpg",
+                    "back": "Cell Wall",
+                },
+                {
+                    "kind": "cloze",
+                    "cloze_text": "The {{c1::mitochondrion}} is shown here.",
+                    "picture": "https://example.com/cloze_pic.png",
+                    "back": "Cell biology note",
+                },
+            ],
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["notes_created"] == 3
+    assert body["cards_created"] == 3
+    assert body["warnings"] == []
+
+    deck_id = body["deck_id"]
+    cards = (await auth_client.get(f"/api/cards?deck_id={deck_id}")).json()
+    assert len(cards) == 3
+
+    # Check first card: front has question text + markdown image tag, image field is populated
+    card1 = next(c for c in cards if "What organelle" in c["front"])
+    assert "![](https://example.com/mitochondria.png)" in card1["front"]
+    assert "![](https://example.com/diagram.png)" in card1["back"]
+    assert card1["image"] == "https://example.com/mitochondria.png"
+    assert card1["back_image"] == "https://example.com/diagram.png"
+
+    # Check picture-only card
+    card2 = next(c for c in cards if c["back"] == "Cell Wall")
+    assert card2["front"] == "![](https://example.com/cell_wall.jpg)"
+    assert card2["image"] == "https://example.com/cell_wall.jpg"
+
+    # Check cloze card
+    card3 = next(c for c in cards if c["template_slot"] == "c1")
+    assert "![](https://example.com/cloze_pic.png)" in card3["front"]
+    assert card3["image"] == "https://example.com/cloze_pic.png"
+
+
+

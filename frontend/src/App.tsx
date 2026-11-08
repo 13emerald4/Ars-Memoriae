@@ -67,6 +67,8 @@ function ThemeNavButton() {
     activeThemeMeta,
     enableOledBlack,
     setEnableOledBlack,
+    enableGreyscaleFriendly,
+    setEnableGreyscaleFriendly,
   } = useTheme()
   const [open, setOpen] = useState(false)
 
@@ -138,7 +140,7 @@ function ThemeNavButton() {
             </div>
 
             {/* OLED / Pure Black Toggle */}
-            <div className="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-ink border border-ink-line mb-2.5 text-xs">
+            <div className="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-ink border border-ink-line mb-2 text-xs">
               <span className="flex items-center gap-1.5 text-slate-300 font-medium text-[11px]">
                 <span>OLED Pure Black</span>
               </span>
@@ -155,6 +157,29 @@ function ThemeNavButton() {
                 <span
                   className={`w-3 h-3 rounded-full bg-white absolute top-0.5 transition-transform ${
                     enableOledBlack ? 'left-3.5' : 'left-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Greyscale Friendly Toggle */}
+            <div className="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-ink border border-ink-line mb-2.5 text-xs">
+              <span className="flex items-center gap-1.5 text-slate-300 font-medium text-[11px]">
+                <span>🔲 Greyscale Mode</span>
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={enableGreyscaleFriendly}
+                onClick={() => setEnableGreyscaleFriendly(!enableGreyscaleFriendly)}
+                className={`w-7 h-4 rounded-full transition-colors relative cursor-pointer ${
+                  enableGreyscaleFriendly ? 'bg-white' : 'bg-slate-700'
+                }`}
+                title="Optimize UI contrast, patterns, and token diffs for greyscale displays"
+              >
+                <span
+                  className={`w-3 h-3 rounded-full absolute top-0.5 transition-transform ${
+                    enableGreyscaleFriendly ? 'left-3.5 bg-black' : 'left-0.5 bg-white'
                   }`}
                 />
               </button>

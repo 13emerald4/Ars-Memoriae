@@ -3,6 +3,9 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      spacing: {
+        88: '22rem',
+      },
       fontFamily: {
         sans: ['Verdana', 'Geneva', 'Tahoma', 'sans-serif'],
       },
