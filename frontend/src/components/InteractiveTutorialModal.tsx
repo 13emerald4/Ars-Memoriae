@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
+import { useDialogA11y } from '../hooks/useDialogA11y'
 import { storage } from '../utils/storage'
 
 interface Props {
@@ -181,13 +182,25 @@ export default function InteractiveTutorialModal({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, mode, step, steps.length, finishTutorial])
 
+  // Focus moves into the dialog, stays there, and returns to the opener on
+  // close. Escape is handled above (it also records the tutorial as seen).
+  const panelRef = useRef<HTMLDivElement>(null)
+  useDialogA11y(panelRef, onClose, { active: isOpen, closeOnEscape: false })
+
   if (!isOpen) return null
 
   // 1. Initial Welcome Prompt Mode: Choose Tutorial Depth
   if (mode === 'prompt') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-in fade-in duration-200">
-        <div className="w-full max-w-lg rounded-2xl border border-sky-500/40 bg-[#0d131f] p-6 shadow-2xl space-y-5 text-slate-200">
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Choose a tutorial"
+          tabIndex={-1}
+          className="w-full max-w-lg rounded-2xl border border-sky-500/40 bg-[#0d131f] p-6 shadow-2xl space-y-5 text-slate-200 outline-none"
+        >
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/20 text-xs font-bold text-sky-400 border border-sky-500/30 shadow-inner">
               AM
@@ -272,7 +285,14 @@ export default function InteractiveTutorialModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="flex flex-col w-full max-w-2xl max-h-[92vh] rounded-2xl border border-sky-500/30 bg-[#0d131f] shadow-2xl text-slate-200 overflow-hidden">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Tutorial"
+        tabIndex={-1}
+        className="flex flex-col w-full max-w-2xl max-h-[92vh] rounded-2xl border border-sky-500/30 bg-[#0d131f] shadow-2xl text-slate-200 overflow-hidden outline-none"
+      >
         {/* Header with Step Info & Depth Switcher */}
         <div className="flex items-center justify-between border-b border-ink-line px-6 py-4 bg-ink-soft/40 shrink-0 gap-3">
           <div className="flex items-center gap-3">

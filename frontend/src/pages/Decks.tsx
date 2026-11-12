@@ -1147,17 +1147,6 @@ function DeckList({
             {showDetailedCreate ? 'Cancel New Deck' : '+ New Deck with Documentation'}
           </button>
 
-          {decks.length > 0 && (
-            <button
-              type="button"
-              className="btn btn-danger text-xs px-2.5 py-1"
-              disabled={busy}
-              onClick={handleDeleteAll}
-            >
-              Delete all decks
-            </button>
-          )}
-
           {!showDetailedCreate && (
             <form
               className="flex flex-wrap items-center gap-2"
@@ -1688,6 +1677,23 @@ function DeckList({
           ))
         )}
       </div>
+      {decks.length > 0 && (
+        <>
+          {/* Kept away from the create controls on purpose. Up in the header it
+              sat one mis-click from "add", with only a browser prompt in between. */}
+          <details className="mt-6 rounded-lg border border-rose-500/25 bg-rose-500/5 text-xs">
+            <summary className="cursor-pointer select-none px-3 py-2 font-medium text-rose-300/90 hover:text-rose-200">
+              Danger zone
+            </summary>
+            <div className="flex flex-wrap items-center justify-between gap-3 px-3 pb-3 pt-1">
+              <p className="max-w-xl text-slate-400">Deletes every deck, card and its review history. You will be asked to type DELETE first.</p>
+              <button type="button" className="btn btn-danger text-xs px-2.5 py-1" disabled={busy} onClick={handleDeleteAll}>
+                Delete all decks
+              </button>
+            </div>
+          </details>
+        </>
+      )}
     </Section>
   )
 }

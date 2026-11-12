@@ -249,32 +249,6 @@ export default function Tree() {
               </>
             )}
 
-            {nodes.length > 0 && (
-              <button
-                type="button"
-                className="btn btn-danger px-2.5 py-1 text-xs font-medium"
-                onClick={async () => {
-                  const ok = await dialogs.confirm({
-                    title: 'Delete the entire Knowledge Tree?',
-                    message:
-                      'This deletes every topic, deck, card, reading source and extract, along with their review history. It cannot be undone.',
-                    danger: true,
-                    requireText: 'DELETE',
-                    confirmLabel: 'Delete everything',
-                  })
-                  if (!ok) return
-                  try {
-                    await api.deleteAllTree()
-                    await load()
-                  } catch (err) {
-                    setError(err)
-                  }
-                }}
-                title="Delete all topics, decks, cards, sources, and extracts"
-              >
-                Delete all
-              </button>
-            )}
           </div>
         }
       >
@@ -312,6 +286,42 @@ export default function Tree() {
               />
             ))}
           </div>
+        )}
+        {nodes.length > 0 && (
+          <details className="mt-6 rounded-lg border border-rose-500/25 bg-rose-500/5 text-xs">
+            <summary className="cursor-pointer select-none px-3 py-2 font-medium text-rose-300/90 hover:text-rose-200">
+              Danger zone
+            </summary>
+            <div className="flex flex-wrap items-center justify-between gap-3 px-3 pb-3 pt-1">
+              <p className="max-w-xl text-slate-400">
+                Deletes every topic, deck, card, reading source and extract. You will be asked to
+                type DELETE first.
+              </p>
+              <button
+                type="button"
+                className="btn btn-danger px-2.5 py-1 text-xs font-medium"
+                onClick={async () => {
+                  const ok = await dialogs.confirm({
+                    title: 'Delete the entire Knowledge Tree?',
+                    message:
+                      'This deletes every topic, deck, card, reading source and extract, along with their review history. It cannot be undone.',
+                    danger: true,
+                    requireText: 'DELETE',
+                    confirmLabel: 'Delete everything',
+                  })
+                  if (!ok) return
+                  try {
+                    await api.deleteAllTree()
+                    await load()
+                  } catch (err) {
+                    setError(err)
+                  }
+                }}
+              >
+                Delete everything
+              </button>
+            </div>
+          </details>
         )}
       </Section>
     </div>
