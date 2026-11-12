@@ -148,7 +148,7 @@ function renderInlineMarkdown(text: string, keyPrefix: string): ReactNode[] {
   }
 
   if (lastIdx < text.length) {
-    nodes.push(<span key={`${keyPrefix}-e-${idx++}`}>{text.slice(lastIdx)}</span>)
+    nodes.push(<span key={`${keyPrefix}-e-${idx}`}>{text.slice(lastIdx)}</span>)
   }
   return nodes
 }

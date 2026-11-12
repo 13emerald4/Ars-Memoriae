@@ -202,7 +202,7 @@ export function CompactCardProgressionBar({
   if (!card) return null
 
   // 1. Mastery / Retrievability percentage
-  let retrievabilityPct = 0
+  let retrievabilityPct: number
   if (card.retrievability != null) {
     retrievabilityPct = Math.round(card.retrievability * 100)
   } else if (card.state === 'review') {

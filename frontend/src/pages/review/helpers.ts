@@ -95,7 +95,7 @@ export function buildCompletedTestCode(item: QueueItem | null): string {
 
     const testMethods = cases
       .map((tc, idx) => {
-        let args = ''
+        let args: string
         if (tc.input && typeof tc.input === 'object' && !Array.isArray(tc.input)) {
           args = Object.values(tc.input)
             .map((v) => JSON.stringify(v))
@@ -125,7 +125,7 @@ ${testMethods || '    pass'}
   const edgeNotes = item.edge_cases || []
 
   const testBlocks = cases.map((tc, idx) => {
-    let args = ''
+    let args: string
     if (tc.input && typeof tc.input === 'object' && !Array.isArray(tc.input)) {
       args = Object.values(tc.input)
         .map((v) => JSON.stringify(v))
@@ -135,7 +135,7 @@ ${testMethods || '    pass'}
     }
     const exp = JSON.stringify(tc.expected)
 
-    let testName = `case ${idx + 1}`
+    let testName: string
     if (idx === 0) {
       testName = 'sample case'
     } else if (idx === 1) {
