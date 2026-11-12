@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { api, token } from '../api/client'
+import { api } from '../api/client'
+import { dialogs } from '../components/dialogs'
 import type {
   EventReadiness,
   HardwareProfile,
@@ -23,6 +24,7 @@ import { FullscreenButton, useFullscreen } from '../components/FullscreenContext
 
 import { useTheme, THEME_REGISTRY, FONT_SIZES, type CognitiveTheme, type FontSize } from '../components/ThemeContext'
 import InteractiveTutorialModal from '../components/InteractiveTutorialModal'
+import { storage } from '../utils/storage'
 
 export default function Settings() {
   const { user, refresh, signOut } = useAuth()
@@ -46,36 +48,64 @@ export default function Settings() {
 
   if (!user || !queueCfg) return <Spinner />
 
+  // One list drives both the jump bar and the page, so they cannot drift.
+  // Everyday settings come first; the hardware and model panel, which most
+  // people set once, no longer opens the page.
+  const sections: { id: string; label: string; content: ReactNode }[] = [
+    { id: 'scheduling', label: 'Scheduling', content: <SchedulingPanel user={user} onChange={refresh} /> },
+    { id: 'queue', label: 'Queue', content: <QueuePanel cfg={queueCfg} onChange={load} /> },
+    { id: 'ai', label: 'AI engine', content: <QwenCoderPanel user={user} onChange={refresh} /> },
+    { id: 'memory', label: 'Memory methods', content: <MemoryChampionPanel user={user} onChange={refresh} /> },
+    { id: 'neuro', label: 'Neuroscience', content: <NeurosciencePanel user={user} onChange={refresh} /> },
+    { id: 'theme', label: 'Theme', content: <CognitiveThemePanel /> },
+    { id: 'typography', label: 'Text size', content: <TypographyPanel /> },
+    { id: 'focus', label: 'Focus', content: <DisplayFocusPanel /> },
+    {
+      id: 'tutorial',
+      label: 'Tutorial',
+      content: (
+        <TutorialPanel
+          user={user}
+          onLaunchTutorial={(mode, type) => {
+            setTutorialMode(mode)
+            setTutorialType(type)
+            setShowTutorial(true)
+          }}
+          onChange={refresh}
+        />
+      ),
+    },
+    { id: 'modules', label: 'Modules', content: <NavigationModulesPanel user={user} onChange={refresh} /> },
+    { id: 'mobile', label: 'Mobile', content: <MobileCompanionPanel user={user} /> },
+    { id: 'data', label: 'Data', content: <DataPanel /> },
+    { id: 'feedback', label: 'Feedback', content: <FeatureRequestPanel /> },
+    { id: 'account', label: 'Account', content: <AccountPanel user={user} onSignOut={signOut} /> },
+  ]
+
   return (
     <div className="space-y-6">
-      <ErrorNote error={error} />
-      <QwenCoderPanel user={user} onChange={refresh} />
-      <MemoryChampionPanel user={user} onChange={refresh} />
-      <NeurosciencePanel user={user} onChange={refresh} />
-      <CognitiveThemePanel />
-      <TypographyPanel />
-      <DisplayFocusPanel />
-      <TutorialPanel
-        user={user}
-        onLaunchTutorial={(mode, type) => {
-          setTutorialMode(mode)
-          setTutorialType(type)
-          setShowTutorial(true)
-        }}
-        onChange={refresh}
-      />
-      <NavigationModulesPanel user={user} onChange={refresh} />
-      <SchedulingPanel user={user} onChange={refresh} />
-      <QueuePanel cfg={queueCfg} onChange={load} />
-      <MobileCompanionPanel user={user} />
-      <DataPanel />
-      <FeatureRequestPanel />
+      <nav
+        aria-label="Settings sections"
+        className="sticky top-12 z-10 -mx-1 flex gap-1.5 overflow-x-auto no-scrollbar rounded-xl border border-ink-line bg-ink/95 px-2 py-2 backdrop-blur"
+      >
+        {sections.map((section) => (
+          <a
+            key={section.id}
+            href={`#settings-${section.id}`}
+            className="chip shrink-0 whitespace-nowrap hover:border-sky-500/50 hover:text-sky-200"
+          >
+            {section.label}
+          </a>
+        ))}
+      </nav>
 
-      <Section title="Account" description={user.email}>
-        <button className="btn btn-danger" onClick={signOut}>
-          Sign out
-        </button>
-      </Section>
+      <ErrorNote error={error} />
+
+      {sections.map((section) => (
+        <div key={section.id} id={`settings-${section.id}`} className="scroll-mt-28">
+          {section.content}
+        </div>
+      ))}
 
       <InteractiveTutorialModal
         isOpen={showTutorial}
@@ -84,6 +114,119 @@ export default function Settings() {
         initialType={tutorialType}
       />
     </div>
+  )
+}
+
+/** Sign-out, password and session control. A password change or "sign out
+ *  everywhere" revokes every token issued so far (other browsers, paired
+ *  phones); this tab is handed a fresh one so it stays signed in. */
+function AccountPanel({ user, onSignOut }: { user: User; onSignOut: () => void }) {
+  const { adoptToken } = useAuth()
+  const [current, setCurrent] = useState('')
+  const [next, setNext] = useState('')
+  const [repeat, setRepeat] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+
+  const mismatch = repeat.length > 0 && next !== repeat
+  const canSubmit = current.length > 0 && next.length >= 8 && next === repeat && !busy
+
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault()
+    if (!canSubmit) return
+    setBusy(true)
+    setError(null)
+    try {
+      const { access_token } = await api.changePassword(current, next)
+      adoptToken(access_token)
+      setCurrent('')
+      setNext('')
+      setRepeat('')
+      dialogs.notify('Password changed. Other devices have been signed out.', 'success')
+    } catch (err) {
+      setError(err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function signOutEverywhere() {
+    const ok = await dialogs.confirm({
+      title: 'Sign out everywhere else?',
+      message:
+        'Every other browser and every paired phone is signed out and has to sign in or pair again. This tab stays signed in.',
+      confirmLabel: 'Sign out other devices',
+      danger: true,
+    })
+    if (!ok) return
+    try {
+      const { access_token } = await api.logoutEverywhere()
+      adoptToken(access_token)
+      dialogs.notify('All other sessions were signed out.', 'success')
+    } catch (err) {
+      dialogs.error(err, 'Could not sign out other sessions.')
+    }
+  }
+
+  return (
+    <Section title="Account" description={user.email}>
+      <div className="grid gap-6 md:grid-cols-2">
+        <form onSubmit={changePassword} className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Change password</h3>
+          {/* Lets password managers attach the new password to the right account. */}
+          <input type="text" autoComplete="username" value={user.email} readOnly hidden />
+          <Field label="Current password">
+            <input
+              type="password"
+              className="input"
+              autoComplete="current-password"
+              value={current}
+              onChange={(e) => setCurrent(e.target.value)}
+            />
+          </Field>
+          <Field label="New password" hint="At least 8 characters.">
+            <input
+              type="password"
+              className="input"
+              autoComplete="new-password"
+              minLength={8}
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
+            />
+          </Field>
+          <Field label="Repeat new password" hint={mismatch ? 'The two entries do not match.' : undefined}>
+            <input
+              type="password"
+              className="input"
+              autoComplete="new-password"
+              aria-invalid={mismatch}
+              value={repeat}
+              onChange={(e) => setRepeat(e.target.value)}
+            />
+          </Field>
+          <ErrorNote error={error} />
+          <button type="submit" className="btn btn-primary" disabled={!canSubmit}>
+            {busy ? 'Saving…' : 'Change password'}
+          </button>
+        </form>
+
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Sessions</h3>
+          <p className="text-xs leading-relaxed text-slate-400">
+            Signing out here only affects this browser. If a phone was paired or a session left open
+            somewhere you no longer trust, sign out everywhere else.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn" onClick={() => void signOutEverywhere()}>
+              Sign out everywhere else
+            </button>
+            <button type="button" className="btn btn-danger" onClick={onSignOut}>
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    </Section>
   )
 }
 
@@ -137,7 +280,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
       description={
         canUseAntigravity
           ? 'Grade answers, drive Socratic hints, look up lexicon terms, and generate cards via your Antigravity Subscription (no API key) or local Ollama.'
-          : 'Local Qwen 2.5 Coder models (7B, 3B, 1.5B). Private with zero cloud costs.'
+          : 'Runs on this computer through Ollama, using one of the approved models listed below. Private, with zero cloud costs.'
       }
     >
       <div className="space-y-4">
@@ -150,13 +293,13 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                   <h4 className="text-xs font-bold text-sky-200 uppercase tracking-wider">
                     Local Hardware Inspection
                   </h4>
-                  <p className="text-[11px] text-slate-300">
+                  <p className="text-[0.6875rem] text-slate-300">
                     {hardware.os_name} · {hardware.ram_gb.toFixed(1)} GB RAM
                     {hardware.gpu_name ? ` · ${hardware.gpu_name}${hardware.vram_gb ? ` (${hardware.vram_gb.toFixed(1)} GB VRAM)` : ''}` : ' · Integrated / CPU'}
                   </p>
                 </div>
               </div>
-              <span className="chip text-[10px] uppercase font-bold border-sky-500/40 text-sky-300 bg-sky-500/10">
+              <span className="chip text-[0.625rem] uppercase font-bold border-sky-500/40 text-sky-300 bg-sky-500/10">
                 {hardware.hardware_tier} tier
               </span>
             </div>
@@ -165,14 +308,14 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               <div className="flex items-center gap-2 text-xs font-bold text-emerald-300">
                 <span>{hardware.headline}</span>
               </div>
-              <p className="text-[11px] text-slate-300 leading-relaxed">
+              <p className="text-[0.6875rem] text-slate-300 leading-relaxed">
                 {hardware.rationale}
               </p>
             </div>
 
             {!isAgy && user.grading_model !== hardware.recommended_model && (
               <div className="pt-2 flex flex-wrap items-center justify-between gap-3 text-xs border-t border-sky-500/10">
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[0.6875rem] text-slate-400">
                   Active model (<code className="font-mono text-slate-300">{user.grading_model || 'none'}</code>) differs from hardware-tailored recommendation.
                 </span>
                 <button
@@ -203,16 +346,16 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               <div>
                 <h4 className="text-sm font-semibold text-slate-100 flex items-center gap-2 flex-wrap">
                   <span>{activeInfo.label}</span>
-                  <span className="chip text-[10px] px-1.5 py-0.2 border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
+                  <span className="chip text-[0.625rem] px-1.5 py-0.2 border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
                     Active Grader
                   </span>
                   {canUseAntigravity && (
-                    <span className="chip text-[9px] px-1.5 py-0.2 border-indigo-500/40 text-indigo-300 bg-indigo-500/10">
+                    <span className="chip text-[0.5625rem] px-1.5 py-0.2 border-indigo-500/40 text-indigo-300 bg-indigo-500/10">
                       {isAgy ? 'Antigravity Subscription' : 'Local Ollama'}
                     </span>
                   )}
                   {!isAgy && hardware && user.grading_model === hardware.recommended_model && (
-                    <span className="chip text-[9px] px-1 py-0.2 border-sky-500/40 text-sky-300 bg-sky-500/10">
+                    <span className="chip text-[0.5625rem] px-1 py-0.2 border-sky-500/40 text-sky-300 bg-sky-500/10">
                       Hardware Matched
                     </span>
                   )}
@@ -326,24 +469,28 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
-                    <svg className="w-3.5 h-3.5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg aria-hidden="true" className="w-3.5 h-3.5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
                       <line x1="8" y1="21" x2="16" y2="21" />
                       <line x1="12" y1="17" x2="12" y2="21" />
                     </svg>
-                    <span>VRAM &amp; GPU Memory Telemetry</span>
+                    <span>
+                      {status.vram.memory_source === 'system-ram'
+                        ? 'Memory (no dedicated GPU detected)'
+                        : 'GPU memory'}
+                    </span>
                   </span>
-                  <span className="text-[10px] text-slate-400 font-mono">
+                  <span className="text-[0.625rem] text-slate-400 font-mono">
                     {status.vram.gpu_name}
                   </span>
                 </div>
                 {status.vram.model_loaded ? (
-                  <span className="chip text-[10px] uppercase font-bold border-emerald-500/40 text-emerald-300 bg-emerald-500/10 flex items-center gap-1">
+                  <span className="chip text-[0.625rem] uppercase font-bold border-emerald-500/40 text-emerald-300 bg-emerald-500/10 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     Model Resident in VRAM
                   </span>
                 ) : (
-                  <span className="chip text-[10px] uppercase font-bold border-amber-500/40 text-amber-300 bg-amber-500/10">
+                  <span className="chip text-[0.625rem] uppercase font-bold border-amber-500/40 text-amber-300 bg-amber-500/10">
                     Standby (Loads on demand)
                   </span>
                 )}
@@ -353,23 +500,33 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 {/* 1. Computer Capacity */}
                 <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                    Computer VRAM Capacity
+                  <span className="text-[0.625rem] uppercase font-bold text-slate-400 tracking-wider">
+                    {status.vram.memory_source === 'system-ram'
+                      ? 'System RAM'
+                      : status.vram.memory_source === 'apple-unified'
+                        ? 'Unified memory'
+                        : 'GPU memory (VRAM)'}
                   </span>
                   <div className="flex items-baseline gap-1.5">
                     <span className="text-lg font-bold font-mono text-slate-100">
                       {status.vram.capacity_gb != null ? `${status.vram.capacity_gb.toFixed(1)} GB` : 'N/A'}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className="text-[0.625rem] text-slate-400 font-mono">
                       ({status.vram.capacity_mb != null ? `${Math.round(status.vram.capacity_mb)} MB` : ''})
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-400">Total hardware GPU memory ceiling</p>
+                  <p className="text-[0.625rem] text-slate-400">
+                    {status.vram.memory_source === 'system-ram'
+                      ? 'No dedicated GPU found: models run on the CPU from system memory'
+                      : status.vram.memory_source === 'apple-unified'
+                        ? 'Shared between the system and the GPU'
+                        : 'Total memory on the graphics card'}
+                  </p>
                 </div>
 
                 {/* 2. Model Occupied VRAM */}
                 <div className="rounded-lg border border-sky-500/30 bg-sky-950/30 p-3 space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-sky-300 tracking-wider">
+                  <span className="text-[0.625rem] uppercase font-bold text-sky-300 tracking-wider">
                     Model Occupied VRAM
                   </span>
                   <div className="flex items-baseline gap-1.5">
@@ -378,11 +535,11 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                         ? `${status.vram.model_vram_gb.toFixed(2)} GB`
                         : `~${status.vram.model_approx_gb?.toFixed(1) || '0.0'} GB`}
                     </span>
-                    <span className="text-[10px] font-mono text-sky-400">
+                    <span className="text-[0.625rem] font-mono text-sky-400">
                       {status.vram.model_loaded ? 'Active in GPU' : 'Standby footprint'}
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[0.625rem] text-slate-400">
                     {status.vram.model_loaded
                       ? `Exact VRAM occupied by ${status.vram.model_name || user.grading_model || 'active model'}`
                       : `Expected footprint when ${status.vram.model_name || user.grading_model || 'active model'} generates`}
@@ -391,18 +548,32 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
 
                 {/* 3. Available VRAM */}
                 <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-3 space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-emerald-300 tracking-wider">
-                    Available VRAM
+                  <span className="text-[0.625rem] uppercase font-bold text-emerald-300 tracking-wider">
+                    Available now
                   </span>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-lg font-bold font-mono text-emerald-200">
-                      {status.vram.available_gb != null ? `${status.vram.available_gb.toFixed(2)} GB` : 'N/A'}
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      ({status.vram.available_mb != null ? `${Math.round(status.vram.available_mb)} MB` : ''})
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400">Free unallocated GPU headroom</p>
+                  {status.vram.usage_measured === false ? (
+                    <>
+                      {/* The server has no way to read live usage here. It used to
+                          report half of capacity as "used" and half as "free",
+                          which looked like a measurement and was not one. */}
+                      <div className="text-lg font-bold font-mono text-slate-300">Unknown</div>
+                      <p className="text-[0.625rem] text-slate-400">
+                        Live usage cannot be read on this hardware
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-lg font-bold font-mono text-emerald-200">
+                          {status.vram.available_gb != null ? `${status.vram.available_gb.toFixed(2)} GB` : 'N/A'}
+                        </span>
+                        <span className="text-[0.625rem] text-slate-400 font-mono">
+                          ({status.vram.available_mb != null ? `${Math.round(status.vram.available_mb)} MB` : ''})
+                        </span>
+                      </div>
+                      <p className="text-[0.625rem] text-slate-400">Free right now</p>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -431,22 +602,26 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                           100,
                           (Math.max(
                             0,
-                            (status.vram.used_gb || 0) -
+                            (status.vram.usage_measured === false ? 0 : status.vram.used_gb || 0) -
                               (status.vram.model_loaded ? status.vram.model_vram_gb || 0 : 0)
                           ) /
                             status.vram.capacity_gb) *
                             100
                         )}%`,
                       }}
-                      title="Other System / Desktop VRAM"
+                      title="Other system usage"
                     />
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                  <div className="flex items-center justify-between text-[0.625rem] text-slate-400 font-mono">
                     <span>0 GB</span>
                     <span>
-                      {status.vram.model_loaded
-                        ? `Model: ${status.vram.model_vram_gb?.toFixed(2)} GB · System: ${status.vram.used_gb?.toFixed(2)} GB`
-                        : `Used: ${status.vram.used_gb?.toFixed(2)} GB · Free: ${status.vram.available_gb?.toFixed(2)} GB`}
+                      {status.vram.usage_measured === false
+                        ? status.vram.model_loaded
+                          ? `Model: ${status.vram.model_vram_gb?.toFixed(2)} GB · other usage not measurable`
+                          : 'Usage not measurable on this hardware'
+                        : status.vram.model_loaded
+                          ? `Model: ${status.vram.model_vram_gb?.toFixed(2)} GB · System: ${status.vram.used_gb?.toFixed(2)} GB`
+                          : `Used: ${status.vram.used_gb?.toFixed(2)} GB · Free: ${status.vram.available_gb?.toFixed(2)} GB`}
                     </span>
                     <span>Capacity: {status.vram.capacity_gb.toFixed(1)} GB</span>
                   </div>
@@ -461,7 +636,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               <span className="text-xs font-semibold text-slate-300">
                 Approved Model Archetypes:
               </span>
-              <span className="text-[10px] text-slate-400">
+              <span className="text-[0.625rem] text-slate-400">
                 Select only among these 3 models
               </span>
             </div>
@@ -489,26 +664,26 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                       <div className="flex items-start justify-between gap-1.5">
                         <div>
                           <h5 className="font-bold text-sm text-slate-100">{opt.name}</h5>
-                          <p className="text-[11px] font-semibold italic text-sky-300 tracking-tight">
+                          <p className="text-[0.6875rem] font-semibold italic text-sky-300 tracking-tight">
                             {opt.archetype}
                           </p>
                         </div>
-                        <span className="chip text-[10px] font-mono shrink-0 px-1.5 py-0.5 border-slate-700 bg-slate-800/80 text-slate-300">
+                        <span className="chip text-[0.625rem] font-mono shrink-0 px-1.5 py-0.5 border-slate-700 bg-slate-800/80 text-slate-300">
                           {opt.vramApprox}
                         </span>
                       </div>
 
                       {isRecommended && (
-                        <div className="text-[10px] font-bold text-emerald-300 flex items-center gap-1">
+                        <div className="text-[0.625rem] font-bold text-emerald-300 flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                           <span>Recommended for your hardware</span>
                         </div>
                       )}
 
-                      <p className="text-[11px] text-slate-400 leading-relaxed">{opt.desc}</p>
+                      <p className="text-[0.6875rem] text-slate-400 leading-relaxed">{opt.desc}</p>
                     </div>
 
-                    <div className="pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                    <div className="pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[0.6875rem]">
                       {isInstalled ? (
                         <div className="flex items-center gap-2">
                           <span className="text-emerald-400 flex items-center gap-1 font-medium">
@@ -525,7 +700,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                                 await onChange()
                                 void checkStatus()
                               }}
-                              className="text-[11px] font-medium text-sky-400 hover:text-sky-300 underline cursor-pointer"
+                              className="text-[0.6875rem] font-medium text-sky-400 hover:text-sky-300 underline cursor-pointer"
                             >
                               Activate
                             </button>
@@ -535,14 +710,14 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                         <button
                           type="button"
                           onClick={() => void navigator.clipboard.writeText(`ollama pull ${opt.id}`)}
-                          className="text-[10px] text-sky-400 hover:text-sky-200 underline font-mono cursor-pointer"
+                          className="text-[0.625rem] text-sky-400 hover:text-sky-200 underline font-mono cursor-pointer"
                           title={`Copy: ollama pull ${opt.id}`}
                         >
                           Copy pull command
                         </button>
                       )}
                       {isActive && (
-                        <span className="chip text-[10px] font-bold border-sky-500/50 text-sky-300 bg-sky-500/10">
+                        <span className="chip text-[0.625rem] font-bold border-sky-500/50 text-sky-300 bg-sky-500/10">
                           Active
                         </span>
                       )}
@@ -561,7 +736,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                     Antigravity Subscription Models (No API Key)
                   </span>
                   <span
-                    className={`chip text-[10px] font-semibold ${
+                    className={`chip text-[0.625rem] font-semibold ${
                       agyInfo?.connected
                         ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
                         : agyInfo?.installed
@@ -576,13 +751,13 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                       : 'agy CLI Not Detected'}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-400">
+                <span className="text-[0.625rem] text-slate-400">
                   Runs via <code className="font-mono text-slate-300">agy -p</code> using your Antigravity plan quota
                 </span>
               </div>
 
               {agyInfo?.error && !agyInfo.connected && (
-                <p className="text-[11px] text-amber-300/90 bg-amber-950/30 border border-amber-500/30 rounded-lg px-3 py-2">
+                <p className="text-[0.6875rem] text-amber-300/90 bg-amber-950/30 border border-amber-500/30 rounded-lg px-3 py-2">
                   {agyInfo.error}
                 </p>
               )}
@@ -607,18 +782,18 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                         <div className="flex items-start justify-between gap-1.5">
                           <div>
                             <h5 className="font-bold text-sm text-slate-100">{opt.name}</h5>
-                            <p className="text-[11px] font-semibold italic text-indigo-300 tracking-tight">
+                            <p className="text-[0.6875rem] font-semibold italic text-indigo-300 tracking-tight">
                               {opt.tier}
                             </p>
                           </div>
-                          <span className="chip text-[10px] font-mono shrink-0 px-1.5 py-0.5 border-indigo-500/30 bg-indigo-950/50 text-indigo-200">
+                          <span className="chip text-[0.625rem] font-mono shrink-0 px-1.5 py-0.5 border-indigo-500/30 bg-indigo-950/50 text-indigo-200">
                             Subscription
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-400 leading-relaxed">{opt.desc}</p>
+                        <p className="text-[0.6875rem] text-slate-400 leading-relaxed">{opt.desc}</p>
                       </div>
 
-                      <div className="pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                      <div className="pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[0.6875rem]">
                         <span
                           className={`font-medium ${
                             agyInfo?.connected ? 'text-emerald-400' : 'text-slate-400'
@@ -627,14 +802,14 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                           {agyInfo?.connected ? 'Available' : 'Requires agy sign-in'}
                         </span>
                         {isActive ? (
-                          <span className="chip text-[10px] font-bold border-indigo-400/50 text-indigo-200 bg-indigo-500/15">
+                          <span className="chip text-[0.625rem] font-bold border-indigo-400/50 text-indigo-200 bg-indigo-500/15">
                             Active
                           </span>
                         ) : (
                           <button
                             type="button"
                             onClick={() => void activateModel(opt.id)}
-                            className="text-[11px] font-medium text-indigo-300 hover:text-indigo-200 underline cursor-pointer"
+                            className="text-[0.6875rem] font-medium text-indigo-300 hover:text-indigo-200 underline cursor-pointer"
                           >
                             Activate
                           </button>
@@ -813,35 +988,35 @@ function MemoryChampionPanel({ user, onChange }: { user: User; onChange: () => P
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="rounded-lg border border-ink-line/60 bg-ink/60 p-2.5 text-center">
-                  <p className="text-[10px] text-slate-400">Countdown</p>
+                  <p className="text-[0.625rem] text-slate-400">Countdown</p>
                   <p className="font-mono text-xl font-bold text-amber-300">
                     {readiness.days_remaining}d
                   </p>
-                  <p className="text-[9px] text-slate-500">until event</p>
+                  <p className="text-[0.5625rem] text-slate-500">until event</p>
                 </div>
 
                 <div className="rounded-lg border border-ink-line/60 bg-ink/60 p-2.5 text-center">
-                  <p className="text-[10px] text-slate-400">Projected Retention</p>
+                  <p className="text-[0.625rem] text-slate-400">Projected Retention</p>
                   <p className="font-mono text-xl font-bold text-emerald-400">
                     {Math.round(readiness.projected_retention * 100)}%
                   </p>
-                  <p className="text-[9px] text-slate-500">at event horizon</p>
+                  <p className="text-[0.5625rem] text-slate-500">at event horizon</p>
                 </div>
 
                 <div className="rounded-lg border border-ink-line/60 bg-ink/60 p-2.5 text-center">
-                  <p className="text-[10px] text-slate-400">Unstable Cards</p>
+                  <p className="text-[0.625rem] text-slate-400">Unstable Cards</p>
                   <p className="font-mono text-xl font-bold text-rose-300">
                     {readiness.unstable_cards_count}
                   </p>
-                  <p className="text-[9px] text-slate-500">stability &lt; 7d</p>
+                  <p className="text-[0.5625rem] text-slate-500">stability &lt; 7d</p>
                 </div>
 
                 <div className="rounded-lg border border-ink-line/60 bg-ink/60 p-2.5 text-center">
-                  <p className="text-[10px] text-slate-400">Required Pace</p>
+                  <p className="text-[0.625rem] text-slate-400">Required Pace</p>
                   <p className="font-mono text-xl font-bold text-sky-300">
                     ~{readiness.estimated_daily_reviews_needed}
                   </p>
-                  <p className="text-[9px] text-slate-500">reviews / day</p>
+                  <p className="text-[0.5625rem] text-slate-500">reviews / day</p>
                 </div>
               </div>
             </div>
@@ -1047,14 +1222,34 @@ function MobileCompanionPanel({ user }: { user: User }) {
     return () => clearInterval(interval)
   }, [loadStatus])
 
-  const authToken = token.get() || ''
-  const pairingData = status
-    ? JSON.stringify({
-        server_url: status.pairing_url,
-        token: authToken,
-        email: user.email,
-      })
-    : ''
+  // The QR carries a token made for the phone: scoped to reviewing, unable to
+  // run code on this computer, and revoked by "sign out everywhere". It used
+  // to carry this browser's own session token, which made a photo of the
+  // screen a full login. Minted only when asked for, shown only until hidden.
+  const [pairingToken, setPairingToken] = useState<string | null>(null)
+  const [minting, setMinting] = useState(false)
+
+  const showPairingCode = async () => {
+    setMinting(true)
+    setError(null)
+    try {
+      const { access_token } = await api.pairingToken()
+      setPairingToken(access_token)
+    } catch (err) {
+      setError(err)
+    } finally {
+      setMinting(false)
+    }
+  }
+
+  const pairingData =
+    status && pairingToken
+      ? JSON.stringify({
+          server_url: status.pairing_url,
+          token: pairingToken,
+          email: user.email,
+        })
+      : ''
 
   const copyUrl = () => {
     if (status?.pairing_url) {
@@ -1071,16 +1266,39 @@ function MobileCompanionPanel({ user }: { user: User }) {
     >
       <ErrorNote error={error} />
       <div className="flex flex-col gap-6 md:flex-row md:items-center">
-        {status ? (
+        {pairingData ? (
           <div className="flex flex-col items-center gap-2 rounded-xl border border-ink-line/80 bg-white p-4 shadow-sm">
-            <QRCodeSVG value={pairingData} size={170} level="M" />
-            <span className="text-[11px] font-semibold tracking-wide text-slate-700">
+            <QRCodeSVG value={pairingData} size={170} level="M" title="Pairing code for the mobile app" />
+            <span className="text-[0.6875rem] font-semibold tracking-wide text-slate-700">
               Scan with Mobile App
             </span>
+            <button
+              type="button"
+              className="text-[0.6875rem] font-medium text-slate-600 underline hover:text-slate-900"
+              onClick={() => setPairingToken(null)}
+            >
+              Hide code
+            </button>
           </div>
         ) : (
-          <div className="flex h-44 w-44 items-center justify-center rounded-xl border border-ink-line/40 bg-ink/20">
-            <Spinner />
+          <div className="flex h-44 w-44 shrink-0 flex-col items-center justify-center gap-2 rounded-xl border border-ink-line/60 bg-ink/40 p-3 text-center">
+            {status ? (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-primary text-xs"
+                  disabled={minting}
+                  onClick={() => void showPairingCode()}
+                >
+                  {minting ? 'Preparing…' : 'Show pairing code'}
+                </button>
+                <span className="text-[0.6875rem] leading-snug text-slate-400">
+                  Anyone who scans it can review your cards. Show it only to your own phone.
+                </span>
+              </>
+            ) : (
+              <Spinner />
+            )}
           </div>
         )}
 
@@ -1101,15 +1319,19 @@ function MobileCompanionPanel({ user }: { user: User }) {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <label
+              htmlFor="pairing-url"
+              className="text-xs font-semibold uppercase tracking-wider text-slate-400"
+            >
               Local Network Address (Wi-Fi)
             </label>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <input
+                id="pairing-url"
                 type="text"
                 readOnly
                 value={status?.pairing_url || 'Detecting local IP...'}
-                className="input font-mono text-sm max-w-sm"
+                className="input min-w-0 flex-1 font-mono text-sm sm:max-w-sm"
               />
               <button
                 type="button"
@@ -1119,7 +1341,7 @@ function MobileCompanionPanel({ user }: { user: User }) {
                 {copied ? '✓ Copied' : 'Copy URL'}
               </button>
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[0.6875rem] text-slate-500">
               Your phone must be connected to the same Wi-Fi network as this computer, or connected via VPN / Tailscale.
             </p>
           </div>
@@ -1131,6 +1353,10 @@ function MobileCompanionPanel({ user }: { user: User }) {
               <li>Tap <strong>Scan QR</strong> and aim your phone's camera at the QR code.</li>
               <li>Your device authenticates and begins streaming cards and syncing reviews!</li>
             </ol>
+            <p className="mt-2 text-sky-300/80">
+              A paired phone can review but cannot run code on this computer. To unpair every
+              device, use <strong>Sign out everywhere else</strong> under Account.
+            </p>
           </div>
         </div>
       </div>
@@ -1192,12 +1418,15 @@ function Field({
   hint?: string
   children: React.ReactNode
 }) {
+  // A <label> wrapping its control: clicking the caption focuses the field,
+  // and a screen reader announces the caption with it. As a <p> beside the
+  // control, most fields on this page had no name at all.
   return (
-    <div>
-      <p className="label">{label}</p>
+    <label className="block">
+      <span className="label">{label}</span>
       {children}
-      {hint && <p className="mt-1 text-xs text-slate-600">{hint}</p>}
-    </div>
+      {hint && <span className="mt-1 block text-xs text-slate-600">{hint}</span>}
+    </label>
   )
 }
 
@@ -1238,7 +1467,7 @@ function TypographyPanel() {
                 <span className="font-bold font-mono text-sm">
                   {meta.label}
                 </span>
-                <span className={`text-[10px] mt-0.5 ${isSelected ? 'text-sky-300 font-semibold' : 'text-slate-500'}`}>
+                <span className={`text-[0.625rem] mt-0.5 ${isSelected ? 'text-sky-300 font-semibold' : 'text-slate-500'}`}>
                   {meta.tag}
                 </span>
               </button>
@@ -1260,10 +1489,10 @@ function TypographyPanel() {
         {/* Live Typography Preview Box */}
         <div className="rounded-xl border border-ink-line bg-ink-soft/50 p-4 space-y-2">
           <div className="flex items-center justify-between text-xs text-slate-400 border-b border-ink-line/50 pb-2">
-            <span className="font-semibold uppercase tracking-wider text-[11px] text-slate-300">
+            <span className="font-semibold uppercase tracking-wider text-[0.6875rem] text-slate-300">
               Preview ({fontSize}px)
             </span>
-            <span className="font-mono text-sky-400 text-[11px]">font-family: 'Verdana', sans-serif</span>
+            <span className="font-mono text-sky-400 text-[0.6875rem]">font-family: 'Verdana', sans-serif</span>
           </div>
 
           <div className="space-y-1.5 pt-1">
@@ -1308,19 +1537,19 @@ function DisplayFocusPanel() {
         <p className="font-semibold text-slate-300">Keyboard Shortcuts:</p>
         <ul className="space-y-1.5 text-slate-400">
           <li className="flex items-center gap-2">
-            <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-sky-300 font-mono text-[11px] border border-slate-700">
+            <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-sky-300 font-mono text-[0.6875rem] border border-slate-700">
               F
             </kbd>
             <span>Toggle fullscreen mode</span>
           </li>
           <li className="flex items-center gap-2">
-            <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-sky-300 font-mono text-[11px] border border-slate-700">
+            <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-sky-300 font-mono text-[0.6875rem] border border-slate-700">
               Ctrl+Shift+F
             </kbd>
             <span>Universal fullscreen toggle</span>
           </li>
           <li className="flex items-center gap-2">
-            <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-sky-300 font-mono text-[11px] border border-slate-700">
+            <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-sky-300 font-mono text-[0.6875rem] border border-slate-700">
               Esc
             </kbd>
             <span>Exit fullscreen or Zen mode</span>
@@ -1350,8 +1579,8 @@ function TutorialPanel({
       const nextStatus = !user.tutorial_completed
       await api.updateMe({ tutorial_completed: nextStatus })
       if (!nextStatus) {
-        localStorage.removeItem('tutorial_prompt_dismissed')
-        localStorage.removeItem('prompt_new_user_tutorial')
+        storage.remove('tutorial_prompt_dismissed')
+        storage.remove('prompt_new_user_tutorial')
       }
       await onChange()
     } catch (err) {
@@ -1374,16 +1603,16 @@ function TutorialPanel({
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-slate-100">Tutorial Status</span>
                 {user.tutorial_completed ? (
-                  <span className="chip border-emerald-500/40 text-emerald-300 bg-emerald-500/10 font-semibold text-[10px]">
+                  <span className="chip border-emerald-500/40 text-emerald-300 bg-emerald-500/10 font-semibold text-[0.625rem]">
                     Completed
                   </span>
                 ) : (
-                  <span className="chip border-amber-500/40 text-amber-300 bg-amber-500/10 font-semibold text-[10px]">
+                  <span className="chip border-amber-500/40 text-amber-300 bg-amber-500/10 font-semibold text-[0.625rem]">
                     Incomplete
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <p className="text-[0.6875rem] text-slate-400 mt-0.5">
                 {user.tutorial_completed
                   ? 'Tour completed. You can replay either mode below.'
                   : 'Tutorial not yet completed.'}
@@ -1411,14 +1640,14 @@ function TutorialPanel({
                 <div className="flex items-center gap-2 text-sky-300 font-bold text-xs">
                   <span>Brief Overview</span>
                 </div>
-                <span className="chip text-[10px] py-0.5 border-sky-500/40 text-sky-300 bg-sky-500/10 font-semibold">
+                <span className="chip text-[0.625rem] py-0.5 border-sky-500/40 text-sky-300 bg-sky-500/10 font-semibold">
                   1 min
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
+              <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                 A rapid 3-slide overview of the core principles: Active Recall, Knowledge Trees, and the Priority Queue.
               </p>
-              <ul className="text-[10px] text-slate-500 space-y-1 pt-1">
+              <ul className="text-[0.625rem] text-slate-500 space-y-1 pt-1">
                 <li className="flex items-center gap-1.5">
                   <svg className="w-3 h-3 text-sky-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <polyline points="20 6 9 17 4 12" />
@@ -1456,14 +1685,14 @@ function TutorialPanel({
                 <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
                   <span>Full Tutorial</span>
                 </div>
-                <span className="chip text-[10px] py-0.5 border-emerald-500/40 text-emerald-300 bg-emerald-500/10 font-semibold">
+                <span className="chip text-[0.625rem] py-0.5 border-emerald-500/40 text-emerald-300 bg-emerald-500/10 font-semibold">
                   Recommended · 4 min
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
+              <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                 Interactive simulation: test-drive the FSRS retention slider, AI grading, and knowledge trees.
               </p>
-              <ul className="text-[10px] text-slate-500 space-y-1 pt-1">
+              <ul className="text-[0.625rem] text-slate-500 space-y-1 pt-1">
                 <li className="flex items-center gap-1.5">
                   <svg className="w-3 h-3 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <polyline points="20 6 9 17 4 12" />
@@ -1578,7 +1807,7 @@ function NavigationModulesPanel({ user, onChange }: { user: User; onChange: () =
             <div className="flex items-center gap-2">
               <span className="font-semibold text-sm text-slate-200">Pre-LeetCode</span>
               <span
-                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                className={`rounded px-1.5 py-0.5 text-[0.625rem] font-semibold ${
                   user.show_pre_leetcode
                     ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                     : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'
@@ -1617,7 +1846,7 @@ function NavigationModulesPanel({ user, onChange }: { user: User; onChange: () =
             <div className="flex items-center gap-2">
               <span className="font-semibold text-sm text-slate-200">Code Lab</span>
               <span
-                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                className={`rounded px-1.5 py-0.5 text-[0.625rem] font-semibold ${
                   user.show_code_lab
                     ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                     : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'
@@ -1656,7 +1885,7 @@ function NavigationModulesPanel({ user, onChange }: { user: User; onChange: () =
             <div className="flex items-center gap-2">
               <span className="font-semibold text-sm text-slate-200">Thematic Context</span>
               <span
-                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                className={`rounded px-1.5 py-0.5 text-[0.625rem] font-semibold ${
                   user.show_thematic_context !== false
                     ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                     : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'
@@ -1754,7 +1983,7 @@ function NeurosciencePanel({ user, onChange }: { user: User; onChange: () => Pro
                 Schema Checkpoints (mPFC Scaffolding)
               </span>
               <span
-                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                className={`rounded px-1.5 py-0.5 text-[0.625rem] font-semibold ${
                   user.enable_schema_checkpoints !== false
                     ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                     : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'
@@ -1795,7 +2024,7 @@ function NeurosciencePanel({ user, onChange }: { user: User; onChange: () => Pro
                 Reconsolidation Variant Cueing
               </span>
               <span
-                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                className={`rounded px-1.5 py-0.5 text-[0.625rem] font-semibold ${
                   user.enable_prompt_mutation
                     ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                     : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'
@@ -1836,7 +2065,7 @@ function NeurosciencePanel({ user, onChange }: { user: User; onChange: () => Pro
                 Pre-Test Prediction Mode (Dopaminergic RPE)
               </span>
               <span
-                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                className={`rounded px-1.5 py-0.5 text-[0.625rem] font-semibold ${
                   user.enable_prediction_mode
                     ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                     : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'
@@ -1914,7 +2143,7 @@ function CognitiveThemePanel() {
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-100 text-sm">Dynamic Context-Adaptive</span>
               </div>
-              <span className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+              <span className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[0.625rem] font-semibold text-emerald-300">
                 Recommended
               </span>
             </div>
@@ -1939,7 +2168,7 @@ function CognitiveThemePanel() {
                       onChange={(e) => setEnableNightAutoShift(e.target.checked)}
                       className="rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500 cursor-pointer"
                     />
-                    <span className="text-[11px]">
+                    <span className="text-[0.6875rem]">
                       Automatically shift to <strong>Circadian Candlelight</strong> after 8:00 PM
                     </span>
                   </label>
@@ -1952,7 +2181,7 @@ function CognitiveThemePanel() {
                       onChange={(e) => setEnableOledBlack(e.target.checked)}
                       className="rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500 cursor-pointer"
                     />
-                    <span className="text-[11px]">
+                    <span className="text-[0.6875rem]">
                       <strong>OLED Pure Black Canvas</strong>: Keep adaptive accents but force pure pitch black (<code>#000000</code>) background
                     </span>
                   </label>
@@ -1974,7 +2203,7 @@ function CognitiveThemePanel() {
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-100 text-sm">Fixed Palette Lock</span>
               </div>
-              <span className="rounded-full bg-slate-800 border border-slate-700 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
+              <span className="rounded-full bg-slate-800 border border-slate-700 px-2 py-0.5 text-[0.625rem] font-semibold text-slate-400">
                 User Choice
               </span>
             </div>
@@ -1998,7 +2227,7 @@ function CognitiveThemePanel() {
                       onChange={(e) => setEnableOledBlack(e.target.checked)}
                       className="rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500 cursor-pointer"
                     />
-                    <span className="text-[11px]">
+                    <span className="text-[0.6875rem]">
                       <strong>OLED Pure Black Canvas</strong>: Force pure pitch black (<code>#000000</code>) background
                     </span>
                   </label>
@@ -2012,12 +2241,11 @@ function CognitiveThemePanel() {
         <div className="rounded-2xl border border-ink-line bg-ink/60 p-4 transition-all">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-2.5">
-              <span className="text-xl">🔲</span>
               <div>
                 <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
                   <span>Greyscale &amp; High-Contrast Mode</span>
                   {enableGreyscaleFriendly && (
-                    <span className="rounded-full bg-white/20 border border-white/40 px-2 py-0.5 text-[10px] font-semibold text-white">
+                    <span className="rounded-full bg-white/20 border border-white/40 px-2 py-0.5 text-[0.625rem] font-semibold text-white">
                       Active
                     </span>
                   )}
@@ -2049,7 +2277,7 @@ function CognitiveThemePanel() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-ink-line/50 text-xs">
             <div className="space-y-1.5 text-slate-300">
               <p className="font-semibold text-slate-200">How Greyscale Mode enhances visibility:</p>
-              <ul className="space-y-1 text-slate-400 text-[11px] list-disc list-inside">
+              <ul className="space-y-1 text-slate-400 text-[0.6875rem] list-disc list-inside">
                 <li>
                   <strong className="text-slate-200">Token Diffs:</strong> Solid underline (—) and <span className="font-bold">✓</span> for recalled tokens vs. dashed underline (- -) and <span className="font-bold">✗</span> for missing/unmatched tokens.
                 </li>
@@ -2067,7 +2295,7 @@ function CognitiveThemePanel() {
 
             <div className="rounded-xl border border-ink-line bg-ink-soft/60 p-3 space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-slate-300">Simulate Greyscale View</span>
+                <span className="text-[0.6875rem] font-medium text-slate-300">Simulate Greyscale View</span>
                 <button
                   type="button"
                   onClick={() => setSimulateGreyscale(!simulateGreyscale)}
@@ -2081,13 +2309,13 @@ function CognitiveThemePanel() {
                   {simulateGreyscale ? 'Simulating (ON)' : 'Preview (OFF)'}
                 </button>
               </div>
-              <p className="text-[10px] text-slate-400 leading-relaxed">
+              <p className="text-[0.625rem] text-slate-400 leading-relaxed">
                 Turns on an in-browser 100% monochrome filter so you can verify contrast and pattern legibility even when your OS color filter is turned off.
               </p>
 
               {/* Live Mini Preview */}
               <div className="pt-2 border-t border-ink-line/50">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1.5">Live Token Diff Preview:</span>
+                <span className="text-[0.625rem] uppercase font-bold text-slate-400 block mb-1.5">Live Token Diff Preview:</span>
                 <div className="p-2 rounded bg-ink border border-ink-line text-xs font-mono flex flex-wrap gap-2 items-center">
                   <mark className="rounded px-1.5 py-0.5 text-xs font-medium" title="Recalled">
                     Recalled Term
@@ -2109,7 +2337,7 @@ function CognitiveThemePanel() {
               {themeMode === 'fixed' ? 'Choose Your Fixed Palette:' : 'Interactive Cognitive State Previews:'}
             </h4>
             {themeMode === 'dynamic' && (
-              <span className="text-[11px] text-slate-500 italic">
+              <span className="text-[0.6875rem] text-slate-500 italic">
                 (Click any state to preview its color scheme)
               </span>
             )}
@@ -2155,22 +2383,22 @@ function CognitiveThemePanel() {
                         />
                       </div>
                     </div>
-                    <p className="text-[11px] font-mono text-slate-400 mb-2">{meta.subtitle}</p>
-                    <p className="text-[11px] text-slate-300 leading-snug mb-2 font-medium">
+                    <p className="text-[0.6875rem] font-mono text-slate-400 mb-2">{meta.subtitle}</p>
+                    <p className="text-[0.6875rem] text-slate-300 leading-snug mb-2 font-medium">
                       <span className="text-slate-400">{meta.bestFor}</span>
                     </p>
-                    <p className="text-[10px] text-slate-500 leading-normal italic">
+                    <p className="text-[0.625rem] text-slate-500 leading-normal italic">
                       {meta.psychology}
                     </p>
                   </div>
 
-                  <div className="mt-3 pt-2 border-t border-ink-line/50 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500 font-mono text-[10px]">
+                  <div className="mt-3 pt-2 border-t border-ink-line/50 flex items-center justify-between text-[0.6875rem]">
+                    <span className="text-slate-500 font-mono text-[0.625rem]">
                       {meta.primaryColor} / {meta.secondaryColor}
                     </span>
                     <button
                       type="button"
-                      className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
+                      className={`px-2 py-0.5 rounded text-[0.625rem] font-semibold transition cursor-pointer ${
                         isSelected
                           ? 'bg-sky-500/30 text-sky-200 border border-sky-500/50'
                           : 'bg-slate-800 text-slate-400 hover:text-slate-200'
@@ -2199,7 +2427,7 @@ function FeatureRequestPanel() {
     Array<{ id: string; title: string; category: string; description: string; date: string }>
   >(() => {
     try {
-      const saved = localStorage.getItem('memorization.featureRequests')
+      const saved = storage.get('memorization.featureRequests')
       return saved ? JSON.parse(saved) : []
     } catch {
       return []
@@ -2233,7 +2461,7 @@ function FeatureRequestPanel() {
     const updated = [entry, ...history.filter((h) => h.title !== title.trim()).slice(0, 9)]
     setHistory(updated)
     try {
-      localStorage.setItem('memorization.featureRequests', JSON.stringify(updated))
+      storage.set('memorization.featureRequests', JSON.stringify(updated))
     } catch {
       // ignore
     }
@@ -2265,7 +2493,7 @@ function FeatureRequestPanel() {
   const handleClearHistory = () => {
     setHistory([])
     try {
-      localStorage.removeItem('memorization.featureRequests')
+      storage.remove('memorization.featureRequests')
     } catch {
       // ignore
     }
@@ -2345,7 +2573,6 @@ function FeatureRequestPanel() {
                 </>
               ) : (
                 <>
-                  <span>📋</span>
                   <span>Copy Formatted Request</span>
                 </>
               )}
@@ -2367,13 +2594,13 @@ function FeatureRequestPanel() {
         {history.length > 0 && (
           <div className="mt-4 pt-4 border-t border-ink-line/60 space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
+              <span className="font-semibold text-slate-400 uppercase tracking-wider text-[0.625rem]">
                 Your Recent Requests ({history.length})
               </span>
               <button
                 type="button"
                 onClick={handleClearHistory}
-                className="text-[11px] text-slate-500 hover:text-slate-300 transition cursor-pointer"
+                className="text-[0.6875rem] text-slate-500 hover:text-slate-300 transition cursor-pointer"
               >
                 Clear History
               </button>
@@ -2386,10 +2613,10 @@ function FeatureRequestPanel() {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="chip text-[10px] py-0 px-1.5 border-sky-500/30 text-sky-300 font-mono">
+                      <span className="chip text-[0.625rem] py-0 px-1.5 border-sky-500/30 text-sky-300 font-mono">
                         {h.category}
                       </span>
-                      <span className="text-slate-500 text-[10px]">{h.date}</span>
+                      <span className="text-slate-500 text-[0.625rem]">{h.date}</span>
                     </div>
                     <p className="text-slate-200 font-medium truncate text-xs">{h.title}</p>
                   </div>
@@ -2400,7 +2627,7 @@ function FeatureRequestPanel() {
                       setCategory(h.category)
                       setDescription(h.description)
                     }}
-                    className="text-slate-400 hover:text-slate-200 text-[11px] underline shrink-0 cursor-pointer"
+                    className="text-slate-400 hover:text-slate-200 text-[0.6875rem] underline shrink-0 cursor-pointer"
                     title="Reload into form"
                   >
                     Load

@@ -1,3 +1,4 @@
+import { storage } from './storage'
 const STORAGE_PREFIX = 'memorization.allCardsRunProgress.'
 
 export interface AllCardsRunProgress {
@@ -25,7 +26,7 @@ export function getAllCardsRunProgress(deckId: string): AllCardsRunProgress | nu
   if (!deckId) return null
   try {
     const key = STORAGE_PREFIX + deckId
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null
+    const raw = storage.get(key)
     if (raw) {
       const parsed = JSON.parse(raw) as AllCardsRunProgress
       if (typeof parsed?.index === 'number') {
@@ -35,8 +36,8 @@ export function getAllCardsRunProgress(deckId: string): AllCardsRunProgress | nu
     // Check seed fallback
     if (SEED_SESSIONS[deckId]) {
       const seed = SEED_SESSIONS[deckId]
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(key, JSON.stringify(seed))
+      {
+        storage.set(key, JSON.stringify(seed))
       }
       return seed
     }
@@ -51,8 +52,8 @@ export function saveAllCardsRunProgress(progress: AllCardsRunProgress): void {
   if (!progress.deckId) return
   try {
     const key = STORAGE_PREFIX + progress.deckId
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(key, JSON.stringify(progress))
+    {
+      storage.set(key, JSON.stringify(progress))
     }
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
@@ -68,8 +69,8 @@ export function clearAllCardsRunProgress(deckId: string): void {
   if (!deckId) return
   try {
     const key = STORAGE_PREFIX + deckId
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem(key)
+    {
+      storage.remove(key)
     }
     // Also remove from in-memory seed so it doesn't resurrect once completed or explicitly restarted
     delete SEED_SESSIONS[deckId]

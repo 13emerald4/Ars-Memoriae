@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { Bank, StudySession } from '../api/types'
+import { storage } from '../utils/storage'
 
 /** A study-session countdown that flashes rainbow when time is up, and banks
  *  the time you save by finishing your card target early.
@@ -65,7 +66,7 @@ export function presetForHour(hour: number): Preset {
 
 function load(): Persisted {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = storage.get(STORAGE_KEY)
     if (!raw) return { ...DEFAULTS, durationMin: presetForHour(new Date().getHours()).minutes[0] }
     const parsed = JSON.parse(raw) as Partial<Persisted>
     return {
@@ -84,7 +85,7 @@ function load(): Persisted {
 
 function save(state: Persisted) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    storage.set(STORAGE_KEY, JSON.stringify(state))
   } catch {
     /* private mode / quota — the timer still works for this page view */
   }
@@ -285,12 +286,17 @@ export default function SessionTimer() {
   const current = bank?.current ?? null
   const bankedToday = bank?.today_seconds ?? 0
 
+  // Idle, the timer is one slim row. It only takes real space once a block
+  // is being planned or is running, so the card stays near the top of the
+  // screen the rest of the time.
+  const compact = idle && !planning && !justFinished
+
   return (
-    <div className="card">
+    <div className={compact ? 'card px-4 py-2' : 'card'}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-baseline gap-3">
           <span
-            className={`font-mono text-3xl tabular-nums ${
+            className={`font-mono tabular-nums ${compact ? 'text-lg' : 'text-3xl'} ${
               finished ? 'timer-finished' : idle ? 'text-slate-600' : 'text-slate-100'
             }`}
             role="timer"
@@ -318,7 +324,7 @@ export default function SessionTimer() {
           )}
           {idle && (
             <button
-              className="btn btn-primary"
+              className={`btn btn-primary ${compact ? 'px-3 py-1 text-xs' : ''}`}
               disabled={busy}
               onClick={() => setPlanning((p) => !p)}
             >

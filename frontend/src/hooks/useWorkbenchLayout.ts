@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { storage } from '../utils/storage'
 
 export interface WorkbenchLayoutState {
   leftWidthPercent: number
@@ -34,7 +35,7 @@ function clamp(value: number, min: number, max: number): number {
 
 function loadLayoutState(): WorkbenchLayoutState {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = storage.get(STORAGE_KEY)
     if (!raw) return DEFAULT_WORKBENCH_LAYOUT
     const parsed = JSON.parse(raw)
     return {
@@ -79,7 +80,7 @@ export function useWorkbenchLayout() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(layout))
+      storage.set(STORAGE_KEY, JSON.stringify(layout))
     } catch {
       // Ignore quota errors
     }
@@ -154,7 +155,7 @@ export function useWorkbenchLayout() {
   const resetLayout = useCallback(() => {
     setLayout(DEFAULT_WORKBENCH_LAYOUT)
     try {
-      localStorage.removeItem(STORAGE_KEY)
+      storage.remove(STORAGE_KEY)
     } catch {
       // Ignore
     }

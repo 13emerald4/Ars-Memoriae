@@ -1,5 +1,9 @@
 # secrets — .env.example is the template, .env is yours
 .env
+# Per-machine overrides. Never committed: a checked-in VITE_API_BASE_URL gets
+# baked into the production bundle and points every other device at localhost.
+.env.local
+.env.*.local
 # generated on first start when SECRET_KEY is unset
 .secret_key
 

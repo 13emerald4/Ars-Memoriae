@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
+import { API_BASE } from '../api/client'
 import type { OcclusionPayload, OcclusionShape } from '../api/types'
 
-const MEDIA_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+const MEDIA_BASE = API_BASE
 
 export function mediaUrl(path: string): string {
   return path.startsWith('/') ? `${MEDIA_BASE}${path}` : path

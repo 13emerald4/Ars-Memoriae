@@ -454,7 +454,7 @@ export default function CodeLab() {
             <span className="font-bold text-[#eff1f6]">{formatTimer(timerSec)}</span>
             <button
               onClick={() => setTimerActive((a) => !a)}
-              className="text-[10px] font-bold text-[#8a8a8a] hover:text-[#eff1f6] ml-0.5"
+              className="text-[0.625rem] font-bold text-[#8a8a8a] hover:text-[#eff1f6] ml-0.5"
             >
               {timerActive ? 'Pause' : 'Start'}
             </button>
@@ -617,7 +617,7 @@ export default function CodeLab() {
                       className="rounded-full bg-[#282828] hover:bg-[#333333] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#8a8a8a] hover:text-[#eff1f6] transition flex items-center gap-1"
                     >
                       <span>Topics</span>
-                      <span className="text-[9px]">{showTopics ? '▲' : '▼'}</span>
+                      <span className="text-[0.5625rem]">{showTopics ? '▲' : '▼'}</span>
                     </button>
 
                     {problemDetail.hints.length > 0 && (
@@ -626,7 +626,7 @@ export default function CodeLab() {
                         className="rounded-full bg-[#282828] hover:bg-[#333333] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#8a8a8a] hover:text-[#eff1f6] transition flex items-center gap-1"
                       >
                         <span>Hint</span>
-                        <span className="text-[9px]">{showHints ? '▲' : '▼'}</span>
+                        <span className="text-[0.5625rem]">{showHints ? '▲' : '▼'}</span>
                       </button>
                     )}
 
@@ -653,13 +653,13 @@ export default function CodeLab() {
                   {/* Topics Popover Drawer */}
                   {showTopics && (
                     <div className="flex flex-wrap items-center gap-1.5 p-2.5 rounded-lg bg-[#222222] border border-[#333333]">
-                      <span className="rounded bg-[#2cbb5d]/15 text-[#2cbb5d] font-semibold px-2 py-0.5 text-[11px]">
+                      <span className="rounded bg-[#2cbb5d]/15 text-[#2cbb5d] font-semibold px-2 py-0.5 text-[0.6875rem]">
                         {problemDetail.category}
                       </span>
                       {problemDetail.tags.map((t) => (
                         <span
                           key={t}
-                          className="rounded bg-[#282828] text-[#eff1f6] px-2 py-0.5 text-[11px]"
+                          className="rounded bg-[#282828] text-[#eff1f6] px-2 py-0.5 text-[0.6875rem]"
                         >
                           {t}
                         </span>
@@ -698,7 +698,7 @@ export default function CodeLab() {
                             <span className="text-[#eff1f6]">{ex.output}</span>
                           </div>
                           {ex.explanation && (
-                            <div className="pt-1 text-[#8a8a8a] text-[11px] font-sans">
+                            <div className="pt-1 text-[#8a8a8a] text-[0.6875rem] font-sans">
                               <span className="font-bold text-[#8a8a8a]">Explanation: </span>
                               {ex.explanation}
                             </div>
@@ -712,7 +712,7 @@ export default function CodeLab() {
                   {problemDetail.constraints.length > 0 && (
                     <div className="space-y-2 pt-2">
                       <p className="font-bold text-[#eff1f6] text-xs">Constraints:</p>
-                      <ul className="list-disc list-inside space-y-1 font-mono text-[11px] text-[#eff1f6] bg-[#222222]/40 rounded-lg p-3 border border-[#333333]/60">
+                      <ul className="list-disc list-inside space-y-1 font-mono text-[0.6875rem] text-[#eff1f6] bg-[#222222]/40 rounded-lg p-3 border border-[#333333]/60">
                         {problemDetail.constraints.map((c, i) => (
                           <li key={i}>{c}</li>
                         ))}
@@ -780,7 +780,7 @@ export default function CodeLab() {
                               ({sub.passed_tests}/{sub.total_tests})
                             </span>
                           </div>
-                          <div className="text-[#8a8a8a] text-[11px]">
+                          <div className="text-[#8a8a8a] text-[0.6875rem]">
                             {sub.runtime_ms ? `${sub.runtime_ms} ms` : ''} •{' '}
                             {new Date(sub.created_at).toLocaleTimeString([], {
                               hour: '2-digit',
@@ -949,7 +949,7 @@ export default function CodeLab() {
                     {isExpanded && (
                       <div className="ml-5 border-l-2 border-[#333333] pl-4 pt-2 space-y-1 font-sans">
                         {branchProblems.length === 0 ? (
-                          <div className="text-[11px] text-[#8a8a8a] italic py-1 pl-4">
+                          <div className="text-[0.6875rem] text-[#8a8a8a] italic py-1 pl-4">
                             No problems match the current filter in this branch.
                           </div>
                         ) : (
@@ -975,7 +975,7 @@ export default function CodeLab() {
                                   <span className="font-mono text-[#8a8a8a] text-xs">
                                     {isLastProblem ? '└──' : '├──'}
                                   </span>
-                                  <span className="text-[10px] font-mono">
+                                  <span className="text-[0.625rem] font-mono">
                                     {isSolved ? (
                                       <span className="text-[#2cbb5d] font-bold">[Solved]</span>
                                     ) : p.has_submission ? (
@@ -989,7 +989,7 @@ export default function CodeLab() {
 
                                 <div className="flex items-center gap-2 shrink-0">
                                   <span
-                                    className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                                    className={`rounded px-1.5 py-0.5 text-[0.625rem] font-bold ${
                                       p.difficulty === 'Easy'
                                         ? 'text-[#00b8a3] bg-[#00b8a3]/10'
                                         : p.difficulty === 'Medium'
@@ -999,7 +999,7 @@ export default function CodeLab() {
                                   >
                                     {p.difficulty}
                                   </span>
-                                  <button className="btn btn-primary px-2 py-0.5 text-[11px] bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 text-white font-medium">
+                                  <button className="btn btn-primary px-2 py-0.5 text-[0.6875rem] bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 text-white font-medium">
                                     Solve &rarr;
                                   </button>
                                 </div>
@@ -1081,9 +1081,9 @@ export default function CodeLab() {
                   <div className="flex items-start justify-between gap-2 border-b border-[#282828] pb-2.5">
                     <div>
                       <h3 className="text-sm font-bold text-[#eff1f6]">{cat.name}</h3>
-                      <p className="mt-0.5 text-[11px] text-[#8a8a8a]">{cat.desc}</p>
+                      <p className="mt-0.5 text-[0.6875rem] text-[#8a8a8a]">{cat.desc}</p>
                     </div>
-                    <span className="chip text-[11px] font-bold border-[#00b8a3]/30 bg-[#00b8a3]/10 text-[#00b8a3]">
+                    <span className="chip text-[0.6875rem] font-bold border-[#00b8a3]/30 bg-[#00b8a3]/10 text-[#00b8a3]">
                       {solvedCat}/{totalCat}
                     </span>
                   </div>
@@ -1106,7 +1106,7 @@ export default function CodeLab() {
                         className="flex cursor-pointer items-center justify-between rounded-lg p-1.5 text-xs border border-[#282828] bg-[#222222]/50 hover:bg-[#262626] transition"
                       >
                         <div className="flex items-center gap-1.5 truncate pr-2">
-                          <span className="text-[10px] font-mono">
+                          <span className="text-[0.625rem] font-mono">
                             {p.last_status === 'Accepted' ? (
                               <span className="text-[#2cbb5d] font-bold">[Solved]</span>
                             ) : (
@@ -1116,7 +1116,7 @@ export default function CodeLab() {
                           <span className="truncate font-medium text-[#eff1f6]">{p.title}</span>
                         </div>
                         <span
-                          className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                          className={`shrink-0 rounded px-1.5 py-0.5 text-[0.625rem] font-semibold ${
                             p.difficulty === 'Easy'
                               ? 'text-[#00b8a3] bg-[#00b8a3]/10'
                               : p.difficulty === 'Medium'

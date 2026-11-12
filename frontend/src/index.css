@@ -8,85 +8,26 @@
   --theme-border: #252938;
   --theme-accent: #0ea5e9;
   --theme-accent-secondary: #10b981;
+  /* The same three surfaces as space-separated channels, which is the form
+     Tailwind needs to build `bg-ink/90`-style translucent colours. Always set
+     together with the hex above (see ThemeContext). */
+  --theme-bg-canvas-rgb: 15 17 23;
+  --theme-bg-card-rgb: 23 26 35;
+  --theme-border-rgb: 37 41 56;
 }
 
-/* 1. Acquisition & Learning (Azure & Emerald) */
-html[data-theme='acquisition'] {
-  --theme-bg-canvas: #0b1320;
-  --theme-bg-card: #111d30;
-  --theme-border: #1e3a5f;
-  --theme-accent: #0ea5e9;
-  --theme-accent-secondary: #10b981;
-}
-
-/* 2. Active Recall & Testing (Deep Indigo & Golden Ochre) */
-html[data-theme='recall'] {
-  --theme-bg-canvas: #0e0d1a;
-  --theme-bg-card: #161429;
-  --theme-border: #2c2752;
-  --theme-accent: #6366f1;
-  --theme-accent-secondary: #f59e0b;
-}
-
-/* 3. Diagnostic Lab (Analytical Cyan & Soft Coral) */
-html[data-theme='diagnostic'] {
-  --theme-bg-canvas: #0a151d;
-  --theme-bg-card: #112330;
-  --theme-border: #193e50;
-  --theme-accent: #06b6d4;
-  --theme-accent-secondary: #f43f5e;
-}
-
-/* 4. Deep Flow & Code Immersion (Obsidian & Electric Cyan) */
-html[data-theme='flow'] {
-  --theme-bg-canvas: #08090d;
-  --theme-bg-card: #0f1118;
-  --theme-border: #1c202d;
-  --theme-accent: #38bdf8;
-  --theme-accent-secondary: #64748b;
-}
-
-/* 5. Mastery & Peak Synthesis (Royal Violet & Radiant Gold) */
-html[data-theme='mastery'] {
-  --theme-bg-canvas: #100b1c;
-  --theme-bg-card: #19122b;
-  --theme-border: #352354;
-  --theme-accent: #8b5cf6;
-  --theme-accent-secondary: #eab308;
-}
-
-/* 6. Circadian Nocturnal (Warm Amber & Candlelight) */
-html[data-theme='circadian'] {
-  --theme-bg-canvas: #130f0a;
-  --theme-bg-card: #1c160f;
-  --theme-border: #332415;
-  --theme-accent: #f59e0b;
-  --theme-accent-secondary: #fde68a;
-}
-
-/* 7. Dark Mode (OLED Pitch Black) */
-html[data-theme='dark'] {
-  --theme-bg-canvas: #000000;
-  --theme-bg-card: #090a0f;
-  --theme-border: #1a1d27;
-  --theme-accent: #38bdf8;
-  --theme-accent-secondary: #94a3b8;
-}
-
-/* 8. Classic Ars Memoriae (Default Slate & Sky) */
-html[data-theme='classic'] {
-  --theme-bg-canvas: #0f1117;
-  --theme-bg-card: #171a23;
-  --theme-border: #252938;
-  --theme-accent: #0ea5e9;
-  --theme-accent-secondary: #94a3b8;
-}
+/* The per-theme palettes live in components/ThemeContext.tsx (THEME_REGISTRY),
+   which writes these variables on <html>. The values above are only what is
+   shown before that runs, e.g. on the sign-in screen. */
 
 /* OLED Pure Black Modifier (applies #000000 canvas across any cognitive state) */
 html[data-oled='true'] {
   --theme-bg-canvas: #000000 !important;
   --theme-bg-card: #090a0f !important;
   --theme-border: #1a1d27 !important;
+  --theme-bg-canvas-rgb: 0 0 0 !important;
+  --theme-bg-card-rgb: 9 10 15 !important;
+  --theme-border-rgb: 26 29 39 !important;
 }
 
 @layer base {
@@ -124,12 +65,16 @@ html[data-oled='true'] {
   .btn-primary {
     @apply border-sky-500/40 bg-sky-500/15 text-sky-200 hover:border-sky-400 hover:bg-sky-500/25;
   }
+  .btn-secondary {
+    @apply border-slate-600/70 bg-slate-800/60 text-slate-200 hover:border-slate-400 hover:bg-slate-700/70;
+  }
   .btn-danger {
     @apply border-rose-500/40 text-rose-300 hover:border-rose-400 hover:bg-rose-500/15;
   }
   .input {
     @apply w-full rounded-lg border border-ink-line bg-ink px-3 py-2 text-sm text-slate-100
-           outline-none transition placeholder:text-slate-600 focus:border-sky-500/60;
+           outline-none transition placeholder:text-slate-600 focus:border-sky-500/60
+           focus-visible:ring-2 focus-visible:ring-sky-400/60;
   }
   .label {
     @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500;
@@ -192,6 +137,7 @@ html[data-simulate-greyscale='true'] {
 
 html[data-greyscale='true'] {
   --theme-border: #64748b !important;
+  --theme-border-rgb: 100 116 139 !important;
 }
 
 /* Elevated border visibility on cards and containers */
@@ -302,4 +248,133 @@ html[data-greyscale='true'] .text-emerald-300 {
 html[data-greyscale='true'] .text-amber-300 {
   color: #d4d4d8 !important;
   font-weight: 500 !important;
+}
+
+/* ==========================================================================
+   Readable muted text
+   Tailwind's slate-500 / slate-600 on these backgrounds measure 3.3-4.0:1 and
+   1.9-2.5:1, below the 4.5:1 WCAG AA needs for body-size text, and they carry
+   most of the app's secondary copy. Same hues, lifted until they pass on every
+   theme's canvas and card colour. Unlayered so they follow the utilities.
+   ========================================================================== */
+.text-slate-500,
+.label {
+  color: #8c98ad;
+}
+
+.text-slate-600 {
+  color: #7f8ba1;
+}
+
+::placeholder,
+.input::placeholder,
+.placeholder\:text-slate-500::placeholder,
+.placeholder\:text-slate-600::placeholder {
+  color: #7f8ba1;
+  opacity: 1;
+}
+
+/* Keyboard users land on the first link in the page: a jump past the nav. */
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: -4rem;
+  z-index: 100;
+  border-radius: 0.5rem;
+  border: 1px solid #38bdf8;
+  background: #0b1320;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #e0f2fe;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 0.75rem;
+}
+
+/* Scroll containers that should not show a bar (tab strips, preset rows). */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Entrance transitions. The markup uses the tailwindcss-animate vocabulary
+   (animate-in + fade-in / zoom-in-95 / slide-in-from-*); these are the few it
+   actually needs, without the plugin. */
+@keyframes am-enter {
+  from {
+    opacity: var(--am-enter-opacity, 1);
+    transform: translate3d(var(--am-enter-x, 0), var(--am-enter-y, 0), 0)
+      scale(var(--am-enter-scale, 1));
+  }
+}
+
+.animate-in {
+  animation: am-enter 180ms ease-out both;
+}
+
+.fade-in {
+  --am-enter-opacity: 0;
+}
+
+.zoom-in-95 {
+  --am-enter-scale: 0.95;
+}
+
+.slide-in-from-right {
+  --am-enter-x: 100%;
+}
+
+.slide-in-from-top-1 {
+  --am-enter-y: -0.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-fade-in,
+  .animate-fadeIn {
+    animation: none;
+  }
+}
+
+/* Touch screens: a finger needs more than a 16px-high hit area. Only applied
+   where the primary pointer is coarse, so the dense desktop toolbars keep
+   their size. Switches keep their own fixed track. */
+@media (pointer: coarse) {
+  button:not([role='switch']),
+  select,
+  [role='button'],
+  .chip {
+    min-height: 2rem;
+  }
+
+  button:not([role='switch']) {
+    min-width: 2rem;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    min-width: 1.25rem;
+    min-height: 1.25rem;
+  }
+}
+
+/* The grade buttons stay reachable while a long answer or diff scrolls above
+   them: grading is the one action every card ends with. */
+.review-grade-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: 0.75rem -0.5rem 0;
+  padding: 0.625rem 0.5rem;
+  border-top: 1px solid rgb(var(--theme-border-rgb, 37 41 56) / 0.8);
+  border-radius: 0 0 0.5rem 0.5rem;
+  background: rgb(var(--theme-bg-card-rgb, 23 26 35) / 0.96);
+  backdrop-filter: blur(6px);
 }

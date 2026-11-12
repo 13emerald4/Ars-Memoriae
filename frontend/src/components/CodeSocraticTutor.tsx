@@ -56,7 +56,7 @@ export function CodeSocraticTutor({
             Socratic AI Code Tutor
           </h4>
         </div>
-        <span className="text-[10px] text-sky-400 font-mono">Zero Spoilers</span>
+        <span className="text-[0.625rem] text-sky-400 font-mono">Zero Spoilers</span>
       </div>
 
       {/* Quick Action Prompt Chips */}

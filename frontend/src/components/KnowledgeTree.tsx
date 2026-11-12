@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Deck, DeckStats, TreeNode } from '../api/types'
 import { CompactDeckDistributionBars } from './DeckReviewStatsBar'
+import { storage } from '../utils/storage'
 
 export type KnowledgeTreeTheme = 'modern' | 'classic'
 export type DropPosition = 'before' | 'inside' | 'after'
@@ -68,7 +69,7 @@ export function TopicIcon({ variant = 'yellow' }: { variant?: 'yellow' | 'green'
   const isGreen = variant === 'green'
   return (
     <span
-      className={`inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold font-mono rounded shadow-xs select-none leading-none shrink-0 border ${
+      className={`inline-flex items-center justify-center w-4 h-4 text-[0.625rem] font-bold font-mono rounded shadow-xs select-none leading-none shrink-0 border ${
         isGreen
           ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
           : 'bg-amber-500/15 border-amber-500/40 text-amber-300'
@@ -113,7 +114,7 @@ export function KnowledgeTree({
 }: KnowledgeTreeProps) {
   const navigate = useNavigate()
   const [theme, setTheme] = useState<KnowledgeTreeTheme>(() => {
-    return (localStorage.getItem('knowledgeTree.theme') as KnowledgeTreeTheme) || 'modern'
+    return (storage.get('knowledgeTree.theme') as KnowledgeTreeTheme) || 'modern'
   })
 
   const [expanded, setExpanded] = useState<Set<string>>(() => {
@@ -135,20 +136,19 @@ export function KnowledgeTree({
   const toggleTheme = () => {
     setTheme((prev) => {
       const next = prev === 'modern' ? 'classic' : 'modern'
-      localStorage.setItem('knowledgeTree.theme', next)
+      storage.set('knowledgeTree.theme', next)
       return next
     })
   }
 
   const [showBars, setShowBars] = useState<boolean>(() => {
-    if (typeof localStorage === 'undefined') return true
-    return localStorage.getItem('knowledgeTree.showProgressBars') !== '0'
+    return storage.get('knowledgeTree.showProgressBars') !== '0'
   })
 
   const toggleBars = () => {
     setShowBars((prev) => {
       const next = !prev
-      localStorage.setItem('knowledgeTree.showProgressBars', next ? '1' : '0')
+      storage.set('knowledgeTree.showProgressBars', next ? '1' : '0')
       return next
     })
   }
@@ -541,7 +541,7 @@ export function KnowledgeTree({
           {/* Progress Bars Toggle */}
           <button
             type="button"
-            className={`px-2 py-0.5 rounded text-[11px] font-medium transition flex items-center gap-1 ${
+            className={`px-2 py-0.5 rounded text-[0.6875rem] font-medium transition flex items-center gap-1 ${
               showBars
                 ? 'bg-sky-500/20 text-sky-200 border border-sky-500/40'
                 : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800 border border-transparent'
@@ -555,14 +555,14 @@ export function KnowledgeTree({
           {/* Expand / Collapse All */}
           <button
             type="button"
-            className="px-2 py-0.5 rounded text-[11px] text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition"
+            className="px-2 py-0.5 rounded text-[0.6875rem] text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition"
             onClick={expandAll}
           >
             Expand All
           </button>
           <button
             type="button"
-            className="px-2 py-0.5 rounded text-[11px] text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition"
+            className="px-2 py-0.5 rounded text-[0.6875rem] text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition"
             onClick={collapseAll}
           >
             Collapse All
@@ -575,7 +575,7 @@ export function KnowledgeTree({
           <button
             type="button"
             onClick={toggleTheme}
-            className="text-[11px] px-2 py-0.5 rounded border border-slate-700/80 bg-slate-800/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+            className="text-[0.6875rem] px-2 py-0.5 rounded border border-slate-700/80 bg-slate-800/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
             title="Toggle theme"
           >
             {isClassic ? 'Win32' : 'Modern UI'}
@@ -606,7 +606,7 @@ export function KnowledgeTree({
           >
             <span>Learn</span>
             {selectedNode.dueCount !== undefined && selectedNode.dueCount > 0 && (
-              <span className="chip px-1.5 py-0 text-[10px] bg-emerald-500/30 border-emerald-400/50 text-white font-bold">
+              <span className="chip px-1.5 py-0 text-[0.625rem] bg-emerald-500/30 border-emerald-400/50 text-white font-bold">
                 {selectedNode.dueCount}
               </span>
             )}
@@ -769,7 +769,7 @@ export function KnowledgeTree({
 
             {/* Drop Indicator on Root */}
             {dropTargetId === '__root__' && draggingNode && (
-              <span className="chip border-sky-400 bg-sky-500/30 text-sky-100 text-[10px] py-0 px-2 font-bold ml-auto animate-pulse">
+              <span className="chip border-sky-400 bg-sky-500/30 text-sky-100 text-[0.625rem] py-0 px-2 font-bold ml-auto animate-pulse">
                 ↳ Move to Top-Level (Root)
               </span>
             )}
@@ -782,7 +782,7 @@ export function KnowledgeTree({
                   e.stopPropagation()
                   handleStudyAction(allNodesMap.get('__root__')!, 'standard')
                 }}
-                className="chip hover:scale-105 active:scale-95 cursor-pointer border-sky-500/40 bg-sky-500/15 text-sky-300 text-[10px] py-0 px-2 font-semibold ml-auto shrink-0 transition focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400"
+                className="chip hover:scale-105 active:scale-95 cursor-pointer border-sky-500/40 bg-sky-500/15 text-sky-300 text-[0.625rem] py-0 px-2 font-semibold ml-auto shrink-0 transition focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400"
                 aria-label={`Study all ${rootTotals.due} due cards`}
                 title={`Study ${rootTotals.due} due cards`}
               >
@@ -796,7 +796,7 @@ export function KnowledgeTree({
                   e.stopPropagation()
                   handleStudyAction(allNodesMap.get('__root__')!, 'unseen')
                 }}
-                className={`chip hover:scale-105 active:scale-95 cursor-pointer border-emerald-500/40 bg-emerald-500/15 text-emerald-300 text-[10px] py-0 px-2 font-semibold shrink-0 transition focus:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400 ${rootTotals.due > 0 ? 'ml-1' : 'ml-auto'}`}
+                className={`chip hover:scale-105 active:scale-95 cursor-pointer border-emerald-500/40 bg-emerald-500/15 text-emerald-300 text-[0.625rem] py-0 px-2 font-semibold shrink-0 transition focus:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400 ${rootTotals.due > 0 ? 'ml-1' : 'ml-auto'}`}
                 aria-label={`Study all ${rootTotals.newCards} new cards`}
                 title={`Study ${rootTotals.newCards} new cards`}
               >
@@ -908,7 +908,7 @@ export function KnowledgeTree({
           >
             <div className="flex items-center justify-between pb-1 border-b border-ink-line/60">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
+                <span className="text-[0.6875rem] font-bold uppercase tracking-wider text-amber-400">
                   Begin Deck
                 </span>
                 <h3 className="text-base font-bold text-slate-100">
@@ -945,7 +945,7 @@ export function KnowledgeTree({
                     <span className="font-semibold text-sm text-amber-200 group-hover:text-amber-100">
                       Only Unseen Cards
                     </span>
-                    <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-300">
+                    <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[0.625rem] font-mono font-bold text-amber-300">
                       {studyModalNode.newCount} unseen
                     </span>
                   </div>
@@ -969,7 +969,7 @@ export function KnowledgeTree({
                   <span className="font-semibold text-sm text-sky-200 group-hover:text-sky-100">
                     Standard Review
                   </span>
-                  <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-[10px] font-mono text-sky-300">
+                  <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-[0.625rem] font-mono text-sky-300">
                     {studyModalNode.dueCount || 0} due
                   </span>
                 </div>
@@ -992,7 +992,7 @@ export function KnowledgeTree({
                   <span className="font-semibold text-sm text-purple-200 group-hover:text-purple-100">
                     All Cards Run
                   </span>
-                  <span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-mono text-purple-300">
+                  <span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-[0.625rem] font-mono text-purple-300">
                     {studyModalNode.elementCount} cards
                   </span>
                 </div>
@@ -1019,7 +1019,7 @@ export function KnowledgeTree({
                       </svg>
                       Browse All Cards (Inspector & Notes)
                     </span>
-                    <span className="rounded-full bg-teal-500/20 px-2 py-0.5 text-[10px] font-mono text-teal-300">
+                    <span className="rounded-full bg-teal-500/20 px-2 py-0.5 text-[0.625rem] font-mono text-teal-300">
                       {studyModalNode.elementCount} cards
                     </span>
                   </div>
@@ -1137,12 +1137,12 @@ function KnowledgeTreeNodeComponent({
         {/* Drop Indicators: Before and After insertion lines */}
         {isDropTarget && dropPosition === 'before' && (
           <div className="absolute -top-1 left-1 right-1 h-1 bg-sky-400 rounded-full shadow-[0_0_8px_rgba(56,189,248,0.9)] z-20 pointer-events-none flex items-center">
-            <span className="text-[9px] font-bold text-sky-950 bg-sky-300 px-1 rounded-xs ml-2 shadow-xs">▲ Insert Before</span>
+            <span className="text-[0.5625rem] font-bold text-sky-950 bg-sky-300 px-1 rounded-xs ml-2 shadow-xs">▲ Insert Before</span>
           </div>
         )}
         {isDropTarget && dropPosition === 'after' && (
           <div className="absolute -bottom-1 left-1 right-1 h-1 bg-sky-400 rounded-full shadow-[0_0_8px_rgba(56,189,248,0.9)] z-20 pointer-events-none flex items-center">
-            <span className="text-[9px] font-bold text-sky-950 bg-sky-300 px-1 rounded-xs ml-2 shadow-xs">▼ Insert After</span>
+            <span className="text-[0.5625rem] font-bold text-sky-950 bg-sky-300 px-1 rounded-xs ml-2 shadow-xs">▼ Insert After</span>
           </div>
         )}
 
@@ -1194,7 +1194,7 @@ function KnowledgeTreeNodeComponent({
                 onOpenCards(node)
               }
             }}
-            className={`text-[11px] font-mono tabular-nums shrink-0 px-1 py-0.5 rounded transition ${
+            className={`text-[0.6875rem] font-mono tabular-nums shrink-0 px-1 py-0.5 rounded transition ${
               onOpenCards
                 ? 'text-slate-400 hover:text-sky-300 hover:bg-sky-500/20 hover:ring-1 hover:ring-sky-500/40 cursor-pointer'
                 : 'text-slate-400'
@@ -1230,7 +1230,7 @@ function KnowledgeTreeNodeComponent({
 
         {/* Drop inside indicator badge */}
         {isDropTarget && dropPosition === 'inside' && (
-          <span className="text-[10px] font-semibold text-sky-200 bg-sky-950/90 px-1.5 py-0.5 rounded border border-sky-400/60 ml-auto shrink-0 animate-pulse">
+          <span className="text-[0.625rem] font-semibold text-sky-200 bg-sky-950/90 px-1.5 py-0.5 rounded border border-sky-400/60 ml-auto shrink-0 animate-pulse">
             ↳ Move Inside
           </span>
         )}
@@ -1238,7 +1238,7 @@ function KnowledgeTreeNodeComponent({
         {/* Missing Documents Indicator Badge */}
         {(node.title.startsWith('!') || node.title.includes('[!]')) && (
           <span
-            className="inline-flex items-center justify-center text-[10px] font-bold w-4 h-4 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 ml-1 shrink-0 select-none shadow-xs"
+            className="inline-flex items-center justify-center text-[0.625rem] font-bold w-4 h-4 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 ml-1 shrink-0 select-none shadow-xs"
             title="Documents missing / pending instructor release to make cards"
           >
             !
@@ -1246,7 +1246,7 @@ function KnowledgeTreeNodeComponent({
         )}
 
         {/* Locked Badge */}
-        {node.locked && <span className="text-[10px] ml-1 text-amber-400 font-mono">[Locked]</span>}
+        {node.locked && <span className="text-[0.625rem] ml-1 text-amber-400 font-mono">[Locked]</span>}
 
         {/* Unseen Count Chip */}
         {node.newCount !== undefined && node.newCount > 0 && (
@@ -1256,7 +1256,7 @@ function KnowledgeTreeNodeComponent({
               e.stopPropagation()
               onStudy?.(node, 'unseen')
             }}
-            className="chip hover:scale-105 active:scale-95 cursor-pointer border-amber-500/40 bg-amber-500/15 text-amber-300 text-[10px] py-0 px-1.5 font-semibold ml-auto shrink-0 transition focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
+            className="chip hover:scale-105 active:scale-95 cursor-pointer border-amber-500/40 bg-amber-500/15 text-amber-300 text-[0.625rem] py-0 px-1.5 font-semibold ml-auto shrink-0 transition focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
             aria-label={`Study ${node.newCount} new cards in ${node.title}`}
             title={`Study ${node.newCount} new cards`}
           >
@@ -1272,7 +1272,7 @@ function KnowledgeTreeNodeComponent({
               e.stopPropagation()
               onStudy?.(node, 'standard')
             }}
-            className={`chip hover:scale-105 active:scale-95 cursor-pointer border-sky-500/40 bg-sky-500/15 text-sky-300 text-[10px] py-0 px-1.5 font-semibold shrink-0 transition focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400 ${node.newCount ? 'ml-1' : 'ml-auto'}`}
+            className={`chip hover:scale-105 active:scale-95 cursor-pointer border-sky-500/40 bg-sky-500/15 text-sky-300 text-[0.625rem] py-0 px-1.5 font-semibold shrink-0 transition focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400 ${node.newCount ? 'ml-1' : 'ml-auto'}`}
             aria-label={`Study ${node.dueCount} due cards in ${node.title}`}
             title={`Study ${node.dueCount} due cards`}
           >

@@ -10,6 +10,7 @@ import {
 import { useLexicon } from './LexiconContext'
 import { AddToDefinitionsPrompt } from './AddToDefinitionsPrompt'
 import { canonicalTermKey, isTermInGlosses, looksLikeCodeTerm } from '../utils/lexiconExtractor'
+import { storage } from '../utils/storage'
 
 function renderInlineBackticks(text?: string | null) {
   if (!text) return null
@@ -19,7 +20,7 @@ function renderInlineBackticks(text?: string | null) {
       return (
         <code
           key={i}
-          className="px-1 py-0.2 rounded bg-emerald-950/70 text-emerald-300 font-mono text-[11px] border border-emerald-500/20 mx-0.5"
+          className="px-1 py-0.2 rounded bg-emerald-950/70 text-emerald-300 font-mono text-[0.6875rem] border border-emerald-500/20 mx-0.5"
         >
           {part.slice(1, -1)}
         </code>
@@ -92,7 +93,7 @@ export function MarginLexiconPanel({
       return false
     }
     try {
-      return localStorage.getItem('memorization.marginLexiconCollapsed') === 'true'
+      return storage.get('memorization.marginLexiconCollapsed') === 'true'
     } catch {
       return false
     }
@@ -246,7 +247,7 @@ export function MarginLexiconPanel({
         const added = Math.max(0, serverUpdatedGlosses.length - prevCount)
         setSavedNotice(
           added > 0
-            ? `⚡ Added ${added} term${added > 1 ? 's' : ''} to Card Memory`
+            ? ` Added ${added} term${added > 1 ? 's' : ''} to Card Memory`
             : '✓ Card Memory updated',
         )
         setTimeout(() => setSavedNotice(null), 3500)
@@ -286,7 +287,7 @@ export function MarginLexiconPanel({
         void persistGlosses(
           nextList,
           addedCount > 0
-            ? `⚡ Added ${addedCount} term${addedCount > 1 ? 's' : ''} to Card Memory`
+            ? ` Added ${addedCount} term${addedCount > 1 ? 's' : ''} to Card Memory`
             : '✓ Updated Card Memory',
         )
         setActiveTab('card_glosses')
@@ -348,7 +349,7 @@ export function MarginLexiconPanel({
       pinned_at: new Date().toISOString(),
     }))
     const next = [...glosses, ...newItems]
-    void persistGlosses(next, `⚡ Populated ${newItems.length} definition${newItems.length > 1 ? 's' : ''} to card memory`)
+    void persistGlosses(next, ` Populated ${newItems.length} definition${newItems.length > 1 ? 's' : ''} to card memory`)
     setActiveTab('card_glosses')
   }, [unpinnedRecent, glosses, persistGlosses])
 
@@ -398,7 +399,7 @@ export function MarginLexiconPanel({
     const next = !collapsed
     setCollapsed(next)
     try {
-      localStorage.setItem('memorization.marginLexiconCollapsed', String(next))
+      storage.set('memorization.marginLexiconCollapsed', String(next))
     } catch {}
   }
 
@@ -415,14 +416,14 @@ export function MarginLexiconPanel({
           <span className="flex h-2 w-2 rounded-full bg-sky-400 mb-3 animate-pulse" />
           <div className="flex-1 flex items-center justify-center">
             <span
-              className="text-[11px] font-bold tracking-wider uppercase text-sky-300 group-hover:text-white whitespace-nowrap"
+              className="text-[0.6875rem] font-bold tracking-wider uppercase text-sky-300 group-hover:text-white whitespace-nowrap"
               style={{ writingMode: 'vertical-rl' }}
             >
               Lexicon {glosses.length > 0 ? `(${glosses.length})` : ''}
             </span>
           </div>
           {glosses.length > 0 && (
-            <span className="mt-2 rounded-full bg-sky-500/25 border border-sky-400/50 px-1.5 py-0.5 text-[10px] font-bold text-sky-200">
+            <span className="mt-2 rounded-full bg-sky-500/25 border border-sky-400/50 px-1.5 py-0.5 text-[0.625rem] font-bold text-sky-200">
               {glosses.length}
             </span>
           )}
@@ -467,7 +468,7 @@ export function MarginLexiconPanel({
             Concordance &amp; Lexicon
           </h3>
           {glosses.length > 0 && (
-            <span className="rounded-full bg-sky-500/20 border border-sky-400/40 px-2 py-0.2 text-[10px] font-semibold text-sky-300 shrink-0">
+            <span className="rounded-full bg-sky-500/20 border border-sky-400/40 px-2 py-0.2 text-[0.625rem] font-semibold text-sky-300 shrink-0">
               {glosses.length}
             </span>
           )}
@@ -475,13 +476,13 @@ export function MarginLexiconPanel({
 
         <div className="flex items-center gap-1.5 shrink-0">
           {saving && (
-            <span className="text-[10px] text-sky-300 animate-pulse flex items-center gap-1">
+            <span className="text-[0.625rem] text-sky-300 animate-pulse flex items-center gap-1">
               <span className="inline-block h-2 w-2 animate-spin rounded-full border border-sky-400 border-t-transparent" />
               Saving…
             </span>
           )}
           {savedNotice && !saving && (
-            <span className="text-[10px] text-emerald-300 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/40 animate-in fade-in duration-150">
+            <span className="text-[0.625rem] text-emerald-300 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/40 animate-in fade-in duration-150">
               {savedNotice}
             </span>
           )}
@@ -530,7 +531,7 @@ export function MarginLexiconPanel({
           </form>
 
           {/* Navigation Tabs */}
-          <div className="flex items-center gap-1 border-b border-slate-800 pb-1.5 text-[11px] font-medium text-slate-400">
+          <div className="flex items-center gap-1 border-b border-slate-800 pb-1.5 text-[0.6875rem] font-medium text-slate-400">
             <button
               type="button"
               onClick={() => setActiveTab('card_glosses')}
@@ -542,7 +543,7 @@ export function MarginLexiconPanel({
             >
               <span>Card Memory</span>
               {glosses.length > 0 && (
-                <span className="rounded-full bg-sky-500/30 px-1.5 py-0.2 text-[9px] text-sky-200">
+                <span className="rounded-full bg-sky-500/30 px-1.5 py-0.2 text-[0.5625rem] text-sky-200">
                   {glosses.length}
                 </span>
               )}
@@ -577,7 +578,7 @@ export function MarginLexiconPanel({
             >
               <span>Recent</span>
               {unpinnedRecent.length > 0 && (
-                <span className="rounded-full bg-amber-500/30 text-amber-300 px-1.5 py-0.2 text-[9px] font-bold">
+                <span className="rounded-full bg-amber-500/30 text-amber-300 px-1.5 py-0.2 text-[0.5625rem] font-bold">
                   +{unpinnedRecent.length}
                 </span>
               )}
@@ -593,11 +594,11 @@ export function MarginLexiconPanel({
                   : 'space-y-2.5 max-h-[600px] overflow-y-auto pr-1'
               }
             >
-              <div className="flex items-center justify-between text-[11px] text-slate-400">
-                <span className="font-semibold uppercase tracking-wider text-[10px] text-sky-300">
+              <div className="flex items-center justify-between text-[0.6875rem] text-slate-400">
+                <span className="font-semibold uppercase tracking-wider text-[0.625rem] text-sky-300">
                   Card Glosses ({glosses.length})
                 </span>
-                <span className="text-[10px] text-slate-500 italic">
+                <span className="text-[0.625rem] text-slate-500 italic">
                   Persists across reviews
                 </span>
               </div>
@@ -605,7 +606,7 @@ export function MarginLexiconPanel({
               {glosses.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-700/60 bg-slate-900/30 p-4 text-center space-y-2.5">
                   <p className="text-xs text-slate-300 font-medium">No definitions pinned yet</p>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                     Ask <strong className="text-emerald-300">Ask LLM</strong> for term definitions, Alt+Click a word, or search above—they will auto-save here for this card.
                   </p>
                   {(cardBack || cardFront) && (
@@ -613,7 +614,7 @@ export function MarginLexiconPanel({
                       type="button"
                       disabled={extractingTerms}
                       onClick={() => void handleAutoExtractTerms()}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-950/50 px-3 py-1.5 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-900/60 transition cursor-pointer disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-950/50 px-3 py-1.5 text-[0.6875rem] font-semibold text-emerald-200 hover:bg-emerald-900/60 transition cursor-pointer disabled:opacity-50"
                       title="Ask Local LLM to extract key term definitions for this card automatically"
                     >
                       {extractingTerms ? (
@@ -622,7 +623,7 @@ export function MarginLexiconPanel({
                           <span>Extracting Terms…</span>
                         </>
                       ) : (
-                        <span>✨ Auto-Extract Key Terms</span>
+                       <span> Auto-Extract Key Terms</span>
                       )}
                     </button>
                   )}
@@ -648,12 +649,12 @@ export function MarginLexiconPanel({
                               {item.term}
                             </h4>
                             {item.domain && (
-                              <span className="text-[9px] font-semibold text-slate-400 bg-slate-800 px-1.5 py-0.2 rounded border border-slate-700/60">
+                              <span className="text-[0.5625rem] font-semibold text-slate-400 bg-slate-800 px-1.5 py-0.2 rounded border border-slate-700/60">
                                 {item.domain}
                               </span>
                             )}
                             {item.source && (
-                              <span className="text-[9px] text-sky-400/70">
+                              <span className="text-[0.5625rem] text-sky-400/70">
                                 {item.source}
                               </span>
                             )}
@@ -681,13 +682,13 @@ export function MarginLexiconPanel({
                         )}
 
                         {item.context_explanation && (
-                          <p className="text-[11px] text-sky-300/80 bg-sky-950/40 rounded p-1.5 border border-sky-500/15 leading-snug">
+                          <p className="text-[0.6875rem] text-sky-300/80 bg-sky-950/40 rounded p-1.5 border border-sky-500/15 leading-snug">
                             {renderInlineBackticks(item.context_explanation)}
                           </p>
                         )}
 
                         {item.example && (
-                          <pre className="text-[10px] font-mono text-emerald-300 bg-slate-950/80 p-1.5 rounded overflow-x-auto whitespace-pre-wrap">
+                          <pre className="text-[0.625rem] font-mono text-emerald-300 bg-slate-950/80 p-1.5 rounded overflow-x-auto whitespace-pre-wrap">
                             {item.example}
                           </pre>
                         )}
@@ -711,7 +712,7 @@ export function MarginLexiconPanel({
               {lookupError && !searching && (
                 <div className="rounded-xl border border-rose-500/30 bg-rose-950/30 p-3 text-xs text-rose-200 space-y-1">
                   <p className="font-semibold">AI Lexicon lookup failed</p>
-                  <p className="text-[11px] text-rose-300/80">{lookupError}</p>
+                  <p className="text-[0.6875rem] text-rose-300/80">{lookupError}</p>
                 </div>
               )}
               {searching ? (
@@ -731,7 +732,7 @@ export function MarginLexiconPanel({
                       >
                         {currentLookupTerm}
                       </h4>
-                      <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
+                      <div className="flex items-center gap-1.5 text-[0.625rem] text-slate-400 mt-0.5">
                         {activeEntry?.domain && (
                           <span className="rounded bg-sky-950/80 px-1.5 py-0.2 border border-sky-500/30 text-sky-300">
                             {activeEntry.domain}
@@ -772,7 +773,7 @@ export function MarginLexiconPanel({
                           : 'border border-sky-400/50 bg-sky-950/80 text-sky-200 hover:bg-sky-900 hover:border-sky-300'
                       }`}
                     >
-                      {isCurrentLookupPinned ? '✓ Pinned (Click to Unpin)' : '📌 Pin to Card'}
+                      {isCurrentLookupPinned ? '✓ Pinned (Click to Unpin)' : ' Pin to Card'}
                     </button>
                   </div>
 
@@ -800,7 +801,7 @@ export function MarginLexiconPanel({
 
                   {/* Definition Box */}
                   <div className="rounded-xl border border-sky-500/20 bg-sky-950/30 p-2.5 space-y-1">
-                    <p className="text-[10px] font-semibold text-sky-300 uppercase tracking-wider">
+                    <p className="text-[0.625rem] font-semibold text-sky-300 uppercase tracking-wider">
                       Definition
                     </p>
                     <p className="text-xs leading-relaxed text-slate-100">
@@ -811,7 +812,7 @@ export function MarginLexiconPanel({
                   {/* Context explanation if present */}
                   {activeEntry?.context_explanation && (
                     <div className="space-y-1">
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                      <p className="text-[0.625rem] font-semibold text-slate-400 uppercase tracking-wider">
                         Relevance to this Card
                       </p>
                       <p className="text-xs leading-relaxed text-slate-300 bg-slate-900/60 rounded-lg p-2 border border-ink-line/40">
@@ -823,10 +824,10 @@ export function MarginLexiconPanel({
                   {/* Concrete example / code */}
                   {(activeEntry?.example || activeConcordance?.notation) && (
                     <div className="space-y-1">
-                      <p className="text-[10px] font-semibold text-amber-300/90 uppercase tracking-wider">
+                      <p className="text-[0.625rem] font-semibold text-amber-300/90 uppercase tracking-wider">
                         Example / Notation
                       </p>
-                      <pre className="text-[10px] font-mono text-emerald-300 bg-slate-950/90 p-2 rounded-lg border border-ink-line/50 overflow-x-auto whitespace-pre-wrap">
+                      <pre className="text-[0.625rem] font-mono text-emerald-300 bg-slate-950/90 p-2 rounded-lg border border-ink-line/50 overflow-x-auto whitespace-pre-wrap">
                         {activeEntry?.example || activeConcordance?.notation}
                       </pre>
                     </div>
@@ -835,7 +836,7 @@ export function MarginLexiconPanel({
                   {/* Related terms */}
                   {activeEntry?.related_terms && activeEntry.related_terms.length > 0 && (
                     <div className="space-y-1.5 pt-1">
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                      <p className="text-[0.625rem] font-semibold text-slate-400 uppercase tracking-wider">
                         Related Concepts
                       </p>
                       <div className="flex flex-wrap gap-1.5">
@@ -847,7 +848,7 @@ export function MarginLexiconPanel({
                               setQuery(rt)
                               void handleLookup(rt)
                             }}
-                            className="rounded-md border border-slate-700/60 bg-slate-800/60 px-2 py-0.5 text-[11px] text-sky-200 hover:border-sky-400 hover:bg-sky-900/40 transition"
+                            className="rounded-md border border-slate-700/60 bg-slate-800/60 px-2 py-0.5 text-[0.6875rem] text-sky-200 hover:border-sky-400 hover:bg-sky-900/40 transition"
                           >
                             + {rt}
                           </button>
@@ -859,7 +860,7 @@ export function MarginLexiconPanel({
               ) : (
                 <div className="py-6 text-center text-xs text-slate-400 space-y-1.5">
                   <p>Type a word above or select text anywhere on the card to look up its definition.</p>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[0.625rem] text-slate-500">
                     Results appear here and can be pinned with one click.
                   </p>
                 </div>
@@ -876,15 +877,15 @@ export function MarginLexiconPanel({
                   : 'space-y-2 max-h-[520px] overflow-y-auto pr-1'
               }
             >
-              <div className="flex items-center justify-between text-[11px] text-slate-400">
-                <span className="font-semibold uppercase tracking-wider text-[10px]">
+              <div className="flex items-center justify-between text-[0.6875rem] text-slate-400">
+                <span className="font-semibold uppercase tracking-wider text-[0.625rem]">
                   Recent Lookups ({recentLookups.length})
                 </span>
                 {unpinnedRecent.length > 0 && (
                   <button
                     type="button"
                     onClick={handlePopulateFromRecent}
-                    className="text-amber-300 hover:text-amber-100 font-semibold underline text-[10px]"
+                    className="text-amber-300 hover:text-amber-100 font-semibold underline text-[0.625rem]"
                   >
                     Pin All ({unpinnedRecent.length})
                   </button>
@@ -920,7 +921,7 @@ export function MarginLexiconPanel({
 
                           <div className="flex items-center gap-1.5 shrink-0">
                             {rt.domain && (
-                              <span className="text-[9px] text-slate-400">{rt.domain}</span>
+                              <span className="text-[0.5625rem] text-slate-400">{rt.domain}</span>
                             )}
                             <button
                               type="button"
@@ -936,7 +937,7 @@ export function MarginLexiconPanel({
                                   })
                                 }
                               }}
-                              className={`rounded px-1.5 py-0.5 text-[10px] font-semibold transition ${
+                              className={`rounded px-1.5 py-0.5 text-[0.625rem] font-semibold transition ${
                                 isPinned
                                   ? 'text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 hover:text-rose-300'
                                   : 'text-sky-300 bg-sky-950/60 border border-sky-500/40 hover:bg-sky-900 hover:text-white'
@@ -946,7 +947,7 @@ export function MarginLexiconPanel({
                             </button>
                           </div>
                         </div>
-                        <p className="text-[11px] text-slate-400 line-clamp-2 mt-0.5">
+                        <p className="text-[0.6875rem] text-slate-400 line-clamp-2 mt-0.5">
                           {rt.definition}
                         </p>
                       </div>
@@ -959,12 +960,12 @@ export function MarginLexiconPanel({
 
           {/* Footer note */}
           <div
-            className={`pt-2 border-t flex items-center justify-between text-[10px] text-slate-500 shrink-0 ${
+            className={`pt-2 border-t flex items-center justify-between text-[0.625rem] text-slate-500 shrink-0 ${
               embedded ? 'border-[#262932]' : 'border-slate-800/80'
             }`}
           >
             <span>Alt+Click word to define in margin</span>
-            <span>💾 Auto-synced</span>
+           <span> Auto-synced</span>
           </div>
         </div>
       )}

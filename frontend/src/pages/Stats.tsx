@@ -222,7 +222,7 @@ function CognitiveFatigue({ fatigue }: { fatigue: LearningAnalytics['fatigue'] }
               </div>
             )
           })}
-          <div className="flex justify-between pt-1 text-[11px] text-slate-600">
+          <div className="flex justify-between pt-1 text-[0.6875rem] text-slate-600">
             <span>Elapsed session minutes</span>
             <span>Accuracy / Latency</span>
           </div>
@@ -281,14 +281,14 @@ function CircadianChronotype({ chronotype }: { chronotype: LearningAnalytics['ch
                   style={{ height: `${heightPct}%` }}
                 />
               </div>
-              <span className="mt-1 text-[10px] text-slate-500 tabular-nums">
+              <span className="mt-1 text-[0.625rem] text-slate-500 tabular-nums">
                 {h.hour % 4 === 0 ? `${h.hour}h` : ''}
               </span>
             </div>
           )
         })}
       </div>
-      <div className="flex justify-between pt-1 text-[11px] text-slate-600">
+      <div className="flex justify-between pt-1 text-[0.6875rem] text-slate-600">
         <span>00:00 (Midnight)</span>
         <span>12:00 (Noon)</span>
         <span>23:00 (Night)</span>
@@ -337,7 +337,7 @@ function DesirableDifficultyView({ difficulty }: { difficulty: LearningAnalytics
               </span>
             </div>
           ))}
-          <div className="flex justify-between pt-1 text-[11px] text-slate-600">
+          <div className="flex justify-between pt-1 text-[0.6875rem] text-slate-600">
             <span>Retrievability (R)</span>
             <span>Stability gain per review</span>
           </div>
@@ -359,14 +359,14 @@ function MetacognitiveCalibration({ metacognition }: { metacognition: LearningAn
     >
       <div className="mb-3 grid gap-2 sm:grid-cols-3">
         <div className="rounded-lg border border-ink-line bg-ink p-2.5">
-          <p className="text-[11px] uppercase tracking-wide text-slate-500">Brier Score</p>
+          <p className="text-[0.6875rem] uppercase tracking-wide text-slate-500">Brier Score</p>
           <p className="mt-0.5 text-xl font-semibold tabular-nums text-slate-100">
             {metacognition.brier_score.toFixed(3)}
           </p>
-          <p className="text-[10px] text-slate-500">0.00 = perfect calibration</p>
+          <p className="text-[0.625rem] text-slate-500">0.00 = perfect calibration</p>
         </div>
         <div className="rounded-lg border border-ink-line bg-ink p-2.5">
-          <p className="text-[11px] uppercase tracking-wide text-slate-500">Overconfidence</p>
+          <p className="text-[0.6875rem] uppercase tracking-wide text-slate-500">Overconfidence</p>
           <p
             className={`mt-0.5 text-xl font-semibold tabular-nums ${
               Math.abs(metacognition.overconfidence_index) < 0.08
@@ -379,14 +379,14 @@ function MetacognitiveCalibration({ metacognition }: { metacognition: LearningAn
             {metacognition.overconfidence_index > 0 ? '+' : ''}
             {(metacognition.overconfidence_index * 100).toFixed(1)}%
           </p>
-          <p className="text-[10px] text-slate-500">predicted vs actual</p>
+          <p className="text-[0.625rem] text-slate-500">predicted vs actual</p>
         </div>
         <div className="rounded-lg border border-ink-line bg-ink p-2.5">
-          <p className="text-[11px] uppercase tracking-wide text-slate-500">Hypercorrection</p>
+          <p className="text-[0.6875rem] uppercase tracking-wide text-slate-500">Hypercorrection</p>
           <p className="mt-0.5 text-xl font-semibold tabular-nums text-emerald-300">
             {Math.round(metacognition.hypercorrection_retention * 100)}%
           </p>
-          <p className="text-[10px] text-slate-500">subsequent recall on errors</p>
+          <p className="text-[0.625rem] text-slate-500">subsequent recall on errors</p>
         </div>
       </div>
 
@@ -416,7 +416,7 @@ function MetacognitiveCalibration({ metacognition }: { metacognition: LearningAn
             </div>
           )
         })}
-        <div className="flex justify-between pt-1 text-[11px] text-slate-600">
+        <div className="flex justify-between pt-1 text-[0.6875rem] text-slate-600">
           <span>Confidence tier</span>
           <span>Blue bar: observed recall · Red line: expected probability</span>
         </div>
@@ -478,15 +478,15 @@ function ItemDiscriminationTriage({ discrimination }: { discrimination: Learning
               </div>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 <div className="rounded border border-ink-line bg-ink p-2 text-slate-200">
-                  <span className="text-[10px] uppercase text-slate-500">Front: </span>
+                  <span className="text-[0.625rem] uppercase text-slate-500">Front: </span>
                   {c.front}
                 </div>
                 <div className="rounded border border-ink-line bg-ink p-2 text-slate-400">
-                  <span className="text-[10px] uppercase text-slate-500">Back: </span>
+                  <span className="text-[0.625rem] uppercase text-slate-500">Back: </span>
                   {c.back}
                 </div>
               </div>
-              <p className="mt-2 text-[11px] text-slate-500">{c.rationale}</p>
+              <p className="mt-2 text-[0.6875rem] text-slate-500">{c.rationale}</p>
             </div>
           ))}
         </div>
@@ -561,7 +561,7 @@ function EWMAMasteryAndSPRT({
                 >
                   <div className="min-w-0 flex-1 pr-2">
                     <p className="truncate font-medium text-slate-200">{v.title}</p>
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-[0.625rem] text-slate-500">
                       LLR: {v.log_likelihood_ratio.toFixed(2)} / Bound: [{v.threshold_lower}, {v.threshold_upper}] · {v.cards_evaluated} trials
                     </p>
                   </div>
@@ -718,7 +718,6 @@ function Interference() {
                     className="btn btn-primary px-3 py-1 text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
                     onClick={() => void handleStartDrill(p)}
                   >
-                    <span>🔬</span>
                     <span>Dentate Gyrus Contrast Drill</span>
                   </button>
                   <button
@@ -744,12 +743,11 @@ function Interference() {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-ink-line/80 bg-[#142034] px-5 py-3.5">
               <div className="flex items-center gap-2.5">
-                <span className="text-xl">🔬</span>
                 <div>
                   <h3 className="text-sm font-bold text-sky-200">
                     Dentate Gyrus Pattern Separation Drill
                   </h3>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[0.6875rem] text-slate-400">
                     Contrastive minimal pair drill to sharpen orthogonal representations and abolish proactive interference
                   </p>
                 </div>
@@ -769,38 +767,37 @@ function Interference() {
                 <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
                   <Spinner />
                   <p className="text-slate-300 text-xs font-medium">Synthesizing discriminative contrast challenge…</p>
-                  <p className="text-slate-500 text-[11px]">Computing orthogonal boundary conditions via local Ollama</p>
+                  <p className="text-slate-500 text-[0.6875rem]">Computing orthogonal boundary conditions via local Ollama</p>
                 </div>
               ) : drillError ? (
                 <div className="p-4 rounded-xl border border-rose-500/30 bg-rose-950/30 text-rose-300 space-y-1">
                   <p className="font-semibold text-xs">Failed to load contrast drill</p>
-                  <p className="text-[11px] text-rose-400">{drillError}</p>
+                  <p className="text-[0.6875rem] text-rose-400">{drillError}</p>
                 </div>
               ) : drillData ? (
                 <>
                   {/* The 2 Confusable Concepts */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="p-3.5 rounded-xl border border-sky-500/30 bg-[#131d2e] space-y-1.5">
-                      <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-mono text-[10px] uppercase font-bold tracking-wide">
+                      <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-mono text-[0.625rem] uppercase font-bold tracking-wide">
                         Concept A: {drillData.concept_a_title}
                       </span>
                       <p className="text-slate-200 text-xs font-semibold pt-1">{drillData.front_a}</p>
-                      <p className="text-slate-400 text-[11px] leading-relaxed">{drillData.back_a}</p>
+                      <p className="text-slate-400 text-[0.6875rem] leading-relaxed">{drillData.back_a}</p>
                     </div>
 
                     <div className="p-3.5 rounded-xl border border-indigo-500/30 bg-[#171b30] space-y-1.5">
-                      <span className="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono text-[10px] uppercase font-bold tracking-wide">
+                      <span className="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono text-[0.625rem] uppercase font-bold tracking-wide">
                         Concept B: {drillData.concept_b_title}
                       </span>
                       <p className="text-slate-200 text-xs font-semibold pt-1">{drillData.front_b}</p>
-                      <p className="text-slate-400 text-[11px] leading-relaxed">{drillData.back_b}</p>
+                      <p className="text-slate-400 text-[0.6875rem] leading-relaxed">{drillData.back_b}</p>
                     </div>
                   </div>
 
                   {/* Discriminative Challenge */}
                   <div className="p-4 rounded-xl border border-amber-500/30 bg-[#211a12]/50 space-y-2">
                     <div className="flex items-center gap-1.5 text-amber-300 font-semibold text-xs">
-                      <span>⚡</span>
                       <span>Discriminative Challenge (Where Confusions Happen)</span>
                     </div>
                     <p className="text-slate-100 text-xs sm:text-sm font-medium leading-relaxed">
@@ -811,7 +808,6 @@ function Interference() {
                   {/* Key Distinction Boundary Rule */}
                   <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-[#0f241d]/50 space-y-1.5">
                     <div className="flex items-center gap-1.5 text-emerald-300 font-semibold text-xs">
-                      <span>🔑</span>
                       <span>Orthogonal Boundary Condition</span>
                     </div>
                     <p className="text-emerald-100 text-xs leading-relaxed">
@@ -823,7 +819,6 @@ function Interference() {
                   {drillData.divergent_conditions && drillData.divergent_conditions.length > 0 && (
                     <div className="space-y-3 pt-2 border-t border-ink-line/60">
                       <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                        <span>🎯</span>
                         <span>Boundary Divergence Conditions</span>
                       </h4>
                       <div className="space-y-3">
@@ -834,16 +829,16 @@ function Interference() {
                             </p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                               <div className="p-2.5 rounded-lg border border-sky-500/25 bg-sky-950/30 text-sky-200 space-y-1">
-                                <strong className="block text-[10px] text-sky-400 font-mono uppercase tracking-wider">
+                                <strong className="block text-[0.625rem] text-sky-400 font-mono uppercase tracking-wider">
                                   Under {drillData.concept_a_title}:
                                 </strong>
-                                <span className="text-[11px] leading-relaxed block">{dc.choice_a}</span>
+                                <span className="text-[0.6875rem] leading-relaxed block">{dc.choice_a}</span>
                               </div>
                               <div className="p-2.5 rounded-lg border border-indigo-500/25 bg-indigo-950/30 text-indigo-200 space-y-1">
-                                <strong className="block text-[10px] text-indigo-400 font-mono uppercase tracking-wider">
+                                <strong className="block text-[0.625rem] text-indigo-400 font-mono uppercase tracking-wider">
                                   Under {drillData.concept_b_title}:
                                 </strong>
-                                <span className="text-[11px] leading-relaxed block">{dc.choice_b}</span>
+                                <span className="text-[0.6875rem] leading-relaxed block">{dc.choice_b}</span>
                               </div>
                             </div>
                           </div>

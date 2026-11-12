@@ -1,3 +1,4 @@
+import { dialogs } from './dialogs'
 import { useState, useMemo, useEffect } from 'react'
 import type { SavedCardDraft } from '../utils/savedCardDrafts'
 import { getSavedDrafts, removeDraft, clearAllDrafts } from '../utils/savedCardDrafts'
@@ -89,22 +90,28 @@ export function SavedCardsDrawer({
     }
   }
 
-  const handleDiscard = (cardId: string) => {
-    if (window.confirm('Discard this saved draft? Your saved code for this card will be removed.')) {
-      removeDraft(cardId)
-      setDraftsMap(getSavedDrafts())
-    }
+  const handleDiscard = async (cardId: string) => {
+    const ok = await dialogs.confirm({
+      title: 'Discard this saved draft?',
+      message: 'Your saved answer and code for this card are removed.',
+      danger: true,
+      confirmLabel: 'Discard',
+    })
+    if (!ok) return
+    removeDraft(cardId)
+    setDraftsMap(getSavedDrafts())
   }
 
-  const handleClearAll = () => {
-    if (
-      window.confirm(
-        `Are you sure you want to discard all ${draftsList.length} saved drafts? This cannot be undone.`
-      )
-    ) {
-      clearAllDrafts()
-      setDraftsMap({})
-    }
+  const handleClearAll = async () => {
+    const ok = await dialogs.confirm({
+      title: `Discard all ${draftsList.length} saved drafts?`,
+      message: 'This cannot be undone.',
+      danger: true,
+      confirmLabel: 'Discard all',
+    })
+    if (!ok) return
+    clearAllDrafts()
+    setDraftsMap({})
   }
 
   if (!isOpen) return null
@@ -225,7 +232,7 @@ export function SavedCardsDrawer({
               <p className="text-xs max-w-sm text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
                 When you're working on a challenging card or writing unit tests, click{' '}
                 <span className="font-semibold text-indigo-600 dark:text-indigo-400">Save for Later</span>{' '}
-                or press <kbd className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-[11px] font-mono border border-slate-300 dark:border-slate-700">Alt + L</kbd>.
+                or press <kbd className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-[0.6875rem] font-mono border border-slate-300 dark:border-slate-700">Alt + L</kbd>.
               </p>
               <div className="text-xs bg-slate-100 dark:bg-slate-800/80 rounded-lg p-3 text-left max-w-xs space-y-1.5 border border-slate-200 dark:border-slate-700/60">
                 <div className="font-medium text-slate-700 dark:text-slate-300">Why Save for Later?</div>
@@ -268,17 +275,17 @@ export function SavedCardsDrawer({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap mb-1">
                         {isCurrent && (
-                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-600 text-white">
+                          <span className="text-[0.625rem] font-semibold px-1.5 py-0.5 rounded bg-indigo-600 text-white">
                             Current Card
                           </span>
                         )}
                         {draft.deckName && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 truncate max-w-[150px]">
+                          <span className="text-[0.625rem] px-1.5 py-0.5 rounded font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 truncate max-w-[150px]">
                             {draft.deckName}
                           </span>
                         )}
                         <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                          className={`text-[0.625rem] px-1.5 py-0.5 rounded font-medium ${
                             draft.isCodeCard
                               ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300'
                               : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
@@ -286,7 +293,7 @@ export function SavedCardsDrawer({
                         >
                           {draft.isCodeCard ? 'Coding' : 'Q&A'}
                         </span>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                        <span className="text-[0.625rem] text-slate-400 dark:text-slate-500">
                           {formatRelativeTime(draft.savedAt)}
                         </span>
                       </div>
@@ -296,7 +303,7 @@ export function SavedCardsDrawer({
                       </h4>
 
                       {draft.frontSnippet && (
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5 font-normal">
+                        <p className="text-[0.6875rem] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5 font-normal">
                           {draft.frontSnippet}
                         </p>
                       )}
@@ -315,7 +322,7 @@ export function SavedCardsDrawer({
 
                   {/* Draft preview summary */}
                   <div className="bg-slate-50 dark:bg-slate-950/60 rounded border border-slate-200/80 dark:border-slate-800/80 p-2 text-xs">
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
+                    <div className="flex items-center justify-between text-[0.6875rem] text-slate-500 dark:text-slate-400 mb-1">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-slate-600 dark:text-slate-300">
                           {hasCode ? `${draft.answer.split('\n').length} lines solution` : 'Empty answer'}
@@ -357,7 +364,7 @@ export function SavedCardsDrawer({
                       <div className="mt-2 space-y-2 border-t border-slate-200 dark:border-slate-800 pt-2 animate-in fade-in duration-150">
                         {hasCode && (
                           <div>
-                            <div className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-1">
+                            <div className="text-[0.625rem] uppercase tracking-wider font-bold text-slate-400 mb-1">
                               Solution Draft:
                             </div>
                             <div className="h-44 rounded overflow-hidden border border-slate-200 dark:border-slate-700">
@@ -376,7 +383,7 @@ export function SavedCardsDrawer({
 
                         {hasTests && (
                           <div>
-                            <div className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-1">
+                            <div className="text-[0.625rem] uppercase tracking-wider font-bold text-slate-400 mb-1">
                               Unit Tests Draft:
                             </div>
                             <div className="h-36 rounded overflow-hidden border border-slate-200 dark:border-slate-700">
@@ -398,7 +405,7 @@ export function SavedCardsDrawer({
 
                   {/* Footer actions */}
                   <div className="flex items-center justify-between pt-1">
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[0.6875rem] text-slate-400">
                       ID: {draft.cardId.slice(0, 8)}…
                     </span>
                     <button
@@ -419,7 +426,7 @@ export function SavedCardsDrawer({
         {/* Drawer Footer */}
         <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
           <div>
-            Tip: Press <kbd className="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-[10px] font-mono">Alt + L</kbd> anytime during review to save.
+            Tip: Press <kbd className="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-[0.625rem] font-mono">Alt + L</kbd> anytime during review to save.
           </div>
           <button
             type="button"

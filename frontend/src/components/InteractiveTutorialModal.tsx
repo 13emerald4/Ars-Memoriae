@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
+import { storage } from '../utils/storage'
 
 interface Props {
   isOpen: boolean
@@ -49,8 +50,8 @@ export default function InteractiveTutorialModal({
   const finishTutorial = useCallback(
     async (targetRoute?: string) => {
       try {
-        localStorage.removeItem('prompt_new_user_tutorial')
-        localStorage.setItem('tutorial_prompt_dismissed', 'true')
+        storage.remove('prompt_new_user_tutorial')
+        storage.set('tutorial_prompt_dismissed', 'true')
         if (user && !user.tutorial_completed) {
           await api.updateMe({ tutorial_completed: true })
           await refresh()
@@ -192,7 +193,7 @@ export default function InteractiveTutorialModal({
               AM
             </div>
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-sky-400">
+              <span className="text-[0.625rem] font-bold uppercase tracking-wider text-sky-400">
                 Ars Memoriae
               </span>
               <h2 className="text-lg font-bold text-slate-100">Choose Tutorial</h2>
@@ -219,11 +220,11 @@ export default function InteractiveTutorialModal({
                 <div className="flex items-center gap-2 text-sky-300 font-bold text-xs">
                   <span>Brief Overview</span>
                 </div>
-                <span className="chip text-[10px] py-0.5 border-sky-500/40 text-sky-300 bg-sky-500/10 font-semibold">
+                <span className="chip text-[0.625rem] py-0.5 border-sky-500/40 text-sky-300 bg-sky-500/10 font-semibold">
                   1 min
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
+              <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                 3-slide overview: Active Recall, Knowledge Trees, and the Priority Queue.
               </p>
             </button>
@@ -242,11 +243,11 @@ export default function InteractiveTutorialModal({
                 <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
                   <span>Full Tutorial</span>
                 </div>
-                <span className="chip text-[10px] py-0.5 border-emerald-500/40 text-emerald-300 bg-emerald-500/10 font-semibold">
+                <span className="chip text-[0.625rem] py-0.5 border-emerald-500/40 text-emerald-300 bg-emerald-500/10 font-semibold">
                   Recommended · 4 min
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
+              <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                 Interactive simulation: test-drive the FSRS retention slider, AI grading, Knowledge Tree, and time banking.
               </p>
             </button>
@@ -260,7 +261,7 @@ export default function InteractiveTutorialModal({
             >
               Skip
             </button>
-            <span className="text-[11px] text-slate-500">
+            <span className="text-[0.6875rem] text-slate-500">
               Relaunch anytime from <strong className="text-slate-400">Settings</strong>
             </span>
           </div>
@@ -278,7 +279,7 @@ export default function InteractiveTutorialModal({
             {steps[step].icon && <span className="text-2xl">{steps[step].icon}</span>}
             <div>
               <div className="flex items-center gap-2">
-                <span className="chip border-sky-500/40 text-sky-300 text-[10px] font-bold uppercase tracking-wider">
+                <span className="chip border-sky-500/40 text-sky-300 text-[0.625rem] font-bold uppercase tracking-wider">
                   {steps[step].badge}
                 </span>
                 <span className="text-xs text-slate-500">
@@ -291,14 +292,14 @@ export default function InteractiveTutorialModal({
 
           <div className="flex items-center gap-3 shrink-0">
             {/* Quick Switcher between Brief and Extensive */}
-            <div className="hidden sm:flex items-center gap-1 bg-ink/80 p-0.5 rounded-lg border border-ink-line text-[11px]">
+            <div className="hidden sm:flex items-center gap-1 bg-ink/80 p-0.5 rounded-lg border border-ink-line text-[0.6875rem]">
               <button
                 type="button"
                 onClick={() => {
                   setTutorialType('brief')
                   setStep(0)
                 }}
-                className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
+                className={`px-2 py-0.5 rounded text-[0.625rem] font-semibold transition cursor-pointer ${
                   tutorialType === 'brief'
                     ? 'bg-sky-500/25 text-sky-200 border border-sky-500/40 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
@@ -313,7 +314,7 @@ export default function InteractiveTutorialModal({
                   setTutorialType('extensive')
                   setStep(0)
                 }}
-                className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
+                className={`px-2 py-0.5 rounded text-[0.625rem] font-semibold transition cursor-pointer ${
                   tutorialType === 'extensive'
                     ? 'bg-emerald-500/25 text-emerald-200 border border-emerald-500/40 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
@@ -364,7 +365,7 @@ export default function InteractiveTutorialModal({
                   <div className="font-semibold text-emerald-300 text-xs">
                     Local AI Grader
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                     Powered by quantized <strong className="text-slate-200">Qwen 2.5 Coder</strong>, auto-sized to your machine's RAM and GPU specs.
                     Provides grade, confidence, matched points, missed points, and reasoning.
                   </p>
@@ -374,7 +375,7 @@ export default function InteractiveTutorialModal({
                   <div className="font-semibold text-emerald-300 text-xs">
                     Token Similarity
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                     A fast keyword and n-gram overlap check cross-verifies
                     semantic predictions against verbatim token matches.
                   </p>
@@ -384,7 +385,7 @@ export default function InteractiveTutorialModal({
                   <div className="font-semibold text-amber-300 text-xs">
                     Weakness Memory
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                     Incorrect answers extract your conceptual stumbling blocks into card memory, surfacing <strong className="text-amber-200">Past Mistake Hints</strong> on future reviews.
                   </p>
                 </div>
@@ -393,9 +394,9 @@ export default function InteractiveTutorialModal({
               <div className="rounded-xl border border-ink-line bg-ink-soft/50 p-3.5 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-slate-200 text-xs">FSRS Scheduling</span>
-                  <span className="chip text-[10px] text-amber-300 border-amber-500/40">Stability & Retrievability</span>
+                  <span className="chip text-[0.625rem] text-amber-300 border-amber-500/40">Stability & Retrievability</span>
                 </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
+                <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                   Intervals are calculated using modern Free Spaced Repetition Scheduling (FSRS) based on memory stability and retrievability.
                 </p>
               </div>
@@ -419,7 +420,7 @@ export default function InteractiveTutorialModal({
                   <div className="font-semibold text-sky-300 text-xs">
                     Study Ordering
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                     Drag branches in the Tree view to order study materials chronologically according to course syllabi.
                   </p>
                 </div>
@@ -428,10 +429,10 @@ export default function InteractiveTutorialModal({
                   <div className="font-semibold text-emerald-300 text-xs">
                     Progress Bars
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed mb-2">
+                  <p className="text-[0.6875rem] text-slate-400 leading-relaxed mb-2">
                     Every deck displays three progress distribution bars:
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px]">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[0.625rem]">
                     <div className="bg-ink/80 rounded-lg p-2 border border-ink-line">
                       <span className="font-bold text-slate-300 block mb-1">Cards Viewed</span>
                       <span className="text-slate-400">Unseen vs New vs Mature</span>
@@ -467,7 +468,7 @@ export default function InteractiveTutorialModal({
                   <div className="font-semibold text-amber-300 text-xs">
                     Priority Queue
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                     Sessions are composed from due cards, new concepts, and reading extracts. Missed days distribute smoothly.
                   </p>
                 </div>
@@ -476,7 +477,7 @@ export default function InteractiveTutorialModal({
                   <div className="font-semibold text-sky-300 text-xs">
                     Time Bank
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                     Finishing under your target duration banks focus minutes, rewarding recall velocity.
                   </p>
                 </div>
@@ -486,14 +487,14 @@ export default function InteractiveTutorialModal({
                 <div className="font-semibold text-purple-300 text-xs">
                   Code Lab & Reading
                 </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
+                <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                   Automated test suites and Socratic hints for coding challenges, plus incremental reading extracts with citations.
                 </p>
               </div>
 
               {/* Quick Jump Action Grid */}
               <div className="pt-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                <span className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 block mb-2">
                   Choose your launchpad:
                 </span>
                 <div className="grid grid-cols-3 gap-2">
@@ -503,7 +504,7 @@ export default function InteractiveTutorialModal({
                     className="rounded-xl border border-sky-500/40 bg-sky-950/30 p-2.5 text-center hover:bg-sky-900/40 transition group cursor-pointer"
                   >
                     <span className="font-semibold text-sky-200 text-xs block">Start Review</span>
-                    <span className="text-[10px] text-slate-400">Begin active recall</span>
+                    <span className="text-[0.625rem] text-slate-400">Begin active recall</span>
                   </button>
 
                   <button
@@ -512,7 +513,7 @@ export default function InteractiveTutorialModal({
                     className="rounded-xl border border-emerald-500/40 bg-emerald-950/30 p-2.5 text-center hover:bg-emerald-900/40 transition group cursor-pointer"
                   >
                     <span className="font-semibold text-emerald-200 text-xs block">Knowledge Tree</span>
-                    <span className="text-[10px] text-slate-400">Explore branches</span>
+                    <span className="text-[0.625rem] text-slate-400">Explore branches</span>
                   </button>
 
                   <button
@@ -521,7 +522,7 @@ export default function InteractiveTutorialModal({
                     className="rounded-xl border border-purple-500/40 bg-purple-950/30 p-2.5 text-center hover:bg-purple-900/40 transition group cursor-pointer"
                   >
                     <span className="font-semibold text-purple-200 text-xs block">Decks & Cards</span>
-                    <span className="text-[10px] text-slate-400">Import or create</span>
+                    <span className="text-[0.625rem] text-slate-400">Import or create</span>
                   </button>
                 </div>
               </div>
@@ -531,7 +532,7 @@ export default function InteractiveTutorialModal({
                 <button
                   type="button"
                   onClick={() => void finishTutorial('/settings')}
-                  className="text-sky-400 hover:text-sky-200 underline font-medium ml-2 shrink-0 cursor-pointer text-[11px]"
+                  className="text-sky-400 hover:text-sky-200 underline font-medium ml-2 shrink-0 cursor-pointer text-[0.6875rem]"
                 >
                   Settings →
                 </button>
@@ -560,27 +561,27 @@ export default function InteractiveTutorialModal({
                   onChange={(e) => setRetentionSlider(Number(e.target.value))}
                   className="w-full accent-sky-500 cursor-pointer"
                 />
-                <div className="grid grid-cols-3 gap-2 text-center text-[11px] pt-1">
+                <div className="grid grid-cols-3 gap-2 text-center text-[0.6875rem] pt-1">
                   <div className="rounded-lg bg-black/40 p-2 border border-ink-line">
-                    <span className="block text-slate-400 text-[10px]">Interval</span>
+                    <span className="block text-slate-400 text-[0.625rem]">Interval</span>
                     <span className="font-bold text-emerald-400 text-xs">
                       {Math.round(18 * ((100 - retentionSlider) / 10))} Days
                     </span>
                   </div>
                   <div className="rounded-lg bg-black/40 p-2 border border-ink-line">
-                    <span className="block text-slate-400 text-[10px]">Stability</span>
+                    <span className="block text-slate-400 text-[0.625rem]">Stability</span>
                     <span className="font-bold text-sky-400 text-xs">
                       {(retentionSlider * 0.96).toFixed(1)}% Memory
                     </span>
                   </div>
                   <div className="rounded-lg bg-black/40 p-2 border border-ink-line">
-                    <span className="block text-slate-400 text-[10px]">Daily Load</span>
+                    <span className="block text-slate-400 text-[0.625rem]">Daily Load</span>
                     <span className="font-bold text-amber-300 text-xs">
                       {Math.round(20 * (retentionSlider / 85))} min/day
                     </span>
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-400 leading-normal">
+                <p className="text-[0.6875rem] text-slate-400 leading-normal">
                   Ars Memoriae uses <strong className="text-slate-200">py-fsrs</strong> to track stability, difficulty,
                   and retrievability per item.
                 </p>
@@ -598,13 +599,13 @@ export default function InteractiveTutorialModal({
 
               {/* Sample Card */}
               <div className="rounded-xl border border-sky-500/30 bg-ink-soft/80 p-4 space-y-3">
-                <div className="flex items-center justify-between text-[11px] text-slate-400 border-b border-ink-line pb-2">
+                <div className="flex items-center justify-between text-[0.6875rem] text-slate-400 border-b border-ink-line pb-2">
                   <span className="font-semibold text-sky-300">Sample Card</span>
-                  <span className="chip text-[10px]">CPSC 210 · Ch 12</span>
+                  <span className="chip text-[0.625rem]">CPSC 210 · Ch 12</span>
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                  <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 block mb-1">
                     Question
                   </label>
                   <p className="text-sm font-semibold text-slate-100">
@@ -614,7 +615,7 @@ export default function InteractiveTutorialModal({
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
                       Your Answer
                     </label>
                     <div className="flex items-center gap-2">
@@ -626,7 +627,7 @@ export default function InteractiveTutorialModal({
                           )
                           setGradedResult(null)
                         }}
-                        className="text-[10px] text-emerald-400 hover:text-emerald-300 underline cursor-pointer"
+                        className="text-[0.625rem] text-emerald-400 hover:text-emerald-300 underline cursor-pointer"
                       >
                         Correct Answer
                       </button>
@@ -639,7 +640,7 @@ export default function InteractiveTutorialModal({
                           )
                           setGradedResult(null)
                         }}
-                        className="text-[10px] text-rose-400 hover:text-rose-300 underline cursor-pointer"
+                        className="text-[0.625rem] text-rose-400 hover:text-rose-300 underline cursor-pointer"
                       >
                         Incorrect Answer
                       </button>
@@ -673,7 +674,7 @@ export default function InteractiveTutorialModal({
                   >
                     <div className="flex items-center justify-between">
                       <span
-                        className={`chip font-bold uppercase text-[10px] ${
+                        className={`chip font-bold uppercase text-[0.625rem] ${
                           gradedResult.grade === 'again'
                             ? 'border-rose-500/50 text-rose-300 bg-rose-500/10'
                             : 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
@@ -681,12 +682,12 @@ export default function InteractiveTutorialModal({
                       >
                         Grade: {gradedResult.grade.toUpperCase()} ({(gradedResult.confidence * 100).toFixed(0)}% Confidence)
                       </span>
-                      <span className="text-[10px] text-slate-400">100% Local (Hardware-Sized Qwen 2.5 Coder)</span>
+                      <span className="text-[0.625rem] text-slate-400">100% Local (Hardware-Sized Qwen 2.5 Coder)</span>
                     </div>
 
-                    <p className="text-[11px] text-slate-300 italic">"{gradedResult.reasoning}"</p>
+                    <p className="text-[0.6875rem] text-slate-300 italic">"{gradedResult.reasoning}"</p>
 
-                    <div className="text-[10px] space-y-1 text-slate-300">
+                    <div className="text-[0.625rem] space-y-1 text-slate-300">
                       {gradedResult.matched.length > 0 && (
                         <p className="text-emerald-300 font-medium">Matched: {gradedResult.matched.join(', ')}</p>
                       )}
@@ -701,13 +702,13 @@ export default function InteractiveTutorialModal({
                         <div className="text-amber-300 text-xs font-bold">
                           Longitudinal Weakness Memory (Saved to Card)
                         </div>
-                        <p className="text-[11px] text-slate-300 leading-relaxed">
+                        <p className="text-[0.6875rem] text-slate-300 leading-relaxed">
                           When you enter an incorrect answer, Ars Memoriae extracts your specific misconception and <strong className="text-amber-200">saves it to the card's memory</strong>:
                         </p>
-                        <div className="rounded bg-black/60 px-2.5 py-1.5 border border-amber-500/30 font-mono text-[11px] text-amber-200">
+                        <div className="rounded bg-black/60 px-2.5 py-1.5 border border-amber-500/30 font-mono text-[0.6875rem] text-amber-200">
                           Stumbling block: "{gradedResult.weaknesses[0]}"
                         </div>
-                        <p className="text-[10px] text-slate-400 leading-normal">
+                        <p className="text-[0.625rem] text-slate-400 leading-normal">
                           On your next review session for this card, a <strong className="text-amber-300">Past Mistake Hint</strong> button will automatically appear before you answer, coaching you past this exact stumbling block without spoiling the solution.
                         </p>
                       </div>
@@ -715,7 +716,7 @@ export default function InteractiveTutorialModal({
 
                     {/* Token-by-token answer similarity checker highlight */}
                     <div className="rounded border border-sky-500/30 bg-black/40 p-2 space-y-1">
-                      <div className="flex items-center justify-between text-[10px]">
+                      <div className="flex items-center justify-between text-[0.625rem]">
                         <span className="font-semibold text-sky-300 flex items-center gap-1">
                           Token Similarity
                         </span>
@@ -723,12 +724,12 @@ export default function InteractiveTutorialModal({
                           {gradedResult.grade === 'again' ? '12% Overlap' : '88% Overlap'}
                         </span>
                       </div>
-                      <p className="text-[10px] text-slate-400 leading-tight">
+                      <p className="text-[0.625rem] text-slate-400 leading-tight">
                         Runs parallel token-level Jaccard and n-gram verification against the reference answer.
                       </p>
                     </div>
 
-                    <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-700/50">
+                    <p className="text-[0.625rem] text-slate-400 pt-1 border-t border-slate-700/50">
                       {gradedResult.grade === 'good'
                         ? 'Try clicking "Incorrect Answer" above to see how mistakes are saved to Weakness Memory.'
                         : 'Try clicking "Correct Answer" above to test a passing response.'}
@@ -748,7 +749,7 @@ export default function InteractiveTutorialModal({
               </p>
 
               <div className="rounded-xl border border-ink-line bg-ink-soft/70 p-4 space-y-3">
-                <span className="text-[11px] font-semibold text-slate-200 block">
+                <span className="text-[0.6875rem] font-semibold text-slate-200 block">
                   Knowledge Tree Demo
                 </span>
 
@@ -758,7 +759,7 @@ export default function InteractiveTutorialModal({
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sky-200 text-xs">CPSC 210 — Software Construction</span>
                     </div>
-                    <span className="chip text-[10px] border-sky-500/30 text-sky-300">Root Course</span>
+                    <span className="chip text-[0.625rem] border-sky-500/30 text-sky-300">Root Course</span>
                   </div>
 
                   {/* Child Chapters */}
@@ -777,7 +778,7 @@ export default function InteractiveTutorialModal({
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-slate-500 font-mono text-[10px]">#{ch.pos}</span>
+                        <span className="text-slate-500 font-mono text-[0.625rem]">#{ch.pos}</span>
                         <span className="font-medium text-xs">{ch.title}</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -787,13 +788,13 @@ export default function InteractiveTutorialModal({
                           <div className="bg-amber-400" style={{ width: '15%' }} />
                           <div className="bg-slate-700" style={{ width: '10%' }} />
                         </div>
-                        <span className="text-[10px] font-mono text-slate-400">{ch.viewed}</span>
+                        <span className="text-[0.625rem] font-mono text-slate-400">{ch.viewed}</span>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="rounded-lg bg-black/40 p-2.5 text-[11px] text-slate-300 space-y-1">
+                <div className="rounded-lg bg-black/40 p-2.5 text-[0.6875rem] text-slate-300 space-y-1">
                   <p>
                     <strong className="text-emerald-300">Hierarchical Rollup:</strong> Viewing a parent deck
                     summarizes the course across <em>Viewed</em>, <em>Difficulty</em>, and <em>Ratings</em>.
@@ -818,7 +819,7 @@ export default function InteractiveTutorialModal({
                   <div className="flex items-center gap-2">
                     <h4 className="font-semibold text-slate-200">Daily Time Budget</h4>
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                     Set a daily budget (e.g. 20 or 30 minutes). The queue ranks cards by priority and overdue score.
                   </p>
                 </div>
@@ -827,7 +828,7 @@ export default function InteractiveTutorialModal({
                   <div className="flex items-center gap-2">
                     <h4 className="font-semibold text-slate-200">Time Bank</h4>
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                     Finishing early deposits remaining minutes into your Time Bank, rewarding mastery velocity.
                   </p>
                 </div>
@@ -837,7 +838,7 @@ export default function InteractiveTutorialModal({
                 <div className="flex items-center gap-2">
                   <span className="text-amber-300 font-bold">Reflection</span>
                 </div>
-                <p className="text-[11px] text-slate-300 leading-relaxed">
+                <p className="text-[0.6875rem] text-slate-300 leading-relaxed">
                   After a block, note distractions and plans for the next session to close the feedback loop.
                 </p>
               </div>
@@ -855,7 +856,7 @@ export default function InteractiveTutorialModal({
                 <div className="font-semibold text-sky-300">
                   Incremental Reading
                 </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
+                <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                   Paste chapters, papers, or URLs. The system chunks text into extracts with source citations,
                   interleaved in your queue.
                 </p>
@@ -865,7 +866,7 @@ export default function InteractiveTutorialModal({
                 <div className="font-semibold text-emerald-300">
                   Code Lab & Socratic Guide
                 </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
+                <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                   Practice coding challenges with automated test execution and Socratic hints without spoiling solutions.
                 </p>
               </div>
@@ -883,7 +884,7 @@ export default function InteractiveTutorialModal({
                 </p>
               </div>
 
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+              <span className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 block">
                 Choose launchpad:
               </span>
 
@@ -899,7 +900,7 @@ export default function InteractiveTutorialModal({
                     </span>
                     <span className="text-sky-400 text-xs group-hover:translate-x-0.5 transition-transform">→</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">Create decks or import starter notes.</p>
+                  <p className="text-[0.6875rem] text-slate-400">Create decks or import starter notes.</p>
                 </button>
 
                 <button
@@ -913,7 +914,7 @@ export default function InteractiveTutorialModal({
                     </span>
                     <span className="text-sky-400 text-xs group-hover:translate-x-0.5 transition-transform">→</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">Explore branches and arrange study order.</p>
+                  <p className="text-[0.6875rem] text-slate-400">Explore branches and arrange study order.</p>
                 </button>
 
                 <button
@@ -927,7 +928,7 @@ export default function InteractiveTutorialModal({
                     </span>
                     <span className="text-sky-400 text-xs group-hover:translate-x-0.5 transition-transform">→</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">Track learning milestones & telemetry.</p>
+                  <p className="text-[0.6875rem] text-slate-400">Track learning milestones & telemetry.</p>
                 </button>
 
                 <button
@@ -941,14 +942,14 @@ export default function InteractiveTutorialModal({
                     </span>
                     <span className="text-sky-400 text-xs group-hover:translate-x-0.5 transition-transform">→</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">Jump right into active recall reviews.</p>
+                  <p className="text-[0.6875rem] text-slate-400">Jump right into active recall reviews.</p>
                 </button>
               </div>
 
               <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-slate-300">
                 <div className="flex items-center gap-2">
                   <span className="text-sky-400 font-semibold text-xs">Have an idea or feature request?</span>
-                  <span className="text-slate-400 text-[11px]">Submit requests directly in Settings.</span>
+                  <span className="text-slate-400 text-[0.6875rem]">Submit requests directly in Settings.</span>
                 </div>
                 <button
                   type="button"

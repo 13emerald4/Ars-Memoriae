@@ -173,7 +173,7 @@ export function CodeTestConsole({
             {currentCase && (
               <div className="space-y-3">
                 <div>
-                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  <p className="text-[0.6875rem] font-semibold text-slate-500 uppercase tracking-wider mb-1">
                     Input:
                   </p>
                   <pre className="rounded-lg border border-ink-line/60 bg-[#090d13] p-3 text-slate-200 overflow-x-auto">
@@ -186,7 +186,7 @@ export function CodeTestConsole({
                 </div>
 
                 <div>
-                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  <p className="text-[0.6875rem] font-semibold text-slate-500 uppercase tracking-wider mb-1">
                     Expected:
                   </p>
                   <pre className="rounded-lg border border-ink-line/60 bg-[#090d13] p-2.5 text-emerald-300 overflow-x-auto">
@@ -252,7 +252,7 @@ export function CodeTestConsole({
                       <span className="flex items-center gap-1.5">
                         <span>Unit Tests</span>
                       </span>
-                      <span className="text-[11px] font-mono text-sky-400">
+                      <span className="text-[0.6875rem] font-mono text-sky-400">
                         {runResult.student_passed_count ?? 0}/{runResult.student_total_count ?? 0} passed
                       </span>
                     </div>
@@ -270,7 +270,7 @@ export function CodeTestConsole({
                           <div className="flex items-center justify-between gap-2">
                             <span className="flex items-center gap-2 font-medium">
                               <span
-                                className={`flex h-4 px-1 items-center justify-center rounded text-[9px] font-mono font-bold uppercase ${
+                                className={`flex h-4 px-1 items-center justify-center rounded text-[0.5625rem] font-mono font-bold uppercase ${
                                   st.passed ? 'bg-emerald-500/30 text-emerald-300' : 'bg-rose-500/30 text-rose-300'
                                 }`}
                               >
@@ -278,10 +278,10 @@ export function CodeTestConsole({
                               </span>
                               <span>{st.test_name}</span>
                             </span>
-                            <span className="text-[10px] font-mono opacity-60">{st.runtime_ms} ms</span>
+                            <span className="text-[0.625rem] font-mono opacity-60">{st.runtime_ms} ms</span>
                           </div>
                           {st.error && (
-                            <pre className="mt-1.5 rounded bg-black/40 p-1.5 font-mono text-[11px] text-rose-300 whitespace-pre-wrap">
+                            <pre className="mt-1.5 rounded bg-black/40 p-1.5 font-mono text-[0.6875rem] text-rose-300 whitespace-pre-wrap">
                               {st.error}
                             </pre>
                           )}
@@ -294,7 +294,7 @@ export function CodeTestConsole({
                 {/* Hidden Test Suite Selector */}
                 {runResult.results.length > 0 && (
                   <div className="space-y-3">
-                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <p className="text-[0.6875rem] font-semibold text-slate-500 uppercase tracking-wider">
                       Test Cases:
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
@@ -323,7 +323,7 @@ export function CodeTestConsole({
                       <div className="space-y-2">
                         {currentResult.error ? (
                           <div className="rounded-lg border border-rose-500/30 bg-rose-950/20 p-2.5 text-rose-300">
-                            <p className="text-[10px] text-rose-400 font-bold mb-0.5">
+                            <p className="text-[0.625rem] text-rose-400 font-bold mb-0.5">
                               Error:
                             </p>
                             <pre className="whitespace-pre-wrap">{currentResult.error}</pre>
@@ -332,7 +332,7 @@ export function CodeTestConsole({
                           <>
                             <div className="grid gap-2 sm:grid-cols-2">
                               <div>
-                                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                                <p className="text-[0.625rem] font-semibold text-slate-500 uppercase tracking-wider mb-1">
                                   Your Output:
                                 </p>
                                 <pre
@@ -347,7 +347,7 @@ export function CodeTestConsole({
                               </div>
 
                               <div>
-                                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                                <p className="text-[0.625rem] font-semibold text-slate-500 uppercase tracking-wider mb-1">
                                   Expected Output:
                                 </p>
                                 <pre className="rounded-lg border border-ink-line/60 bg-[#090d13] p-2.5 text-slate-300 overflow-x-auto">
@@ -359,7 +359,7 @@ export function CodeTestConsole({
                             {/* Stdout if available */}
                             {currentResult.stdout && (
                               <div>
-                                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                                <p className="text-[0.625rem] font-semibold text-slate-500 uppercase tracking-wider mb-1">
                                   Stdout:
                                 </p>
                                 <pre className="rounded-lg border border-ink-line/60 bg-[#090d13] p-2 text-slate-400 whitespace-pre-wrap">

@@ -156,7 +156,7 @@ export function LexiconPopover({
             Concordance &amp; Lexicon
           </span>
           {entry?.domain && (
-            <span className="rounded-full bg-sky-950/80 border border-sky-500/30 px-2 py-0.5 text-[10px] font-medium text-sky-200">
+            <span className="rounded-full bg-sky-950/80 border border-sky-500/30 px-2 py-0.5 text-[0.625rem] font-medium text-sky-200">
               {entry.domain}
             </span>
           )}
@@ -165,7 +165,7 @@ export function LexiconPopover({
           <button
             type="button"
             onClick={() => setShowRecent(!showRecent)}
-            className="text-[11px] text-slate-400 hover:text-slate-200 px-1.5 py-0.5 rounded hover:bg-slate-800 transition-colors"
+            className="text-[0.6875rem] text-slate-400 hover:text-slate-200 px-1.5 py-0.5 rounded hover:bg-slate-800 transition-colors"
             title="View recent lookups"
           >
             {showRecent ? 'Definition' : 'Recent'}
@@ -212,7 +212,7 @@ export function LexiconPopover({
       {/* Main Content Area */}
       {showRecent ? (
         <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          <p className="text-[0.6875rem] font-semibold text-slate-400 uppercase tracking-wider">
             Recently Looked Up Terms
           </p>
           {recentTerms.length === 0 ? (
@@ -227,9 +227,9 @@ export function LexiconPopover({
               >
                 <div className="flex items-center justify-between text-xs font-semibold text-sky-200 group-hover:text-sky-300">
                   <span>{rt.term}</span>
-                  {rt.domain && <span className="text-[10px] text-slate-400">{rt.domain}</span>}
+                  {rt.domain && <span className="text-[0.625rem] text-slate-400">{rt.domain}</span>}
                 </div>
-                <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{rt.definition}</p>
+                <p className="text-[0.6875rem] text-slate-400 line-clamp-1 mt-0.5">{rt.definition}</p>
               </button>
             ))
           )}
@@ -242,7 +242,7 @@ export function LexiconPopover({
       ) : error ? (
         <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
           <p className="font-semibold">Unable to fetch definition</p>
-          <p className="text-[11px] text-rose-300/80 mt-1">{error}</p>
+          <p className="text-[0.6875rem] text-rose-300/80 mt-1">{error}</p>
         </div>
       ) : entry ? (
         <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
@@ -257,7 +257,7 @@ export function LexiconPopover({
             </h3>
             <div className="flex items-center gap-1.5 shrink-0">
               {entry.cached && (
-                <span className="text-[10px] text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                <span className="text-[0.625rem] text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
                   instant cache
                 </span>
               )}
@@ -266,7 +266,7 @@ export function LexiconPopover({
                   type="button"
                   disabled={addingToCard}
                   onClick={() => void handleAddToCard()}
-                  className="rounded border border-sky-400/40 bg-sky-950/70 px-2 py-0.5 text-[10px] font-semibold text-sky-200 hover:bg-sky-900 cursor-pointer"
+                  className="rounded border border-sky-400/40 bg-sky-950/70 px-2 py-0.5 text-[0.625rem] font-semibold text-sky-200 hover:bg-sky-900 cursor-pointer"
                 >
                   + Add to Card
                 </button>
@@ -289,7 +289,7 @@ export function LexiconPopover({
 
           {/* Core Definition */}
           <div className="rounded-lg border border-sky-500/20 bg-sky-950/30 p-2.5">
-            <p className="text-[10px] font-semibold text-sky-300 uppercase tracking-wider mb-1">
+            <p className="text-[0.625rem] font-semibold text-sky-300 uppercase tracking-wider mb-1">
               Definition
             </p>
             <p className="text-xs leading-relaxed text-slate-200 font-medium">
@@ -300,7 +300,7 @@ export function LexiconPopover({
           {/* Context Explanation */}
           {entry.context_explanation && (
             <div className="space-y-1">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+              <p className="text-[0.625rem] font-semibold text-slate-400 uppercase tracking-wider">
                 Why It Matters Here
               </p>
               <p className="text-xs leading-relaxed text-slate-300">
@@ -312,10 +312,10 @@ export function LexiconPopover({
           {/* Code / Concrete Example */}
           {entry.example && (
             <div className="rounded-lg border border-ink-line bg-slate-950/80 p-2 text-xs">
-              <p className="text-[10px] font-semibold text-amber-300/90 uppercase tracking-wider mb-1">
+              <p className="text-[0.625rem] font-semibold text-amber-300/90 uppercase tracking-wider mb-1">
                 Concrete Example
               </p>
-              <code className="block font-mono text-[11px] text-emerald-300 bg-slate-900 px-2 py-1.5 rounded overflow-x-auto whitespace-pre-wrap">
+              <code className="block font-mono text-[0.6875rem] text-emerald-300 bg-slate-900 px-2 py-1.5 rounded overflow-x-auto whitespace-pre-wrap">
                 {entry.example}
               </code>
             </div>
@@ -324,7 +324,7 @@ export function LexiconPopover({
           {/* Related Terms / Concordance Navigation */}
           {entry.related_terms && entry.related_terms.length > 0 && (
             <div className="pt-2 border-t border-ink-line/50">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+              <p className="text-[0.625rem] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
                 Related Concepts (Click to explore)
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -336,7 +336,7 @@ export function LexiconPopover({
                       void doLookup(rt)
                       onLookupNewTerm?.(rt)
                     }}
-                    className="rounded-md border border-slate-700/60 bg-slate-800/60 px-2 py-0.5 text-[11px] text-sky-200 hover:border-sky-400 hover:bg-sky-900/40 transition-colors"
+                    className="rounded-md border border-slate-700/60 bg-slate-800/60 px-2 py-0.5 text-[0.6875rem] text-sky-200 hover:border-sky-400 hover:bg-sky-900/40 transition-colors"
                   >
                     + {rt}
                   </button>
@@ -352,7 +352,7 @@ export function LexiconPopover({
       )}
 
       {/* Footer hint */}
-      <div className="mt-3 pt-2 border-t border-ink-line/40 flex items-center justify-between text-[10px] text-slate-500">
+      <div className="mt-3 pt-2 border-t border-ink-line/40 flex items-center justify-between text-[0.625rem] text-slate-500">
         <span>Tip: Highlight any phrase in text to define it</span>
         <span>Esc to close</span>
       </div>

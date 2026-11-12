@@ -11,12 +11,13 @@ import {
   resolveConcordanceEntry,
   searchConcordance,
 } from '../services/concordance_engine'
+import { storage } from '../utils/storage'
 
 export const CONCORDANCE_ENABLED_STORAGE_KEY = 'fundamentals_concordance_enabled'
 
 export const getStoredConcordanceEnabled = (): boolean => {
   try {
-    const raw = localStorage.getItem(CONCORDANCE_ENABLED_STORAGE_KEY)
+    const raw = storage.get(CONCORDANCE_ENABLED_STORAGE_KEY)
     if (raw !== null) {
       return raw === 'true'
     }
@@ -46,7 +47,7 @@ export function ConcordanceReader({
     } else {
       setInternalEnabled(next)
       try {
-        localStorage.setItem(CONCORDANCE_ENABLED_STORAGE_KEY, String(next))
+        storage.set(CONCORDANCE_ENABLED_STORAGE_KEY, String(next))
       } catch {}
     }
   }
@@ -129,7 +130,7 @@ export function ConcordanceReader({
             title={`Strong's Concordance: ${entry.id} - ${entry.term}`}
           >
             <span>{matchText}</span>
-            <span className="text-[8px] font-mono text-sky-400 opacity-80">
+            <span className="text-[0.5rem] font-mono text-sky-400 opacity-80">
               [{entry.id}]
             </span>
           </span>
@@ -178,7 +179,7 @@ export function ConcordanceReader({
         elements.push(
           <code
             key={`code-${start}`}
-            className="rounded bg-[#161f2e] border border-sky-500/20 px-1.5 py-0.5 font-mono text-[11px] text-sky-300"
+            className="rounded bg-[#161f2e] border border-sky-500/20 px-1.5 py-0.5 font-mono text-[0.6875rem] text-sky-300"
           >
             {tokenizeText(m[3])}
           </code>
@@ -226,12 +227,12 @@ export function ConcordanceReader({
             className="my-3 overflow-hidden rounded-lg border border-ink-line/80 bg-[#05080d]"
           >
             {lang && (
-              <div className="border-b border-ink-line/60 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-slate-500">
+              <div className="border-b border-ink-line/60 px-3 py-1 font-mono text-[0.625rem] uppercase tracking-wider text-slate-500">
                 {lang}
               </div>
             )}
             <pre className="overflow-x-auto px-3 py-2.5">
-              <code className="font-mono text-[11px] leading-relaxed text-sky-200">
+              <code className="font-mono text-[0.6875rem] leading-relaxed text-sky-200">
                 {codeLines.join('\n')}
               </code>
             </pre>
@@ -323,7 +324,7 @@ export function ConcordanceReader({
     if (numMatch) {
       return (
         <div key={lineIdx} className="flex items-start gap-2 my-1 pl-2 text-slate-300 text-xs">
-          <span className="font-mono text-sky-400 font-bold text-[11px] min-w-[14px]">
+          <span className="font-mono text-sky-400 font-bold text-[0.6875rem] min-w-[14px]">
             {numMatch[1]}.
           </span>
           <div className="leading-relaxed">
@@ -374,7 +375,7 @@ export function ConcordanceReader({
             <span className="font-semibold text-sky-200">
               Exhaustive MIT 6.0001 CS Concordance Active
             </span>
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[0.625rem] text-slate-400">
               ({GUTTAG_CONCORDANCE_LEXICON.length} indexed terms across {CONCORDANCE_CATEGORIES.length} domains — hover any concept for definition & cross-references)
             </span>
           </div>
@@ -382,17 +383,17 @@ export function ConcordanceReader({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowLexiconModal(true)}
-              className="flex items-center gap-1.5 rounded-md bg-sky-500/20 border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/30 transition shadow"
+              className="flex items-center gap-1.5 rounded-md bg-sky-500/20 border border-sky-500/40 px-2.5 py-1 text-[0.6875rem] font-bold text-sky-200 hover:bg-sky-500/30 transition shadow"
               title="Search all Strong's Concordance definitions and cross references"
             >
               <span>Lexicon Index</span>
-              <span className="font-mono text-[9px] bg-sky-500/30 text-sky-100 px-1 py-0.2 rounded">
+              <span className="font-mono text-[0.5625rem] bg-sky-500/30 text-sky-100 px-1 py-0.2 rounded">
                 {GUTTAG_CONCORDANCE_LEXICON.length}
               </span>
             </button>
             <button
               onClick={() => handleToggle(false)}
-              className="flex items-center gap-1 rounded-md bg-slate-800/80 border border-slate-700 px-2 py-1 text-[11px] text-slate-400 hover:text-slate-200 hover:border-slate-600 transition"
+              className="flex items-center gap-1 rounded-md bg-slate-800/80 border border-slate-700 px-2 py-1 text-[0.6875rem] text-slate-400 hover:text-slate-200 hover:border-slate-600 transition"
               title="Hide all concordance annotations and inline identifiers"
             >
               <span>Disable</span>
@@ -407,13 +408,13 @@ export function ConcordanceReader({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowLexiconModal(true)}
-              className="flex items-center gap-1.5 rounded-md bg-slate-800/80 border border-slate-700 px-2 py-1 text-[11px] text-slate-400 hover:text-slate-200 transition"
+              className="flex items-center gap-1.5 rounded-md bg-slate-800/80 border border-slate-700 px-2 py-1 text-[0.6875rem] text-slate-400 hover:text-slate-200 transition"
             >
               <span>Browse Lexicon</span>
             </button>
             <button
               onClick={() => handleToggle(true)}
-              className="flex items-center gap-1 rounded-md bg-sky-500/20 border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-300 hover:bg-sky-500/30 hover:text-white transition shadow-sm"
+              className="flex items-center gap-1 rounded-md bg-sky-500/20 border border-sky-500/40 px-2.5 py-1 text-[0.6875rem] font-bold text-sky-300 hover:bg-sky-500/30 hover:text-white transition shadow-sm"
               title="Turn on concordance annotations and hover definitions"
             >
               <span>Enable Concordance</span>
@@ -440,14 +441,14 @@ export function ConcordanceReader({
         >
           <div className="flex items-center justify-between border-b border-sky-500/20 pb-2 mb-2">
             <div className="flex items-center gap-2">
-              <span className="chip border-sky-400 bg-sky-950/60 text-sky-300 font-mono text-[10px]">
+              <span className="chip border-sky-400 bg-sky-950/60 text-sky-300 font-mono text-[0.625rem]">
                 {hoveredEntry.entry.id}
               </span>
               <h4 className="font-bold text-slate-100 text-sm">
                 {hoveredEntry.entry.term}
               </h4>
             </div>
-            <span className="chip border-slate-700 text-slate-400 text-[10px]">
+            <span className="chip border-slate-700 text-slate-400 text-[0.625rem]">
               {hoveredEntry.entry.category}
             </span>
           </div>
@@ -457,12 +458,12 @@ export function ConcordanceReader({
           </p>
 
           {hoveredEntry.entry.notation && (
-            <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-950/20 px-2.5 py-1.5 font-mono text-[11px] text-amber-200">
+            <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-950/20 px-2.5 py-1.5 font-mono text-[0.6875rem] text-amber-200">
               {hoveredEntry.entry.notation}
             </p>
           )}
 
-          <div className="space-y-1.5 border-t border-ink-line/60 pt-2 text-[11px]">
+          <div className="space-y-1.5 border-t border-ink-line/60 pt-2 text-[0.6875rem]">
             <p className="text-sky-300 font-semibold">
               Primary Reference: {hoveredEntry.entry.primaryLocation}
             </p>
@@ -487,7 +488,7 @@ export function ConcordanceReader({
                   <h3 className="text-base font-bold text-slate-100">
                     {pinnedEntry.term}
                   </h3>
-                  <p className="text-[11px] text-slate-400 font-mono">
+                  <p className="text-[0.6875rem] text-slate-400 font-mono">
                     Category: {pinnedEntry.category} • Primary: {pinnedEntry.primaryLocation}
                   </p>
                 </div>
@@ -496,7 +497,7 @@ export function ConcordanceReader({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => copyDefinition(pinnedEntry)}
-                  className="rounded-lg border border-sky-500/30 bg-sky-950/40 px-2.5 py-1 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/20 transition"
+                  className="rounded-lg border border-sky-500/30 bg-sky-950/40 px-2.5 py-1 text-[0.6875rem] font-semibold text-sky-300 hover:bg-sky-500/20 transition"
                   title="Copy definition"
                 >
                   {copiedId === pinnedEntry.id ? 'Copied' : 'Copy'}
@@ -514,7 +515,7 @@ export function ConcordanceReader({
             <div className="p-6 overflow-y-auto space-y-5 text-xs text-slate-300">
               {/* Formal MIT Definition */}
               <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 space-y-1.5">
-                <p className="font-bold text-sky-300 uppercase tracking-wider text-[10px]">
+                <p className="font-bold text-sky-300 uppercase tracking-wider text-[0.625rem]">
                   Definition:
                 </p>
                 <p className="text-slate-200 text-sm leading-relaxed">
@@ -525,10 +526,10 @@ export function ConcordanceReader({
               {/* Formal Notation / Invariant */}
               {pinnedEntry.notation && (
                 <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 space-y-1">
-                  <p className="font-bold text-amber-300 uppercase tracking-wider text-[10px]">
+                  <p className="font-bold text-amber-300 uppercase tracking-wider text-[0.625rem]">
                     Notation:
                   </p>
-                  <p className="font-mono text-[12px] leading-relaxed text-amber-100">
+                  <p className="font-mono text-[0.75rem] leading-relaxed text-amber-100">
                     {pinnedEntry.notation}
                   </p>
                 </div>
@@ -536,7 +537,7 @@ export function ConcordanceReader({
 
               {/* LeetCode Transfer */}
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 space-y-1">
-                <p className="font-bold text-emerald-300 uppercase tracking-wider text-[10px]">
+                <p className="font-bold text-emerald-300 uppercase tracking-wider text-[0.625rem]">
                   Application:
                 </p>
                 <p className="text-slate-200 leading-relaxed">
@@ -556,7 +557,7 @@ export function ConcordanceReader({
                       key={idx}
                       className="rounded-xl border border-ink-line/80 bg-[#080d14] p-3.5 space-y-1.5"
                     >
-                      <div className="flex items-center justify-between text-[11px] font-mono">
+                      <div className="flex items-center justify-between text-[0.6875rem] font-mono">
                         <span className="font-bold text-sky-300">
                           {occ.chapter} — {occ.section}
                         </span>
@@ -586,9 +587,9 @@ export function ConcordanceReader({
                         <button
                           key={rid}
                           onClick={() => setPinnedEntry(related)}
-                          className="rounded-lg border border-sky-500/30 bg-sky-950/30 px-2.5 py-1 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/20 transition"
+                          className="rounded-lg border border-sky-500/30 bg-sky-950/30 px-2.5 py-1 text-[0.6875rem] font-semibold text-sky-200 hover:bg-sky-500/20 transition"
                         >
-                          <span className="font-mono text-[10px] text-sky-400">{related.id}</span>{' '}
+                          <span className="font-mono text-[0.625rem] text-sky-400">{related.id}</span>{' '}
                           {related.term}
                         </button>
                       )
@@ -621,7 +622,7 @@ export function ConcordanceReader({
                   <h3 className="text-base font-bold text-slate-100">
                     MIT 6.0001 Computational Thinking Lexicon
                   </h3>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[0.6875rem] text-slate-400">
                     Search {GUTTAG_CONCORDANCE_LEXICON.length} computer science definitions across{' '}
                     {CONCORDANCE_CATEGORIES.length} domains (Grounded in MIT 6.0001 & Guttag text)
                   </p>
@@ -652,7 +653,7 @@ export function ConcordanceReader({
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
-                    className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold transition ${
+                    className={`rounded-lg px-2.5 py-1 text-[0.625rem] font-semibold transition ${
                       selectedCategory === cat
                         ? 'bg-sky-500 text-white shadow'
                         : 'bg-[#121927] text-slate-400 hover:text-slate-200'
@@ -678,14 +679,14 @@ export function ConcordanceReader({
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="chip border-sky-400 bg-sky-950 text-sky-300 font-mono text-[10px]">
+                      <span className="chip border-sky-400 bg-sky-950 text-sky-300 font-mono text-[0.625rem]">
                         {entry.id}
                       </span>
                       <h4 className="font-bold text-slate-100 text-sm">
                         {entry.term}
                       </h4>
                     </div>
-                    <span className="chip border-slate-700 text-slate-400 text-[10px]">
+                    <span className="chip border-slate-700 text-slate-400 text-[0.625rem]">
                       {entry.category}
                     </span>
                   </div>
@@ -694,7 +695,7 @@ export function ConcordanceReader({
                     {entry.definition}
                   </p>
 
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-ink-line/40">
+                  <div className="flex items-center justify-between text-[0.6875rem] text-slate-400 pt-1 border-t border-ink-line/40">
                     <span className="text-sky-300 font-mono">
                       Primary: {entry.primaryLocation}
                     </span>
