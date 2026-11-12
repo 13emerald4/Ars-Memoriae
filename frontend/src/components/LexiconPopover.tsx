@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { api } from '../api/client'
-import type { LexiconEntry, RecentLexiconItem } from '../api/types'
+import type { LexiconEntry, LexiconGlossItem, RecentLexiconItem } from '../api/types'
+import { AddToDefinitionsPrompt } from './AddToDefinitionsPrompt'
+import { useOptionalLexicon } from './LexiconContext'
+import { isTermInGlosses, looksLikeCodeTerm } from '../utils/lexiconExtractor'
 
 interface LexiconPopoverProps {
   term: string | null
@@ -8,6 +11,8 @@ interface LexiconPopoverProps {
   cardId?: string | null
   deckName?: string | null
   thematicNature?: string | null
+  existingGlosses?: LexiconGlossItem[]
+  onAddedToCard?: (updatedGlosses: LexiconGlossItem[]) => void
   position?: { x: number; y: number } | null
   onClose: () => void
   onLookupNewTerm?: (newTerm: string) => void
@@ -19,22 +24,30 @@ export function LexiconPopover({
   cardId,
   deckName,
   thematicNature,
+  existingGlosses,
+  onAddedToCard,
   position,
   onClose,
   onLookupNewTerm,
 }: LexiconPopoverProps) {
+  const lexiconCtx = useOptionalLexicon()
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [entry, setEntry] = useState<LexiconEntry | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [recentTerms, setRecentTerms] = useState<RecentLexiconItem[]>([])
   const [showRecent, setShowRecent] = useState(!initialTerm || !initialTerm.trim())
+  const [addingToCard, setAddingToCard] = useState(false)
+  const [addedTerms, setAddedTerms] = useState<Record<string, boolean>>({})
+  const [dismissedTerms, setDismissedTerms] = useState<Record<string, boolean>>({})
+  const [addError, setAddError] = useState<string | null>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
 
   const doLookup = useCallback(async (lookupWord: string) => {
     if (!lookupWord.trim()) return
     setLoading(true)
     setError(null)
+    setAddError(null)
     setShowRecent(false)
     try {
       const res = await api.lookupLexicon(lookupWord.trim(), context, cardId, {
@@ -60,6 +73,37 @@ export function LexiconPopover({
     // Fetch recent items for concordance
     api.getRecentLexicon().then(setRecentTerms).catch(() => {})
   }, [entry])
+
+  const entryKey = entry?.term?.toLowerCase().trim() || ''
+  const isEntryInCardList =
+    Boolean(entry) &&
+    (Boolean(addedTerms[entryKey]) || isTermInGlosses(existingGlosses, entry?.term))
+
+  const handleAddToCard = useCallback(async () => {
+    if (!cardId || !entry || addingToCard) return
+    setAddingToCard(true)
+    setAddError(null)
+    const newGloss: LexiconGlossItem = {
+      term: entry.term,
+      definition: entry.definition,
+      domain: entry.domain || undefined,
+      context_explanation: entry.context_explanation || undefined,
+      example: entry.example || undefined,
+      source: 'AI Lexicon',
+      pinned_at: new Date().toISOString(),
+    }
+    try {
+      const updatedCard = await api.addCardLexiconGloss(cardId, newGloss)
+      setAddedTerms((prev) => ({ ...prev, [entry.term.toLowerCase().trim()]: true }))
+      const merged = updatedCard.lexicon_glosses || [newGloss]
+      onAddedToCard?.(merged)
+      lexiconCtx?.populateCardGlosses([newGloss], updatedCard.lexicon_glosses)
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : 'Failed to save to card definitions list')
+    } finally {
+      setAddingToCard(false)
+    }
+  }, [cardId, entry, addingToCard, onAddedToCard, lexiconCtx])
 
   // Handle outside click & escape key
   useEffect(() => {
@@ -203,16 +247,45 @@ export function LexiconPopover({
       ) : entry ? (
         <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
           {/* Term Title & Cache Chip */}
-          <div className="flex items-baseline justify-between">
-            <h3 className="text-base font-bold text-sky-200 capitalize tracking-tight">
+          <div className="flex items-baseline justify-between gap-2">
+            <h3
+              className={`text-base font-bold text-sky-200 tracking-tight truncate ${
+                looksLikeCodeTerm(entry.term) ? 'font-mono' : 'capitalize'
+              }`}
+            >
               {entry.term}
             </h3>
-            {entry.cached && (
-              <span className="text-[10px] text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
-                instant cache
-              </span>
-            )}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {entry.cached && (
+                <span className="text-[10px] text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                  instant cache
+                </span>
+              )}
+              {cardId && dismissedTerms[entryKey] && !isEntryInCardList && (
+                <button
+                  type="button"
+                  disabled={addingToCard}
+                  onClick={() => void handleAddToCard()}
+                  className="rounded border border-sky-400/40 bg-sky-950/70 px-2 py-0.5 text-[10px] font-semibold text-sky-200 hover:bg-sky-900 cursor-pointer"
+                >
+                  + Add to Card
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Ask user whether to add this LLM definition to the card's definitions list */}
+          {cardId && (isEntryInCardList || !dismissedTerms[entryKey]) && (
+            <AddToDefinitionsPrompt
+              term={entry.term}
+              alreadyAdded={isEntryInCardList}
+              saving={addingToCard}
+              error={addError}
+              onConfirm={() => void handleAddToCard()}
+              onDismiss={() => setDismissedTerms((prev) => ({ ...prev, [entryKey]: true }))}
+              compact={true}
+            />
+          )}
 
           {/* Core Definition */}
           <div className="rounded-lg border border-sky-500/20 bg-sky-950/30 p-2.5">

@@ -12,21 +12,26 @@ from app.services.grading_service import (
 
 
 def test_is_allowed_qwen_coder_model():
-    # Permitted models: quantized Qwen 2.5 Coder in 7B, 3B, 1.5B
+    # Permitted models across the 3 archetypes:
+    # 1. Qwen 3.5 9B (The Heavy Generalist)
+    assert is_allowed_qwen_coder_model("qwen3.5:9b") is True
+    assert is_allowed_qwen_coder_model("qwen3.5:9b-instruct-q4_K_M") is True
+    # 2. Qwen2.5-Coder 7B (The Technical Specialist)
     assert is_allowed_qwen_coder_model("qwen2.5-coder:7b") is True
+    assert is_allowed_qwen_coder_model("qwen2.5-coder:7b-instruct-q4_K_M") is True
+    # 3. Qwen 3.5 4B / Gemma 4 E4B (The Speed Demon)
+    assert is_allowed_qwen_coder_model("qwen3.5:4b") is True
+    assert is_allowed_qwen_coder_model("gemma4:e4b") is True
+    assert is_allowed_qwen_coder_model("gemma:4b") is True
+    # Legacy compatibility sizes
     assert is_allowed_qwen_coder_model("qwen2.5-coder:3b") is True
     assert is_allowed_qwen_coder_model("qwen2.5-coder:1.5b") is True
-    assert is_allowed_qwen_coder_model("qwen2.5-coder:7b-instruct-q4_K_M") is True
-    assert is_allowed_qwen_coder_model("qwen2.5-coder:3b-q4_0") is True
-    assert is_allowed_qwen_coder_model("qwen2.5-coder:1.5b-instruct-q4_K_M") is True
 
-    # Disallowed models: other sizes, general non-coder, Gemma, embeddings, rerankers
+    # Disallowed models: other sizes, general non-coder, embeddings, rerankers, other families
     assert is_allowed_qwen_coder_model("qwen2.5-coder:14b") is False
     assert is_allowed_qwen_coder_model("qwen2.5-coder:32b") is False
     assert is_allowed_qwen_coder_model("qwen2.5-coder:0.5b") is False
     assert is_allowed_qwen_coder_model("qwen2.5:7b") is False  # general non-coder
-    assert is_allowed_qwen_coder_model("gemma3:4b") is False
-    assert is_allowed_qwen_coder_model("gemma3:1b") is False
     assert is_allowed_qwen_coder_model("llama3.2:3b") is False
     assert is_allowed_qwen_coder_model("qwen3-embedding:8b-q4_K_M") is False
     assert is_allowed_qwen_coder_model("dengcao/Qwen3-Reranker-8B:Q4_K_M") is False
@@ -36,18 +41,18 @@ def test_is_allowed_qwen_coder_model():
 
 def test_schema_model_validation():
     # UserUpdate schema validation
-    u_ok = UserUpdate(grading_model="qwen2.5-coder:3b")
-    assert u_ok.grading_model == "qwen2.5-coder:3b"
+    u_ok = UserUpdate(grading_model="qwen3.5:4b")
+    assert u_ok.grading_model == "qwen3.5:4b"
 
     with pytest.raises(ValueError):
-        UserUpdate(grading_model="gemma3:4b")
+        UserUpdate(grading_model="llama3.2:3b")
 
     # SubmitAnswerRequest schema validation
-    s_ok = SubmitAnswerRequest(typed_answer="x", latency_ms=100, model="qwen2.5-coder:1.5b")
-    assert s_ok.model == "qwen2.5-coder:1.5b"
+    s_ok = SubmitAnswerRequest(typed_answer="x", latency_ms=100, model="qwen3.5:9b")
+    assert s_ok.model == "qwen3.5:9b"
 
     with pytest.raises(ValueError):
-        SubmitAnswerRequest(typed_answer="x", latency_ms=100, model="gemma3:4b")
+        SubmitAnswerRequest(typed_answer="x", latency_ms=100, model="llama3.2:3b")
 
 
 def test_is_memory_or_vram_error():

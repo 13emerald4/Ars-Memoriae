@@ -10,6 +10,8 @@ export interface CodeTestConsoleProps {
   submitting: boolean
   dockPosition?: 'bottom' | 'right'
   onToggleCollapse?: () => void
+  flush?: boolean
+  heightPx?: number
 }
 
 export function CodeTestConsole({
@@ -21,6 +23,8 @@ export function CodeTestConsole({
   submitting,
   dockPosition = 'bottom',
   onToggleCollapse,
+  flush = false,
+  heightPx,
 }: CodeTestConsoleProps) {
   const [activeTab, setActiveTab] = useState<'cases' | 'result'>('cases')
   const [selectedCaseIdx, setSelectedCaseIdx] = useState(0)
@@ -40,12 +44,27 @@ export function CodeTestConsole({
 
   return (
     <div
-      className={`flex flex-col rounded-xl border border-[#282828] bg-[#1a1a1a] text-[#eff1f6] overflow-hidden shadow-2xl ${
-        dockPosition === 'right' ? 'h-full flex-1 min-h-[380px]' : ''
-      }`}
+      style={
+        dockPosition === 'bottom' && typeof heightPx === 'number'
+          ? { height: `${heightPx}px` }
+          : undefined
+      }
+      className={
+        flush
+          ? 'flex flex-col rounded-none border-0 bg-[#16171b] text-[#eff1f6] overflow-hidden h-full min-h-0'
+          : `flex flex-col rounded-xl border border-[#282828] bg-[#1a1a1a] text-[#eff1f6] overflow-hidden shadow-2xl ${
+              dockPosition === 'right' ? 'h-full flex-1 min-h-[380px]' : ''
+            }`
+      }
     >
       {/* Console Tab Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#282828] bg-[#262626] px-4 py-2 text-xs">
+      <div
+        className={
+          flush
+            ? 'h-9 shrink-0 flex items-center justify-between gap-2 border-b border-[#2a2d34] bg-[#1b1d23] px-3 text-xs'
+            : 'flex flex-wrap items-center justify-between gap-2 border-b border-[#282828] bg-[#262626] px-4 py-2 text-xs'
+        }
+      >
         <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveTab('cases')}
@@ -124,7 +143,11 @@ export function CodeTestConsole({
       {/* Console Content Area */}
       <div
         className={`p-4 text-xs font-mono overflow-y-auto ${
-          dockPosition === 'right' ? 'flex-1 min-h-[220px]' : 'min-h-[160px] max-h-[260px]'
+          flush || typeof heightPx === 'number'
+            ? 'flex-1 min-h-0'
+            : dockPosition === 'right'
+            ? 'flex-1 min-h-[220px]'
+            : 'min-h-[160px] max-h-[260px]'
         }`}
       >
         {activeTab === 'cases' && (

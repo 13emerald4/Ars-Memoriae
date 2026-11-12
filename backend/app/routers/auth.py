@@ -39,6 +39,8 @@ CLEARABLE_USER_FIELDS = frozenset({"target_event_date", "target_event_title"})
 
 
 def user_out(user: User) -> UserOut:
+    from app.services.grading_service import is_antigravity_authorized
+
     return UserOut(
         id=str(user.id),
         email=user.email,
@@ -65,6 +67,7 @@ def user_out(user: User) -> UserOut:
         enable_schema_checkpoints=getattr(user, "enable_schema_checkpoints", True),
         enable_prompt_mutation=getattr(user, "enable_prompt_mutation", False),
         enable_prediction_mode=getattr(user, "enable_prediction_mode", False),
+        can_use_antigravity=is_antigravity_authorized(user),
     )
 
 
@@ -158,6 +161,18 @@ async def me(user: User = Depends(current_user)) -> UserOut:
 async def update_me(
     body: UserUpdate, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
 ) -> UserOut:
+    from app.services.grading_service import is_antigravity_authorized, is_antigravity_model
+
+    if (
+        body.grading_model is not None
+        and is_antigravity_model(body.grading_model)
+        and not is_antigravity_authorized(user)
+    ):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Antigravity subscription models are only available for authorized owner accounts.",
+        )
+
     for key, value in body.model_dump(exclude_unset=True).items():
         if value is not None or key in CLEARABLE_USER_FIELDS:
             setattr(user, key, value)

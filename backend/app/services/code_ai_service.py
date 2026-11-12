@@ -22,7 +22,7 @@ Difficulty: {difficulty}
 Target Primary Language: {target_language}
 
 Requirements:
-1. Clear problem statement with formatted markdown, mathematical notation ($O(N)$), and constraints.
+1. Clear problem statement with formatted markdown, mathematical notation ($O(N)$), and constraints. Place any code snippets, function/class signatures, or type definitions inside the problem statement in fenced markdown code blocks (e.g. ```typescript ... ``` or ```python ... ```) so they render in an IDE.
 2. 2-3 comprehensive examples with Input, Output, and Explanation.
 3. Realistic constraints (e.g. array length, integer bounds, valid types).
 4. Idiomatic starter code with function/class definition and docstring:
@@ -115,46 +115,33 @@ Instructions:
 DECK_DOCS_GROUNDING_PROMPT = """You are a precise technical tutor explaining code grounded strictly in the attached course documentation.
 A student highlighted a line or block of code from a card and wants to understand its concise meaning and application according to the course documentation.
 
-Highlighted Code:
-```{language}
-{query}
-```
-{full_code_section}
-
-Attached Course Documentation:
-{doc_excerpts}
-
 Instructions:
 1. Grounding: Identify the cited document title and page/locator where this specification comes from (e.g., [Title · Locator]).
 2. Verbatim Specification: Quote the exact sentence, rule, formula, threshold, or example from the document that specifies this card or function.
 3. Meaning & Application: In 2-3 concise sentences, explain the exact meaning and application of this highlighted code for this card based on the document:
    - What does this line test, calculate, or enforce?
    - How do the document's rules, formulas, or thresholds apply to these specific inputs or logic? (e.g. show the math or condition: 18 / 20 = 90% >= 80% threshold -> 'A').
-4. Keep it direct, clean, and concise. Zero conversational filler.
-5. Use clean markdown formatting without extraneous whitespace around code tokens or punctuation.
+4. Respect any Reference Solution Disclosure Rule if present below, and use any Card Question / Student Work context to make your explanation directly relevant.
+5. Keep it direct, clean, and concise. Zero conversational filler.
+6. Use clean markdown formatting without extraneous whitespace around code tokens or punctuation.
 
 Format your response strictly using these section headers:
 **→ Cited Document.** [Source Title · Locator]
 **→ Verbatim Specification.**
 > <Exact quote, formula, or example from the document>
 **→ Meaning & Application.** <Concise explanation of what this highlighted code means and how the document rules apply to it>
-"""
-
-DECK_DOCS_QA_PROMPT = """You are a precise, insightful technical tutor helping a student understand their code, attached course documentation, and programming concepts.
-A student is working on a coding flashcard/problem and has a question about the code or documentation.
+{card_context_section}{student_work_section}
+Highlighted Code:
+```{language}
+{query}
+```
 
 Attached Course Documentation:
 {doc_excerpts}
+"""
 
-Highlighted / Focused Code:
-```{language}
-{selected_code}
-```
-{full_code_section}
-{history_section}
-
-Student Question:
-{question}
+DECK_DOCS_QA_PROMPT = """You are a precise, insightful technical tutor helping a student understand their code, attached course documentation, and programming concepts.
+A student is working on a coding flashcard/problem and has a question about the card, their work, the code, or documentation.
 
 Instructions:
 1. Provide a direct, technically accurate, clear, and educational answer to the student's question.
@@ -162,9 +149,105 @@ Instructions:
    - If the attached documentation specifies rules, formulas, constraints, or course conventions, incorporate and adhere to them.
    - Use your pre-trained software engineering knowledge to explain underlying mechanics, language semantics, standard library behavior, algorithmic complexity, common pitfalls, and edge cases.
    - If no attached documentation is found or if the documentation is silent on this detail, provide a complete and authoritative answer drawn from your pre-trained programming knowledge.
-3. Be concise and structured (typically 2-4 focused sentences or clean bullet points). Zero conversational filler (do NOT say "Sure!", "Great question!", "Certainly!", "As an AI...").
-4. Use markdown backticks (`code`) for code tokens and bold for key terms.
+3. Use the Card Question, Canonical Reference Solution, and Student's Current Work below whenever available to diagnose bugs, check edge cases, and tailor your answer (strictly honoring any Reference Solution Disclosure Rule).
+4. Be concise and structured (typically 2-4 focused sentences or clean bullet points). Zero conversational filler (do NOT say "Sure!", "Great question!", "Certainly!", "As an AI...").
+5. Use markdown backticks (`code`) for code tokens and bold for key terms.
+{card_context_section}{student_work_section}
+Highlighted / Focused Code:
+```{language}
+{selected_code}
+```
+
+Attached Course Documentation:
+{doc_excerpts}
+{history_section}
+
+Student Question:
+{question}
 """
+
+
+def _build_card_and_work_sections(
+    *,
+    language: str,
+    context: str | None = None,
+    card_front: str | None = None,
+    card_back: str | None = None,
+    card_tests: str | None = None,
+    card_weaknesses: list[str] | None = None,
+    user_code: str | None = None,
+    user_test_code: str | None = None,
+    execution_summary: str | None = None,
+    full_code: str | None = None,
+    focus_code: str | None = None,
+    revealed: bool | None = None,
+) -> tuple[str, str]:
+    """Builds the immutable card prefix followed by the mutable student-work snapshot.
+
+    Keeping instructions + card question/solution at the front of the prompt keeps
+    leading tokens identical across turns so local Ollama and upstream providers can
+    reuse prefix KV cache entries while edits/doc excerpts/questions append at the tail.
+    """
+    prefix_parts: list[str] = []
+    if card_front and card_front.strip():
+        prefix_parts.append(f"Card Question / Specification:\n{card_front.strip()[:4500]}")
+    elif context and context.strip():
+        prefix_parts.append(f"Card / Problem Context:\n{context.strip()[:4500]}")
+
+    has_ref = bool(card_back and card_back.strip())
+    if has_ref:
+        prefix_parts.append(
+            f"Canonical Reference Solution:\n```{language}\n{card_back.strip()[:4500]}\n```"
+        )
+    if card_tests and card_tests.strip():
+        prefix_parts.append(
+            f"Card Reference / Starter Tests:\n```{language}\n{card_tests.strip()[:2500]}\n```"
+        )
+    if card_weaknesses:
+        weak_list = "\n".join(f"- {w}" for w in card_weaknesses[:5] if str(w).strip())
+        if weak_list:
+            prefix_parts.append(f"Recorded Prior Weaknesses on This Card:\n{weak_list}")
+
+    card_context_section = ("\n" + "\n\n".join(prefix_parts) + "\n") if prefix_parts else ""
+
+    work_parts: list[str] = []
+    if has_ref:
+        if revealed is False:
+            work_parts.append(
+                "Reference Solution Disclosure Rule: The student has NOT revealed the reference solution yet. "
+                "Use the Canonical Reference Solution silently to verify correctness and spot bugs, and coach/answer "
+                "WITHOUT printing or quoting the complete reference implementation verbatim."
+            )
+        elif revealed is True:
+            work_parts.append(
+                "Reference Solution Disclosure Rule: The reference solution is currently revealed to the student; you may discuss it openly."
+            )
+
+    focus_clean = (focus_code or "").strip()
+    if user_code is not None and user_code.strip():
+        work_parts.append(
+            f"Student's Current Solution Draft:\n```{language}\n{user_code.strip()[:4500]}\n```"
+        )
+    if (
+        full_code
+        and full_code.strip()
+        and full_code.strip() != focus_clean
+        and full_code.strip() != (user_code or "").strip()
+        and full_code.strip() != (card_back or "").strip()
+    ):
+        work_parts.append(
+            f"Full Surrounding Editor Buffer:\n```{language}\n{full_code.strip()[:4500]}\n```"
+        )
+    if user_test_code and user_test_code.strip():
+        work_parts.append(
+            f"Student's Current Unit Tests:\n```{language}\n{user_test_code.strip()[:3000]}\n```"
+        )
+    if execution_summary and execution_summary.strip():
+        work_parts.append(f"Latest Test Run / Execution Output:\n{execution_summary.strip()[:2500]}")
+
+    student_work_section = ("\n" + "\n\n".join(work_parts) + "\n") if work_parts else ""
+    return card_context_section, student_work_section
+
 
 
 
@@ -240,8 +323,40 @@ def rank_extracts_for_query(
 
 
 class CodeAiService:
-    def __init__(self, model: str | None = None) -> None:
-        self.grading_service = GradingService(model=model)
+    def __init__(self, model: str | None = None, *, allow_antigravity: bool = False) -> None:
+        self.grading_service = GradingService(model=model, allow_antigravity=allow_antigravity)
+
+    @classmethod
+    def for_user(cls, user: Any | None, requested_model: str | None = None) -> CodeAiService:
+        grading_svc = GradingService.for_user(user, requested_model)
+        svc = cls.__new__(cls)
+        svc.grading_service = grading_svc
+        return svc
+
+    async def _list_available_models(self, target_model: str) -> list[str]:
+        from app.services.grading_service import is_allowed_qwen_coder_model, is_antigravity_model
+
+        allow_agy = getattr(self.grading_service, "allow_antigravity", False)
+        try:
+            if type(self.grading_service).verify_engine is GradingService.verify_engine:
+                engines = await self.grading_service.verify_all_engines()
+                combined = list(
+                    dict.fromkeys([
+                        *engines["ollama"]["models"],
+                        *(engines["antigravity"]["models"] if allow_agy else []),
+                    ])
+                )
+                return combined or [target_model]
+
+            installed = await self.grading_service.verify_engine()
+            filtered = [
+                m
+                for m in installed
+                if is_allowed_qwen_coder_model(m) or (allow_agy and is_antigravity_model(m))
+            ]
+            return filtered or installed or [target_model]
+        except Exception:
+            return [target_model]
 
     async def forge_problem(
         self,
@@ -308,8 +423,10 @@ class CodeAiService:
             )
             return response.strip()
         except Exception as e:
-            log.warning("Socratic code hint failed: %s", e)
-            return "Focus on the core pattern: consider what data structure allows you to look up or store previous states in $O(1)$ time."
+            log.warning("Socratic code hint failed on '%s': %s", self.grading_service.model, e)
+            raise GradingUnavailable(
+                f"Socratic code hint failed on '{self.grading_service.model}': {e}"
+            ) from e
 
     async def explain_code_selection(
         self,
@@ -321,8 +438,6 @@ class CodeAiService:
         model: str | None = None,
     ) -> dict[str, Any]:
         """Generates an Occam's razor / Socratic concise explanation of the selected code."""
-        from app.services.grading_service import is_allowed_qwen_coder_model
-
         context_info = f"Context / Task: {context}\n" if context else ""
         full_code_section = (
             f"\nFull Surrounding Code:\n```{language}\n{full_code.strip()}\n```\n"
@@ -354,25 +469,18 @@ class CodeAiService:
         )
 
         target_model = model or self.grading_service.model
-        available_models: list[str] = []
-        try:
-            installed = await self.grading_service.verify_engine()
-            available_models = [m for m in installed if is_allowed_qwen_coder_model(m)]
-            if not available_models and installed:
-                available_models = installed
-        except Exception:
-            available_models = [target_model]
+        available_models = await self._list_available_models(target_model)
 
         try:
             raw_response = await self.grading_service._generate(
                 prompt=prompt,
                 model=target_model,
-                allow_smaller_model=True,
+                allow_smaller_model=False,
             )
             explanation = raw_response.strip()
         except Exception as e:
             log.warning("Occam's razor explanation generation failed: %s", e)
-            raise GradingUnavailable(f"Local LLM explanation failed: {e}") from e
+            raise GradingUnavailable(f"LLM explanation failed on '{target_model}': {e}") from e
 
         occams_razor: str | None = None
         socratic_insight: str | None = None
@@ -406,19 +514,19 @@ class CodeAiService:
         full_code: str | None = None,
         language: str = "typescript",
         model: str | None = None,
+        context: str | None = None,
+        card_front: str | None = None,
+        card_back: str | None = None,
+        card_tests: str | None = None,
+        card_weaknesses: list[str] | None = None,
+        user_code: str | None = None,
+        user_test_code: str | None = None,
+        execution_summary: str | None = None,
+        revealed: bool | None = None,
     ) -> dict[str, Any]:
         """Grounds a code snippet or user inquiry against attached deck documentation."""
-        from app.services.grading_service import is_allowed_qwen_coder_model
-
         target_model = model or self.grading_service.model
-        available_models: list[str] = []
-        try:
-            installed = await self.grading_service.verify_engine()
-            available_models = [m for m in installed if is_allowed_qwen_coder_model(m)]
-            if not available_models and installed:
-                available_models = installed
-        except Exception:
-            available_models = [target_model]
+        available_models = await self._list_available_models(target_model)
 
         if not doc_excerpts:
             return {
@@ -439,16 +547,26 @@ class CodeAiService:
             )
         doc_excerpts_str = "\n".join(formatted_excerpts)
 
-        full_code_section = (
-            f"\nFull Surrounding Code:\n```{language}\n{full_code.strip()}\n```\n"
-            if full_code and full_code.strip() and full_code.strip() != query.strip()
-            else ""
+        card_context_section, student_work_section = _build_card_and_work_sections(
+            language=language,
+            context=context,
+            card_front=card_front,
+            card_back=card_back,
+            card_tests=card_tests,
+            card_weaknesses=card_weaknesses,
+            user_code=user_code,
+            user_test_code=user_test_code,
+            execution_summary=execution_summary,
+            full_code=full_code,
+            focus_code=query,
+            revealed=revealed,
         )
 
         prompt = DECK_DOCS_GROUNDING_PROMPT.format(
             language=language,
+            card_context_section=card_context_section,
+            student_work_section=student_work_section,
             query=query.strip(),
-            full_code_section=full_code_section,
             doc_excerpts=doc_excerpts_str,
         )
 
@@ -456,12 +574,12 @@ class CodeAiService:
             raw_response = await self.grading_service._generate(
                 prompt=prompt,
                 model=target_model,
-                allow_smaller_model=True,
+                allow_smaller_model=False,
             )
             raw = raw_response.strip()
         except Exception as e:
             log.warning("Deck docs query generation failed: %s", e)
-            raise GradingUnavailable(f"Local LLM documentation search failed: {e}") from e
+            raise GradingUnavailable(f"LLM documentation search failed on '{target_model}': {e}") from e
 
         found_info = ""
         doc_citation: str | None = None
@@ -547,19 +665,19 @@ class CodeAiService:
         language: str = "typescript",
         history: list[Any] | None = None,
         model: str | None = None,
+        context: str | None = None,
+        card_front: str | None = None,
+        card_back: str | None = None,
+        card_tests: str | None = None,
+        card_weaknesses: list[str] | None = None,
+        user_code: str | None = None,
+        user_test_code: str | None = None,
+        execution_summary: str | None = None,
+        revealed: bool | None = None,
     ) -> dict[str, Any]:
-        """Answers a student's follow-up question grounded in code and attached deck documentation."""
-        from app.services.grading_service import is_allowed_qwen_coder_model
-
+        """Answers a student's follow-up question grounded in card context, student work, code, and attached deck documentation."""
         target_model = model or self.grading_service.model
-        available_models: list[str] = []
-        try:
-            installed = await self.grading_service.verify_engine()
-            available_models = [m for m in installed if is_allowed_qwen_coder_model(m)]
-            if not available_models and installed:
-                available_models = installed
-        except Exception:
-            available_models = [target_model]
+        available_models = await self._list_available_models(target_model)
 
         formatted_excerpts = []
         for exc in doc_excerpts:
@@ -572,15 +690,24 @@ class CodeAiService:
             else "(No attached course documentation extracts found; answer using pre-trained programming knowledge)"
         )
 
-        full_code_section = (
-            f"\nFull Surrounding Code:\n```{language}\n{full_code.strip()}\n```\n"
-            if full_code and full_code.strip() and full_code.strip() != (selected_code or "").strip()
-            else ""
+        card_context_section, student_work_section = _build_card_and_work_sections(
+            language=language,
+            context=context,
+            card_front=card_front,
+            card_back=card_back,
+            card_tests=card_tests,
+            card_weaknesses=card_weaknesses,
+            user_code=user_code,
+            user_test_code=user_test_code,
+            execution_summary=execution_summary,
+            full_code=full_code,
+            focus_code=selected_code,
+            revealed=revealed,
         )
 
         formatted_history = []
         if history:
-            for turn in history:
+            for turn in history[-12:]:
                 role = getattr(turn, "role", None) or (turn.get("role") if isinstance(turn, dict) else "user")
                 content = getattr(turn, "content", None) or (turn.get("content") if isinstance(turn, dict) else str(turn))
                 role_label = "Student" if role == "user" else "Tutor"
@@ -589,8 +716,9 @@ class CodeAiService:
 
         prompt = DECK_DOCS_QA_PROMPT.format(
             language=language,
+            card_context_section=card_context_section,
+            student_work_section=student_work_section,
             selected_code=(selected_code or "").strip() or "(No specific code highlighted)",
-            full_code_section=full_code_section,
             history_section=history_section,
             doc_excerpts=doc_excerpts_str,
             question=question.strip(),
@@ -600,12 +728,12 @@ class CodeAiService:
             raw_response = await self.grading_service._generate(
                 prompt=prompt,
                 model=target_model,
-                allow_smaller_model=True,
+                allow_smaller_model=False,
             )
             raw = raw_response.strip()
         except Exception as e:
             log.warning("Deck docs question generation failed: %s", e)
-            raise GradingUnavailable(f"Local LLM documentation question failed: {e}") from e
+            raise GradingUnavailable(f"LLM documentation question failed on '{target_model}': {e}") from e
 
         doc_citation: str | None = None
         if doc_excerpts:
@@ -613,6 +741,13 @@ class CodeAiService:
             doc_citation = f"[{top['source_title']} · {top.get('locator') or 'General'}]"
 
         model_used = self.grading_service.last_used_model or target_model
+        extracted_glosses = extract_term_definitions_from_qa(
+            question=question,
+            answer=raw,
+            selected_code=selected_code,
+            doc_citation=doc_citation,
+            language=language,
+        )
 
         return {
             "answer": raw,
@@ -620,6 +755,199 @@ class CodeAiService:
             "citations": doc_excerpts,
             "model_used": model_used,
             "available_models": available_models,
+            "extracted_glosses": extracted_glosses,
         }
 
 
+_META_DEFINITION_HEADINGS = {
+    "answer",
+    "note",
+    "notes",
+    "summary",
+    "why",
+    "here's why",
+    "heres why",
+    "example",
+    "examples",
+    "result",
+    "output",
+    "warning",
+    "tip",
+    "explanation",
+    "key takeaway",
+    "takeaway",
+    "meaning",
+    "context",
+    "context in codebase",
+    "solution",
+    "reference",
+    "rule",
+    "invariant",
+}
+
+_STOP_SUBJECT_WORDS = {
+    "it",
+    "that",
+    "code",
+    "line",
+    "lines",
+    "method",
+    "function",
+    "following",
+    "terms",
+    "the",
+    "a",
+    "an",
+    "these",
+    "those",
+    "here",
+    "snippet",
+    "expression",
+}
+
+
+def canonical_term_key(term: str) -> str:
+    """Normalize a term string for deduplication without colliding distinct identifiers."""
+    t = (term or "").strip().lower()
+    if t.startswith("."):
+        t = t[1:]
+    t = re.sub(r"\([^)]*\)$", "", t)
+    return t.strip()
+
+
+def extract_term_definitions_from_qa(
+    question: str,
+    answer: str,
+    selected_code: str | None = None,
+    doc_citation: str | None = None,
+    language: str = "typescript",
+) -> list[dict[str, Any]]:
+    """Extracts structured term definitions from an Ask Local LLM Q&A exchange."""
+    if not answer or not answer.strip():
+        return []
+
+    from datetime import UTC, datetime
+
+    now_iso = datetime.now(UTC).isoformat()
+    results: list[dict[str, Any]] = []
+    seen_keys: set[str] = set()
+
+    patterns = [
+        re.compile(
+            r"^\s*(?:[-*•+]|\d+[.)])\s+(?:\*{1,2})?`([^`\n]{1,64})`(?:\*{1,2})?\s*(?::|—|–|-\s+)\s*(.+)$"
+        ),
+        re.compile(
+            r"^\s*(?:[-*•+]|\d+[.)])\s+\*\*([^*\n:]{1,64})\*\*\s*(?::|—|–|-\s+)\s*(.+)$"
+        ),
+        re.compile(
+            r"^\s*(?:[-*•+]|\d+[.)])\s+([A-Za-z_$.][A-Za-z0-9_$.()<>\[\]]{0,48})\s*:\s+(.{8,})$"
+        ),
+        re.compile(
+            r"^\s*(?:\*{1,2})?`([^`\n]{1,48})`(?:\*{1,2})?\s*:\s+(.{10,})$"
+        ),
+    ]
+
+    for line in answer.splitlines():
+        for pat in patterns:
+            m = pat.match(line)
+            if m:
+                raw_term = m.group(1).strip().rstrip(":").strip()
+                raw_def = m.group(2).strip()
+                if not raw_term or not raw_def:
+                    break
+                if raw_term.lower() in _META_DEFINITION_HEADINGS:
+                    break
+                key = canonical_term_key(raw_term)
+                if key and key not in seen_keys:
+                    seen_keys.add(key)
+                    results.append(
+                        {
+                            "term": raw_term,
+                            "definition": raw_def,
+                            "domain": language or "Code",
+                            "context_explanation": f"Cited: {doc_citation}" if doc_citation else None,
+                            "source": "Ask Local LLM",
+                            "pinned_at": now_iso,
+                        }
+                    )
+                break
+
+    if results:
+        return results
+
+    q_clean = (question or "").strip()
+    is_definitional_q = bool(
+        re.search(
+            r"\b(?:explain|define|what\s+(?:is|are|does|do)|meaning\s+of|purpose\s+of|role\s+of|how\s+does|why\s+(?:do\s+we\s+)?use|what\s+happens\s+if)\b",
+            q_clean,
+            re.IGNORECASE,
+        )
+    )
+    if not is_definitional_q:
+        return []
+
+    candidate_term: str | None = None
+    backticked = re.findall(r"`([^`\n]{1,48})`", q_clean)
+    if backticked:
+        candidate_term = backticked[0].strip()
+    else:
+        trig = re.search(
+            r"(?:what\s+(?:is|are|does)|define|explain|meaning\s+of|purpose\s+of|role\s+of|(?:don'?t|do\s+not|not)?\s*use)\s+([.`'\"]?[A-Za-z_$.][A-Za-z0-9_$.()]{0,40}[`'\"]?)",
+            q_clean,
+            re.IGNORECASE,
+        )
+        if trig:
+            word = trig.group(1).lstrip("`'\"").rstrip("`'\"?.!,")
+            if word.lower() not in _STOP_SUBJECT_WORDS:
+                candidate_term = word
+
+    if not candidate_term and selected_code:
+        sel = selected_code.strip()
+        if re.fullmatch(r"\.?[A-Za-z_$][A-Za-z0-9_$.()]{0,40}", sel):
+            candidate_term = sel
+
+    if candidate_term:
+        clean_ans = re.sub(r"\s+", " ", answer.strip())
+        if len(clean_ans) > 420:
+            clean_ans = clean_ans[:417].rsplit(" ", 1)[0] + "..."
+        results.append(
+            {
+                "term": candidate_term,
+                "definition": clean_ans,
+                "domain": language or "Code",
+                "context_explanation": f"Cited: {doc_citation}" if doc_citation else None,
+                "source": "Ask Local LLM",
+                "pinned_at": now_iso,
+            }
+        )
+
+    return results
+
+
+def merge_lexicon_glosses(
+    existing: list[dict[str, Any]] | None,
+    new_entries: list[dict[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    """Merge newly extracted glosses into existing card glosses, deduplicating by canonical term."""
+    merged: list[dict[str, Any]] = [dict(g) for g in (existing or []) if isinstance(g, dict) and g.get("term")]
+    index_by_key: dict[str, int] = {}
+    for idx, g in enumerate(merged):
+        k = canonical_term_key(str(g.get("term", "")))
+        if k and k not in index_by_key:
+            index_by_key[k] = idx
+
+    for entry in (new_entries or []):
+        if not isinstance(entry, dict) or not entry.get("term"):
+            continue
+        k = canonical_term_key(str(entry["term"]))
+        if not k:
+            continue
+        if k in index_by_key:
+            idx = index_by_key[k]
+            if not merged[idx].get("context_explanation") and entry.get("context_explanation"):
+                merged[idx]["context_explanation"] = entry["context_explanation"]
+        else:
+            index_by_key[k] = len(merged)
+            merged.append(dict(entry))
+
+    return merged

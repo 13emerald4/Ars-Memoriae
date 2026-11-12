@@ -6,6 +6,7 @@ export interface CodeSocraticTutorProps {
   problemSlug: string
   code: string
   language?: string
+  activeModel?: string | null
 }
 
 export function CodeSocraticTutor({
@@ -13,6 +14,7 @@ export function CodeSocraticTutor({
   problemSlug,
   code,
   language = 'python',
+  activeModel,
 }: CodeSocraticTutorProps) {
   const [messages, setMessages] = useState<Array<{ sender: 'user' | 'tutor'; text: string }>>([
     {
@@ -30,6 +32,7 @@ export function CodeSocraticTutor({
         code,
         language,
         hint_type: hintType,
+        model: activeModel || undefined,
       })
       setMessages((prev) => [...prev, { sender: 'tutor', text: resp.hint }])
     } catch (err: any) {
@@ -37,7 +40,7 @@ export function CodeSocraticTutor({
         ...prev,
         {
           sender: 'tutor',
-          text: `Socratic AI unavailable (${err?.message || 'Check that Ollama is running'}).`,
+          text: `Socratic AI failed (${err?.message || 'Selected model failed'}).`,
         },
       ])
     } finally {

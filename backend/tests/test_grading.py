@@ -211,7 +211,7 @@ class TestEscalation:
         assert calls == ["qwen2.5-coder:7b"]
         assert result["escalated"] is False
 
-    async def test_missing_big_model_falls_back_to_the_small_one(self):
+    async def test_missing_selected_model_raises_without_smaller_fallback(self):
         svc = GradingService("qwen2.5-coder:3b", "qwen2.5-coder:7b")
         calls = []
 
@@ -222,10 +222,9 @@ class TestEscalation:
             return '{"score":90,"confidence":0.9,"reasoning":"ok"}'
 
         svc._generate = fake_generate
-        result = await svc.grade_with_escalation("f", "b", "a", "math_code")
-        assert calls == ["qwen2.5-coder:7b", "qwen2.5-coder:3b"]
-        assert result["model_used"] == "qwen2.5-coder:3b"
-        assert result["escalated"] is False
+        with pytest.raises(GradingUnavailable, match="not found"):
+            await svc.grade_with_escalation("f", "b", "a", "math_code")
+        assert calls == ["qwen2.5-coder:7b"]
 
     async def test_missing_score_is_rejected(self):
         svc = self._service(['{"confidence":0.9,"reasoning":"no score field"}'])
@@ -419,7 +418,7 @@ class TestReviewIntegration:
         me = (await auth_client.get("/api/me")).json()
         assert me["grading_bias"] < 0
 
-    async def test_api_failure_degrades_to_manual(self, auth_client, monkeypatch):
+    async def test_api_failure_raises_503_without_manual_fallback(self, auth_client, monkeypatch):
         import app.routers.review as review_router
 
         async def boom(self, **kwargs):
@@ -444,21 +443,14 @@ class TestReviewIntegration:
             f"/api/review/{note['cards'][0]['id']}/answer",
             json={"typed_answer": "a", "latency_ms": 100},
         )
-        assert resp.status_code == 200
-        assert resp.json()["degraded_to_manual"] is True
-        assert "quota" in resp.json()["degraded_reason"]
-        assert resp.json()["reference_answer"] == "a"
-        # No automated assessment in manual mode — nothing to show a % for.
-        assert resp.json()["score"] is None
-        # The note is informational and shows up on every fallback path too —
-        # it isn't gated behind grading actually succeeding.
-        assert resp.json()["latency_note"] == "answered in 0m 0s"
+        assert resp.status_code == 503, resp.text
+        assert "quota" in resp.json()["detail"]
 
     async def test_resubmitting_with_a_model_reuses_or_replaces_the_cache(
         self, auth_client, monkeypatch
     ):
-        """The UI names a model on every submit. Its own model must hit the
-        cache, and a different one must regrade without a duplicate-key 500."""
+        """Same-model resubmits hit the cache; switching or reverting models
+        must regrade with the selected model without returning stale cache."""
         import app.routers.review as review_router
 
         calls = {"n": 0}
@@ -503,9 +495,14 @@ class TestReviewIntegration:
         assert regrade.json()["cached"] is False
         assert calls["n"] == 2
 
-        # The regrade replaced the cached verdict rather than colliding with it.
-        after = await auth_client.post(url, json=answer)
-        assert after.json()["cached"] is True and after.json()["score"] == 62
+        # Resubmitting with the same `other` model hits the replaced cache.
+        after_same_other = await auth_client.post(url, json={**answer, "model": other})
+        assert after_same_other.json()["cached"] is True and after_same_other.json()["score"] == 62
+
+        # Omitting `model` reverts to `own` and must bypass `other`'s cached score.
+        after_revert = await auth_client.post(url, json=answer)
+        assert after_revert.json()["cached"] is False and after_revert.json()["score"] == 63
+        assert calls["n"] == 3
 
         # Editing the reference answer invalidates grades made against it.
         edited = await auth_client.patch(
@@ -515,7 +512,7 @@ class TestReviewIntegration:
         assert edited.status_code == 200, edited.text
         fresh = await auth_client.post(url, json=answer)
         assert fresh.json()["cached"] is False
-        assert calls["n"] == 3
+        assert calls["n"] == 4
 
     async def test_no_consent_manual_fallback_still_carries_the_latency_note(self, auth_client):
         deck_id = (await auth_client.post("/api/decks", json={"name": "NoConsent"})).json()["id"]
@@ -724,4 +721,104 @@ class TestPromptSanitization:
         assert "--" in payload_prompt
 
 
+class TestSandboxReviewGrounding:
+    def test_default_escalation_model_upgrades_beyond_3b(self):
+        from app.core.config import Settings
 
+        s = Settings(_env_file=None)
+        assert s.default_grading_model == "qwen2.5-coder:3b"
+        assert s.escalation_grading_model == "qwen2.5-coder:7b"
+        assert s.escalation_grading_model != s.default_grading_model
+
+    def test_build_prompt_embeds_execution_summary_without_latency_words(self):
+        prompt = build_prompt(
+            "math_code",
+            front="Return n + 1",
+            back="function f(n: number) { return n + 1; }",
+            user_answer="function f(n: number) { return n + 1; }",
+            card_type="basic",
+            execution_summary="Verified Sandbox Test Execution: Accepted (2/2 test cases passed).",
+        )
+        assert "Verified Sandbox Test Execution: Accepted (2/2 test cases passed)." in prompt
+        assert "latency" not in prompt.lower()
+        assert "response time" not in prompt.lower()
+
+    @pytest.mark.asyncio
+    async def test_submit_answer_runs_ts_test_cases_and_enforces_guardrails(
+        self, auth_client, monkeypatch
+    ):
+        import app.routers.review as review_router
+
+        captured: list[dict] = []
+
+        async def fake_grade(self, **kwargs):
+            captured.append(kwargs)
+            # Deliberately return pessimistic score on passing code, optimistic on failing code,
+            # to verify sandbox execution guardrails override hallucinations in both directions.
+            if "Accepted" in (kwargs.get("execution_summary") or ""):
+                return {
+                    "score": 50,
+                    "grade": "hard",
+                    "confidence": 0.9,
+                    "reasoning": "Hallucinated low score",
+                    "model_used": "qwen2.5-coder:7b",
+                }
+            return {
+                "score": 95,
+                "grade": "easy",
+                "confidence": 0.9,
+                "reasoning": "Hallucinated high score",
+                "model_used": "qwen2.5-coder:7b",
+            }
+
+        monkeypatch.setattr(
+            review_router.GradingService, "grade_with_escalation", fake_grade, raising=True
+        )
+
+        await auth_client.patch("/api/me", json={"llm_grading_consent": True})
+        deck_id = (await auth_client.post("/api/decks", json={"name": "TS Review"})).json()["id"]
+        note = (
+            await auth_client.post(
+                "/api/notes",
+                json={
+                    "deck_id": deck_id,
+                    "template_kind": "basic",
+                    "field_values": {
+                        "Front": "Implement doubleIt(n: number): number",
+                        "Back": "function doubleIt(n: number): number { return n * 2; }",
+                        "starter_code": "function doubleIt(n: number): number { return -1; }",
+                        "test_cases": [
+                            {"input": {"n": 3}, "expected": 6},
+                            {"input": {"n": 0}, "expected": 0},
+                        ],
+                    },
+                },
+            )
+        ).json()
+        card_id = note["cards"][0]["id"]
+
+        # 1. Passing TS answer: sandbox Accepted (2/2) lifts 50 -> 70 ("good")
+        pass_resp = await auth_client.post(
+            f"/api/review/{card_id}/answer",
+            json={
+                "typed_answer": "function doubleIt(n: number): number { return n * 2; }",
+                "latency_ms": 1200,
+            },
+        )
+        assert pass_resp.status_code == 200
+        assert "Accepted (2/2 test cases passed)" in captured[0]["execution_summary"]
+        assert pass_resp.json()["score"] == 70
+        assert pass_resp.json()["suggested_grade"] == "good"
+
+        # 2. Failing stub answer: sandbox Wrong Answer (1/2 because n=0 != -1 -> 0/2) caps 95 -> 39 ("again")
+        fail_resp = await auth_client.post(
+            f"/api/review/{card_id}/answer",
+            json={
+                "typed_answer": "function doubleIt(n: number): number { return -1; }",
+                "latency_ms": 1200,
+            },
+        )
+        assert fail_resp.status_code == 200
+        assert "Wrong Answer (0/2 test cases passed)" in captured[1]["execution_summary"]
+        assert fail_resp.json()["score"] == 39
+        assert fail_resp.json()["suggested_grade"] == "again"

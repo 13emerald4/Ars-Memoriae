@@ -1,9 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { api } from '../api/client'
-import type { DeckDocMessage, ExplainCodeSelectionResponse } from '../api/types'
+import {
+  getModelDisplayInfo,
+  isAntigravityModel,
+  type DeckDocMessage,
+  type ExplainCodeSelectionResponse,
+  type LexiconGlossItem,
+} from '../api/types'
 import type { DiffStats, TokenSegment } from './AnswerComparison'
 import { checkLineLogic, type LogicWarning } from '../utils/logicGuard'
+import { hexToRgb, DEFAULT_TARGET_HIGHLIGHT_COLOR } from '../utils/expectedCodeUtils'
+import { useOptionalLexicon } from './LexiconContext'
+import { AddToDefinitionsPrompt } from './AddToDefinitionsPrompt'
+import { extractTermDefinitionsFromQA, isTermInGlosses } from '../utils/lexiconExtractor'
 
 export interface LineHintData {
   hint: string
@@ -13,6 +23,7 @@ export interface LineHintData {
   currentLineText?: string
   target_concept?: string | null
   targetConcept?: string | null
+  error?: string | null
 }
 
 export interface CodeEditorProps {
@@ -35,6 +46,9 @@ export interface CodeEditorProps {
   context?: string | null
   // Deck ID for grounding code against attached documentation
   deckId?: string | null
+  // Synced active model from parent view / user settings
+  activeModel?: string | null
+  onActiveModelChange?: (modelId: string) => void
   // Socratic Line Hint props
   activeLineHint?: LineHintData | null
   lineHintLoading?: boolean
@@ -55,6 +69,23 @@ export interface CodeEditorProps {
   logicGuardEnabled?: boolean
   onLogicGuardToggle?: (enabled: boolean) => void
   onLogicWarningChange?: (warning: LogicWarning | null) => void
+  // Target solution highlighting
+  targetLineNumbers?: Set<number> | null
+  focusTargetCode?: boolean
+  targetHighlightColor?: string
+  initialScrollLine?: number
+  // Layout & shared card-context AI caching props
+  fillHeight?: boolean
+  compactFooter?: boolean
+  cardId?: string | null
+  userCode?: string | null
+  userTestCode?: string | null
+  executionSummary?: string | null
+  revealed?: boolean
+  sharedQaHistory?: DeckDocMessage[]
+  onSharedQaHistoryChange?: (
+    updater: DeckDocMessage[] | ((prev: DeckDocMessage[]) => DeckDocMessage[]),
+  ) => void
 }
 
 // Only what the backend runner can execute (code_practice.RUNNABLE_LANGUAGES).
@@ -249,9 +280,9 @@ function renderDiffSegment(text: string, type: string): string {
 
   let coreHtml = ''
   if (type === 'missing') {
-    coreHtml = `<span class="diff-segment-missing" style="background-color: rgba(245, 158, 11, 0.32); color: #fef08a; border-bottom: 2px solid #f59e0b; border-radius: 3px; padding: 0px 2px; font-weight: 600;" title="Missing from your solution">${escapeHtml(core)}</span>`
+    coreHtml = `<span class="diff-segment-missing" style="background-color: rgba(245, 158, 11, 0.32); color: #fef08a; box-shadow: inset 0 -2px 0 #f59e0b; border-radius: 3px;" title="Missing from your solution">${escapeHtml(core)}</span>`
   } else if (type === 'matched') {
-    coreHtml = `<span class="diff-segment-matched" style="background-color: rgba(16, 185, 129, 0.22); color: #a7f3d0; border-bottom: 1px solid rgba(16, 185, 129, 0.6); border-radius: 3px; padding: 0px 2px; font-weight: 500;" title="Matches your solution">${escapeHtml(core)}</span>`
+    coreHtml = `<span class="diff-segment-matched" style="background-color: rgba(16, 185, 129, 0.22); color: #a7f3d0; box-shadow: inset 0 -1px 0 rgba(16, 185, 129, 0.6); border-radius: 3px;" title="Matches your solution">${escapeHtml(core)}</span>`
   } else if (type === 'punct') {
     coreHtml = `<span style="color: #858585;">${escapeHtml(core)}</span>`
   } else {
@@ -504,8 +535,11 @@ export function CodeEditor({
   hideFooter = false,
   borderless = false,
   placeholder = '# Write your solution here...',
+  // Context & grounding
   context,
   deckId,
+  activeModel,
+  onActiveModelChange,
   activeLineHint,
   lineHintLoading = false,
   onRequestLineHint,
@@ -522,11 +556,25 @@ export function CodeEditor({
   logicGuardEnabled = true,
   onLogicGuardToggle,
   onLogicWarningChange,
+  targetLineNumbers = null,
+  focusTargetCode = false,
+  targetHighlightColor = DEFAULT_TARGET_HIGHLIGHT_COLOR,
+  initialScrollLine,
+  fillHeight = false,
+  compactFooter = false,
+  cardId = null,
+  userCode,
+  userTestCode,
+  executionSummary = null,
+  revealed = false,
+  sharedQaHistory,
+  onSharedQaHistoryChange,
 }: CodeEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const highlightRef = useRef<HTMLPreElement | null>(null)
   const lineNumbersRef = useRef<HTMLDivElement | null>(null)
   const editorContainerRef = useRef<HTMLDivElement | null>(null)
+  const lexiconCtx = useOptionalLexicon()
 
   const [cursorLine, setCursorLine] = useState(1)
   const [cursorCol, setCursorCol] = useState(1)
@@ -546,6 +594,20 @@ export function CodeEditor({
     setActiveLogicWarning(null)
   }, [cleanRefCode])
 
+  useEffect(() => {
+    if (initialScrollLine && initialScrollLine > 1 && textareaRef.current) {
+      const lineHeightPx = 24
+      const targetScrollTop = Math.max(0, (initialScrollLine - 3) * lineHeightPx)
+      textareaRef.current.scrollTop = targetScrollTop
+      if (lineNumbersRef.current) {
+        lineNumbersRef.current.scrollTop = targetScrollTop
+      }
+      if (highlightRef.current) {
+        highlightRef.current.scrollTop = targetScrollTop
+      }
+    }
+  }, [initialScrollLine])
+
   // Selection & Deck Documentation Search state
   const [selectedText, setSelectedText] = useState('')
   const [floatingPillPos, setFloatingPillPos] = useState<{ top: number; left: number } | null>(null)
@@ -554,13 +616,35 @@ export function CodeEditor({
     (ExplainCodeSelectionResponse & { selectedSnippet: string }) | null
   >(null)
   const [docSearchError, setDocSearchError] = useState<string | null>(null)
+  const [docAddStatus, setDocAddStatus] = useState<'idle' | 'saving' | 'added' | 'dismissed'>('idle')
+  const [docAddError, setDocAddError] = useState<string | null>(null)
   const [showDocMatches, setShowDocMatches] = useState(false)
-  const [selectedModel, setSelectedModel] = useState<string | null>(null)
+  const [selectedModel, setSelectedModel] = useState<string | null>(() => activeModel || null)
   const [availableModels, setAvailableModels] = useState<string[]>([])
   const [copiedDocResult, setCopiedDocResult] = useState(false)
 
-  // Interactive Deck Documentation & Local LLM Q&A state
-  const [qaHistory, setQaHistory] = useState<DeckDocMessage[]>([])
+  // Sync internal selectedModel whenever parent activeModel switches
+  useEffect(() => {
+    if (activeModel) {
+      setSelectedModel(activeModel)
+    }
+  }, [activeModel])
+
+  // Interactive Deck Documentation & Local LLM Q&A state (shared across panes when provided)
+  const [localQaHistory, setLocalQaHistory] = useState<DeckDocMessage[]>([])
+  const qaHistory = sharedQaHistory ?? localQaHistory
+  const setQaHistory = useCallback(
+    (updater: DeckDocMessage[] | ((prev: DeckDocMessage[]) => DeckDocMessage[])) => {
+      if (onSharedQaHistoryChange) {
+        onSharedQaHistoryChange(updater)
+      } else {
+        setLocalQaHistory(updater)
+      }
+    },
+    [onSharedQaHistoryChange],
+  )
+  const [dismissedQaPrompts, setDismissedQaPrompts] = useState<Record<number, boolean>>({})
+  const [savingQaPromptIdx, setSavingQaPromptIdx] = useState<number | null>(null)
   const [qaInput, setQaInput] = useState('')
   const [isAskingQuestion, setIsAskingQuestion] = useState(false)
   const [qaError, setQaError] = useState<string | null>(null)
@@ -605,12 +689,12 @@ export function CodeEditor({
         if (data?.models && data.models.length > 0) {
           setAvailableModels(data.models)
         }
-        if (data?.active && !selectedModel) {
+        if (data?.active && !activeModel && !selectedModel) {
           setSelectedModel(data.active)
         }
       })
       .catch(() => {})
-  }, [selectedModel])
+  }, [activeModel, selectedModel])
 
   const lines = code.split('\n')
   const lineCount = Math.max(lines.length, 1)
@@ -725,7 +809,7 @@ export function CodeEditor({
 
   const triggerDocSearch = useCallback(
     async (codeToSearch?: string, modelOverride?: string) => {
-      const targetModel = modelOverride || selectedModel
+      const targetModel = modelOverride || activeModel || selectedModel || undefined
 
       let text = (codeToSearch ?? selectedText).trim()
       if (!text && textareaRef.current) {
@@ -747,7 +831,10 @@ export function CodeEditor({
 
       setIsSearchingDocs(true)
       setDocSearchError(null)
+      setDocAddStatus('idle')
+      setDocAddError(null)
       try {
+        const activeCardId = cardId ?? lexiconCtx?.activeDeckContext?.cardId ?? null
         const res = await api.explainCodeSelection({
           selected_code: text,
           full_code: code,
@@ -756,24 +843,44 @@ export function CodeEditor({
           mode: 'docs',
           model: targetModel,
           deck_id: deckId,
+          card_id: activeCardId,
+          user_code: userCode ?? code,
+          user_test_code: userTestCode,
+          execution_summary: executionSummary,
+          revealed,
         })
         setDocSearchResult({ ...res, selectedSnippet: text })
         if (res.available_models && res.available_models.length > 0) {
           setAvailableModels(res.available_models)
         }
-        if (res.model_used && !selectedModel) {
+        if (res.model_used && !activeModel && !selectedModel) {
           setSelectedModel(res.model_used)
         }
       } catch (err: any) {
         setDocSearchError(
           err?.message ||
-            "Failed to search deck documentation. Ensure local server & Ollama are running."
+            `Failed to search deck documentation on ${targetModel || 'selected model'}.`
         )
       } finally {
         setIsSearchingDocs(false)
       }
     },
-    [code, context, cursorLine, deckId, language, selectedModel, selectedText]
+    [
+      activeModel,
+      cardId,
+      code,
+      context,
+      cursorLine,
+      deckId,
+      executionSummary,
+      language,
+      lexiconCtx,
+      revealed,
+      selectedModel,
+      selectedText,
+      userCode,
+      userTestCode,
+    ]
   )
 
   const handleCopyDocResult = () => {
@@ -789,6 +896,7 @@ export function CodeEditor({
       const q = (overrideQuestion ?? qaInput).trim()
       if (!q || isAskingQuestion) return
 
+      const targetModel = activeModel || selectedModel || undefined
       const userMessage: DeckDocMessage = { role: 'user', content: q }
       const updatedHistory = [...qaHistory, userMessage]
       setQaHistory(updatedHistory)
@@ -798,6 +906,7 @@ export function CodeEditor({
 
       try {
         const snippet = docSearchResult?.selectedSnippet || activeQaSnippet || selectedText || ''
+        const activeCardId = cardId ?? lexiconCtx?.activeDeckContext?.cardId ?? null
         const res = await api.askDeckQuestion({
           question: q,
           selected_code: snippet,
@@ -805,27 +914,49 @@ export function CodeEditor({
           language,
           context,
           deck_id: deckId,
-          model: selectedModel,
+          card_id: activeCardId,
+          user_code: userCode ?? code,
+          user_test_code: userTestCode,
+          execution_summary: executionSummary,
+          revealed,
+          model: targetModel,
           history: updatedHistory.slice(0, -1),
         })
+
+        const extractedGlosses =
+          res.extracted_glosses && res.extracted_glosses.length > 0
+            ? res.extracted_glosses
+            : extractTermDefinitionsFromQA({
+                question: q,
+                answer: res.answer,
+                selectedCode: snippet,
+                docCitation: res.doc_citation,
+                language,
+              })
+
+        if (extractedGlosses.length > 0 && lexiconCtx) {
+          lexiconCtx.populateCardGlosses(extractedGlosses, res.updated_card_glosses)
+        }
 
         const assistantMessage: DeckDocMessage = {
           role: 'assistant',
           content: res.answer,
           citation: res.doc_citation,
+          extracted_terms:
+            extractedGlosses.length > 0 ? extractedGlosses.map((g) => g.term) : undefined,
         }
         setQaHistory([...updatedHistory, assistantMessage])
 
         if (res.available_models && res.available_models.length > 0) {
           setAvailableModels(res.available_models)
         }
-        if (res.model_used && !selectedModel) {
+        if (res.model_used && !activeModel && !selectedModel) {
           setSelectedModel(res.model_used)
         }
       } catch (err: any) {
         setQaError(
           err?.message ||
-            'Failed to get answer from local LLM. Check that Ollama is running.'
+            `Failed to get answer from ${targetModel || 'selected model'}.`
         )
       } finally {
         setIsAskingQuestion(false)
@@ -834,7 +965,27 @@ export function CodeEditor({
         }, 50)
       }
     },
-    [activeQaSnippet, code, context, deckId, docSearchResult?.selectedSnippet, isAskingQuestion, language, qaHistory, qaInput, selectedModel, selectedText]
+    [
+      activeModel,
+      activeQaSnippet,
+      cardId,
+      code,
+      context,
+      deckId,
+      docSearchResult?.selectedSnippet,
+      executionSummary,
+      isAskingQuestion,
+      language,
+      lexiconCtx,
+      qaHistory,
+      qaInput,
+      revealed,
+      selectedModel,
+      selectedText,
+      setQaHistory,
+      userCode,
+      userTestCode,
+    ]
   )
 
   const handleTriggerAskLlm = useCallback(
@@ -865,6 +1016,48 @@ export function CodeEditor({
     [code, cursorLine, isPoppedOut, selectedText]
   )
 
+  const saveGlossToActiveCard = useCallback(
+    async (gloss: LexiconGlossItem) => {
+      if (!lexiconCtx) return
+      const cardId = lexiconCtx.activeDeckContext?.cardId
+      if (cardId && !lexiconCtx.hasMarginListener) {
+        const updated = await api.addCardLexiconGloss(cardId, gloss)
+        lexiconCtx.populateCardGlosses([gloss], updated.lexicon_glosses)
+      } else {
+        lexiconCtx.populateCardGlosses([gloss])
+      }
+    },
+    [lexiconCtx]
+  )
+
+  const handleDefineSelection = useCallback(
+    (codeToDefine?: string) => {
+      if (!lexiconCtx) return
+      let text = (codeToDefine ?? selectedText).trim()
+      if (!text && textareaRef.current) {
+        const start = textareaRef.current.selectionStart ?? 0
+        const end = textareaRef.current.selectionEnd ?? 0
+        if (start !== end) {
+          text = code.slice(Math.min(start, end), Math.max(start, end)).trim()
+        }
+      }
+      if (!text || text.length > 80 || text.includes('\n')) return
+
+      const lineList = code.split('\n')
+      const startLine = Math.max(0, cursorLine - 3)
+      const endLine = Math.min(lineList.length, cursorLine + 2)
+      const snippetCtx = lineList.slice(startLine, endLine).join('\n').trim()
+      const fullCtx = [context || '', snippetCtx ? `Code context:\n${snippetCtx}` : '']
+        .filter(Boolean)
+        .join('\n\n')
+
+      setSelectedText('')
+      setFloatingPillPos(null)
+      lexiconCtx.openLexicon(text, fullCtx || text, null, lexiconCtx.activeDeckContext)
+    },
+    [code, context, cursorLine, lexiconCtx, selectedText]
+  )
+
   const handleDockBack = useCallback(() => {
     if (popupWindowRef.current && !popupWindowRef.current.closed) {
       popupWindowRef.current.close()
@@ -892,6 +1085,9 @@ export function CodeEditor({
       return
     }
 
+    popup.document.open()
+    popup.document.write('<!DOCTYPE html><html><head></head><body></body></html>')
+    popup.document.close()
     popup.document.title = 'Ars Memoriae · Local LLM & Docs'
     popup.document.head.innerHTML = ''
 
@@ -989,7 +1185,7 @@ export function CodeEditor({
           // This is the active hint line!
           const highlightedLine = highlightLeetCode(line)
           htmlParts.push(
-            `<span style="background-color: rgba(245, 158, 11, 0.22); color: #fef08a; border-left: 3px solid #f59e0b; padding-left: 6px; display: inline-block; width: 100%; border-radius: 2px; font-weight: 600;" title="💡 Hint for line ${hintOnlyLine}">${highlightedLine}</span>`
+            `<span style="background-color: rgba(245, 158, 11, 0.22); color: #fef08a; box-shadow: -4px 0 0 rgba(245, 158, 11, 0.22), -7px 0 0 #f59e0b; display: inline-block; vertical-align: top; min-height: 24px; min-width: 100%; border-radius: 2px;" title="💡 Hint for line ${hintOnlyLine}">${highlightedLine}</span>`
           )
           maskedLines.push(line)
         } else {
@@ -1004,7 +1200,7 @@ export function CodeEditor({
             const maskedCharCount = Math.min(Math.max(nonWs.length, 8), 32)
             const maskedText = '•'.repeat(maskedCharCount)
             htmlParts.push(
-              `${escapeHtml(indent)}<span style="opacity: 0.22; color: #94a3b8; user-select: none; letter-spacing: 2px;">${maskedText}</span>`
+              `${escapeHtml(indent)}<span style="opacity: 0.22; color: #94a3b8; user-select: none;">${maskedText}</span>`
             )
             maskedLines.push(indent + maskedText)
           }
@@ -1032,7 +1228,30 @@ export function CodeEditor({
         const highlighted = highlightLeetCode(line)
         if (idx === targetIdx) {
           htmlParts.push(
-            `<span style="background-color: rgba(244, 63, 94, 0.16); border-bottom: 2px dashed rgba(244, 63, 94, 0.7); display: inline-block; width: 100%; border-radius: 2px;" title="⚠️ ${escapeHtml(activeLogicWarning.message)}">${highlighted}</span>`
+            `<span style="background-color: rgba(244, 63, 94, 0.16); box-shadow: inset 0 -2px 0 rgba(244, 63, 94, 0.7); display: inline-block; vertical-align: top; min-height: 24px; min-width: 100%; border-radius: 2px;" title="⚠️ ${escapeHtml(activeLogicWarning.message)}">${highlighted}</span>`
+          )
+        } else {
+          htmlParts.push(highlighted)
+        }
+      })
+      return { renderedCode: code, highlightedHtml: htmlParts.join('\n') }
+    }
+
+    if (targetLineNumbers && targetLineNumbers.size > 0) {
+      const { r, g, b } = hexToRgb(targetHighlightColor || DEFAULT_TARGET_HIGHLIGHT_COLOR)
+      const lines = code.split('\n')
+      const htmlParts: string[] = []
+      lines.forEach((line, idx) => {
+        const lineNum = idx + 1
+        const isTarget = targetLineNumbers.has(lineNum)
+        const highlighted = highlightLeetCode(line)
+        if (isTarget) {
+          htmlParts.push(
+            `<span style="background-color: rgba(${r}, ${g}, ${b}, 0.16); box-shadow: -4px 0 0 rgba(${r}, ${g}, ${b}, 0.16), -7px 0 0 rgb(${r}, ${g}, ${b}); display: inline-block; vertical-align: top; min-height: 24px; min-width: 100%; border-radius: 2px;" title="Expected solution code (to produce in Solution)">${highlighted}</span>`
+          )
+        } else if (focusTargetCode) {
+          htmlParts.push(
+            `<span style="opacity: 0.45; filter: contrast(80%);">${highlighted}</span>`
           )
         } else {
           htmlParts.push(highlighted)
@@ -1042,7 +1261,7 @@ export function CodeEditor({
     }
 
     return { renderedCode: code, highlightedHtml: highlightLeetCode(code) }
-  }, [code, diffSegments, hintOnly, hintOnlyLine, activeLogicWarning])
+  }, [code, diffSegments, hintOnly, hintOnlyLine, activeLogicWarning, targetLineNumbers, focusTargetCode, targetHighlightColor])
 
   // Synchronize scrolling between textarea, line numbers, and syntax-highlight overlay
   const handleScroll = useCallback(() => {
@@ -1058,6 +1277,20 @@ export function CodeEditor({
     }
   }, [])
 
+  useEffect(() => {
+    handleScroll()
+  }, [code, highlightedHtml, resolvedHeight, handleScroll])
+
+  useEffect(() => {
+    const el = textareaRef.current || editorContainerRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => {
+      handleScroll()
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [handleScroll])
+
   // Handle Tab, Shift+Tab, Enter (auto-indent), auto-closing brackets, and shortcuts
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Escape to dismiss doc search tray, QA panel, or line hint
@@ -1067,10 +1300,15 @@ export function CodeEditor({
         e.stopPropagation()
         setDocSearchResult(null)
         setDocSearchError(null)
+        setDocAddStatus('idle')
+        setDocAddError(null)
         setIsSearchingDocs(false)
         setIsQaOpen(false)
         setActiveQaSnippet('')
-        setQaHistory([])
+        if (!onSharedQaHistoryChange) {
+          setLocalQaHistory([])
+        }
+        setDismissedQaPrompts({})
         setQaInput('')
         setQaError(null)
         return
@@ -1096,6 +1334,14 @@ export function CodeEditor({
       e.preventDefault()
       e.stopPropagation()
       handleTriggerAskLlm()
+      return
+    }
+
+    // Alt + L: Define highlighted token/snippet via Concordance & AI Lexicon
+    if (e.altKey && (e.key === 'l' || e.key === 'L') && lexiconCtx) {
+      e.preventDefault()
+      e.stopPropagation()
+      handleDefineSelection()
       return
     }
 
@@ -1272,388 +1518,568 @@ export function CodeEditor({
   const langObj = SUPPORTED_LANGUAGES.find((l) => l.id === language)
   const currentLangLabel = langObj ? langObj.label : language ? (language.charAt(0).toUpperCase() + language.slice(1)) : 'Code'
 
-  const renderDrawerContent = (inPopup = false) => (
-    <div className={`flex flex-col ${inPopup ? 'flex-1 h-full min-h-0 p-4 overflow-hidden select-text' : 'min-w-0 flex-1'}`}>
-      <div className="flex items-start justify-between gap-3 shrink-0">
-        <div className="flex items-start gap-2.5 min-w-0 flex-1">
-          <div className="space-y-2 min-w-0 flex-1">
-            {/* Header row: badge, citation, model picker */}
-            <div className="flex items-center flex-wrap gap-2 justify-between">
-              <div className="flex items-center flex-wrap gap-2">
-                <span className="flex items-center gap-2 font-semibold text-xs tracking-wide">
-                  {docSearchResult ? (
-                    <>
-                      <span className="text-emerald-400">📄</span>
-                      <span className="text-emerald-200 font-bold">Deck Documentation</span>
-                      {docSearchResult?.doc_citation && (
-                        <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-mono text-[11px] font-semibold border border-emerald-500/40 shadow-sm">
-                          {docSearchResult.doc_citation}
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-sky-400">💬</span>
-                      <span className="text-sky-200 font-bold">Ask Local LLM</span>
-                      <span className="px-2 py-0.5 rounded bg-sky-950 text-sky-300 font-sans text-[11px] font-semibold border border-sky-500/40 shadow-sm">
-                        Deck Docs + Pre-training
-                      </span>
-                    </>
-                  )}
-                  {inPopup && (
-                    <span className="px-1.5 py-0.2 rounded bg-sky-900/60 text-sky-200 font-mono text-[10px] border border-sky-500/30">
-                      External Monitor Window
+  const activeCardIdForLexicon = lexiconCtx?.activeDeckContext?.cardId
+  useEffect(() => {
+    setDocAddStatus('idle')
+    setDocAddError(null)
+    setDismissedQaPrompts({})
+  }, [activeCardIdForLexicon])
+
+  const docSnippetTerm = (docSearchResult?.selectedSnippet || '').trim()
+  const docHasSubstantiveDefinition = Boolean(
+    docSearchResult &&
+      docSnippetTerm.length >= 1 &&
+      docSnippetTerm.length <= 80 &&
+      !docSearchResult.explanation?.includes('No documentation attached to this deck') &&
+      (docSearchResult.occams_razor ||
+        docSearchResult.explanation ||
+        docSearchResult.verbatim_passage ||
+        docSearchResult.doc_citation)
+  )
+  const isDocSnippetInCard =
+    docAddStatus === 'added' ||
+    isTermInGlosses(lexiconCtx?.activeDeckContext?.existingGlosses, docSnippetTerm)
+
+  const handleAddDocResultToCard = async () => {
+    if (!docSearchResult || !docSnippetTerm) return
+    setDocAddStatus('saving')
+    setDocAddError(null)
+    const cleanDef = (
+      docSearchResult.occams_razor ||
+      docSearchResult.socratic_insight ||
+      docSearchResult.explanation ||
+      ''
+    )
+      .replace(/\*\*→[^*]+\*\*/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 420)
+    const ctxParts = [
+      docSearchResult.doc_citation ? `Cited: ${docSearchResult.doc_citation}` : '',
+      docSearchResult.socratic_insight && docSearchResult.occams_razor
+        ? docSearchResult.socratic_insight
+        : '',
+    ].filter(Boolean)
+    try {
+      await saveGlossToActiveCard({
+        term: docSnippetTerm,
+        definition: cleanDef || docSnippetTerm,
+        domain: language || 'Code',
+        context_explanation: ctxParts.join(' — ') || undefined,
+        example: docSearchResult.verbatim_passage?.slice(0, 240) || undefined,
+        source: docSearchResult.doc_citation
+          ? `Deck Docs (${docSearchResult.doc_citation})`
+          : 'Deck Docs (Local LLM)',
+        pinned_at: new Date().toISOString(),
+      })
+      setDocAddStatus('added')
+    } catch (err) {
+      setDocAddStatus('idle')
+      setDocAddError(err instanceof Error ? err.message : 'Failed to save definition')
+    }
+  }
+
+  const getFallbackQaCandidate = (tIdx: number) => {
+    const prevTurn = qaHistory[tIdx - 1]
+    const prevQ = prevTurn?.role === 'user' ? prevTurn.content : ''
+    const raw = (activeQaSnippet || selectedText || prevQ || 'Concept').trim()
+    return {
+      prevQ,
+      term: raw.length > 48 ? raw.slice(0, 48).trim() : raw,
+    }
+  }
+
+  const handleAddQaTurnToCard = async (tIdx: number, turn: DeckDocMessage) => {
+    if (!lexiconCtx) return
+    setSavingQaPromptIdx(tIdx)
+    try {
+      const { prevQ, term: fallbackTerm } = getFallbackQaCandidate(tIdx)
+      const extracted = extractTermDefinitionsFromQA({
+        question: prevQ,
+        answer: turn.content,
+        selectedCode: activeQaSnippet || selectedText,
+        docCitation: turn.citation,
+        language,
+      })
+      if (extracted.length > 0) {
+        for (const item of extracted) {
+          await saveGlossToActiveCard(item)
+        }
+        setQaHistory((prev) =>
+          prev.map((m, i) =>
+            i === tIdx ? { ...m, extracted_terms: extracted.map((g) => g.term) } : m,
+          ),
+        )
+      } else {
+        await saveGlossToActiveCard({
+          term: fallbackTerm,
+          definition: turn.content.replace(/\s+/g, ' ').slice(0, 420),
+          domain: language || 'Code',
+          context_explanation: turn.citation ? `Cited: ${turn.citation}` : undefined,
+          source: 'Ask Local LLM',
+          pinned_at: new Date().toISOString(),
+        })
+        setQaHistory((prev) =>
+          prev.map((m, i) => (i === tIdx ? { ...m, extracted_terms: [fallbackTerm] } : m)),
+        )
+      }
+    } finally {
+      setSavingQaPromptIdx(null)
+    }
+  }
+
+  const renderDrawerContent = (inPopup = false) => {
+    const activeSnippet = docSearchResult?.selectedSnippet || activeQaSnippet
+    const activeModelDisplay = getModelDisplayInfo(
+      selectedModel || activeModel || docSearchResult?.model_used || 'Qwen 2.5 Coder',
+    )
+
+    return (
+      <div
+        className={`flex flex-col min-h-0 overflow-hidden ${
+          inPopup ? 'flex-1 h-full select-text bg-[#0b1411]' : 'min-w-0 flex-1'
+        }`}
+      >
+        {/* Pinned Full-Width Drawer Header */}
+        <div className="shrink-0 flex items-center justify-between gap-2 px-3 py-2 border-b border-emerald-500/20 bg-[#08100d]">
+          <div className="flex items-center gap-2 min-w-0 flex-1 overflow-x-auto no-scrollbar">
+            <span className="flex items-center gap-1.5 font-semibold text-xs tracking-wide whitespace-nowrap shrink-0">
+              {docSearchResult ? (
+                <>
+                  <span className="text-emerald-400">📄</span>
+                  <span className="text-emerald-200 font-bold">Deck Docs</span>
+                  {docSearchResult?.doc_citation && (
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 font-mono text-[10px] font-semibold border border-emerald-500/40">
+                      {docSearchResult.doc_citation}
                     </span>
                   )}
-                </span>
-
-                {/* Model Picker */}
-                {availableModels.length > 0 && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-emerald-400/70">Model:</span>
-                    <select
-                      value={selectedModel || docSearchResult?.model_used || availableModels[0]}
-                      onChange={(e) => {
-                        const newModel = e.target.value
-                        setSelectedModel(newModel)
-                        if (docSearchResult?.selectedSnippet) {
-                          void triggerDocSearch(docSearchResult.selectedSnippet, newModel)
-                        }
-                      }}
-                      className="rounded bg-[#0c3124] px-2 py-0.5 text-[10px] font-mono text-emerald-200 border border-emerald-500/30 focus:outline-none cursor-pointer"
-                    >
-                      {availableModels.map((m) => (
-                        <option key={m} value={m} className="bg-[#09221a] text-slate-200">
-                          {m}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-
-              {/* Selected code preview snippet */}
-              {(docSearchResult?.selectedSnippet || activeQaSnippet) && (
-                <span
-                  className="font-mono text-[10px] text-emerald-300/90 bg-black/70 px-2 py-0.5 rounded truncate max-w-xs border border-emerald-500/20"
-                  title={docSearchResult?.selectedSnippet || activeQaSnippet}
-                >
-                  {(docSearchResult?.selectedSnippet || activeQaSnippet).replace(/\s+/g, ' ').slice(0, 45)}
-                  {(docSearchResult?.selectedSnippet || activeQaSnippet).length > 45 ? '…' : ''}
+                </>
+              ) : (
+                <>
+                  <span className="text-sky-400">💬</span>
+                  <span className="text-sky-200 font-bold">Ask Local LLM</span>
+                  <span className="hidden sm:inline px-1.5 py-0.5 rounded bg-sky-950/90 text-sky-300 font-sans text-[10px] font-semibold border border-sky-500/35">
+                    Docs + Pre-training
+                  </span>
+                </>
+              )}
+              {inPopup && (
+                <span className="px-1.5 py-0.5 rounded bg-sky-900/60 text-sky-200 font-mono text-[10px] border border-sky-500/30">
+                  External Window
                 </span>
               )}
-            </div>
+            </span>
 
-            {/* Content body */}
-            {isSearchingDocs ? (
-              <div className="flex items-center gap-2 text-emerald-300/80 text-xs py-2">
-                <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin" />
-                <span>
-                  Searching deck documentation for selected code using local LLM ({selectedModel || docSearchResult?.model_used || 'Qwen 2.5 Coder'})…
-                </span>
-              </div>
-            ) : docSearchError ? (
-              <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs flex items-center justify-between">
-                <span>{docSearchError}</span>
-                <button
-                  type="button"
-                  onClick={() => void triggerDocSearch()}
-                  className="underline font-semibold ml-2 hover:text-rose-100 cursor-pointer"
+            {(availableModels.length > 0 || selectedModel || activeModel) && (
+              <div className="flex items-center gap-1 shrink-0">
+                <select
+                  value={selectedModel || activeModel || docSearchResult?.model_used || availableModels[0] || ''}
+                  onChange={(e) => {
+                    const newModel = e.target.value
+                    setSelectedModel(newModel)
+                    onActiveModelChange?.(newModel)
+                    if (docSearchResult?.selectedSnippet) {
+                      void triggerDocSearch(docSearchResult.selectedSnippet, newModel)
+                    }
+                  }}
+                  title="Select Local LLM / Documentation model"
+                  className="h-6 rounded bg-[#0c3124] px-2 text-[10px] font-mono text-emerald-200 border border-emerald-500/30 focus:outline-none cursor-pointer"
                 >
-                  Retry
-                </button>
-              </div>
-            ) : (
-              <div className={`space-y-2 pt-1 font-sans ${inPopup ? 'flex-1 overflow-y-auto pr-1' : ''}`}>
-                {!docSearchResult && isQaOpen && (
-                  <div className="p-2.5 rounded-lg bg-sky-950/30 border border-sky-500/25 text-sky-200 text-xs flex items-center gap-2 mb-2">
-                    <span className="text-base select-none">🤖</span>
-                    <div>
-                      <p className="font-medium text-sky-100">Ask Local LLM Directly</p>
-                      <p className="text-[11px] text-sky-300/80">
-                        The local model synthesizes attached course documentation and its pre-trained programming knowledge to answer questions about syntax, invariants, algorithms, and rules.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {docSearchResult?.explanation && renderDocExplanation(docSearchResult.explanation)}
-
-                {/* Collapsible Matched Document Excerpts Section */}
-                {docSearchResult?.doc_matches && docSearchResult.doc_matches.length > 0 && (
-                  <div className="mt-2.5 pt-2 border-t border-emerald-500/20">
-                    <button
-                      type="button"
-                      onClick={() => setShowDocMatches(!showDocMatches)}
-                      className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-300/80 hover:text-emerald-200 transition cursor-pointer py-1"
-                    >
-                      <span className="text-[9px]">{showDocMatches ? '▼' : '▶'}</span>
-                      <span>
-                        {showDocMatches ? 'Hide' : 'Show'} Matched Course Excerpt{docSearchResult.doc_matches.length > 1 ? 's' : ''} ({docSearchResult.doc_matches.length})
-                      </span>
-                    </button>
-                    {showDocMatches && (
-                      <div className="mt-2 space-y-2 max-h-48 overflow-y-auto pr-1">
-                        {docSearchResult.doc_matches.map((m, mIdx) => (
-                          <div
-                            key={m.extract_id || mIdx}
-                            className="p-2 rounded bg-black/60 border border-emerald-500/20 text-slate-300 text-[11px] font-mono leading-relaxed"
-                          >
-                            <div className="flex items-center justify-between text-emerald-400 font-semibold mb-1 text-[10px]">
-                              <span>{m.source_title}</span>
-                              <span className="bg-emerald-950 px-1.5 py-0.2 rounded border border-emerald-500/30">
-                                {m.locator || 'General'}
-                              </span>
-                            </div>
-                            <div className="text-slate-300 whitespace-pre-wrap font-mono text-[11px] line-clamp-4 hover:line-clamp-none transition">
-                              {m.content}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Interactive Follow-Up Questions (Local LLM) */}
-                <div className="mt-3 pt-2.5 border-t border-emerald-500/25 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-emerald-300 font-bold text-[11px] tracking-wider uppercase">
-                      <span>💬</span>
-                      <span>{docSearchResult ? 'Ask Further Questions' : 'Direct Question & Discussion'}</span>
-                      <span className="text-[10px] text-emerald-400/70 font-normal lowercase font-sans">
-                        (Local LLM · {selectedModel || docSearchResult?.model_used || 'Qwen'})
-                      </span>
-                    </div>
-                    {qaHistory.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setQaHistory([])}
-                        className="text-[10px] text-emerald-400/60 hover:text-emerald-200 underline cursor-pointer"
-                      >
-                        Clear Thread
-                      </button>
-                    )}
-                  </div>
-
-                  {/* QA Thread Messages */}
-                  {qaHistory.length > 0 && (
-                    <div className={`space-y-2.5 overflow-y-auto pr-1 ${inPopup ? 'max-h-[50vh]' : 'max-h-64'}`}>
-                      {qaHistory.map((turn, tIdx) => {
-                        const isUser = turn.role === 'user'
-                        return (
-                          <div
-                            key={tIdx}
-                            className={`rounded-lg p-2.5 shadow-sm text-xs ${
-                              isUser
-                                ? 'bg-black/60 border border-emerald-500/30 text-emerald-100 ml-4'
-                                : 'bg-[#061811] border border-emerald-500/40 text-slate-100 mr-4'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between text-[10px] font-semibold mb-1">
-                              <span className={isUser ? 'text-emerald-300' : 'text-emerald-400'}>
-                                {isUser ? '👤 You' : `🤖 ${selectedModel || docSearchResult?.model_used || 'Local LLM'}`}
-                              </span>
-                              {turn.citation && !isUser ? (
-                                <span className="px-1.5 py-0.2 rounded bg-black/60 text-emerald-300 font-mono text-[9px] border border-emerald-500/30">
-                                  📄 {turn.citation}
-                                </span>
-                              ) : !isUser ? (
-                                <span className="px-1.5 py-0.2 rounded bg-sky-950/60 text-sky-300 font-sans text-[9px] border border-sky-500/30">
-                                  🧠 Pre-training
-                                </span>
-                              ) : null}
-                            </div>
-                            <div>
-                              {isUser ? (
-                                <p className="text-emerald-100/90 whitespace-pre-wrap font-sans">{turn.content}</p>
-                              ) : (
-                                renderFormattedMarkdown(turn.content)
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })}
-                      <div ref={qaThreadEndRef} />
-                    </div>
-                  )}
-
-                  {/* Thinking spinner while waiting for response */}
-                  {isAskingQuestion && (
-                    <div className="flex items-center gap-2 text-emerald-300/80 text-xs py-1.5 px-2.5 rounded bg-emerald-950/40 border border-emerald-500/25">
-                      <span className="inline-block w-3 h-3 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin" />
-                      <span>
-                        Asking local LLM ({selectedModel || docSearchResult?.model_used || 'Qwen 2.5 Coder'})…
-                      </span>
-                    </div>
-                  )}
-
-                  {/* QA Error */}
-                  {qaError && (
-                    <div className="p-2 rounded bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs flex items-center justify-between">
-                      <span>{qaError}</span>
-                      <button
-                        type="button"
-                        onClick={() => void handleAskQuestion()}
-                        className="underline font-semibold ml-2 hover:text-rose-100 cursor-pointer"
-                      >
-                        Retry
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Suggested quick questions (when no messages yet) */}
-                  {qaHistory.length === 0 && !isAskingQuestion && (
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-emerald-400/70 font-medium">Quick suggestions:</span>
-                      <div className="flex items-center flex-wrap gap-1.5">
-                        {promptSuggestions.map((prompt) => (
-                          <button
-                            key={prompt}
-                            type="button"
-                            onClick={() => void handleAskQuestion(prompt)}
-                            className="rounded-full bg-black/60 hover:bg-emerald-950/80 border border-emerald-500/30 hover:border-emerald-400 px-2.5 py-0.5 text-[10px] text-emerald-300 hover:text-emerald-100 transition cursor-pointer shadow-sm"
-                          >
-                            {prompt}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Input form */}
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      void handleAskQuestion()
-                    }}
-                    className="flex items-center gap-2 pt-1"
-                  >
-                    <input
-                      ref={qaInputRef}
-                      type="text"
-                      value={qaInput}
-                      onChange={(e) => setQaInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') {
-                          e.stopPropagation()
-                          ;(e.target as HTMLElement).blur()
-                        }
-                      }}
-                      placeholder="Ask a question about this code (synthesizes docs + pre-training)..."
-                      disabled={isAskingQuestion}
-                      className="flex-1 rounded-lg bg-black/70 border border-emerald-500/35 px-3 py-1.5 text-xs text-slate-100 placeholder-emerald-400/40 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/50 transition font-sans"
-                    />
-                    <button
-                      type="submit"
-                      disabled={isAskingQuestion || !qaInput.trim()}
-                      className="rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-xs font-semibold text-white shadow transition flex items-center gap-1.5 cursor-pointer shrink-0"
-                    >
-                      {isAskingQuestion ? (
-                        <>
-                          <span className="inline-block w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                          <span>Asking…</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Ask</span>
-                          <span className="text-[10px] opacity-75">↵</span>
-                        </>
-                      )}
-                    </button>
-                  </form>
-                </div>
+                  {Array.from(
+                    new Set([
+                      ...(activeModel ? [activeModel] : []),
+                      ...(selectedModel ? [selectedModel] : []),
+                      ...availableModels,
+                    ]),
+                  ).map((m) => (
+                    <option key={m} value={m} className="bg-[#09221a] text-slate-200">
+                      {getModelDisplayInfo(m).label}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
           </div>
-        </div>
 
-        {/* Right side buttons */}
-        <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
-          {!docSearchResult && !isSearchingDocs && (activeQaSnippet || selectedText) && (
+          {/* Header Action Controls */}
+          <div className="flex items-center gap-1 shrink-0">
+            {!docSearchResult && !isSearchingDocs && (activeQaSnippet || selectedText) && (
+              <button
+                type="button"
+                onClick={() => void triggerDocSearch(activeQaSnippet || selectedText)}
+                title="Search attached deck documentation for this snippet (Alt+D)"
+                className="h-6 rounded px-2 text-[11px] font-medium text-emerald-300 hover:text-emerald-100 hover:bg-emerald-500/20 transition cursor-pointer flex items-center gap-1 whitespace-nowrap"
+              >
+                <span>📄</span>
+                <span className="hidden sm:inline">Search Docs</span>
+              </button>
+            )}
+            {docSearchResult && !isSearchingDocs && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleCopyDocResult}
+                  title="Copy document findings"
+                  className="h-6 rounded px-2 text-[11px] font-medium text-emerald-300 hover:text-emerald-100 hover:bg-emerald-500/20 transition cursor-pointer whitespace-nowrap"
+                >
+                  {copiedDocResult ? 'Copied' : 'Copy'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void triggerDocSearch(docSearchResult.selectedSnippet)}
+                  title="Re-search documentation"
+                  className="h-6 rounded px-2 text-[11px] font-medium text-emerald-300 hover:text-emerald-100 hover:bg-emerald-500/20 transition cursor-pointer whitespace-nowrap"
+                >
+                  Re-search
+                </button>
+              </>
+            )}
+            {qaHistory.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQaHistory([])
+                  setDismissedQaPrompts({})
+                }}
+                title="Clear conversation thread for this card"
+                className="h-6 rounded px-2 text-[10px] font-medium text-emerald-400/75 hover:text-emerald-200 hover:bg-emerald-500/15 transition cursor-pointer whitespace-nowrap"
+              >
+                Clear Thread
+              </button>
+            )}
+
+            {!inPopup ? (
+              <button
+                type="button"
+                onClick={handlePopOut}
+                title="Pop out to separate window for second monitor (Alt+W)"
+                className="h-6 rounded px-2 text-[11px] font-medium text-sky-300 hover:text-sky-100 hover:bg-sky-500/20 transition cursor-pointer flex items-center gap-1 border border-sky-500/30 whitespace-nowrap"
+              >
+                <span>⧉</span>
+                <span className="hidden sm:inline">Pop Out</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleDockBack}
+                title="Dock back to main editor window (Alt+W)"
+                className="h-6 rounded px-2 text-[11px] font-medium text-amber-300 hover:text-amber-100 hover:bg-amber-500/20 transition cursor-pointer flex items-center gap-1 border border-amber-500/30 whitespace-nowrap"
+              >
+                <span>⤓</span>
+                <span>Dock Back</span>
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={() => void triggerDocSearch(activeQaSnippet || selectedText)}
-              title="Search attached deck documentation for this snippet (Alt+D)"
-              className="rounded px-2 py-1 text-[11px] font-medium text-emerald-300 hover:text-emerald-100 hover:bg-emerald-500/20 transition cursor-pointer flex items-center gap-1"
+              onClick={() => {
+                if (inPopup) {
+                  handleDockBack()
+                }
+                setDocSearchResult(null)
+                setDocSearchError(null)
+                setDocAddStatus('idle')
+                setDocAddError(null)
+                setIsSearchingDocs(false)
+                setIsQaOpen(false)
+                setActiveQaSnippet('')
+                if (!onSharedQaHistoryChange) {
+                  setLocalQaHistory([])
+                }
+                setDismissedQaPrompts({})
+                setQaInput('')
+                setQaError(null)
+              }}
+              title="Dismiss drawer (Escape)"
+              className="h-6 w-6 rounded flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-white/10 transition cursor-pointer text-sm leading-none"
             >
-              <span>📄</span>
-              <span>Search Docs</span>
+              &times;
             </button>
-          )}
-          {docSearchResult && !isSearchingDocs && (
+          </div>
+        </div>
+
+        {/* Optional Selected Snippet Focus Strip */}
+        {activeSnippet && (
+          <div className="shrink-0 px-3 py-1 bg-black/45 border-b border-emerald-500/15 flex items-center gap-2 text-[10px]">
+            <span className="text-emerald-400/75 uppercase tracking-wider font-semibold shrink-0">Focus:</span>
+            <code className="font-mono text-emerald-200/90 truncate" title={activeSnippet}>
+              {activeSnippet.replace(/\s+/g, ' ').slice(0, 140)}
+              {activeSnippet.length > 140 ? '…' : ''}
+            </code>
+          </div>
+        )}
+
+        {/* Single Scrollable Drawer Content Area */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2.5 space-y-2.5 font-sans">
+          {isSearchingDocs ? (
+            <div className="flex items-center gap-2 text-emerald-300/85 text-xs py-2">
+              <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin shrink-0" />
+              <span>
+                Searching deck documentation for selected code using {activeModelDisplay.label}…
+              </span>
+            </div>
+          ) : docSearchError ? (
+            <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs flex items-center justify-between gap-2">
+              <span>{docSearchError}</span>
+              <button
+                type="button"
+                onClick={() => void triggerDocSearch()}
+                className="underline font-semibold shrink-0 hover:text-rose-100 cursor-pointer"
+              >
+                Retry
+              </button>
+            </div>
+          ) : (
             <>
-              <button
-                type="button"
-                onClick={handleCopyDocResult}
-                title="Copy document findings"
-                className="rounded px-2 py-1 text-[11px] font-medium text-emerald-300 hover:text-emerald-100 hover:bg-emerald-500/20 transition cursor-pointer"
-              >
-                {copiedDocResult ? 'Copied' : 'Copy'}
-              </button>
-              <button
-                type="button"
-                onClick={() => void triggerDocSearch(docSearchResult.selectedSnippet)}
-                title="Re-search documentation"
-                className="rounded px-2 py-1 text-[11px] font-medium text-emerald-300 hover:text-emerald-100 hover:bg-emerald-500/20 transition cursor-pointer"
-              >
-                Re-search
-              </button>
+              {!docSearchResult && isQaOpen && qaHistory.length === 0 && (
+                <div className="p-2.5 rounded-lg bg-sky-950/30 border border-sky-500/25 text-sky-200 text-xs flex items-start gap-2">
+                  <span className="text-base select-none leading-none mt-0.5">🤖</span>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sky-100">Ask Local LLM Directly</p>
+                    <p className="text-[11px] text-sky-300/80 leading-relaxed">
+                      Grounded in the card prompt, your live code, unit tests, execution output, attached course docs, and pre-trained programming knowledge.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {docSearchResult?.explanation && renderDocExplanation(docSearchResult.explanation)}
+
+              {lexiconCtx?.activeDeckContext?.cardId &&
+                docHasSubstantiveDefinition &&
+                (isDocSnippetInCard || docAddStatus !== 'dismissed') && (
+                  <AddToDefinitionsPrompt
+                    term={docSnippetTerm}
+                    alreadyAdded={isDocSnippetInCard}
+                    saving={docAddStatus === 'saving'}
+                    error={docAddError}
+                    compact={true}
+                    onConfirm={() => void handleAddDocResultToCard()}
+                    onDismiss={() => setDocAddStatus('dismissed')}
+                  />
+                )}
+
+              {docSearchResult?.doc_matches && docSearchResult.doc_matches.length > 0 && (
+                <div className="pt-2 border-t border-emerald-500/20">
+                  <button
+                    type="button"
+                    onClick={() => setShowDocMatches(!showDocMatches)}
+                    className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-300/80 hover:text-emerald-200 transition cursor-pointer py-0.5"
+                  >
+                    <span className="text-[9px]">{showDocMatches ? '▼' : '▶'}</span>
+                    <span>
+                      {showDocMatches ? 'Hide' : 'Show'} Matched Course Excerpt
+                      {docSearchResult.doc_matches.length > 1 ? 's' : ''} ({docSearchResult.doc_matches.length})
+                    </span>
+                  </button>
+                  {showDocMatches && (
+                    <div className="mt-2 space-y-2">
+                      {docSearchResult.doc_matches.map((m, mIdx) => (
+                        <div
+                          key={m.extract_id || mIdx}
+                          className="p-2 rounded bg-black/60 border border-emerald-500/20 text-slate-300 text-[11px] font-mono leading-relaxed"
+                        >
+                          <div className="flex items-center justify-between text-emerald-400 font-semibold mb-1 text-[10px]">
+                            <span>{m.source_title}</span>
+                            <span className="bg-emerald-950 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                              {m.locator || 'General'}
+                            </span>
+                          </div>
+                          <div className="text-slate-300 whitespace-pre-wrap font-mono text-[11px] line-clamp-4 hover:line-clamp-none transition">
+                            {m.content}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {qaHistory.length > 0 && (
+                <div className="space-y-2.5 pt-1">
+                  <div className="flex items-center justify-between text-[10px] text-emerald-400/75 font-semibold uppercase tracking-wider">
+                    <span>
+                      💬 {docSearchResult ? 'Follow-up Discussion' : 'Discussion'} ·{' '}
+                      {isAntigravityModel(selectedModel || docSearchResult?.model_used) ? 'Antigravity' : 'Local'} ·{' '}
+                      {activeModelDisplay.short}
+                    </span>
+                  </div>
+                  {qaHistory.map((turn, tIdx) => {
+                    const isUser = turn.role === 'user'
+                    const fallbackCandidate = !isUser ? getFallbackQaCandidate(tIdx) : null
+                    return (
+                      <div
+                        key={tIdx}
+                        className={`rounded-lg p-2.5 shadow-sm text-xs ${
+                          isUser
+                            ? 'bg-black/60 border border-emerald-500/30 text-emerald-100 ml-4'
+                            : 'bg-[#061811] border border-emerald-500/40 text-slate-100 mr-2'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between text-[10px] font-semibold mb-1">
+                          <span className={isUser ? 'text-emerald-300' : 'text-emerald-400'}>
+                            {isUser
+                              ? '👤 You'
+                              : `🤖 ${getModelDisplayInfo(selectedModel || docSearchResult?.model_used || 'Local LLM').label}`}
+                          </span>
+                          {turn.citation && !isUser ? (
+                            <span className="px-1.5 py-0.2 rounded bg-black/60 text-emerald-300 font-mono text-[9px] border border-emerald-500/30">
+                              📄 {turn.citation}
+                            </span>
+                          ) : !isUser ? (
+                            <span className="px-1.5 py-0.2 rounded bg-sky-950/60 text-sky-300 font-sans text-[9px] border border-sky-500/30">
+                              🧠 Pre-training
+                            </span>
+                          ) : null}
+                        </div>
+                        <div>
+                          {isUser ? (
+                            <p className="text-emerald-100/90 whitespace-pre-wrap font-sans">{turn.content}</p>
+                          ) : (
+                            <>
+                              {renderFormattedMarkdown(turn.content)}
+                              {turn.extracted_terms && turn.extracted_terms.length > 0 ? (
+                                <div className="mt-2 pt-1.5 border-t border-emerald-500/20 flex items-center gap-1.5 flex-wrap text-[10px] text-emerald-300">
+                                  <span className="font-semibold text-emerald-400">✓ Added to Card Lexicon:</span>
+                                  {turn.extracted_terms.map((t, i) => (
+                                    <code
+                                      key={i}
+                                      className="px-1 py-0.2 rounded bg-emerald-950/70 border border-emerald-500/30 font-mono text-emerald-200"
+                                    >
+                                      {t}
+                                    </code>
+                                  ))}
+                                </div>
+                              ) : lexiconCtx?.activeDeckContext?.cardId &&
+                                fallbackCandidate &&
+                                !dismissedQaPrompts[tIdx] ? (
+                                <div className="mt-2 pt-1.5 border-t border-emerald-500/15">
+                                  <AddToDefinitionsPrompt
+                                    term={fallbackCandidate.term}
+                                    saving={savingQaPromptIdx === tIdx}
+                                    compact={true}
+                                    onConfirm={() => void handleAddQaTurnToCard(tIdx, turn)}
+                                    onDismiss={() =>
+                                      setDismissedQaPrompts((prev) => ({ ...prev, [tIdx]: true }))
+                                    }
+                                  />
+                                </div>
+                              ) : lexiconCtx ? (
+                                <div className="mt-2 pt-1.5 border-t border-emerald-500/15 flex justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleAddQaTurnToCard(tIdx, turn)}
+                                    className="text-[10px] text-sky-300/80 hover:text-sky-100 underline cursor-pointer transition"
+                                    title="Extract or pin these definitions to the card's Concordance & Lexicon sidebar"
+                                  >
+                                    📌 Pin to Card Lexicon
+                                  </button>
+                                </div>
+                              ) : null}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                  <div ref={qaThreadEndRef} />
+                </div>
+              )}
+
+              {isAskingQuestion && (
+                <div className="flex items-center gap-2 text-emerald-300/80 text-xs py-1.5 px-2.5 rounded bg-emerald-950/40 border border-emerald-500/25">
+                  <span className="inline-block w-3 h-3 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin shrink-0" />
+                  <span>Asking {activeModelDisplay.label}…</span>
+                </div>
+              )}
+
+              {qaError && (
+                <div className="p-2 rounded bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs flex items-center justify-between gap-2">
+                  <span>{qaError}</span>
+                  <button
+                    type="button"
+                    onClick={() => void handleAskQuestion()}
+                    className="underline font-semibold shrink-0 hover:text-rose-100 cursor-pointer"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
             </>
           )}
-
-          {/* Pop Out to Separate Window Button / Dock Back */}
-          {!inPopup ? (
-            <button
-              type="button"
-              onClick={handlePopOut}
-              title="Pop out to separate window for second monitor (Alt+W)"
-              className="rounded px-2 py-1 text-[11px] font-medium text-sky-300 hover:text-sky-100 hover:bg-sky-500/20 transition cursor-pointer flex items-center gap-1 border border-sky-500/30"
-            >
-              <span>⧉</span>
-              <span>Pop Out</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleDockBack}
-              title="Dock back to main editor window (Alt+W)"
-              className="rounded px-2 py-1 text-[11px] font-medium text-amber-300 hover:text-amber-100 hover:bg-amber-500/20 transition cursor-pointer flex items-center gap-1 border border-amber-500/30"
-            >
-              <span>⤓</span>
-              <span>Dock Back</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => {
-              if (inPopup) {
-                handleDockBack()
-              }
-              setDocSearchResult(null)
-              setDocSearchError(null)
-              setIsSearchingDocs(false)
-              setIsQaOpen(false)
-              setActiveQaSnippet('')
-              setQaHistory([])
-              setQaInput('')
-              setQaError(null)
-            }}
-            title="Dismiss (Escape)"
-            className="rounded p-1 text-slate-400 hover:text-slate-200 hover:bg-white/10 transition cursor-pointer text-xs"
-          >
-            &times;
-          </button>
         </div>
+
+        {/* Pinned Bottom Input Form */}
+        {!isSearchingDocs && !docSearchError && (
+          <div className="shrink-0 border-t border-emerald-500/20 bg-[#08100d] px-3 py-2 space-y-1.5">
+            {qaHistory.length === 0 && !isAskingQuestion && (
+              <div className="flex items-center flex-wrap gap-1.5">
+                <span className="text-[10px] text-emerald-400/70 font-medium mr-0.5">Quick:</span>
+                {promptSuggestions.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => void handleAskQuestion(prompt)}
+                    className="rounded-full bg-black/60 hover:bg-emerald-950/80 border border-emerald-500/30 hover:border-emerald-400 px-2 py-0.5 text-[10px] text-emerald-300 hover:text-emerald-100 transition cursor-pointer"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                void handleAskQuestion()
+              }}
+              className="flex items-center gap-2"
+            >
+              <input
+                ref={qaInputRef}
+                type="text"
+                value={qaInput}
+                onChange={(e) => setQaInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    e.stopPropagation()
+                    ;(e.target as HTMLElement).blur()
+                  }
+                }}
+                placeholder="Ask a question about this card, your code, or docs..."
+                disabled={isAskingQuestion}
+                className="flex-1 min-w-0 rounded-lg bg-black/70 border border-emerald-500/35 px-3 py-1.5 text-xs text-slate-100 placeholder-emerald-400/40 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/50 transition font-sans"
+              />
+              <button
+                type="submit"
+                disabled={isAskingQuestion || !qaInput.trim()}
+                className="rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-xs font-semibold text-white shadow transition flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                {isAskingQuestion ? (
+                  <>
+                    <span className="inline-block w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                    <span>Asking…</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Ask</span>
+                    <span className="text-[10px] opacity-75">↵</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        )}
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <div
       ref={editorContainerRef}
-      className={`relative flex flex-col ${
+      className={`relative flex flex-col min-w-0 ${
+        fillHeight ? 'h-full flex-1 min-h-0' : ''
+      } ${
         borderless ? 'bg-[#1a1a1a]' : 'rounded-xl border border-[#282828] bg-[#1a1a1a] shadow-2xl'
       } text-[#eff1f6] overflow-hidden`}
     >
@@ -1867,12 +2293,17 @@ export function CodeEditor({
       )}
 
       {/* Editor Body with LeetCode Colors and Line Numbers */}
-      <div className="relative flex font-mono text-sm bg-[#1a1a1a]" style={{ height: resolvedHeight }}>
+      <div
+        className={`relative flex font-mono text-sm bg-[#1a1a1a] ${
+          fillHeight ? 'flex-1 min-h-[140px]' : ''
+        }`}
+        style={fillHeight ? undefined : { height: resolvedHeight }}
+      >
         {/* Line Numbers Gutter */}
         <div
           ref={lineNumbersRef}
           aria-hidden="true"
-          className="select-none border-r border-[#2d2d2d] bg-[#1a1a1a] px-1.5 py-3 text-right font-mono text-xs text-[#858585] overflow-hidden leading-6"
+          className="select-none border-r border-[#2d2d2d] bg-[#1a1a1a] px-1.5 pt-3 pb-12 text-right font-mono text-xs text-[#858585] overflow-hidden leading-6"
           style={{ width: onRequestLineHint && !readOnly ? '56px' : '48px' }}
         >
           {Array.from({ length: lineCount }, (_, i) => {
@@ -1881,6 +2312,8 @@ export function CodeEditor({
             const hasActiveHint = hintLineNumber === lineNum
             const isHintOnlyTarget = hintOnly && hintOnlyLine === lineNum
             const isLogicFlawed = activeLogicWarning?.lineNumber === lineNum
+            const isTargetLine = Boolean(targetLineNumbers && targetLineNumbers.has(lineNum))
+            const targetRgb = isTargetLine ? hexToRgb(targetHighlightColor || DEFAULT_TARGET_HIGHLIGHT_COLOR) : null
             return (
               <div
                 key={lineNum}
@@ -1889,8 +2322,19 @@ export function CodeEditor({
                     jumpToLine(lineNum)
                   } else if (hintOnly && onHintOnlyLineChange) {
                     onHintOnlyLineChange(lineNum)
+                  } else if (isTargetLine) {
+                    jumpToLine(lineNum)
                   }
                 }}
+                style={
+                  isTargetLine && targetRgb && !isLogicFlawed && !isHintOnlyTarget
+                    ? {
+                        backgroundColor: `rgba(${targetRgb.r}, ${targetRgb.g}, ${targetRgb.b}, 0.22)`,
+                        color: `rgb(${Math.min(255, targetRgb.r + 70)}, ${Math.min(255, targetRgb.g + 70)}, ${Math.min(255, targetRgb.b + 70)})`,
+                        borderRight: `2px solid rgb(${targetRgb.r}, ${targetRgb.g}, ${targetRgb.b})`,
+                      }
+                    : undefined
+                }
                 className={`group flex items-center justify-end gap-1 px-1 rounded transition-colors ${
                   isLogicFlawed
                     ? 'bg-rose-600/30 text-rose-200 font-bold border-r-2 border-rose-500 animate-pulse cursor-pointer'
@@ -1898,6 +2342,8 @@ export function CodeEditor({
                     ? 'bg-amber-500/30 text-amber-200 font-bold border-r-2 border-amber-400'
                     : hasActiveHint
                     ? 'bg-amber-500/20 text-amber-300 font-bold'
+                    : isTargetLine
+                    ? 'font-bold cursor-pointer'
                     : isCurrent
                     ? 'text-[#eff1f6] bg-[#2a2a2a]/60'
                     : hintOnly
@@ -1911,9 +2357,19 @@ export function CodeEditor({
                     ? isHintOnlyTarget
                       ? `💡 Active Hint (Line ${lineNum})`
                       : `Click to view hint for line ${lineNum}`
+                    : isTargetLine
+                    ? `Expected code line ${lineNum} (Click to jump)`
                     : undefined
                 }
               >
+                {isTargetLine && !isLogicFlawed && !isHintOnlyTarget && (
+                  <span
+                    className="text-[9px] mr-0.5 select-none font-bold"
+                    style={{ color: `rgb(${targetRgb!.r}, ${targetRgb!.g}, ${targetRgb!.b})` }}
+                  >
+                    ✦
+                  </span>
+                )}
                 {isLogicFlawed && (
                   <span className="text-[10px] text-rose-400 select-none">⚠️</span>
                 )}
@@ -1953,14 +2409,17 @@ export function CodeEditor({
             ref={highlightRef}
             aria-hidden="true"
             dangerouslySetInnerHTML={{ __html: highlightedHtml + '\n' }}
-            className="pointer-events-none absolute inset-0 m-0 p-3 font-mono text-[13px] leading-6 overflow-hidden whitespace-pre font-normal text-[#eff1f6]"
+            className="pointer-events-none absolute inset-0 m-0 pt-3 pl-3 pr-12 pb-12 font-mono text-[13px] leading-6 overflow-hidden whitespace-pre font-normal text-[#eff1f6]"
             style={{
               fontFamily: 'Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
               tabSize: 4,
+              fontVariantLigatures: 'none',
+              letterSpacing: '0px',
+              borderWidth: 0,
             }}
           />
 
-          {/* Floating Action Pill on Selection: Search Docs + Ask LLM */}
+          {/* Floating Action Pill on Selection: Search Docs + Ask LLM + Define */}
           {floatingPillPos && selectedText.trim().length > 0 && !isSearchingDocs && (
             <div
               style={{
@@ -1970,7 +2429,7 @@ export function CodeEditor({
                 zIndex: 35,
                 transform: 'translate(-50%, -100%)',
               }}
-              className="animate-in fade-in zoom-in-95 duration-150 pointer-events-auto select-none flex items-center gap-1.5"
+              className="animate-in fade-in zoom-in-95 duration-150 pointer-events-auto select-none flex flex-wrap justify-center max-w-[95%] items-center gap-1.5"
             >
               {/* Option 1: Search Attached Deck Docs */}
               <button
@@ -2011,6 +2470,29 @@ export function CodeEditor({
                 <span>Ask LLM</span>
                 <kbd className="px-1 py-0.2 rounded bg-black/60 text-[10px] font-mono text-sky-300 border border-sky-500/30">Alt+Q</kbd>
               </button>
+
+              {/* Option 3: Define Selected Token / Term via AI Lexicon */}
+              {lexiconCtx &&
+                selectedText.trim().length <= 80 &&
+                !selectedText.includes('\n') && (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleDefineSelection(selectedText)
+                    }}
+                    className="flex items-center gap-1.5 rounded-full bg-[#1a1333]/95 hover:bg-[#271d4b] text-indigo-200 border border-indigo-400/60 px-3 py-1 text-xs font-semibold shadow-2xl transition cursor-pointer ring-2 ring-indigo-500/25 hover:scale-105 backdrop-blur-md"
+                    title="Define highlighted code/term using the LLM Lexicon (Alt+L)"
+                  >
+                    <span className="text-indigo-300 font-bold">📖</span>
+                    <span>Define</span>
+                    <kbd className="px-1 py-0.2 rounded bg-black/60 text-[10px] font-mono text-indigo-300 border border-indigo-500/30">Alt+L</kbd>
+                  </button>
+                )}
             </div>
           )}
 
@@ -2035,10 +2517,13 @@ export function CodeEditor({
             autoCapitalize="off"
             autoComplete="off"
             autoCorrect="off"
-            className="code-editor-textarea absolute inset-0 m-0 w-full h-full resize-none bg-transparent p-3 font-mono text-[13px] leading-6 text-transparent caret-white focus:outline-none whitespace-pre overflow-auto selection:bg-sky-500/35 selection:text-transparent"
+            className="code-editor-textarea absolute inset-0 m-0 w-full h-full resize-none bg-transparent p-3 font-mono font-normal text-[13px] leading-6 text-transparent caret-white focus:outline-none whitespace-pre overflow-auto selection:bg-sky-500/35 selection:text-transparent"
             style={{
               fontFamily: 'Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
               tabSize: 4,
+              fontVariantLigatures: 'none',
+              letterSpacing: '0px',
+              borderWidth: 0,
             }}
             placeholder={placeholder}
           />
@@ -2086,7 +2571,11 @@ export function CodeEditor({
 
       {/* Inline Deck Documentation Search & Local LLM Q&A Callout Tray (when NOT popped out) */}
       {!isPoppedOut && (isSearchingDocs || docSearchResult || docSearchError || isQaOpen) && (
-        <div className="border-t border-emerald-500/30 bg-[#0b1411] px-4 py-3.5 text-xs text-emerald-100 shadow-2xl animate-in fade-in duration-200 max-h-[420px] overflow-y-auto">
+        <div
+          className={`border-t border-emerald-500/30 bg-[#0b1411] text-xs text-emerald-100 shadow-2xl animate-in fade-in duration-200 flex flex-col min-h-0 overflow-hidden shrink-0 ${
+            fillHeight ? 'max-h-[48%]' : 'max-h-[420px]'
+          }`}
+        >
           {renderDrawerContent(false)}
         </div>
       )}
@@ -2094,15 +2583,27 @@ export function CodeEditor({
 
       {/* Inline Socratic Line Hint Callout Tray */}
       {(lineHintLoading || activeLineHint) && (
-        <div className="border-t border-amber-500/30 bg-gradient-to-r from-[#201c13] via-[#1a1711] to-[#1c1812] px-4 py-3 text-xs text-amber-100 shadow-inner">
+        <div
+          className={`border-t px-4 py-3 text-xs shadow-inner ${
+            activeLineHint?.error
+              ? 'border-rose-500/40 bg-rose-950/30 text-rose-200'
+              : 'border-amber-500/30 bg-gradient-to-r from-[#201c13] via-[#1a1711] to-[#1c1812] text-amber-100'
+          }`}
+        >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-2.5 min-w-0 flex-1">
               <div className="space-y-1.5 min-w-0 flex-1">
                 <div className="flex items-center flex-wrap gap-2">
-                  <span className="font-semibold text-amber-300 text-xs tracking-wide">
-                    Socratic Hint · Line {hintLineNumber ?? cursorLine}
+                  <span
+                    className={`font-semibold text-xs tracking-wide ${
+                      activeLineHint?.error ? 'text-rose-300' : 'text-amber-300'
+                    }`}
+                  >
+                    {activeLineHint?.error
+                      ? `Socratic Hint Failed · Line ${hintLineNumber ?? cursorLine}`
+                      : `Socratic Hint · Line ${hintLineNumber ?? cursorLine}`}
                   </span>
-                  {hintTargetConcept && (
+                  {hintTargetConcept && !activeLineHint?.error && (
                     <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-300 border border-amber-500/30">
                       {hintTargetConcept}
                     </span>
@@ -2119,6 +2620,10 @@ export function CodeEditor({
                     <span className="inline-block w-3 h-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin"></span>
                     <span>Consulting Socratic Guide grounded in reference solution…</span>
                   </div>
+                ) : activeLineHint?.error ? (
+                  <p className="text-xs text-rose-200 leading-relaxed font-sans whitespace-pre-line">
+                    {activeLineHint.error}
+                  </p>
                 ) : (
                   <p className="text-xs text-slate-200 leading-relaxed font-sans whitespace-pre-line">
                     {activeLineHint?.hint}
@@ -2133,9 +2638,15 @@ export function CodeEditor({
                   type="button"
                   onClick={() => triggerLineHint(hintLineNumber ?? cursorLine)}
                   title="Ask for another hint or re-evaluate with current code"
-                  className="rounded px-2 py-1 text-[11px] font-medium text-amber-300 hover:text-amber-100 hover:bg-amber-500/20 transition cursor-pointer flex items-center gap-1"
+                  className={`rounded px-2 py-1 text-[11px] font-medium transition cursor-pointer flex items-center gap-1 ${
+                    activeLineHint?.error
+                      ? 'text-rose-200 hover:text-white hover:bg-rose-500/20'
+                      : 'text-amber-300 hover:text-amber-100 hover:bg-amber-500/20'
+                  }`}
                 >
-                  <span className="hidden sm:inline">Another Hint</span>
+                  <span className="hidden sm:inline">
+                    {activeLineHint?.error ? 'Retry' : 'Another Hint'}
+                  </span>
                 </button>
               )}
               {onDismissLineHint && (
@@ -2155,18 +2666,26 @@ export function CodeEditor({
 
       {/* Footer Info */}
       {!hideFooter && (
-        <div className="flex items-center justify-between border-t border-[#282828] bg-[#1e1e1e] px-3 py-1 text-[11px] text-[#8a8a8a] font-mono min-w-0 gap-2 overflow-hidden">
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[#eff1f6] font-semibold">Ln {cursorLine}, Col {cursorCol}</span>
-            <span className="text-[#666666] hidden sm:inline">• {lineCount}L / {code.length}C</span>
+        <div
+          className={`flex items-center justify-between border-t border-[#282828] bg-[#1e1e1e] px-3 text-[11px] text-[#8a8a8a] font-mono min-w-0 gap-2 overflow-hidden shrink-0 ${
+            compactFooter ? 'h-7' : 'h-8'
+          }`}
+        >
+          <div className="flex items-center gap-2 shrink-0 min-w-0">
+            <span className="text-[#eff1f6] font-semibold whitespace-nowrap">
+              Ln {cursorLine}, Col {cursorCol}
+            </span>
+            <span className="text-[#666666] hidden xl:inline whitespace-nowrap">
+              • {lineCount}L / {code.length}C
+            </span>
             {diffStats && (
               <div className="flex items-center gap-1.5 ml-1 font-mono text-[10px]">
-                <span className="flex items-center gap-1 font-semibold text-emerald-300 bg-emerald-950/70 border border-emerald-500/40 px-2 py-0.5 rounded shadow-xs">
+                <span className="flex items-center gap-1 font-semibold text-emerald-300 bg-emerald-950/70 border border-emerald-500/40 px-1.5 py-0.5 rounded leading-none whitespace-nowrap">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
                   Recalled {diffStats.matchedCount}/{diffStats.refWordCount} ({diffStats.recallPercent}%)
                 </span>
                 {diffStats.missingCount > 0 && (
-                  <span className="flex items-center gap-1 font-semibold text-amber-300 bg-amber-950/70 border border-amber-500/40 px-2 py-0.5 rounded shadow-xs">
+                  <span className="flex items-center gap-1 font-semibold text-amber-300 bg-amber-950/70 border border-amber-500/40 px-1.5 py-0.5 rounded leading-none whitespace-nowrap">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />
                     Missing {diffStats.missingCount}
                   </span>
@@ -2174,14 +2693,14 @@ export function CodeEditor({
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2 text-[10px] text-[#8a8a8a] shrink-0 overflow-hidden">
-            {onRequestLineHint && !readOnly && (
-              <span className="text-amber-400/90 shrink-0">
+          <div className="flex items-center gap-1.5 text-[10px] text-[#8a8a8a] shrink-0 overflow-hidden">
+            {!compactFooter && onRequestLineHint && !readOnly && (
+              <span className="text-amber-400/90 shrink-0 hidden md:inline whitespace-nowrap">
                 <kbd className="rounded bg-[#282828] px-1 py-0.5 text-amber-300 border border-amber-500/30">Alt+H</kbd> Hint
               </span>
             )}
-            {onGradeSolution && !readOnly && (
-              <span className="text-emerald-400/90 shrink-0">
+            {!compactFooter && onGradeSolution && !readOnly && (
+              <span className="text-emerald-400/90 shrink-0 hidden md:inline whitespace-nowrap">
                 <kbd className="rounded bg-[#282828] px-1 py-0.5 text-emerald-300 border border-emerald-500/30">Alt+G</kbd> Grade
               </span>
             )}
@@ -2189,46 +2708,52 @@ export function CodeEditor({
             <button
               type="button"
               onClick={() => void triggerDocSearch()}
-              className={`cursor-pointer transition flex items-center gap-1 shrink-0 ${
+              className={`cursor-pointer transition flex items-center gap-1 shrink-0 h-5 px-1.5 rounded border whitespace-nowrap ${
                 selectedText.trim()
-                  ? 'text-emerald-300 font-bold bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/40'
-                  : 'text-emerald-400/90 hover:text-emerald-200'
+                  ? 'text-emerald-300 font-semibold bg-emerald-500/15 border-emerald-500/40'
+                  : 'text-emerald-400/90 hover:text-emerald-200 border-transparent hover:bg-emerald-500/10'
               }`}
               title="Search attached deck documentation for selected code (Alt+D)"
             >
-              <kbd className="rounded bg-[#282828] px-1 py-0.5 text-emerald-300 border border-emerald-500/30">Alt+D</kbd>
+              <kbd className="rounded bg-[#282828] px-1 py-0.2 text-emerald-300 border border-emerald-500/30 leading-tight">Alt+D</kbd>
               <span>{selectedText.trim() ? 'Search Docs' : 'Docs'}</span>
             </button>
             {/* Ask Local LLM footer button */}
             <button
               type="button"
               onClick={() => handleTriggerAskLlm()}
-              className={`cursor-pointer transition flex items-center gap-1 shrink-0 ${
+              className={`cursor-pointer transition flex items-center gap-1 shrink-0 h-5 px-1.5 rounded border whitespace-nowrap ${
                 isQaOpen || selectedText.trim()
-                  ? 'text-sky-300 font-bold bg-sky-500/20 px-1.5 py-0.5 rounded border border-sky-500/40'
-                  : 'text-sky-400/90 hover:text-sky-200'
+                  ? 'text-sky-300 font-semibold bg-sky-500/15 border-sky-500/40'
+                  : 'text-sky-400/90 hover:text-sky-200 border-transparent hover:bg-sky-500/10'
               }`}
               title="Directly ask local LLM a question about code using docs and pre-training (Alt+Q)"
             >
-              <kbd className="rounded bg-[#282828] px-1 py-0.5 text-sky-300 border border-sky-500/30">Alt+Q</kbd>
+              <kbd className="rounded bg-[#282828] px-1 py-0.2 text-sky-300 border border-sky-500/30 leading-tight">Alt+Q</kbd>
               <span>Ask LLM</span>
             </button>
             {/* Pop Out / Dock separate window button */}
             <button
               type="button"
               onClick={isPoppedOut ? handleDockBack : handlePopOut}
-              className={`cursor-pointer transition flex items-center gap-1 shrink-0 ${
+              className={`cursor-pointer transition flex items-center gap-1 shrink-0 h-5 px-1.5 rounded border whitespace-nowrap ${
                 isPoppedOut
-                  ? 'text-sky-300 font-bold bg-sky-500/20 px-1.5 py-0.5 rounded border border-sky-500/40'
-                  : 'text-[#8a8a8a] hover:text-sky-200'
+                  ? 'text-sky-300 font-semibold bg-sky-500/15 border-sky-500/40'
+                  : 'text-[#8a8a8a] hover:text-sky-200 border-transparent hover:bg-white/5'
               }`}
               title={isPoppedOut ? 'Dock assistant window back to main editor (Alt+W)' : 'Pop out assistant to separate window for 2nd monitor (Alt+W)'}
             >
-              <kbd className="rounded bg-[#282828] px-1 py-0.5 text-slate-300 border border-slate-700">Alt+W</kbd>
+              <kbd className="rounded bg-[#282828] px-1 py-0.2 text-slate-300 border border-slate-700 leading-tight">Alt+W</kbd>
               <span>{isPoppedOut ? 'Dock' : 'Pop Out'}</span>
             </button>
-            <span className="shrink-0"><kbd className="rounded bg-[#282828] px-1 py-0.5 text-[#eff1f6]">Ctrl+↵</kbd> Run</span>
-            <span className="shrink-0 hidden xl:inline"><kbd className="rounded bg-[#282828] px-1 py-0.5 text-[#eff1f6]">Ctrl+⇧+↵</kbd> Submit</span>
+            <span className="shrink-0 whitespace-nowrap hidden sm:inline">
+              <kbd className="rounded bg-[#282828] px-1 py-0.2 text-[#eff1f6]">Ctrl+↵</kbd> Run
+            </span>
+            {!compactFooter && (
+              <span className="shrink-0 hidden xl:inline whitespace-nowrap">
+                <kbd className="rounded bg-[#282828] px-1 py-0.2 text-[#eff1f6]">Ctrl+⇧+↵</kbd> Submit
+              </span>
+            )}
           </div>
         </div>
       )}

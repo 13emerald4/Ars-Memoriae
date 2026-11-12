@@ -1,8 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
-import type { Deck, Extract, Source, SuggestedCard } from '../api/types'
+import {
+  ALL_GENERATION_MODEL_OPTIONS,
+  isAllowedGradingModel,
+  type Deck,
+  type Extract,
+  type Source,
+  type SuggestedCard,
+} from '../api/types'
 import { Empty, ErrorNote, Section, Spinner } from '../components/ui'
+import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../components/ThemeContext'
 
 /** Incremental Reading (§8): import material, resurface it on a schedule, and
@@ -209,10 +217,7 @@ function SourceLibrary() {
 
 // ── the extract workspace ───────────────────────────────────────────────────
 
-const GENERATION_MODELS = [
-  { id: 'qwen3.5:9b', name: 'Qwen 3.5 (9B Instruct Q4_K_M)', badge: 'Advanced Local Engine' },
-  { id: 'qwen2.5-coder:7b', name: 'Qwen 2.5 Coder (7B Instruct)', badge: 'Local Engine' },
-]
+const GENERATION_MODELS = ALL_GENERATION_MODEL_OPTIONS
 
 const THINKING_LEVELS = [
   { id: 'dynamic', label: 'Default', budget: undefined },
@@ -220,10 +225,30 @@ const THINKING_LEVELS = [
 
 function ExtractWorkspace({ extractId }: { extractId: string }) {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const canUseAntigravity = Boolean(user?.can_use_antigravity)
+  const modelOptions = GENERATION_MODELS.filter(
+    (m) => canUseAntigravity || m.provider !== 'antigravity',
+  )
   const [extract, setExtract] = useState<Extract | null>(null)
   const [decks, setDecks] = useState<Deck[]>([])
   const [deckId, setDeckId] = useState('')
-  const [selectedModel, setSelectedModel] = useState('qwen2.5-coder:7b')
+  const [selectedModel, setSelectedModel] = useState(() =>
+    user?.grading_model &&
+    isAllowedGradingModel(user.grading_model) &&
+    (canUseAntigravity || !user.grading_model.startsWith('antigravity:'))
+      ? user.grading_model
+      : 'qwen2.5-coder:7b',
+  )
+  useEffect(() => {
+    if (
+      user?.grading_model &&
+      isAllowedGradingModel(user.grading_model) &&
+      (canUseAntigravity || !user.grading_model.startsWith('antigravity:'))
+    ) {
+      setSelectedModel(user.grading_model)
+    }
+  }, [user?.grading_model, canUseAntigravity])
   const [selectedThinking, setSelectedThinking] = useState('dynamic')
   const [selection, setSelection] = useState('')
   const [suggestions, setSuggestions] = useState<SuggestedCard[]>([])
@@ -411,7 +436,7 @@ function ExtractWorkspace({ extractId }: { extractId: string }) {
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
             >
-              {GENERATION_MODELS.map((m) => (
+              {modelOptions.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name} ({m.badge})
                 </option>

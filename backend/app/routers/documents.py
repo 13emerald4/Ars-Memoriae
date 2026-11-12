@@ -37,6 +37,7 @@ from app.services import document_service, ir_service, tree_service
 from app.services.document_service import DocumentError
 from app.services.grading_service import GradingService, GradingUnavailable
 from app.services.note_service import default_note_type, sync_cards
+from app.services.question_format_service import format_question_with_code_blocks
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
@@ -210,7 +211,7 @@ async def generate_deck(
             degraded=True, reason="no_sections_in_range",
         )
 
-    service = GradingService(model=body.model or user.grading_model)
+    service = GradingService.for_user(user, body.model)
     semaphore = asyncio.Semaphore(GENERATION_CONCURRENCY)
 
     async def one(extract: Extract, idx: int) -> tuple[Extract, list[dict] | str]:
@@ -222,7 +223,7 @@ async def generate_deck(
                     extract.content,
                     extract.locator or "",
                     body.max_cards_per_section,
-                    model=body.model or user.grading_model,
+                    model=service.model,
                     thinking_budget=body.thinking_budget,
                 )
             except GradingUnavailable as exc:
@@ -259,6 +260,10 @@ async def generate_deck(
             )
 
     next_section = body.start_section + len(window)
+    if failures > 0:
+        detail = "; ".join(sorted(set(warnings))[:5]) or "Deck generation failed on the selected model."
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)
+
     return GenerateDeckResponse(
         source_id=str(source.id),
         title=source.title,
@@ -266,9 +271,8 @@ async def generate_deck(
         sections_used=len(window),
         sections_total=total,
         next_section=next_section if next_section < total else None,
-        # Every section failing is a real outage, not a partial result.
-        degraded=failures == len(window),
-        reason="generation_failed" if failures == len(window) else None,
+        degraded=False,
+        reason=None,
         warnings=sorted(set(warnings))[:20],
     )
 
@@ -341,7 +345,14 @@ async def accept_deck(
             if not item.front.strip() or not item.back.strip():
                 warnings.append(f"card {i}: front and back are both required — skipped")
                 continue
-            fields = {"Front": item.front, "Back": item.back}
+            fields = {
+                "Front": format_question_with_code_blocks(
+                    item.front,
+                    starter_code=getattr(item, "starter_code", None),
+                    language=getattr(item, "language", None),
+                ),
+                "Back": item.back,
+            }
 
         extract_id = None
         if item.extract_id:

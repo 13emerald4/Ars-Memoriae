@@ -56,15 +56,22 @@ export function isCodeCard(
     time_complexity?: string | null
     space_complexity?: string | null
     back?: string | null
+    template_kind?: string | null
+    card_type?: string | null
+    category?: string | null
+    tags?: string[] | null
   } | null
 ): boolean {
   if (!item) return false
   return Boolean(
     item.grading_profile === 'math_code' ||
+      item.template_kind === 'code' ||
+      item.card_type === 'code' ||
       (item.starter_code && item.starter_code.trim()) ||
       (item.test_cases && item.test_cases.length > 0) ||
       (item.time_complexity && item.time_complexity.trim()) ||
       (item.space_complexity && item.space_complexity.trim()) ||
+      (item.tags && (item.tags.includes('code') || item.tags.includes('coding'))) ||
       looksLikeCode(item.back)
   )
 }

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class CodeProblemSummary(BaseModel):
@@ -85,6 +85,14 @@ class SocraticCodeRequest(BaseModel):
     code: str
     language: str = "python"
     hint_type: str = "conceptual"  # "conceptual" | "edge_case" | "complexity" | "debug"
+    model: str | None = None
+
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, v: str | None) -> str | None:
+        from app.services.grading_service import validate_grading_model_name
+
+        return validate_grading_model_name(v)
 
 
 class SocraticCodeResponse(BaseModel):
@@ -160,7 +168,12 @@ class ExplainCodeSelectionRequest(BaseModel):
     mode: str = "both"  # "occams_razor" | "socratic" | "both" | "docs"
     model: str | None = None
     deck_id: str | None = None
+    card_id: str | None = None
     doc_id: str | None = None
+    user_code: str | None = None
+    user_test_code: str | None = None
+    execution_summary: str | None = None
+    revealed: bool | None = None
 
 
 class ExplainCodeSelectionResponse(BaseModel):
@@ -221,9 +234,14 @@ class AskDeckQuestionRequest(BaseModel):
     language: str = "typescript"
     context: str | None = None
     deck_id: str | None = None
+    card_id: str | None = None
     doc_id: str | None = None
     model: str | None = None
     history: list[DeckDocMessage] = Field(default_factory=list)
+    user_code: str | None = None
+    user_test_code: str | None = None
+    execution_summary: str | None = None
+    revealed: bool | None = None
 
 
 class AskDeckQuestionResponse(BaseModel):
@@ -232,4 +250,6 @@ class AskDeckQuestionResponse(BaseModel):
     citations: list[dict[str, Any]] = Field(default_factory=list)
     model_used: str
     available_models: list[str] = Field(default_factory=list)
+    extracted_glosses: list[dict[str, Any]] = Field(default_factory=list)
+    updated_card_glosses: list[dict[str, Any]] | None = None
 

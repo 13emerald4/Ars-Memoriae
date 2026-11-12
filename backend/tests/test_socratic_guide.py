@@ -76,7 +76,7 @@ class TestGuideEndpoint:
         assert body["degraded"] is True
         assert body["degraded_reason"] == "consent_not_given"
 
-    async def test_degrades_when_engine_unavailable(self, auth_client, monkeypatch):
+    async def test_raises_503_when_engine_unavailable(self, auth_client, monkeypatch):
         import app.routers.review as review_router
         from app.services.grading_service import GradingUnavailable
 
@@ -99,9 +99,8 @@ class TestGuideEndpoint:
         card_id = note["cards"][0]["id"]
 
         resp = await auth_client.post(f"/api/review/{card_id}/guide", json={"history": []})
-        assert resp.status_code == 200, resp.text
-        assert resp.json()["degraded"] is True
-        assert "engine offline" in resp.json()["degraded_reason"]
+        assert resp.status_code == 503, resp.text
+        assert "engine offline" in resp.json()["detail"]
 
     async def test_a_hint_reaches_the_response(self, auth_client, monkeypatch):
         import app.routers.review as review_router
@@ -163,7 +162,7 @@ class TestGuideEndpoint:
         )
         assert resp.status_code == 200, resp.text
         assert captured["model"] == "qwen2.5-coder:3b"
-        assert captured["allow_smaller_model"] is True
+        assert captured["allow_smaller_model"] is False
 
     async def test_a_stranger_cannot_ask_about_someone_elses_card(self, auth_client, client):
         deck_id = (await auth_client.post("/api/decks", json={"name": "D"})).json()["id"]
@@ -255,9 +254,9 @@ class TestSocraticLineHint:
         assert body["current_line_text"] == "line2"
 
 
-    async def test_endpoint_degrades_when_the_model_call_crashes(self, auth_client, monkeypatch):
-        """An unexpected error (not GradingUnavailable) still degrades to the
-        canned hint instead of a 500."""
+    async def test_endpoint_returns_503_when_the_model_call_crashes(self, auth_client, monkeypatch):
+        """An unexpected error (not GradingUnavailable) still returns a 503
+        error rather than silently substituting a canned hint."""
         from app.routers import review as review_router
 
         async def boom(self, **kwargs):
@@ -283,9 +282,7 @@ class TestSocraticLineHint:
             f"/api/review/{card_id}/line-hint",
             json={"code": "line1\nline2", "line_number": 2, "language": "python"},
         )
-        assert resp.status_code == 200, resp.text
-        body = resp.json()
-        assert body["degraded"] is True
-        # Internal exception text stays in the server log, not the response.
-        assert body["degraded_reason"] == "hint_generation_failed"
-        assert body["line_number"] == 2
+        assert resp.status_code == 503, resp.text
+        detail = resp.json()["detail"]
+        assert "hint_generation_failed" in detail
+        assert "model returned garbage" not in detail

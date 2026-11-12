@@ -200,94 +200,104 @@ def detect_hardware() -> HardwareProfile:
 
     if is_apple_silicon:
         # Apple Silicon unified memory
-        if ram_gb >= 16.0:
-            recommended_size = "7b"
+        if ram_gb >= 24.0:
+            recommended_size = "9b"
+            recommended_model = "qwen3.5:9b"
             tier = "high-end"
-            headline = "Recommended: Qwen 2.5 Coder 7B"
+            headline = "Recommended: Qwen 3.5 9B (The Heavy Generalist)"
             rationale = (
-                f"Detected Apple Silicon with {ram_gb} GB unified memory. Apple Metal offloads all 33 model layers "
-                "directly to the unified memory pool, giving you high-accuracy 7B reasoning with zero VRAM bottlenecks."
+                f"Detected Apple Silicon with {ram_gb} GB unified memory. Apple Metal offloads model layers "
+                "directly to unified memory, giving you high-capacity 9B multimodal reasoning with zero VRAM bottlenecks."
+            )
+        elif ram_gb >= 16.0:
+            recommended_size = "7b"
+            recommended_model = "qwen2.5-coder:7b"
+            tier = "mid-range"
+            headline = "Recommended: Qwen2.5-Coder 7B (The Technical Specialist)"
+            rationale = (
+                f"Detected Apple Silicon with {ram_gb} GB unified memory. The 7B technical specialist model provides "
+                "exceptional code and logic precision with ample headroom for macOS system processes."
             )
         else:
-            recommended_size = "3b"
-            tier = "mid-range"
-            headline = "Recommended: Qwen 2.5 Coder 3B"
+            recommended_size = "4b"
+            recommended_model = "qwen3.5:4b"
+            tier = "budget"
+            headline = "Recommended: Qwen 3.5 4B / Gemma 4 E4B (The Speed Demon)"
             rationale = (
-                f"Detected Apple Silicon with {ram_gb} GB unified memory. The 3B model (~1.9 GB) leaves plenty of headroom "
-                "for macOS system processes and your browser while executing evaluations in 1-2 seconds."
+                f"Detected Apple Silicon with {ram_gb} GB unified memory. The 4B speed-demon model leaves plenty of headroom "
+                "while executing evaluations with near-instant token streaming."
             )
     elif vram_gb is not None and vram_gb >= 11.0:
         # Desktop GPU with 12GB+ VRAM
-        recommended_size = "7b"
+        recommended_size = "9b"
+        recommended_model = "qwen3.5:9b"
         tier = "high-end"
-        headline = "Recommended: Qwen 2.5 Coder 7B"
+        headline = "Recommended: Qwen 3.5 9B (The Heavy Generalist)"
         rationale = (
-            f"Detected dedicated GPU ({gpu_name}) with {vram_gb} GB VRAM. You have ample VRAM headroom to run the full 7B model "
-            "and an 8k context window entirely on your GPU without risk of out-of-memory errors."
+            f"Detected dedicated GPU ({gpu_name}) with {vram_gb} GB VRAM. You have ample VRAM headroom to run the full 9B "
+            "multimodal generalist model entirely on your GPU without risk of out-of-memory errors."
         )
     elif vram_gb is not None and vram_gb >= 5.5:
-        # 6GB to 8GB GPUs (e.g. RTX 3050/3060/3070 Laptop, RTX 4050/4060)
-        recommended_size = "3b"
+        # 6GB to 10GB GPUs (e.g. RTX 3060/3070/4060)
+        recommended_size = "7b"
+        recommended_model = "qwen2.5-coder:7b"
         tier = "mid-range"
-        headline = "Recommended: Qwen 2.5 Coder 3B"
+        headline = "Recommended: Qwen2.5-Coder 7B (The Technical Specialist)"
         rationale = (
-            f"Detected dedicated GPU ({gpu_name}) with {vram_gb} GB VRAM. While 7B would risk CUDA out-of-memory crashes "
-            f"when sharing VRAM with your display and browser, the 3B model (~1.9 GB) fits stably with fast 1-2s grading."
+            f"Detected dedicated GPU ({gpu_name}) with {vram_gb} GB VRAM. The 7B Technical Specialist model (~4.7 GB) "
+            "fits comfortably on your GPU, providing high-precision code and logic grading."
         )
     elif ram_gb >= 15.0:
         # 16GB+ System RAM (either CPU-only or modest GPU)
-        recommended_size = "3b"
+        recommended_size = "7b"
+        recommended_model = "qwen2.5-coder:7b"
         tier = "mid-range"
-        headline = "Recommended: Qwen 2.5 Coder 3B"
+        headline = "Recommended: Qwen2.5-Coder 7B (The Technical Specialist)"
         rationale = (
-            f"Detected {ram_gb} GB system memory ({cpu_name}). The 3B model provides the optimal balance of reasoning quality "
-            "and fast local evaluation without straining host memory."
+            f"Detected {ram_gb} GB system memory ({cpu_name}). The 7B model provides high-precision technical comprehension "
+            "and reliable local evaluations."
         )
     else:
         # Constrained system (< 16 GB RAM or small mobile GPU)
-        recommended_size = "1.5b"
+        recommended_size = "4b"
+        recommended_model = "qwen3.5:4b"
         tier = "budget"
-        headline = "Recommended: Qwen 2.5 Coder 1.5B"
+        headline = "Recommended: Qwen 3.5 4B / Gemma 4 E4B (The Speed Demon)"
         rationale = (
-            f"Detected {ram_gb} GB system RAM. The 1.5B model is ultra-lightweight (~986 MB), fast, and guaranteed to run smoothly "
+            f"Detected {ram_gb} GB system RAM. The 4B speed-demon model is lightweight, fast, and guaranteed to run smoothly "
             "without memory pressure on your machine."
         )
 
-    recommended_model = f"qwen2.5-coder:{recommended_size}"
-
-    # Build comparative model cards
+    # Build comparative model cards for the 3 allowed models
     models = [
         ModelOptionInfo(
-            id="qwen2.5-coder:1.5b",
-            name="Qwen 2.5 Coder 1.5B",
-            size="1.5b",
-            vram_approx="~1.2 GB VRAM",
-            status="recommended" if recommended_size == "1.5b" else "supported",
-            suitability="Ultra-lean and instant. Perfect for lower-power CPUs and laptops with 8 GB RAM.",
-        ),
-        ModelOptionInfo(
-            id="qwen2.5-coder:3b",
-            name="Qwen 2.5 Coder 3B",
-            size="3b",
-            vram_approx="~2.5 GB VRAM",
-            status="recommended" if recommended_size == "3b" else "supported",
-            suitability="Best all-round choice. Balances deep code comprehension with modest memory usage (1-2s evaluations).",
+            id="qwen3.5:9b",
+            name="Qwen 3.5 9B (The Heavy Generalist)",
+            size="9b",
+            vram_approx="~5.3 GB VRAM",
+            status="recommended" if recommended_size == "9b" else (
+                "supported" if (vram_gb and vram_gb >= 7.5) or (is_apple_silicon and ram_gb >= 16.0) or ram_gb >= 24.0
+                else ("heavy" if (vram_gb and vram_gb >= 5.5) or ram_gb >= 16.0 else "too_large")
+            ),
+            suitability="Dense hybrid reasoning & multimodal evaluation. High-capacity general intelligence workhorse.",
         ),
         ModelOptionInfo(
             id="qwen2.5-coder:7b",
-            name="Qwen 2.5 Coder 7B",
+            name="Qwen2.5-Coder 7B (The Technical Specialist)",
             size="7b",
-            vram_approx="~6.5 GB VRAM",
-            status="recommended" if recommended_size == "7b" else ("heavy" if (vram_gb and vram_gb >= 6.0) or ram_gb >= 16.0 else "too_large"),
-            suitability="Maximum reasoning depth. Recommended for desktop GPUs with >= 12 GB VRAM or Apple Silicon with >= 16 GB RAM.",
+            vram_approx="~4.7 GB VRAM",
+            status="recommended" if recommended_size == "7b" else (
+                "supported" if (vram_gb and vram_gb >= 5.5) or ram_gb >= 16.0 else "heavy"
+            ),
+            suitability="High-precision code & logic grading. Deep syntax comprehension and technical specialization.",
         ),
         ModelOptionInfo(
-            id="qwen3.5:9b",
-            name="Qwen 3.5 9B (Q4_K_M)",
-            size="9b",
-            vram_approx="~5.3 GB VRAM",
-            status="supported" if (vram_gb and vram_gb >= 7.5) or (is_apple_silicon and ram_gb >= 16.0) or ram_gb >= 24.0 else ("heavy" if (vram_gb and vram_gb >= 5.5) or ram_gb >= 16.0 else "too_large"),
-            suitability="Advanced dense multimodal foundation model with hybrid reasoning. Runs comfortably with Q4_K_M quantization on 8 GB+ VRAM or 16 GB+ unified memory.",
+            id="qwen3.5:4b",
+            name="Qwen 3.5 4B / Gemma 4 E4B (The Speed Demon)",
+            size="4b",
+            vram_approx="~2.5 GB VRAM",
+            status="recommended" if recommended_size == "4b" else "supported",
+            suitability="Blistering fast token generation & lightweight memory footprint. Ultra-low latency responses.",
         ),
     ]
 
@@ -309,3 +319,153 @@ def detect_hardware() -> HardwareProfile:
         rationale=rationale,
         models=models,
     )
+
+
+def get_vram_metrics(
+    model_name: str | None = None,
+    ollama_base_url: str = "http://localhost:11434",
+) -> dict[str, Any]:
+    """Retrieves live VRAM and GPU memory telemetry:
+    - capacity_gb: Total VRAM capacity on the machine (e.g. 8.0 GB)
+    - available_gb: Free unallocated VRAM headroom (e.g. 3.3 GB)
+    - used_gb: Currently used VRAM across the system (e.g. 4.7 GB)
+    - model_vram_gb: Exact VRAM occupied by the selected/active model in Ollama
+    - model_approx_gb: Approximate VRAM footprint when loaded
+    - model_loaded: Whether the model is currently resident in VRAM
+    - gpu_name: Name of detected GPU device
+    """
+    from app.services.grading_service import is_antigravity_model
+
+    if is_antigravity_model(model_name):
+        return {
+            "capacity_gb": 0.0,
+            "capacity_mb": 0.0,
+            "available_gb": 0.0,
+            "available_mb": 0.0,
+            "used_gb": 0.0,
+            "used_mb": 0.0,
+            "model_vram_bytes": 0,
+            "model_vram_gb": 0.0,
+            "model_approx_gb": 0.0,
+            "model_loaded": False,
+            "model_name": model_name,
+            "gpu_name": "Antigravity Subscription (Cloud)",
+            "is_unified_memory": False,
+        }
+
+    total_mb: float | None = None
+    used_mb: float | None = None
+    free_mb: float | None = None
+    gpu_name: str | None = None
+    is_unified = False
+
+    # 1. Query NVIDIA SMI if available
+    if shutil.which("nvidia-smi"):
+        try:
+            raw = subprocess.check_output(
+                ["nvidia-smi", "--query-gpu=name,memory.total,memory.used,memory.free", "--format=csv,noheader,nounits"],
+                text=True,
+                timeout=1.5,
+            ).strip()
+            if raw:
+                first_line = raw.split("\n")[0]
+                parts = [p.strip() for p in first_line.split(",")]
+                gpu_name = parts[0]
+                total_mb = float(parts[1])
+                used_mb = float(parts[2])
+                free_mb = float(parts[3])
+        except Exception as exc:
+            log.debug("nvidia-smi live query failed: %s", exc)
+
+    # 2. Apple Silicon unified memory
+    if total_mb is None and platform.system() == "Darwin" and platform.machine() == "arm64":
+        is_unified = True
+        gpu_name = "Apple Silicon Integrated GPU (Metal)"
+        ram_gb = _get_ram_gb()
+        total_mb = ram_gb * 1024.0
+        try:
+            out = subprocess.check_output(["sysctl", "-n", "vm.page_free_count", "vm.page_speculative_count"], text=True)
+            free_pages = sum(int(p.strip()) for p in out.strip().split() if p.strip().isdigit())
+            free_mb = round((free_pages * 4096) / (1024 * 1024), 1)
+            used_mb = max(0.0, total_mb - free_mb)
+        except Exception:
+            free_mb = round(total_mb * 0.5, 1)
+            used_mb = round(total_mb * 0.5, 1)
+
+    # 3. Windows CIM fallback
+    if total_mb is None and platform.system() == "Windows":
+        try:
+            detected_gpu, detected_vram_gb, _ = _get_gpu_info()
+            if detected_vram_gb:
+                gpu_name = detected_gpu
+                total_mb = detected_vram_gb * 1024.0
+                free_mb = round(total_mb * 0.5, 1)
+                used_mb = round(total_mb * 0.5, 1)
+        except Exception:
+            pass
+
+    # 4. Host RAM fallback
+    if total_mb is None:
+        ram_gb = _get_ram_gb()
+        total_mb = ram_gb * 1024.0
+        free_mb = round(ram_gb * 1024.0 * 0.5, 1)
+        used_mb = round(ram_gb * 1024.0 * 0.5, 1)
+
+    # 5. Query Ollama /api/ps for currently running models in VRAM
+    model_loaded = False
+    model_vram_bytes = 0
+    try:
+        import httpx
+
+        with httpx.Client(timeout=2.0) as client:
+            resp = client.get(f"{ollama_base_url}/api/ps")
+            if resp.status_code == 200:
+                ps_models = resp.json().get("models", [])
+                for pm in ps_models:
+                    pm_name = (pm.get("name") or pm.get("model") or "").lower()
+                    if model_name:
+                        mn_clean = model_name.lower().split(":")[0]
+                        if mn_clean in pm_name or pm_name in model_name.lower():
+                            model_loaded = True
+                            model_vram_bytes = pm.get("size_vram") or pm.get("size") or 0
+                            break
+                    elif ps_models:
+                        model_loaded = True
+                        model_vram_bytes = pm.get("size_vram") or pm.get("size") or 0
+                        break
+    except Exception as exc:
+        log.debug("Ollama /api/ps check failed: %s", exc)
+
+    # Calculate approximate footprint based on model size
+    approx_gb = 4.7
+    if model_name:
+        mn = model_name.lower()
+        if "9b" in mn:
+            approx_gb = 5.3
+        elif "7b" in mn:
+            approx_gb = 4.7
+        elif any(k in mn for k in ("4b", "e4b", "gemma", "3b")):
+            approx_gb = 2.5
+        elif "1.5b" in mn:
+            approx_gb = 1.2
+
+    capacity_gb = round(total_mb / 1024.0, 2) if total_mb else 0.0
+    available_gb = round(free_mb / 1024.0, 2) if free_mb else 0.0
+    used_gb = round(used_mb / 1024.0, 2) if used_mb else 0.0
+    model_vram_gb = round(model_vram_bytes / (1024.0**3), 2) if model_vram_bytes else 0.0
+
+    return {
+        "capacity_gb": capacity_gb,
+        "capacity_mb": round(total_mb, 1) if total_mb else 0.0,
+        "available_gb": available_gb,
+        "available_mb": round(free_mb, 1) if free_mb else 0.0,
+        "used_gb": used_gb,
+        "used_mb": round(used_mb, 1) if used_mb else 0.0,
+        "model_vram_bytes": model_vram_bytes if model_loaded else 0,
+        "model_vram_gb": model_vram_gb,
+        "model_approx_gb": approx_gb,
+        "model_loaded": model_loaded,
+        "model_name": model_name,
+        "gpu_name": gpu_name or "Graphics Processor",
+        "is_unified_memory": is_unified,
+    }

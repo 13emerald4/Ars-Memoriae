@@ -350,3 +350,102 @@ async def test_subdeck_inherits_parent_deck_documents(auth_client: AsyncClient, 
     assert len(nodocs_data["citations"]) == 0
 
 
+@pytest.mark.asyncio
+async def test_ask_docs_card_context_and_stable_prefix(auth_client: AsyncClient, monkeypatch):
+    from app.services.grading_service import GradingService
+
+    deck_resp = await auth_client.post("/api/decks", json={"name": "Algorithms Lab"})
+    assert deck_resp.status_code == 201
+    deck_id = deck_resp.json()["id"]
+
+    card_front = "Write clamp(val, lo, hi) returning val bounded cleanly to [lo, hi]."
+    card_back = "```typescript\nfunction clamp(val: number, lo: number, hi: number): number {\n  return Math.max(lo, Math.min(val, hi));\n}\n```"
+    starter_tests = "test('bounds', () => { assertEquals(clamp(-1, 0, 10), 0); });"
+
+    note_resp = await auth_client.post(
+        "/api/notes",
+        json={
+            "deck_id": deck_id,
+            "template_kind": "basic",
+            "field_values": {
+                "Front": card_front,
+                "Back": card_back,
+                "starter_tests": starter_tests,
+            },
+        },
+    )
+    assert note_resp.status_code == 201, note_resp.text
+    card_id = note_resp.json()["cards"][0]["id"]
+
+    captured_prompts: list[str] = []
+
+    async def fake_generate(self, prompt, model=None, schema=None, **kwargs):
+        captured_prompts.append(prompt)
+        return "Check how lower and upper bounds interact when val is out of range."
+
+    monkeypatch.setattr(GradingService, "_generate", fake_generate)
+
+    first_resp = await auth_client.post(
+        "/api/code/ask-docs",
+        json={
+            "question": "Why does my upper bound fail?",
+            "selected_code": "if (val > hi) return lo;",
+            "full_code": "function clamp(val: number, lo: number, hi: number) { if (val > hi) return lo; return val; }",
+            "language": "typescript",
+            "deck_id": deck_id,
+            "card_id": card_id,
+            "user_code": "function clamp(val: number, lo: number, hi: number) { if (val > hi) return lo; return val; }",
+            "user_test_code": "test('upper', () => { assertEquals(clamp(12, 0, 10), 10); });",
+            "execution_summary": "Status: Wrong Answer (0/1 tests passed); Error: Expected 10, got 0",
+            "revealed": False,
+        },
+    )
+    assert first_resp.status_code == 200, first_resp.text
+
+    second_resp = await auth_client.post(
+        "/api/code/ask-docs",
+        json={
+            "question": "Now explain why Math.max/Math.min is equivalent.",
+            "selected_code": "return Math.max(lo, Math.min(val, hi));",
+            "full_code": "return Math.max(lo, Math.min(val, hi));",
+            "language": "typescript",
+            "deck_id": deck_id,
+            "card_id": card_id,
+            "user_code": "function clamp(val: number, lo: number, hi: number) { return Math.max(lo, Math.min(val, hi)); }",
+            "user_test_code": starter_tests,
+            "execution_summary": "Status: Accepted (1/1 tests passed)",
+            "revealed": True,
+            "history": [
+                {"role": "user", "content": "Why does my upper bound fail?"},
+                {"role": "assistant", "content": "Check your return value when val exceeds hi."},
+            ],
+        },
+    )
+    assert second_resp.status_code == 200, second_resp.text
+    assert len(captured_prompts) == 2
+
+    p1, p2 = captured_prompts
+    # Entire card question, solution, starter tests, and work in progress must be present
+    assert card_front in p1
+    assert "Math.max(lo, Math.min(val, hi))" in p1
+    assert starter_tests in p1
+    assert "if (val > hi) return lo;" in p1
+    assert "Expected 10, got 0" in p1
+    assert "assertEquals(clamp(12, 0, 10), 10)" in p1
+
+    # Prefix-cache order: immutable card context -> mutable student work -> question
+    idx_front = p1.index(card_front)
+    idx_back = p1.index("Math.max(lo, Math.min(val, hi))")
+    idx_exec = p1.index("Expected 10, got 0")
+    idx_q = p1.index("Why does my upper bound fail?")
+    assert idx_front < idx_back < idx_exec < idx_q
+
+    # Static instructions + card question/solution prefix is byte-identical across turns
+    anchor = "Math.max(lo, Math.min(val, hi))"
+    prefix_end_1 = p1.index(anchor) + len(anchor)
+    prefix_end_2 = p2.index(anchor) + len(anchor)
+    assert p1[:prefix_end_1] == p2[:prefix_end_2]
+    assert "Status: Accepted (1/1 tests passed)" in p2
+
+
+

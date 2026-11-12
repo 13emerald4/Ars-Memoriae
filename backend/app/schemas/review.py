@@ -95,21 +95,17 @@ class SessionSummary(BaseModel):
 class SubmitAnswerRequest(BaseModel):
     typed_answer: str
     test_code: str | None = None
+    language: str | None = None
     latency_ms: int
     model: str | None = None
-    allow_smaller_model: bool = True
+    allow_smaller_model: bool = False
 
     @field_validator("model")
     @classmethod
     def validate_model(cls, v: str | None) -> str | None:
-        if v is not None:
-            from app.services.grading_service import is_allowed_qwen_coder_model
+        from app.services.grading_service import validate_grading_model_name
 
-            if not is_allowed_qwen_coder_model(v):
-                raise ValueError(
-                    f"Model '{v}' is not permitted. Only quantized Qwen 2.5 Coder models in 7B, 3B, or 1.5B sizes are allowed."
-                )
-        return v
+        return validate_grading_model_name(v)
 
 
 class RunReviewCodeRequest(BaseModel):
@@ -190,19 +186,17 @@ class SocraticRequest(BaseModel):
     history: list[SocraticTurn] = Field(default_factory=list, max_length=20)
     message: str = Field(default="", max_length=1000)
     model: str | None = None
-    allow_smaller_model: bool = True
+    allow_smaller_model: bool = False
+    user_code: str | None = None
+    test_code: str | None = None
+    execution_summary: str | None = None
 
     @field_validator("model")
     @classmethod
     def validate_model(cls, v: str | None) -> str | None:
-        if v is not None:
-            from app.services.grading_service import is_allowed_qwen_coder_model
+        from app.services.grading_service import validate_grading_model_name
 
-            if not is_allowed_qwen_coder_model(v):
-                raise ValueError(
-                    f"Model '{v}' is not permitted. Only quantized Qwen 2.5 Coder models in 7B, 3B, or 1.5B sizes are allowed."
-                )
-        return v
+        return validate_grading_model_name(v)
 
 
 class SocraticResponse(BaseModel):
@@ -222,20 +216,16 @@ class SocraticLineHintRequest(BaseModel):
     line_number: int
     language: str = "typescript"
     test_code: str | None = None
+    execution_summary: str | None = None
     model: str | None = None
-    allow_smaller_model: bool = True
+    allow_smaller_model: bool = False
 
     @field_validator("model")
     @classmethod
     def validate_model(cls, v: str | None) -> str | None:
-        if v is not None:
-            from app.services.grading_service import is_allowed_qwen_coder_model
+        from app.services.grading_service import validate_grading_model_name
 
-            if not is_allowed_qwen_coder_model(v):
-                raise ValueError(
-                    f"Model '{v}' is not permitted. Only quantized Qwen 2.5 Coder models in 7B, 3B, or 1.5B sizes are allowed."
-                )
-        return v
+        return validate_grading_model_name(v)
 
 
 class SocraticLineHintResponse(BaseModel):

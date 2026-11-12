@@ -1,8 +1,20 @@
 import { useCallback, useEffect, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { api, token } from '../api/client'
-import type { EventReadiness, HardwareProfile, QueueConfig, SyncStatus, User } from '../api/types'
-import { isAllowedQwenCoderModel, ALLOWED_QWEN_CODER_MODELS } from '../api/types'
+import type {
+  EventReadiness,
+  HardwareProfile,
+  LlmEngineStatusResponse,
+  QueueConfig,
+  SyncStatus,
+  User,
+} from '../api/types'
+import {
+  ALLOWED_QWEN_CODER_MODELS,
+  ANTIGRAVITY_MODELS,
+  getModelDisplayInfo,
+  isAntigravityModel,
+} from '../api/types'
 import { ErrorNote, Section, Spinner } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
 import { FullscreenButton, useFullscreen } from '../components/FullscreenContext'
@@ -76,15 +88,7 @@ export default function Settings() {
 }
 
 function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promise<void> }) {
-  const [status, setStatus] = useState<{
-    connected: boolean
-    provider: string
-    base_url: string
-    model: string
-    models_installed: string[]
-    model_ready: boolean
-    error?: string | null
-  } | null>(null)
+  const [status, setStatus] = useState<LlmEngineStatusResponse | null>(null)
   const [hardware, setHardware] = useState<HardwareProfile | null>(null)
   const [checking, setChecking] = useState(false)
   const [error, setError] = useState<unknown>(null)
@@ -110,10 +114,31 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
     void checkStatus()
   }, [checkStatus])
 
+  const canUseAntigravity = Boolean(user.can_use_antigravity)
+  const isAgy = canUseAntigravity && isAntigravityModel(user.grading_model)
+  const activeModelId = isAgy
+    ? user.grading_model
+    : (isAntigravityModel(user.grading_model) ? undefined : user.grading_model) ||
+      hardware?.recommended_model ||
+      'qwen2.5-coder:7b'
+  const activeInfo = getModelDisplayInfo(activeModelId)
+  const agyInfo = canUseAntigravity ? status?.providers?.antigravity : undefined
+  const agyAvailableModels = agyInfo?.models ?? []
+
+  const activateModel = async (modelId: string) => {
+    await api.updateMe({ grading_model: modelId })
+    await onChange()
+    void checkStatus()
+  }
+
   return (
     <Section
-      title="Local AI Engine"
-      description="Local Qwen 2.5 Coder models (7B, 3B, 1.5B). Private with zero cloud costs."
+      title={canUseAntigravity ? 'AI Grading & Assistant Engine' : 'Local AI Engine'}
+      description={
+        canUseAntigravity
+          ? 'Grade answers, drive Socratic hints, look up lexicon terms, and generate cards via your Antigravity Subscription (no API key) or local Ollama.'
+          : 'Local Qwen 2.5 Coder models (7B, 3B, 1.5B). Private with zero cloud costs.'
+      }
     >
       <div className="space-y-4">
         {/* Hardware Inspection & Recommendation Card */}
@@ -123,7 +148,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               <div className="flex items-center gap-2.5">
                 <div>
                   <h4 className="text-xs font-bold text-sky-200 uppercase tracking-wider">
-                    Hardware Inspection &amp; Recommendation
+                    Local Hardware Inspection
                   </h4>
                   <p className="text-[11px] text-slate-300">
                     {hardware.os_name} · {hardware.ram_gb.toFixed(1)} GB RAM
@@ -145,18 +170,14 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               </p>
             </div>
 
-            {user.grading_model !== hardware.recommended_model && (
+            {!isAgy && user.grading_model !== hardware.recommended_model && (
               <div className="pt-2 flex flex-wrap items-center justify-between gap-3 text-xs border-t border-sky-500/10">
                 <span className="text-[11px] text-slate-400">
                   Active model (<code className="font-mono text-slate-300">{user.grading_model || 'none'}</code>) differs from hardware-tailored recommendation.
                 </span>
                 <button
                   type="button"
-                  onClick={async () => {
-                    await api.updateMe({ grading_model: hardware.recommended_model })
-                    await onChange()
-                    void checkStatus()
-                  }}
+                  onClick={() => void activateModel(hardware.recommended_model)}
                   className="btn btn-primary text-xs py-1 px-3 whitespace-nowrap cursor-pointer"
                 >
                   Switch to Recommended ({hardware.recommended_size.toUpperCase()})
@@ -180,45 +201,59 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                 }`}
               />
               <div>
-                <h4 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-                  <span>{user.grading_model || hardware?.recommended_model || 'qwen2.5-coder:3b'}</span>
+                <h4 className="text-sm font-semibold text-slate-100 flex items-center gap-2 flex-wrap">
+                  <span>{activeInfo.label}</span>
                   <span className="chip text-[10px] px-1.5 py-0.2 border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
                     Active Grader
                   </span>
-                  {hardware && user.grading_model === hardware.recommended_model && (
+                  {canUseAntigravity && (
+                    <span className="chip text-[9px] px-1.5 py-0.2 border-indigo-500/40 text-indigo-300 bg-indigo-500/10">
+                      {isAgy ? 'Antigravity Subscription' : 'Local Ollama'}
+                    </span>
+                  )}
+                  {!isAgy && hardware && user.grading_model === hardware.recommended_model && (
                     <span className="chip text-[9px] px-1 py-0.2 border-sky-500/40 text-sky-300 bg-sky-500/10">
                       Hardware Matched
                     </span>
                   )}
                 </h4>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Endpoint: <code className="font-mono text-slate-300">{status?.base_url || 'http://localhost:11434'}</code>
+                  Engine: <code className="font-mono text-slate-300">{status?.base_url || (isAgy ? 'Antigravity Subscription (agy CLI)' : 'http://localhost:11434')}</code>
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              {status?.models_installed &&
-                status.models_installed.filter(isAllowedQwenCoderModel).length > 0 && (
-                  <select
-                    value={user.grading_model}
-                    onChange={async (e) => {
-                      await api.updateMe({ grading_model: e.target.value })
-                      await onChange()
-                      void checkStatus()
-                    }}
-                    className="select text-xs py-1 px-2.5 bg-slate-900 border-slate-700 text-slate-200 font-mono rounded cursor-pointer"
-                    title="Switch active local grading model"
-                  >
-                    {status.models_installed
-                      .filter(isAllowedQwenCoderModel)
+              <select
+                value={activeModelId}
+                onChange={(e) => void activateModel(e.target.value)}
+                className="select text-xs py-1 px-2.5 bg-slate-900 border-slate-700 text-slate-200 font-mono rounded cursor-pointer"
+                title="Select active grading & assistant model"
+              >
+                {canUseAntigravity && (
+                  <optgroup label="Antigravity Subscription (No API Key)">
+                    {ANTIGRAVITY_MODELS.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.name} — {opt.tier}
+                      </option>
+                    ))}
+                    {agyAvailableModels
+                      .filter((m) => !ANTIGRAVITY_MODELS.some((c) => c.id === m))
                       .map((m) => (
                         <option key={m} value={m}>
-                          {m}
+                          {getModelDisplayInfo(m).label}
                         </option>
                       ))}
-                  </select>
+                  </optgroup>
                 )}
+                <optgroup label="Local Ollama Models">
+                  {ALLOWED_QWEN_CODER_MODELS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.name} {opt.archetype}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
 
               <button
                 className="btn text-xs py-1.5 px-3"
@@ -235,21 +270,36 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
             <div className="mt-4 pt-3 border-t border-ink-line text-xs">
               {status.connected && status.model_ready ? (
                 <div className="flex items-center gap-2 text-emerald-300">
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
-                  <span>Ollama is online and <strong>{user.grading_model || 'model'}</strong> is ready to grade solutions.</span>
+                  <span>
+                    {isAgy ? (
+                      <>Antigravity Subscription (<code className="font-mono">agy</code> CLI) is signed in and <strong>{activeInfo.label}</strong> is ready across all grading and tutor tools (no API key required).</>
+                    ) : (
+                      <>Ollama is online and <strong>{user.grading_model || 'model'}</strong> is ready to grade solutions.</>
+                    )}
+                  </span>
+                </div>
+              ) : isAgy ? (
+                <div className="space-y-2">
+                  <p className="text-rose-300 font-medium">
+                    Antigravity CLI needs setup or sign-in: {status.error || 'Unable to verify `agy models`.'}
+                  </p>
+                  <p className="text-slate-400">
+                    Run <code className="font-mono text-slate-200">agy</code> once in your terminal and complete sign-in with your Antigravity subscription, then click Retry.
+                  </p>
                 </div>
               ) : status.connected ? (
                 <div className="space-y-2">
                   <p className="text-amber-300 font-medium">
-                    Notice: Ollama is running, but model <strong>{user.grading_model || hardware?.recommended_model || 'qwen2.5-coder:3b'}</strong> was not detected in your local library.
+                    Notice: Ollama is running, but model <strong>{user.grading_model || hardware?.recommended_model || 'qwen2.5-coder:7b'}</strong> was not detected in your local library.
                   </p>
                   <p className="text-slate-400">
                     Run this command in your PowerShell / Terminal to download it:
                   </p>
                   <pre className="rounded bg-black/40 p-2 font-mono text-amber-200 text-xs select-all">
-                    ollama pull {user.grading_model || hardware?.recommended_model || 'qwen2.5-coder:3b'}
+                    ollama pull {user.grading_model || hardware?.recommended_model || 'qwen2.5-coder:7b'}
                   </pre>
                 </div>
               ) : (
@@ -258,54 +308,207 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                     Could not connect to Ollama at <code className="font-mono">{status.base_url}</code>.
                   </p>
                   <p className="text-slate-400">
-                    Make sure Ollama is installed and running on your computer. Start it with:
+                    Start Ollama (<code className="font-mono text-sky-200">ollama serve</code>)
+                    {canUseAntigravity ? (
+                      <> or select an <strong>Antigravity Subscription</strong> model below to grade without Ollama.</>
+                    ) : (
+                      '.'
+                    )}
                   </p>
-                  <pre className="rounded bg-black/40 p-2 font-mono text-sky-200 text-xs select-all">
-                    ollama serve
-                  </pre>
                 </div>
               )}
             </div>
           )}
 
-          {/* Supported Local Quantized Qwen Models */}
-          <div className="mt-4 pt-3 border-t border-ink-line space-y-2">
-            <span className="text-xs font-semibold text-slate-300">
-              Supported Models:
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {/* Live VRAM Telemetry & Memory Capacity Monitor (local Ollama only) */}
+          {!isAgy && status?.vram && (
+            <div className="mt-4 pt-3 border-t border-ink-line space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                      <line x1="8" y1="21" x2="16" y2="21" />
+                      <line x1="12" y1="17" x2="12" y2="21" />
+                    </svg>
+                    <span>VRAM &amp; GPU Memory Telemetry</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {status.vram.gpu_name}
+                  </span>
+                </div>
+                {status.vram.model_loaded ? (
+                  <span className="chip text-[10px] uppercase font-bold border-emerald-500/40 text-emerald-300 bg-emerald-500/10 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Model Resident in VRAM
+                  </span>
+                ) : (
+                  <span className="chip text-[10px] uppercase font-bold border-amber-500/40 text-amber-300 bg-amber-500/10">
+                    Standby (Loads on demand)
+                  </span>
+                )}
+              </div>
+
+              {/* Three Stat Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {/* 1. Computer Capacity */}
+                <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                    Computer VRAM Capacity
+                  </span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-lg font-bold font-mono text-slate-100">
+                      {status.vram.capacity_gb != null ? `${status.vram.capacity_gb.toFixed(1)} GB` : 'N/A'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      ({status.vram.capacity_mb != null ? `${Math.round(status.vram.capacity_mb)} MB` : ''})
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400">Total hardware GPU memory ceiling</p>
+                </div>
+
+                {/* 2. Model Occupied VRAM */}
+                <div className="rounded-lg border border-sky-500/30 bg-sky-950/30 p-3 space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-sky-300 tracking-wider">
+                    Model Occupied VRAM
+                  </span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-lg font-bold font-mono text-sky-200">
+                      {status.vram.model_loaded && status.vram.model_vram_gb != null && status.vram.model_vram_gb > 0
+                        ? `${status.vram.model_vram_gb.toFixed(2)} GB`
+                        : `~${status.vram.model_approx_gb?.toFixed(1) || '0.0'} GB`}
+                    </span>
+                    <span className="text-[10px] font-mono text-sky-400">
+                      {status.vram.model_loaded ? 'Active in GPU' : 'Standby footprint'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    {status.vram.model_loaded
+                      ? `Exact VRAM occupied by ${status.vram.model_name || user.grading_model || 'active model'}`
+                      : `Expected footprint when ${status.vram.model_name || user.grading_model || 'active model'} generates`}
+                  </p>
+                </div>
+
+                {/* 3. Available VRAM */}
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-3 space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-emerald-300 tracking-wider">
+                    Available VRAM
+                  </span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-lg font-bold font-mono text-emerald-200">
+                      {status.vram.available_gb != null ? `${status.vram.available_gb.toFixed(2)} GB` : 'N/A'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      ({status.vram.available_mb != null ? `${Math.round(status.vram.available_mb)} MB` : ''})
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400">Free unallocated GPU headroom</p>
+                </div>
+              </div>
+
+              {/* Segmented Capacity Bar */}
+              {status.vram.capacity_gb && status.vram.capacity_gb > 0 && (
+                <div className="space-y-1 pt-1">
+                  <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden flex">
+                    {/* Model Occupied */}
+                    <div
+                      className="bg-sky-400 transition-all duration-300"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          (((status.vram.model_loaded ? status.vram.model_vram_gb || 0 : 0) /
+                            status.vram.capacity_gb) *
+                            100)
+                        )}%`,
+                      }}
+                      title={`Model VRAM: ${(status.vram.model_vram_gb || 0).toFixed(2)} GB`}
+                    />
+                    {/* Other Used */}
+                    <div
+                      className="bg-slate-600 transition-all duration-300"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          (Math.max(
+                            0,
+                            (status.vram.used_gb || 0) -
+                              (status.vram.model_loaded ? status.vram.model_vram_gb || 0 : 0)
+                          ) /
+                            status.vram.capacity_gb) *
+                            100
+                        )}%`,
+                      }}
+                      title="Other System / Desktop VRAM"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                    <span>0 GB</span>
+                    <span>
+                      {status.vram.model_loaded
+                        ? `Model: ${status.vram.model_vram_gb?.toFixed(2)} GB · System: ${status.vram.used_gb?.toFixed(2)} GB`
+                        : `Used: ${status.vram.used_gb?.toFixed(2)} GB · Free: ${status.vram.available_gb?.toFixed(2)} GB`}
+                    </span>
+                    <span>Capacity: {status.vram.capacity_gb.toFixed(1)} GB</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Supported Local Quantized Models — 3 Approved Archetypes */}
+          <div className="mt-4 pt-3 border-t border-ink-line space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-300">
+                Approved Model Archetypes:
+              </span>
+              <span className="text-[10px] text-slate-400">
+                Select only among these 3 models
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
               {ALLOWED_QWEN_CODER_MODELS.map((opt) => {
                 const isInstalled = status?.models_installed?.some(
                   (im) => im.toLowerCase() === opt.id.toLowerCase() || im.toLowerCase().startsWith(opt.id.toLowerCase())
                 )
-                const isActive = (user.grading_model || 'qwen2.5-coder:3b') === opt.id
+                const isActive = (user.grading_model || 'qwen2.5-coder:7b') === opt.id
                 const isRecommended = hardware?.recommended_size.toLowerCase() === opt.size.toLowerCase()
                 return (
                   <div
                     key={opt.id}
-                    className={`rounded-lg border p-2.5 space-y-1.5 transition text-xs ${
+                    className={`rounded-xl border p-3.5 space-y-2 transition text-xs flex flex-col justify-between ${
                       isActive
-                        ? 'border-sky-500/60 bg-sky-950/40'
+                        ? 'border-sky-500/70 bg-sky-950/40 ring-1 ring-sky-500/30'
                         : isRecommended
                         ? 'border-emerald-500/40 bg-emerald-950/20'
                         : isInstalled
                         ? 'border-slate-800 bg-slate-900/50'
-                        : 'border-slate-800/60 bg-slate-900/20 text-slate-500'
+                        : 'border-slate-800/60 bg-slate-900/20 text-slate-400'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-slate-200">{opt.name}</span>
-                      <span className="text-[10px] font-mono text-slate-400">{opt.vramApprox}</span>
+                    <div className="space-y-1.5">
+                      <div className="flex items-start justify-between gap-1.5">
+                        <div>
+                          <h5 className="font-bold text-sm text-slate-100">{opt.name}</h5>
+                          <p className="text-[11px] font-semibold italic text-sky-300 tracking-tight">
+                            {opt.archetype}
+                          </p>
+                        </div>
+                        <span className="chip text-[10px] font-mono shrink-0 px-1.5 py-0.5 border-slate-700 bg-slate-800/80 text-slate-300">
+                          {opt.vramApprox}
+                        </span>
+                      </div>
+
+                      {isRecommended && (
+                        <div className="text-[10px] font-bold text-emerald-300 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                          <span>Recommended for your hardware</span>
+                        </div>
+                      )}
+
+                      <p className="text-[11px] text-slate-400 leading-relaxed">{opt.desc}</p>
                     </div>
 
-                    {isRecommended && (
-                      <div className="text-[10px] font-bold text-emerald-300 flex items-center gap-1">
-                        <span>Recommended for your hardware</span>
-                      </div>
-                    )}
-
-                    <p className="text-[11px] text-slate-400 leading-tight">{opt.desc}</p>
-                    <div className="pt-1 flex items-center justify-between text-[11px]">
+                    <div className="pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
                       {isInstalled ? (
                         <div className="flex items-center gap-2">
                           <span className="text-emerald-400 flex items-center gap-1 font-medium">
@@ -322,7 +525,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                                 await onChange()
                                 void checkStatus()
                               }}
-                              className="text-[10px] text-sky-400 hover:text-sky-300 underline cursor-pointer"
+                              className="text-[11px] font-medium text-sky-400 hover:text-sky-300 underline cursor-pointer"
                             >
                               Activate
                             </button>
@@ -339,7 +542,9 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                         </button>
                       )}
                       {isActive && (
-                        <span className="text-[10px] text-sky-300 font-bold">Active</span>
+                        <span className="chip text-[10px] font-bold border-sky-500/50 text-sky-300 bg-sky-500/10">
+                          Active
+                        </span>
                       )}
                     </div>
                   </div>
@@ -347,6 +552,100 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               })}
             </div>
           </div>
+
+          {canUseAntigravity && (
+            <div className="mt-4 pt-3 border-t border-ink-line space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-200">
+                    Antigravity Subscription Models (No API Key)
+                  </span>
+                  <span
+                    className={`chip text-[10px] font-semibold ${
+                      agyInfo?.connected
+                        ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
+                        : agyInfo?.installed
+                        ? 'border-amber-500/40 text-amber-300 bg-amber-500/10'
+                        : 'border-slate-700 text-slate-400 bg-slate-900/60'
+                    }`}
+                  >
+                    {agyInfo?.connected
+                      ? 'agy CLI Ready'
+                      : agyInfo?.installed
+                      ? 'Sign in with agy'
+                      : 'agy CLI Not Detected'}
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  Runs via <code className="font-mono text-slate-300">agy -p</code> using your Antigravity plan quota
+                </span>
+              </div>
+
+              {agyInfo?.error && !agyInfo.connected && (
+                <p className="text-[11px] text-amber-300/90 bg-amber-950/30 border border-amber-500/30 rounded-lg px-3 py-2">
+                  {agyInfo.error}
+                </p>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {ANTIGRAVITY_MODELS.map((opt) => {
+                  const isActive = (user.grading_model || '').toLowerCase() === opt.id.toLowerCase()
+                  const isDiscovered =
+                    agyAvailableModels.length === 0 || agyAvailableModels.includes(opt.id)
+                  return (
+                    <div
+                      key={opt.id}
+                      className={`rounded-xl border p-3.5 space-y-2 transition text-xs flex flex-col justify-between ${
+                        isActive
+                          ? 'border-indigo-400/70 bg-indigo-950/40 ring-1 ring-indigo-500/30'
+                          : isDiscovered
+                          ? 'border-slate-800 bg-slate-900/50'
+                          : 'border-slate-800/60 bg-slate-900/20 text-slate-400'
+                      }`}
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-start justify-between gap-1.5">
+                          <div>
+                            <h5 className="font-bold text-sm text-slate-100">{opt.name}</h5>
+                            <p className="text-[11px] font-semibold italic text-indigo-300 tracking-tight">
+                              {opt.tier}
+                            </p>
+                          </div>
+                          <span className="chip text-[10px] font-mono shrink-0 px-1.5 py-0.5 border-indigo-500/30 bg-indigo-950/50 text-indigo-200">
+                            Subscription
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 leading-relaxed">{opt.desc}</p>
+                      </div>
+
+                      <div className="pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                        <span
+                          className={`font-medium ${
+                            agyInfo?.connected ? 'text-emerald-400' : 'text-slate-400'
+                          }`}
+                        >
+                          {agyInfo?.connected ? 'Available' : 'Requires agy sign-in'}
+                        </span>
+                        {isActive ? (
+                          <span className="chip text-[10px] font-bold border-indigo-400/50 text-indigo-200 bg-indigo-500/15">
+                            Active
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => void activateModel(opt.id)}
+                            className="text-[11px] font-medium text-indigo-300 hover:text-indigo-200 underline cursor-pointer"
+                          >
+                            Activate
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Feature Toggles */}
@@ -362,9 +661,9 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               }}
             />
             <span className="text-sm">
-              <span className="font-medium text-slate-200">Enable local AI solution grading</span>
+              <span className="font-medium text-slate-200">Enable AI solution grading &amp; tutoring</span>
               <span className="mt-0.5 block text-xs text-slate-400">
-                Grades code correctness, Big-O asymptotic efficiency, and logic edge cases locally using Qwen 2.5 Coder.
+                Powers answer grading, Socratic line hints, Lexicon lookups, Lessons, Leech remediation, Code Lab, and Card Generation using {canUseAntigravity ? 'your active Antigravity Subscription or local Ollama model' : 'your local Ollama model'}.
               </span>
             </span>
           </label>
@@ -382,7 +681,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
             <span className="text-sm">
               <span className="font-medium text-slate-200">Automatic Leech card remediation diagnosis</span>
               <span className="mt-0.5 block text-xs text-slate-400">
-                When you repeatedly struggle with a card, Qwen analyzes your errors and proposes clearer reformulated cards.
+                When you repeatedly struggle with a card, your active grader analyzes errors and proposes clearer reformulated cards.
               </span>
             </span>
           </label>

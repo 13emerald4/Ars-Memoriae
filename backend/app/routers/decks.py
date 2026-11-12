@@ -27,11 +27,14 @@ from app.models import (
 from app.routers.deps import current_user, parse_uuid
 from app.schemas.core import (
     CardAnalyticsOut,
+    CardLexiconGlossAdd,
     CardLexiconGlossesUpdate,
     CardMemoryNoteIn,
     CardNeuroPropsUpdate,
     CardNextIntervalsOut,
     CardOut,
+    CardReorderItem,
+    CardReorderRequest,
     CardReviewLogItemOut,
     DeckCreate,
     DeckOut,
@@ -53,11 +56,24 @@ from app.schemas.code_practice import (
 )
 from app.schemas.review import QueueItem
 from app.services import document_service, ir_service, tree_service
+from app.services.code_ai_service import merge_lexicon_glosses
 from app.services.document_service import DocumentError
 from app.services.fsrs_service import FSRSService, Rating
 from app.services.note_service import default_note_type, sync_cards
+from app.services.question_format_service import format_question_with_code_blocks
 from app.services.rendering import occlusion_payload, render
 from app.services.sync_service import sync_manager
+
+
+def _format_note_field_values(field_values: dict | None) -> dict:
+    fv = dict(field_values or {})
+    if isinstance(fv.get("Front"), str):
+        fv["Front"] = format_question_with_code_blocks(
+            fv["Front"],
+            starter_code=fv.get("starter_code") if isinstance(fv.get("starter_code"), str) else None,
+            language=fv.get("language") if isinstance(fv.get("language"), str) else None,
+        )
+    return fv
 
 router = APIRouter(prefix="/api", tags=["decks"])
 
@@ -733,17 +749,15 @@ async def delete_all_decks(
         await db.scalars(select(Card.note_id).where(Card.deck_id.in_(deck_ids)).distinct())
     ).all()
 
-    for deck_id in deck_ids:
-        await tree_service.detach_entity_node(db, KnowledgeNode.deck_id == deck_id)
+    await tree_service.detach_entity_node(db, KnowledgeNode.deck_id.in_(deck_ids))
 
     if note_ids:
         notes = (await db.scalars(select(Note).where(Note.id.in_(note_ids)))).all()
         for note in notes:
             await db.delete(note)
+    await db.execute(delete(Card).where(Card.deck_id.in_(deck_ids)))
 
-    decks = (await db.scalars(select(Deck).where(Deck.id.in_(deck_ids)))).all()
-    for deck in decks:
-        await db.delete(deck)
+    await db.execute(delete(Deck).where(Deck.id.in_(deck_ids)))
 
     await db.commit()
 
@@ -756,25 +770,57 @@ async def delete_deck(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     deck = await _owned_deck(db, user, parse_uuid(deck_id))
-    count = await db.scalar(select(func.count()).select_from(Card).where(Card.deck_id == deck.id))
-    if count and not cascade:
+
+    # Collect target deck and all descendant subdecks recursively
+    all_deck_ids = [deck.id]
+    to_visit = [deck.id]
+    while to_visit:
+        curr_id = to_visit.pop()
+        child_ids = (
+            await db.scalars(
+                select(Deck.id).where(Deck.user_id == user.id, Deck.parent_id == curr_id)
+            )
+        ).all()
+        for c_id in child_ids:
+            if c_id not in all_deck_ids:
+                all_deck_ids.append(c_id)
+                to_visit.append(c_id)
+
+    total_cards = (
+        await db.scalar(
+            select(func.count()).select_from(Card).where(Card.deck_id.in_(all_deck_ids))
+        )
+    ) or 0
+
+    if total_cards and not cascade:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            f"deck still holds {count} cards — move or delete them first, or pass cascade=true",
+            f"deck and its subdecks hold {total_cards} cards — move or delete them first, or pass cascade=true",
         )
-    if count and cascade:
+    if not cascade and len(all_deck_ids) > 1:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"deck contains {len(all_deck_ids) - 1} subdecks — delete them first, or pass cascade=true",
+        )
+
+    if cascade:
         note_ids = (
-            await db.scalars(select(Card.note_id).where(Card.deck_id == deck.id).distinct())
+            await db.scalars(select(Card.note_id).where(Card.deck_id.in_(all_deck_ids)).distinct())
         ).all()
         if note_ids:
             notes = (await db.scalars(select(Note).where(Note.id.in_(note_ids)))).all()
             for note in notes:
                 await db.delete(note)
+        # Delete any remaining cards
+        await db.execute(delete(Card).where(Card.deck_id.in_(all_deck_ids)))
 
-    # Topics filed under this deck in the knowledge tree outlive it; lift them
+    # Topics filed under any of these decks in the knowledge tree outlive them; lift them
     # to its parent rather than letting the node's FK cascade delete them.
-    await tree_service.detach_entity_node(db, KnowledgeNode.deck_id == deck.id)
-    await db.delete(deck)
+    await tree_service.detach_entity_node(db, KnowledgeNode.deck_id.in_(all_deck_ids))
+
+    # Delete all descendant decks
+    await db.execute(delete(Deck).where(Deck.id.in_(all_deck_ids)))
+
     await db.commit()
 
 
@@ -837,7 +883,11 @@ async def create_note(
     else:
         nt = await default_note_type(db, user, body.template_kind or "basic")
 
-    note = Note(user_id=user.id, note_type_id=nt.id, field_values=body.field_values)
+    note = Note(
+        user_id=user.id,
+        note_type_id=nt.id,
+        field_values=_format_note_field_values(body.field_values),
+    )
     db.add(note)
     await db.flush()
     await sync_cards(
@@ -876,7 +926,7 @@ async def update_note(
     if note is None or note.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "note not found")
     if body.field_values is not None:
-        note.field_values = body.field_values
+        note.field_values = _format_note_field_values(body.field_values)
     nt = await db.get(NoteType, note.note_type_id)
     cards = (await db.scalars(select(Card).where(Card.note_id == note.id))).all()
     deck_id = cards[0].deck_id if cards else None
@@ -940,6 +990,27 @@ async def list_cards(
         needle = search.lower()
         out = [c for c in out if needle in c.front.lower() or needle in c.back.lower()]
     return out[offset : offset + limit]
+
+
+@router.post("/cards/reorder", response_model=list[CardOut])
+async def reorder_cards(
+    body: CardReorderRequest,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[CardOut]:
+    """Reorder and/or move cards across decks in one batch transaction."""
+    cards_out = []
+    for item in body.items:
+        card = await _owned_card(db, user, parse_uuid(item.id))
+        if item.deck_id:
+            deck = await _owned_deck(db, user, parse_uuid(item.deck_id))
+            card.deck_id = deck.id
+        card.position = item.position
+        cards_out.append(card)
+    await db.commit()
+    for c in cards_out:
+        await db.refresh(c)
+    return [card_out(c) for c in cards_out]
 
 
 @router.post("/cards/{card_id}/suspend", response_model=CardOut)
@@ -1129,6 +1200,29 @@ async def update_card_lexicon_glosses(
     """Update saved lexicon/concordance glosses on a card."""
     card = await _owned_card(db, user, parse_uuid(card_id))
     card.lexicon_glosses = body.glosses
+    await db.commit()
+    await db.refresh(card)
+    return card_out(card)
+
+
+@router.post("/cards/{card_id}/lexicon-glosses", response_model=CardOut)
+async def add_card_lexicon_gloss(
+    card_id: str,
+    body: CardLexiconGlossAdd,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CardOut:
+    """Merge/append a single lexicon gloss onto a card without overwriting existing definitions."""
+    card = await _owned_card(db, user, parse_uuid(card_id))
+    gloss = dict(body.gloss or {})
+    term = str(gloss.get("term", "")).strip()
+    if not term:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "gloss term cannot be empty")
+    gloss["term"] = term
+    if not gloss.get("pinned_at"):
+        gloss["pinned_at"] = datetime.now(UTC).isoformat()
+    merged = merge_lexicon_glosses(card.lexicon_glosses, [gloss])
+    card.lexicon_glosses = list(merged)
     await db.commit()
     await db.refresh(card)
     return card_out(card)
@@ -1341,6 +1435,9 @@ async def query_deck_documents(
 ) -> QueryDeckDocsResponse:
     """Finds information within attached deck docs for a query / highlighted code block."""
     deck = await _owned_deck(db, user, parse_uuid(deck_id))
+    from app.services.code_ai_service import CodeAiService, rank_extracts_for_query
+
+    ai_svc = CodeAiService.for_user(user, body.model)
     source_ids = []
     curr_deck: Deck | None = deck
     visited_deck_ids = set()
@@ -1367,7 +1464,7 @@ async def query_deck_documents(
             explanation=None,
             key_takeaway=None,
             citations=[],
-            model_used=body.model or user.grading_model or "qwen2.5-coder:7b",
+            model_used=ai_svc.grading_service.model,
             available_models=[],
         )
 
@@ -1386,11 +1483,9 @@ async def query_deck_documents(
             explanation=None,
             key_takeaway=None,
             citations=[],
-            model_used=body.model or user.grading_model or "qwen2.5-coder:7b",
+            model_used=ai_svc.grading_service.model,
             available_models=[],
         )
-
-    from app.services.code_ai_service import CodeAiService, rank_extracts_for_query
 
     top_excerpts = rank_extracts_for_query(
         query=body.query,
@@ -1398,14 +1493,21 @@ async def query_deck_documents(
         top_k=5,
     )
 
-    ai_svc = CodeAiService(model=body.model or user.grading_model)
-    res = await ai_svc.query_deck_docs(
-        query=body.query,
-        doc_excerpts=top_excerpts,
-        full_code=body.full_code,
-        language=body.language,
-        model=body.model,
-    )
+    from app.services.grading_service import GradingUnavailable, VramExhaustedError
+
+    try:
+        res = await ai_svc.query_deck_docs(
+            query=body.query,
+            doc_excerpts=top_excerpts,
+            full_code=body.full_code,
+            language=body.language,
+            model=ai_svc.grading_service.model,
+        )
+    except (GradingUnavailable, VramExhaustedError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
     return QueryDeckDocsResponse(**res)
 
 

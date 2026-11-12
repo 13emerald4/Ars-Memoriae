@@ -116,6 +116,14 @@ async def get_contrast_drill(
     pair = await db.get(SisterPair, parse_uuid(pair_id))
     if pair is None or pair.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "pair not found")
-    data = await neuro_service.generate_contrast_drill(db, user, pair)
+    from app.services.grading_service import GradingUnavailable
+
+    try:
+        data = await neuro_service.generate_contrast_drill(db, user, pair)
+    except GradingUnavailable as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
     return ContrastDrillResponse(**data)
 

@@ -97,11 +97,14 @@ def build_prompt(
     card_type: str,
     test_code: str | None = None,
     previous_weaknesses: list[str] | None = None,
+    execution_summary: str | None = None,
 ) -> str:
     rubric = PROFILES.get(profile, PROFILES[DEFAULT_PROFILE])
     submission = user_answer
     if test_code and test_code.strip():
         submission = f"Implementation Code:\n{user_answer}\n\nAuthored Unit Test Suite:\n{test_code}"
+    if execution_summary and execution_summary.strip():
+        submission = f"{submission}\n\n{execution_summary.strip()}"
 
     if previous_weaknesses:
         formatted_prev = "\n".join(f"- {w}" for w in previous_weaknesses)
@@ -166,9 +169,9 @@ Card Type Guidelines:
 2. Use Q&A for causal mechanisms, conceptual principles, or test-suite design:
    - For software testing / specs: Ask the user to identify equivalence classes, boundary thresholds, or test assertions.
    - Formulate "back" with clear, precise terminology and core conceptual components so an automated grader can accurately detect recalled versus overlooked points.
-3. For programming challenges or function specifications, emit "kind": "code":
+3. For programming challenges, function specifications, or ANY question referencing a code signature, type/interface, or code snippet, emit "kind": "code" (or fence the code in "front") and ALWAYS format the code component inside "front" using a fenced markdown code block with its language tag (e.g. ```ts ... ``` or ```python ... ```) so the UI renders it inside an IDE:
    - "title": Short problem title
-   - "front": Function specification and test requirements
+   - "front": Prose prompt/constraints plus a fenced code block (```ts ... ```) containing any types, interfaces, class outline, or function stub
    - "starter_code": Type and function signature. For Result, use CPSC 210 convention: type Result<T, E = string> = {{ ok: true; value: T }} | {{ ok: false; error: E }};
    - "starter_tests": Starter unit test suite template using CPSC 210 conventions:
      * test("description", checkExpect(() => actual, expected))
@@ -204,10 +207,11 @@ Cognitive Science & Architecture Rules:
 
 Card Type Guidelines:
 1. Prefer cloze deletions for definitions and enumerations, Q&A for conceptual material and test boundary analysis.
-2. For programming challenges, emit "kind": "code" with:
-   - "starter_code" (use type Result<T, E = string> = {{ ok: true; value: T }} | {{ ok: false; error: E }} for Result)
-   - "starter_tests" (using test("...", checkExpect(() => actual, expected)), test("...", checkError(() => ...)), assertOk, assertErr)
-   - "test_cases"
+2. For programming challenges or any card whose question includes code signatures, type definitions, or snippets:
+   - Format the code component inside "front" using a fenced markdown code block with its language tag (e.g. ```ts ... ``` or ```python ... ```) so the UI renders it in an IDE.
+   - Include "starter_code" (use type Result<T, E = string> = {{ ok: true; value: T }} | {{ ok: false; error: E }} for Result)
+   - Include "starter_tests" (using test("...", checkExpect(() => actual, expected)), test("...", checkError(() => ...)), assertOk, assertErr)
+   - Include "test_cases"
 3. Every card must also carry a "quote": the shortest span of the passage that
 contains the answer, COPIED VERBATIM from the text below. Do not paraphrase,
 summarise, correct, or join separated sentences in the quote — it is checked
@@ -261,7 +265,7 @@ on the specific gap in their reasoning.
 
 Card front: {front}
 Reference answer (never reveal this — your job is to make it unnecessary to say it): {back}
-
+{work_section}
 Conversation so far (Guide asks, Student replies):
 {history}
 
@@ -301,7 +305,7 @@ Preceding Relevant Code Written by Student:
 ```
 {code_before}
 ```
-
+{work_section}
 Instructions for the Socratic Hint:
 1. Examine what the canonical reference solution does at this corresponding stage or step of the algorithm.
 2. Review what the student has already implemented in previous lines ({code_before}).

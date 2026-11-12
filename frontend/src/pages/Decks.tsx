@@ -2,26 +2,30 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../api/client'
 import { KnowledgeTree, type KnowledgeTreeNode } from '../components/KnowledgeTree'
-import type {
-  AcceptDeckResponse,
-  AtomicityLintResult,
-  Card,
-  Deck,
-  DeckDocumentOut,
-  DeckStats,
-  DecomposedCardItem,
-  DocumentUpload,
-  GenerateDeckResponse,
-  JsonImportResult,
-  NoteType,
-  OcclusionShape,
-  SequentialClozeItem,
+import {
+  ALL_GENERATION_MODEL_OPTIONS,
+  isAllowedGradingModel,
+  type AcceptDeckResponse,
+  type AtomicityLintResult,
+  type Card,
+  type Deck,
+  type DeckDocumentOut,
+  type DeckStats,
+  type DecomposedCardItem,
+  type DocumentUpload,
+  type GenerateDeckResponse,
+  type JsonImportResult,
+  type NoteType,
+  type OcclusionShape,
+  type SequentialClozeItem,
 } from '../api/types'
+import { useAuth } from '../hooks/useAuth'
 import { CardAnalyticsModal } from '../components/CardAnalyticsModal'
 import { DeckReviewStatsBar, CompactDeckDistributionBars } from '../components/DeckReviewStatsBar'
 import { OcclusionEditor } from '../components/Occlusion'
 import { Empty, ErrorNote, PriorityBar, RichText, Section, Spinner } from '../components/ui'
 import DeckCardsViewer from '../components/DeckCardsViewer'
+import { isCodeCard } from '../utils/codeUtils'
 
 export default function Decks() {
   const navigate = useNavigate()
@@ -37,7 +41,7 @@ export default function Decks() {
       const [d, nt] = await Promise.all([api.decks(), api.noteTypes()])
       setDecks(d)
       setNoteTypes(nt)
-      setSelected((prev) => prev ?? d[0]?.id ?? null)
+      setSelected((prev) => (prev && d.some((x) => x.id === prev) ? prev : (d[0]?.id ?? null)))
     } catch (err) {
       setError(err)
     } finally {
@@ -562,21 +566,39 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
 /** Upload a document -> the model proposes cards that each cite the passage
  *  they came from -> you approve -> the citations are kept and shown during
  *  review, after you answer. Nothing is written until you accept. */
-const GENERATION_MODELS = [
-  { id: 'qwen3.5:9b', name: 'Qwen 3.5 (9B Instruct Q4_K_M)', badge: 'Advanced Local Engine' },
-  { id: 'qwen2.5-coder:7b', name: 'Qwen 2.5 Coder (7B Instruct)', badge: 'Local Engine' },
-]
+const GENERATION_MODELS = ALL_GENERATION_MODEL_OPTIONS
 
 const THINKING_LEVELS = [
   { id: 'dynamic', label: 'Default', budget: undefined, hint: 'Standard inference' },
 ]
 
 function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
+  const { user } = useAuth()
+  const canUseAntigravity = Boolean(user?.can_use_antigravity)
+  const modelOptions = useMemo(
+    () => GENERATION_MODELS.filter((m) => canUseAntigravity || m.provider !== 'antigravity'),
+    [canUseAntigravity],
+  )
   const [doc, setDoc] = useState<DocumentUpload | null>(null)
   const [deckName, setDeckName] = useState('')
   const [thematicNature, setThematicNature] = useState('')
   const [docDocumentation, setDocDocumentation] = useState('')
-  const [selectedModel, setSelectedModel] = useState('qwen2.5-coder:7b')
+  const [selectedModel, setSelectedModel] = useState(() =>
+    user?.grading_model &&
+    isAllowedGradingModel(user.grading_model) &&
+    (canUseAntigravity || !user.grading_model.startsWith('antigravity:'))
+      ? user.grading_model
+      : 'qwen2.5-coder:7b',
+  )
+  useEffect(() => {
+    if (
+      user?.grading_model &&
+      isAllowedGradingModel(user.grading_model) &&
+      (canUseAntigravity || !user.grading_model.startsWith('antigravity:'))
+    ) {
+      setSelectedModel(user.grading_model)
+    }
+  }, [user?.grading_model, canUseAntigravity])
   const [selectedThinking, setSelectedThinking] = useState('dynamic')
   const [generated, setGenerated] = useState<GenerateDeckResponse | null>(null)
   const [chosen, setChosen] = useState<Set<number>>(new Set())
@@ -714,7 +736,7 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
                   value={selectedModel}
                   onChange={(e) => setSelectedModel(e.target.value)}
                 >
-                  {GENERATION_MODELS.map((m) => (
+                  {modelOptions.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name} — {m.badge}
                     </option>
@@ -1048,13 +1070,19 @@ function DeckList({
   }
 
   async function handleDeleteDeck(deck: Deck) {
-    if (!confirm(`Delete deck "${deck.name}" and all its ${deck.card_count} cards?`)) {
+    const cardCount = deck.total_card_count ?? deck.card_count ?? 0
+    if (!confirm(`Delete deck "${deck.name}" and all its ${cardCount} cards?`)) {
       return
     }
     setBusy(true)
     try {
       await api.deleteDeck(deck.id, true)
+      if (selected === deck.id) {
+        onSelect('')
+      }
       onChange()
+    } catch (err: any) {
+      alert(err?.message || 'Failed to delete deck.')
     } finally {
       setBusy(false)
     }
@@ -1393,8 +1421,9 @@ function DeckList({
               }
             }}
             onDelete={(node) => {
-              if (!node.originalDeck) return
-              handleDeleteDeck(node.originalDeck)
+              const targetDeck = node.originalDeck || decks.find((d) => d.id === (node.deckId || node.id))
+              if (!targetDeck) return
+              void handleDeleteDeck(targetDeck)
             }}
             onDropBranch={(source, target, position) => {
               if (!source.deckId) return
@@ -2241,6 +2270,7 @@ function Browser({
 }) {
   const [cards, setCards] = useState<Card[]>([])
   const [search, setSearch] = useState('')
+  const [filterType, setFilterType] = useState<'both' | 'code' | 'qa'>('both')
   const [loading, setLoading] = useState(true)
   const [selectedCardForAnalytics, setSelectedCardForAnalytics] = useState<string | null>(null)
 
@@ -2257,19 +2287,60 @@ function Browser({
     void load()
   }, [load])
 
-  const shown = cards.filter(
-    (c) =>
-      !search ||
-      c.front.toLowerCase().includes(search.toLowerCase()) ||
-      c.back.toLowerCase().includes(search.toLowerCase()),
-  )
+  const shown = cards.filter((c) => {
+    if (filterType === 'code' && !isCodeCard(c)) return false
+    if (filterType === 'qa' && isCodeCard(c)) return false
+    if (!search) return true
+    const q = search.toLowerCase()
+    return c.front.toLowerCase().includes(q) || c.back.toLowerCase().includes(q)
+  })
 
   return (
     <Section
       title={`Cards (${cards.length})`}
       description="Everything in this deck, including what the queue isn't showing today. Click any card or Analytics to inspect memory dynamics & weak points."
       actions={
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Type filter: Coding, Q&A, or Both */}
+          <div className="inline-flex rounded-lg bg-[#1a2131] p-0.5 border border-ink-line/60">
+            <button
+              type="button"
+              onClick={() => setFilterType('both')}
+              className={`px-2 py-1 rounded text-xs font-medium transition cursor-pointer ${
+                filterType === 'both'
+                  ? 'bg-sky-600/40 text-sky-100 border border-sky-500/50 shadow-sm font-semibold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Show both Coding and Q&A cards"
+            >
+              Both ({cards.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('code')}
+              className={`px-2 py-1 rounded text-xs font-medium transition cursor-pointer ${
+                filterType === 'code'
+                  ? 'bg-indigo-600/40 text-indigo-100 border border-indigo-500/50 shadow-sm font-semibold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Show only Coding problem cards"
+            >
+              Coding ({cards.filter(isCodeCard).length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('qa')}
+              className={`px-2 py-1 rounded text-xs font-medium transition cursor-pointer ${
+                filterType === 'qa'
+                  ? 'bg-emerald-600/40 text-emerald-100 border border-emerald-500/50 shadow-sm font-semibold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Show only Q&A flashcards"
+            >
+              Q&amp;A ({cards.filter((c) => !isCodeCard(c)).length})
+            </button>
+          </div>
+
           {onOpenCards && (
             <button
               type="button"
@@ -2324,8 +2395,17 @@ function Browser({
                   onClick={() => setSelectedCardForAnalytics(c.id)}
                   title="Click to inspect card analytics, memory retention dynamics, and weak points"
                 >
-                  <div className="group-hover:text-sky-300 transition">
-                    <RichText text={c.front} className="text-sm text-slate-200" />
+                  <div className="flex items-start gap-2 group-hover:text-sky-300 transition">
+                    <span
+                      className={`px-1.5 py-0.2 rounded text-[10px] font-medium shrink-0 mt-0.5 ${
+                        isCodeCard(c)
+                          ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30'
+                          : 'bg-slate-700/30 text-slate-300 border border-slate-600/30'
+                      }`}
+                    >
+                      {isCodeCard(c) ? 'Coding' : 'Q&A'}
+                    </span>
+                    <RichText text={c.front} className="min-w-0 flex-1 text-sm text-slate-200" compactCode={true} />
                   </div>
                   <RichText text={c.back} className="mt-1 text-sm text-slate-500" />
                 </div>
@@ -2588,150 +2668,6 @@ Generate cards from the material below:
 
 <PASTE YOUR SOURCE TEXT / NOTES / TOPIC HERE>`
 
-export const SPAN321_EXAM_PROMPT = `# Context & Task: Flashcard Refactoring for SPAN 321 (Culturas de España)
-
-You are an expert in cognitive science, spaced repetition (Anki/SuperMemo), and Spanish cultural history. Your task is to refactor and optimize a flashcard deck (\`SPAN321_Examen1_Flashcards.json\`) for the course **SPAN 321: Culturas de España** (Instructor: Prof. María Soledad Fernández Utrera / "Marisol").
-
----
-
-## 1. Instructor Rubric & Exam Constraints (Non-Negotiable)
-
-Marisol evaluates four strict criteria:
-1. **Direct First-Sentence Rule:** The very first sentence must answer the question directly. If a century or date is requested, the century/date goes first.
-2. **Follow PPT / Chronological Progression:** Do not skip steps or alter chronological sequences.
-3. **One Idea Per Sentence:** Concrete facts with explicit names and dates. Never use vague phrases like *"hace mucho"* or *"varios siglos"*.
-4. **No Category Bleed:** Never mix pre-Roman peoples (Iberians, Celts, Celtiberians, Phoenicians, Greeks, Carthaginians) or confuse ancient with modern concepts.
-5. **Mandatory PPT Vocabulary:** Must preserve technical terms:
-   * \`hieratismo\`
-   * \`policromía\`
-   * \`atomismo\`
-   * \`paterfamilias\`
-   * \`Ius Latii\`
-   * \`municipio\`
-   * \`animismo naturista\`
-   * \`estoicismo\`
-   * \`basílica\`
-6. **Instructor Discrepancy Invariants (Overrides standard textbook facts):**
-   * **Constantino:** Siglo IV (313 d. C., Edicto de Milán) — *do not use s. III*.
-   * **Teodosio:** Refer strictly to "Teodosio (s. IV)" — *do not write "Teodosio II"*.
-   * **Córcega y Cerdeña:** Cartago lost Corsica and Sardinia *after* the 1st Punic War and *before* invading Iberia.
-   * **Ius Latii vs. Ciudadanía:** *Ius Latii* granted by Vespasiano (s. I d. C.); universal Roman citizenship granted by Caracalla (s. III d. C.).
-   * **Provincia moderna:** Emerges in the **19th century (1812–1833)**; distinct from Roman administrative provinces.
-
----
-
-## 2. Cognitive Science & Flashcard Architecture Rules
-
-Refactor the deck following **Piotr Wozniak’s Minimum Information Principle**, **Sweller’s Cognitive Load Theory**, and **Bower’s Hierarchical Semantic Retrieval Theory**:
-
-### Rule A: Atomicity (Eliminate Bloat)
-* No card should require recalling more than 1–2 distinct facts or sentences.
-* Never test definition + date + multi-stage history on a single card. Split into sub-cards (e.g., \`1A\`, \`1B\`, \`1C\`).
-
-### Rule B: Elimination of "Wall-of-Text" Essay Cards
-* **Do not put 200+ word essays on the back of cards.** This induces the illusion of competence.
-* Transform essay questions into **Structural Skeleton Trigger Cards** using hierarchical trees (outlining the 4–5 thematic movements in order).
-
-### Rule C: Use Cloze Deletion for Lists and Characteristics
-* When 4 or more distinct features must be memorized (e.g., Altamira cave art, elements of Roman religion), use Cloze Deletion cards rather than long free-recall lists.
-
-### Rule D: Dual-Coding Schema for Art Pieces
-Every artwork must strictly adhere to the 4-step analysis schema:
-$$\\text{1. Qué es} \\longrightarrow \\text{2. Dónde y Cuándo} \\longrightarrow \\text{3. Qué vemos} \\longrightarrow \\text{4. Qué significa / Función}$$
-
----
-
-## 3. Tree & Subtree Formatting Rules
-
-Incorporate **ASCII trees** (\`├──\`, \`└──\`) into the cards to provide clear visual chunking and hierarchical organization:
-
-1. **Depth Limit:** 2–3 levels maximum per card (\`Parent\` $\\to$ \`Child\` $\\to$ \`Grandchild\`).
-2. **Context Anchors:** When a card tests a specific atomic node (e.g., *Municipios* or *Ius Latii*), include the mini-tree on the back highlighting \`[ESTA CARTA]\` to show where it fits into the broader framework.
-3. **Macro vs. Micro Testing:**
-   * Test the top branches first on a Macro card.
-   * Test the sub-branches on separate Micro cards.
-
-### Visual Tree Templates
-
-#### Hierarchy of Social Classes:
-\`\`\`text
-Clases sociales (Roma)
-├── 1. Libres
-│   ├── Ciudadanos romanos (Caracalla, s. III d. C.)
-│   ├── Latinos (Ius Latii, Vespasiano, s. I d. C.)
-│   └── Extranjeros
-├── 2. Semilibres (colonos)
-└── 3. Esclavos
-\`\`\`
-
-#### Territorial Organization:
-\`\`\`text
-Organización territorial
-├── Colonias romanas (legionarios veteranos [30 años] + colonos semilibres)
-├── Municipios (ciudades indígenas aliadas, autónomas, leyes propias, gran arraigo)
-└── Provincias (regiones naturales e identidades)
-    ├── Principales: Tarraconense, Lusitana, Bética
-    └── Posteriores: Galaica, Cartaginense, Mauritana, Baleárica
-\`\`\`
-
-#### Composition of Roman Religion:
-\`\`\`text
-Religión romana (mezcla de 4 elementos)
-├── 1. Mitología griega
-├── 2. Culto al emperador (político y religioso)
-├── 3. Animismo naturista (poderes a la naturaleza)
-└── 4. Abstracción de conceptos sociopolíticos (ej. juventud)
-\`\`\`
-
-#### Evolution of the "Provincia" Concept:
-\`\`\`text
-Evolución de la división territorial
-├── 1. Roma: Tarraconense, Lusitana, Bética
-├── 2. Edad Media: Reinos divididos (Asturias, León, Castilla, Aragón, Al-Andalus)
-├── 3. Siglo XVIII: Borbones centralizan y eliminan derechos regionales
-└── 4. Siglo XIX (1812–1833): Surge el concepto moderno (50 provincias / 17 CCAA)
-\`\`\`
-
-#### Universal Essay A Skeleton (Presencia de Roma):
-\`\`\`text
-Ensayo A: Hispania Unida
-├── Tesis: Con Roma empieza España como nación (unidad política y económica)
-├── 1. Llegada: Guerras Púnicas (I, II [218 a.C., Escipiones, Ampurias], III)
-├── 2. Conquista: 2 siglos (Viriato, Numancia, astures y cántabros; 38 a.C. Augusto)
-├── 3. Organización: Derecho romano, clases, colonias/municipios, provincias
-├── 4. Romanización: Unidad frente al atomismo, ritmos, latín, emperadores
-└── Conclusión: Herencia viva (derecho, lengua, municipios, concepto de nación)
-\`\`\`
-
----
-
-## 4. Target JSON Schema
-
-When generating or refactoring cards, format each item using this JSON schema:
-
-\`\`\`json
-{
-  "card_type": "qa" | "cloze",
-  "front": "Prompt strictly adhering to Marisol's questions or atomic triggers",
-  "image": "/media/image_name.jpg (optional)",
-  "back": "Direct answer in sentence 1 + optional ASCII tree for context",
-  "cloze_text": "Text with {{c1::cloze deletions}} if card_type is cloze",
-  "locator": "Slide or guide reference",
-  "tags": ["topic", "subtopic"]
-}
-\`\`\`
-
----
-
-## 5. Execution Directive
-
-Parse the provided flashcard deck:
-1. Split every composite/bloated question into single-idea atomic cards.
-2. Convert multi-item lists into Cloze Deletions.
-3. Convert 200+ word essay answers into structural ASCII tree outlines.
-4. Add ASCII context trees to definitions and organizational questions.
-5. Ensure 100% compliance with Marisol's strict vocabulary and historical date invariants.`
-
 /** Bulk-create notes/cards from a hand-written or scripted JSON file — the
  *  direct JSON upload path. One request targets one deck (created if missing).
  *  Accepts a bare array (deck name comes from the field below) or an
@@ -2880,16 +2816,14 @@ function JsonImportPanel({ onImported }: { onImported: () => void }) {
 function LlmPromptPanel() {
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const [promptCategory, setPromptCategory] = useState<'course' | 'code' | 'general' | 'exam_refactor'>('exam_refactor')
+  const [promptCategory, setPromptCategory] = useState<'code' | 'qa' | 'hybrid'>('code')
 
   const activePrompt =
-    promptCategory === 'course'
-      ? COURSE_TEXTBOOK_PROMPT
-      : promptCategory === 'code'
+    promptCategory === 'code'
       ? CODING_ONLY_PROMPT
-      : promptCategory === 'exam_refactor'
-      ? SPAN321_EXAM_PROMPT
-      : LLM_PROMPT
+      : promptCategory === 'qa'
+      ? LLM_PROMPT
+      : COURSE_TEXTBOOK_PROMPT
 
   async function handleCopy() {
     await navigator.clipboard.writeText(activePrompt)
@@ -2912,38 +2846,14 @@ function LlmPromptPanel() {
       }
     >
       <div className="space-y-3">
-        {/* Category Tabs */}
+        {/* Category Tabs - Exactly 3 Options */}
         <div className="flex flex-wrap items-center gap-2 border-b border-ink-line/80 pb-2">
           <button
             type="button"
-            onClick={() => setPromptCategory('exam_refactor')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              promptCategory === 'exam_refactor'
-                ? 'border border-amber-500/50 bg-amber-500/20 text-amber-200 font-semibold'
-                : 'border border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <span>SPAN 321 / Exam Refactor</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setPromptCategory('course')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              promptCategory === 'course'
-                ? 'border border-sky-500/50 bg-sky-500/20 text-sky-200 font-semibold'
-                : 'border border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <span>Course &amp; Textbook</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setPromptCategory('code')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
               promptCategory === 'code'
-                ? 'border border-emerald-500/50 bg-emerald-500/20 text-emerald-200 font-semibold'
+                ? 'border border-indigo-500/50 bg-indigo-500/20 text-indigo-200 font-semibold'
                 : 'border border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -2952,14 +2862,26 @@ function LlmPromptPanel() {
 
           <button
             type="button"
-            onClick={() => setPromptCategory('general')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              promptCategory === 'general'
-                ? 'border border-indigo-500/50 bg-indigo-500/20 text-indigo-200 font-semibold'
+            onClick={() => setPromptCategory('qa')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
+              promptCategory === 'qa'
+                ? 'border border-emerald-500/50 bg-emerald-500/20 text-emerald-200 font-semibold'
                 : 'border border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            <span>Cognitive Flashcards</span>
+            <span>Q&amp;A Flashcards Only</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPromptCategory('hybrid')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
+              promptCategory === 'hybrid'
+                ? 'border border-sky-500/50 bg-sky-500/20 text-sky-200 font-semibold'
+                : 'border border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>Coding &amp; Q&amp;A Flashcards</span>
           </button>
         </div>
 
@@ -2975,7 +2897,7 @@ function LlmPromptPanel() {
           </div>
           <button
             onClick={() => setExpanded((e) => !e)}
-            className="text-xs text-sky-400 hover:text-sky-300 transition font-medium self-start sm:self-center"
+            className="text-xs text-sky-400 hover:text-sky-300 transition font-medium self-start sm:self-center cursor-pointer"
           >
             {expanded ? '▲ Hide' : '▼ View'}
           </button>
@@ -2985,13 +2907,11 @@ function LlmPromptPanel() {
           <div className="relative rounded-lg border border-ink-line/80 bg-[#0d1117] p-3 text-xs font-mono text-slate-300">
             <div className="flex justify-between items-center mb-2 pb-2 border-b border-ink-line/40">
               <span className="text-[11px] text-slate-400 font-sans">
-                {promptCategory === 'course'
-                  ? 'Hybrid Textbook Prompt (Auto-Classify Code vs Theory):'
-                  : promptCategory === 'code'
-                  ? 'Pure LeetCode Coding Problem Prompt:'
-                  : promptCategory === 'exam_refactor'
-                  ? 'SPAN 321 & Humanities Exam Refactoring Prompt (Cognitive Science & Rubric Invariants):'
-                  : 'Cognitive Flashcard Prompt (Atomicity & ASCII Trees):'}
+                {promptCategory === 'code'
+                  ? 'Coding Problems (LeetCode & IDE sandbox problems):'
+                  : promptCategory === 'qa'
+                  ? 'Q&A Flashcards Only (Atomic conceptual recall & ASCII trees):'
+                  : 'Coding & Q&A Flashcards (Auto-classifies code vs conceptual theory):'}
               </span>
               <button
                 onClick={handleCopy}

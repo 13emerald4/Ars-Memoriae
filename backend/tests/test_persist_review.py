@@ -163,3 +163,48 @@ async def test_deck_persist_items_unseen_only(auth_client: AsyncClient):
     assert resp_unseen_empty.json() == []
 
 
+@pytest.mark.asyncio
+async def test_cards_reorder_and_persist_items(auth_client: AsyncClient):
+    create_resp = await auth_client.post("/api/decks", json={"name": "Reorder Test Deck"})
+    deck_id = create_resp.json()["id"]
+
+    n1 = (await auth_client.post(
+        "/api/notes",
+        json={
+            "deck_id": deck_id,
+            "template_kind": "basic",
+            "field_values": {"Front": "Q1", "Back": "A1"},
+        },
+    )).json()
+    n2 = (await auth_client.post(
+        "/api/notes",
+        json={
+            "deck_id": deck_id,
+            "template_kind": "basic",
+            "field_values": {"Front": "Q2", "Back": "A2"},
+        },
+    )).json()
+
+    c1_id = n1["cards"][0]["id"]
+    c2_id = n2["cards"][0]["id"]
+
+    # Reorder cards: c2 first (position 1), c1 second (position 2)
+    reorder_resp = await auth_client.post(
+        "/api/cards/reorder",
+        json={"items": [{"id": c2_id, "position": 1}, {"id": c1_id, "position": 2}]},
+    )
+    assert reorder_resp.status_code == 200
+    res_cards = reorder_resp.json()
+    assert len(res_cards) == 2
+
+    # Fetch persist items -> c2 should be first
+    resp = await auth_client.get(f"/api/decks/{deck_id}/persist-items")
+    assert resp.status_code == 200
+    items = resp.json()
+    assert items[0]["id"] == c2_id
+    assert items[0]["position"] == 1
+    assert items[1]["id"] == c1_id
+    assert items[1]["position"] == 2
+
+
+

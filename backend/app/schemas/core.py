@@ -51,6 +51,7 @@ class UserOut(BaseModel):
     enable_schema_checkpoints: bool = True
     enable_prompt_mutation: bool = False
     enable_prediction_mode: bool = False
+    can_use_antigravity: bool = False
 
 
 class UserUpdate(BaseModel):
@@ -61,14 +62,9 @@ class UserUpdate(BaseModel):
     @field_validator("grading_model")
     @classmethod
     def validate_grading_model(cls, v: str | None) -> str | None:
-        if v is not None:
-            from app.services.grading_service import is_allowed_qwen_coder_model
+        from app.services.grading_service import validate_grading_model_name
 
-            if not is_allowed_qwen_coder_model(v):
-                raise ValueError(
-                    f"Model '{v}' is not permitted. Only quantized Qwen 2.5 Coder models in 7B, 3B, or 1.5B sizes are allowed."
-                )
-        return v
+        return validate_grading_model_name(v)
 
     leech_remediation_opt_in: bool | None = None
     daily_new_limit: int | None = Field(default=None, ge=0, le=9999)
@@ -153,6 +149,16 @@ class DeckReorderItem(BaseModel):
 
 class DeckReorderRequest(BaseModel):
     items: list[DeckReorderItem]
+
+
+class CardReorderItem(BaseModel):
+    id: str
+    position: int
+    deck_id: str | None = None
+
+
+class CardReorderRequest(BaseModel):
+    items: list[CardReorderItem]
 
 
 class DeckStatsOut(BaseModel):
@@ -269,6 +275,10 @@ class CardNeuroPropsUpdate(BaseModel):
 
 class CardLexiconGlossesUpdate(BaseModel):
     glosses: list[dict]
+
+
+class CardLexiconGlossAdd(BaseModel):
+    gloss: dict
 
 
 class CardReviewLogItemOut(BaseModel):

@@ -91,7 +91,7 @@ export function DeckCardsViewer({
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [analyticsCardId, setAnalyticsCardId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterType, setFilterType] = useState<'all' | 'code' | 'flashcard'>('all')
+  const [filterType, setFilterType] = useState<'both' | 'code' | 'qa'>('both')
   const [filterDifficulty, setFilterDifficulty] = useState<'all' | 'easy' | 'medium' | 'hard'>('all')
   const [copiedCode, setCopiedCode] = useState(false)
   const [showTestsSection, setShowTestsSection] = useState(false)
@@ -202,6 +202,8 @@ export function DeckCardsViewer({
         if (a.position != null && b.position != null) {
           return a.position - b.position
         }
+        if (a.position != null) return -1
+        if (b.position != null) return 1
         return 0
       })
       setCards(sorted)
@@ -219,6 +221,36 @@ export function DeckCardsViewer({
       setLoading(false)
     }
   }, [currentCardId])
+
+  const handleMoveCard = async (e: React.MouseEvent, cardId: string, direction: 'up' | 'down') => {
+    e.stopPropagation()
+    const index = cards.findIndex((c) => c.id === cardId)
+    if (index === -1) return
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= cards.length) return
+
+    const newCards = [...cards]
+    const [moved] = newCards.splice(index, 1)
+    newCards.splice(targetIndex, 0, moved)
+
+    const reorderedItems = newCards.map((c, i) => ({
+      ...c,
+      position: i + 1,
+    }))
+    setCards(reorderedItems)
+
+    try {
+      await api.reorderCards(
+        reorderedItems.map((c) => ({
+          id: c.id,
+          position: c.position!,
+          deck_id: c.deck_or_source_id,
+        })),
+      )
+    } catch {
+      // ignore
+    }
+  }
 
   // Fetch deck documentation
   const loadDeckDocs = useCallback(async (id: string) => {
@@ -292,9 +324,9 @@ export function DeckCardsViewer({
   const filteredCards = useMemo(() => {
     const q = searchQuery.toLowerCase().trim()
     return cards.filter((c) => {
-      // Filter Type
+      // Filter Type: Coding, Q&A, or Both
       if (filterType === 'code' && !isCodeCard(c)) return false
-      if (filterType === 'flashcard' && isCodeCard(c)) return false
+      if (filterType === 'qa' && isCodeCard(c)) return false
 
       // Filter Difficulty
       if (filterDifficulty !== 'all') {
@@ -317,8 +349,8 @@ export function DeckCardsViewer({
   }, [cards, searchQuery, filterType, filterDifficulty])
 
   const selectedCard = useMemo(() => {
-    return cards.find((c) => c.id === selectedCardId) || filteredCards[0] || null
-  }, [cards, selectedCardId, filteredCards])
+    return filteredCards.find((c) => c.id === selectedCardId) || filteredCards[0] || null
+  }, [selectedCardId, filteredCards])
 
   // Card comments state
   const [commentsVersion, setCommentsVersion] = useState(0)
@@ -713,18 +745,19 @@ export function DeckCardsViewer({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            {/* Type filter */}
+            {/* Type filter: Coding, Q&A, or Both */}
             <div className="inline-flex rounded-lg bg-[#1a2131] p-0.5 border border-ink-line/60">
               <button
                 type="button"
-                onClick={() => setFilterType('all')}
+                onClick={() => setFilterType('both')}
                 className={`px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
-                  filterType === 'all'
+                  filterType === 'both'
                     ? 'bg-sky-600/40 text-sky-100 border border-sky-500/50 shadow-sm font-semibold'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
+                title="Show both Coding problems and Q&A flashcards"
               >
-                All ({cards.length})
+                Both ({cards.length})
               </button>
               <button
                 type="button"
@@ -734,19 +767,21 @@ export function DeckCardsViewer({
                     ? 'bg-indigo-600/40 text-indigo-100 border border-indigo-500/50 shadow-sm font-semibold'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
+                title="Show only Coding problem cards"
               >
-                Code ({cards.filter(isCodeCard).length})
+                Coding ({cards.filter(isCodeCard).length})
               </button>
               <button
                 type="button"
-                onClick={() => setFilterType('flashcard')}
+                onClick={() => setFilterType('qa')}
                 className={`px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
-                  filterType === 'flashcard'
+                  filterType === 'qa'
                     ? 'bg-emerald-600/40 text-emerald-100 border border-emerald-500/50 shadow-sm font-semibold'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
+                title="Show only Q&A flashcards"
               >
-                Flashcards ({cards.filter((c) => !isCodeCard(c)).length})
+                Q&amp;A ({cards.filter((c) => !isCodeCard(c)).length})
               </button>
             </div>
 
@@ -844,7 +879,31 @@ export function DeckCardsViewer({
                   >
                     <div className="flex items-center justify-between gap-1.5 min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span className="font-mono text-[10px] text-slate-500">#{idx + 1}</span>
+                        <span className="font-mono text-[10px] text-slate-500 shrink-0">#{idx + 1}</span>
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          {idx > 0 && (
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => handleMoveCard(e, card.id, 'up')}
+                              className="text-slate-400 hover:text-sky-300 px-0.5 py-0.2 text-[8px] hover:bg-slate-700/60 rounded cursor-pointer leading-none select-none"
+                              title="Move card up"
+                            >
+                              ▲
+                            </span>
+                          )}
+                          {idx < filteredCards.length - 1 && (
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => handleMoveCard(e, card.id, 'down')}
+                              className="text-slate-400 hover:text-sky-300 px-0.5 py-0.2 text-[8px] hover:bg-slate-700/60 rounded cursor-pointer leading-none select-none"
+                              title="Move card down"
+                            >
+                              ▼
+                            </span>
+                          )}
+                        </div>
                         <span className="font-semibold text-xs text-slate-100 truncate">
                           {cardTitle}
                         </span>
@@ -949,11 +1008,11 @@ export function DeckCardsViewer({
                       <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                         {isCode ? (
                           <span className="px-1.5 py-0.2 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-medium">
-                            Code
+                            Coding
                           </span>
                         ) : (
                           <span className="px-1.5 py-0.2 rounded bg-slate-700/30 text-slate-300 border border-slate-600/30 font-medium">
-                            Flashcard
+                            Q&amp;A
                           </span>
                         )}
 
@@ -1019,7 +1078,7 @@ export function DeckCardsViewer({
                   <div className="space-y-1 max-w-xl">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded bg-sky-950/80 border border-sky-500/40 px-2 py-0.5 text-xs font-mono text-sky-200">
-                        {isCodeCard(selectedCard) ? 'Code' : 'Flashcard'}
+                        {isCodeCard(selectedCard) ? 'Coding' : 'Q&A'}
                       </span>
                       {selectedCard.category && (
                         <span className="rounded bg-slate-800 border border-slate-700 px-2 py-0.5 text-xs text-slate-300">
@@ -1217,7 +1276,10 @@ export function DeckCardsViewer({
                     </span>
                   </div>
                   <div className="text-xs sm:text-sm text-slate-200 leading-relaxed">
-                    <RichText text={selectedCard.front || 'No prompt specified'} />
+                    <RichText
+                      text={selectedCard.front || 'No prompt specified'}
+                      deckId={activeDeckId}
+                    />
                   </div>
 
                   {selectedCard.edge_cases && selectedCard.edge_cases.length > 0 && (

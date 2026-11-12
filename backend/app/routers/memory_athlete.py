@@ -131,7 +131,7 @@ async def decompose_card(
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "LLM consent is required for AI card decomposition"
         )
-    service = GradingService(model=user.grading_model)
+    service = GradingService.for_user(user)
     try:
         cards = await service.decompose_card_atomicity(body.front, body.back)
         return DecomposeCardResponse(

@@ -307,7 +307,7 @@ function AppLayout() {
         <div
           className={
             isWide
-              ? 'mx-auto flex w-full max-w-[1850px] items-center justify-between gap-4 px-4 py-2.5'
+              ? 'mx-auto flex w-full max-w-[2300px] items-center justify-between gap-4 px-4 py-2.5'
               : 'mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3'
           }
         >
@@ -350,7 +350,7 @@ function AppLayout() {
       <main
         className={
           isWide
-            ? `mx-auto w-full max-w-[1850px] px-4 ${isZenMode ? 'py-2' : 'py-4'}`
+            ? `mx-auto w-full max-w-[2300px] px-4 ${isZenMode ? 'py-2' : 'py-4'}`
             : `mx-auto max-w-6xl px-6 ${isZenMode ? 'py-4' : 'py-8'}`
         }
       >

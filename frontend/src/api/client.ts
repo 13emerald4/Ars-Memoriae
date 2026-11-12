@@ -34,6 +34,8 @@ import type {
   Lesson,
   LexiconEntry,
   LexiconGlossItem,
+  LlmEngineStatusResponse,
+  LlmProvidersBreakdown,
   NoteType,
   QueueConfig,
   QueueItem,
@@ -59,6 +61,7 @@ import type {
   SyncStatus,
   TreeNode,
   User,
+  VramMetrics,
   WeaknessHintResponse,
   CardNeuroPropsUpdate,
   ConceptEdge,
@@ -130,18 +133,18 @@ export const api = {
   me: () => request<User>('/api/me'),
   updateMe: (body: Partial<User>) => patch<User>('/api/me', body),
 
-  // ── local LLM engine (Ollama) ───────────────────────────────────────────
-  models: () => request<{ models: string[]; active?: string; error?: string }>('/api/models'),
-  llmStatus: () =>
+  // ── AI grading engines (Antigravity CLI & local Ollama) ───────────────────
+  models: () =>
     request<{
-      connected: boolean
-      provider: string
-      base_url: string
-      model: string
-      models_installed: string[]
-      model_ready: boolean
+      models: string[]
+      active?: string
+      provider?: string
+      providers?: LlmProvidersBreakdown
       error?: string | null
-    }>('/api/llm/status'),
+    }>('/api/models'),
+  llmStatus: () => request<LlmEngineStatusResponse>('/api/llm/status'),
+  vramStatus: (model?: string) =>
+    request<VramMetrics>(`/api/llm/vram${model ? `?model=${encodeURIComponent(model)}` : ''}`),
   hardwareSpecs: () => request<HardwareProfile>('/api/llm/hardware'),
 
   // ── queue (§9) ──────────────────────────────────────────────────────────
@@ -189,13 +192,22 @@ export const api = {
     cardId: string,
     history: SocraticTurn[],
     message: string,
-    options?: { model?: string; allow_smaller_model?: boolean },
+    options?: {
+      model?: string
+      allow_smaller_model?: boolean
+      user_code?: string | null
+      test_code?: string | null
+      execution_summary?: string | null
+    },
   ) =>
     post<SocraticResponse>(`/api/review/${cardId}/guide`, {
       history,
       message,
       model: options?.model,
       allow_smaller_model: options?.allow_smaller_model ?? true,
+      user_code: options?.user_code,
+      test_code: options?.test_code,
+      execution_summary: options?.execution_summary,
     }),
   weaknessHint: (cardId: string) =>
     post<WeaknessHintResponse>(`/api/review/${cardId}/weakness-hint`, {}),
@@ -206,7 +218,7 @@ export const api = {
     typed_answer: string,
     latency_ms: number,
     test_code?: string,
-    options?: { model?: string; allow_smaller_model?: boolean; signal?: AbortSignal },
+    options?: { model?: string; allow_smaller_model?: boolean; language?: string; signal?: AbortSignal },
   ) =>
     post<SubmitAnswerResponse>(
       `/api/review/${cardId}/answer`,
@@ -214,6 +226,7 @@ export const api = {
         typed_answer,
         latency_ms,
         test_code,
+        language: options?.language,
         model: options?.model,
         allow_smaller_model: options?.allow_smaller_model,
       },
@@ -292,11 +305,15 @@ export const api = {
     post<Card>(`/api/cards/${id}/suspend?suspended=${suspended}`),
   postponeCard: (id: string, hours: number = 4) =>
     post<{ card_id: string; due: string; postponed_hours: number }>(`/api/cards/${id}/postpone?hours=${hours}`),
+  reorderCards: (items: { id: string; position: number; deck_id?: string | null }[]) =>
+    post<Card[]>('/api/cards/reorder', { items }),
   cardAnalytics: (cardId: string) => request<CardAnalytics>(`/api/cards/${cardId}/analytics`),
   updateCardMemoryNote: (cardId: string, memory_note: string) =>
     patch<Card>(`/api/cards/${cardId}/memory-note`, { memory_note }),
   updateCardLexiconGlosses: (cardId: string, glosses: LexiconGlossItem[]) =>
     patch<Card>(`/api/cards/${cardId}/lexicon-glosses`, { glosses }),
+  addCardLexiconGloss: (cardId: string, gloss: LexiconGlossItem) =>
+    post<Card>(`/api/cards/${cardId}/lexicon-glosses`, { gloss }),
   setPriority: (target: 'deck' | 'card' | 'source' | 'extract', id: string, priority: number) =>
     patch<{ priority: number }>('/api/priority', { target, id, priority }),
 
@@ -487,7 +504,7 @@ export const api = {
   ) => post<SubmitCodeResponse>(`/api/code/problems/${idOrSlug}/submit`, body),
   socraticCodeHint: (
     idOrSlug: string,
-    body: { code: string; language?: string; hint_type?: string },
+    body: { code: string; language?: string; hint_type?: string; model?: string },
   ) => post<SocraticCodeResponse>(`/api/code/problems/${idOrSlug}/socratic`, body),
   explainCodeSelection: (body: ExplainCodeSelectionRequest) =>
     post<ExplainCodeSelectionResponse>('/api/code/explain-selection', body),

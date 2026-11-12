@@ -69,3 +69,45 @@ class TestDeleteTree:
         ).json()
         assert src1["id"] == src2["id"]
 
+    async def test_delete_deck_with_hierarchical_subdecks_and_cards(self, auth_client):
+        # 1. Create parent deck
+        p_resp = await auth_client.post("/api/decks", json={"name": "Parent Root Deck"})
+        assert p_resp.status_code == 201
+        parent_id = p_resp.json()["id"]
+
+        # 2. Create child subdeck
+        c_resp = await auth_client.post(
+            "/api/decks", json={"name": "Child Subdeck", "parent_id": parent_id}
+        )
+        assert c_resp.status_code == 201
+        child_id = c_resp.json()["id"]
+
+        # 3. Add note and card to child subdeck
+        nt_resp = await auth_client.get("/api/note-types")
+        assert nt_resp.status_code == 200
+        nt_id = nt_resp.json()[0]["id"]
+
+        note_resp = await auth_client.post(
+            "/api/notes",
+            json={
+                "deck_id": child_id,
+                "note_type_id": nt_id,
+                "field_values": {"front": "Subdeck Question", "back": "Subdeck Answer"},
+            },
+        )
+        assert note_resp.status_code == 201
+
+        # 4. Without cascade, deleting parent deck should 409 Conflict
+        no_casc = await auth_client.delete(f"/api/decks/{parent_id}?cascade=false")
+        assert no_casc.status_code == 409
+
+        # 5. With cascade=true, parent deck, subdeck, and cards are deleted cleanly
+        del_resp = await auth_client.delete(f"/api/decks/{parent_id}?cascade=true")
+        assert del_resp.status_code == 204
+
+        # 6. Verify decks are gone
+        decks_resp = await auth_client.get("/api/decks")
+        deck_ids = [d["id"] for d in decks_resp.json()]
+        assert parent_id not in deck_ids
+        assert child_id not in deck_ids
+

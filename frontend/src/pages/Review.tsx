@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type {
   CardReference,
   Deck,
+  DeckDocMessage,
   Grade,
   Lesson,
   PretestPredictionResponse,
@@ -15,8 +17,15 @@ import type {
   SpreadingActivationNode,
   StuckAlert,
   SubmitAnswerResponse,
+  VramMetrics,
 } from '../api/types'
-import { GRADES, isAllowedQwenCoderModel } from '../api/types'
+import {
+  ANTIGRAVITY_MODELS,
+  GRADES,
+  getModelDisplayInfo,
+  isAllowedGradingModel,
+  isAntigravityModel,
+} from '../api/types'
 import { CodeEditor } from '../components/CodeEditor'
 import { CodeTestConsole } from '../components/CodeTestConsole'
 import { OcclusionCard } from '../components/Occlusion'
@@ -30,8 +39,16 @@ import { FullscreenButton } from '../components/FullscreenContext'
 import { DeckReviewStatsBar } from '../components/DeckReviewStatsBar'
 import { CopyLearningSummaryButton } from '../components/CopyLearningSummaryButton'
 import { AnswerComparison, computeTokenDiff } from '../components/AnswerComparison'
+import {
+  computeExpectedLines,
+  getFirstTargetLine,
+  formatTargetLineSummary,
+  findIncompleteLineNumber,
+  DEFAULT_TARGET_HIGHLIGHT_COLOR,
+} from '../utils/expectedCodeUtils'
+import { HighlightColorPicker } from '../components/HighlightColorPicker'
 import { copyLearningSummaryToClipboard } from '../utils/learningSummaryExport'
-import TiledEditorPane, { type TilePaneTab, findIncompleteLineNumber } from '../components/TiledEditorPane'
+import TiledEditorPane, { type TilePaneTab } from '../components/TiledEditorPane'
 import { ResizableSplitter } from '../components/ResizableSplitter'
 import { useWorkbenchLayout } from '../hooks/useWorkbenchLayout'
 import DeckCardsViewer from '../components/DeckCardsViewer'
@@ -76,6 +93,50 @@ const GRADE_STYLE: Record<Grade, string> = {
 function buildStarterTestCode(item: QueueItem | null): string {
   if (!item) return ''
   return item.starter_tests || ''
+}
+
+function formatExecutionSummary(res: RunCodeResponse | null): string | null {
+  if (!res) return null
+  const parts: string[] = [
+    `Status: ${res.status}`,
+    `Tests Passed: ${res.passed_count}/${res.total_count} (${res.runtime_ms}ms)`,
+  ]
+  if (
+    res.student_total_count !== undefined &&
+    res.student_total_count > 0 &&
+    res.student_passed_count !== undefined
+  ) {
+    parts.push(`Student Unit Tests: ${res.student_passed_count}/${res.student_total_count}`)
+  }
+  if (res.error) {
+    parts.push(`Execution Error:\n${res.error.slice(0, 1200)}`)
+  }
+  const failedCases = (res.results || []).filter((r) => !r.passed).slice(0, 3)
+  if (failedCases.length > 0) {
+    parts.push(
+      'Failed Test Cases:\n' +
+        failedCases
+          .map(
+            (r) =>
+              `  - Test #${r.test_index + 1}: input=${JSON.stringify(r.input)} expected=${JSON.stringify(
+                r.expected,
+              )} actual=${JSON.stringify(r.actual)}${r.error ? ` err=${r.error}` : ''}${
+                r.stdout ? ` stdout=${r.stdout.slice(0, 200)}` : ''
+              }`,
+          )
+          .join('\n'),
+    )
+  }
+  const failedStudentTests = (res.student_tests || []).filter((st) => !st.passed).slice(0, 3)
+  if (failedStudentTests.length > 0) {
+    parts.push(
+      'Failed Student Tests:\n' +
+        failedStudentTests
+          .map((st) => `  - ${st.test_name}: ${st.error || 'failed'}`)
+          .join('\n'),
+    )
+  }
+  return parts.join('\n')
 }
 
 
@@ -214,8 +275,11 @@ export default function Review() {
   const [confidence, setConfidence] = useState<number | null>(null)
   const [deckStatsTrigger, setDeckStatsTrigger] = useState(0)
 
+  const canUseAntigravity = Boolean(user?.can_use_antigravity)
   const [activeModel, setActiveModel] = useState<string>(() =>
-    user?.grading_model && isAllowedQwenCoderModel(user.grading_model)
+    user?.grading_model &&
+    isAllowedGradingModel(user.grading_model) &&
+    (canUseAntigravity || !isAntigravityModel(user.grading_model))
       ? user.grading_model
       : 'qwen2.5-coder:3b',
   )
@@ -227,22 +291,28 @@ export default function Review() {
   const [confirming, setConfirming] = useState(false)
 
   useEffect(() => {
-    if (user?.grading_model && isAllowedQwenCoderModel(user.grading_model)) {
+    if (
+      user?.grading_model &&
+      isAllowedGradingModel(user.grading_model) &&
+      (canUseAntigravity || !isAntigravityModel(user.grading_model))
+    ) {
       setActiveModel(user.grading_model)
     }
-  }, [user?.grading_model])
+  }, [user?.grading_model, canUseAntigravity])
 
   useEffect(() => {
     api
       .llmStatus()
       .then((res) => {
         if (res?.models_installed && res.models_installed.length > 0) {
-          const genModels = res.models_installed.filter(isAllowedQwenCoderModel)
+          const genModels = res.models_installed.filter(
+            (m) => isAllowedGradingModel(m) && (canUseAntigravity || !isAntigravityModel(m)),
+          )
           setInstalledModels(genModels)
         }
       })
       .catch(() => {})
-  }, [])
+  }, [canUseAntigravity])
 
   const { setCognitiveContext } = useTheme()
 
@@ -270,7 +340,7 @@ export default function Review() {
   const [selectedPersistDeckId, setSelectedPersistDeckId] = useState<string>('')
   const [dismissedUnseenDeckId, setDismissedUnseenDeckId] = useState<string | null>(null)
 
-  const { setActiveDeckContext } = useLexicon()
+  const { setActiveDeckContext, registerDocument } = useLexicon()
 
   const currentDeckInfo = useMemo(() => {
     if (!deckParam) return null
@@ -288,6 +358,10 @@ export default function Review() {
           currentDeckInfo?.thematic_nature ||
           item.category ||
           null,
+        existingGlosses: item.lexicon_glosses || [],
+        onGlossesUpdated: (updated) => {
+          item.lexicon_glosses = updated
+        },
       })
     } else if (currentDeckInfo) {
       setActiveDeckContext({
@@ -322,10 +396,29 @@ export default function Review() {
   const [codeRunning, setCodeRunning] = useState(false)
   const [codeRunResult, setCodeRunResult] = useState<RunCodeResponse | null>(null)
   const [testCode, setTestCode] = useState('')
+  const [sharedQaHistory, setSharedQaHistory] = useState<DeckDocMessage[]>([])
   const [activeEditorTab, setActiveEditorTab] = useState<'solution' | 'tests' | 'reference' | 'ref_tests'>('solution')
   const [singleRefViewMode, setSingleRefViewMode] = useState<'ide' | 'diff' | 'hint'>(() => {
     return (localStorage.getItem('memorization.refViewMode') as 'ide' | 'diff' | 'hint') || 'ide'
   })
+  const [focusTargetCode, setFocusTargetCode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('memorization.focusTargetCode')
+    return saved !== null ? saved === 'true' : true
+  })
+  const handleToggleFocusTargetCode = () => {
+    setFocusTargetCode((prev) => {
+      const next = !prev
+      localStorage.setItem('memorization.focusTargetCode', String(next))
+      return next
+    })
+  }
+  const [targetHighlightColor, setTargetHighlightColor] = useState<string>(() => {
+    return localStorage.getItem('memorization.targetHighlightColor') || DEFAULT_TARGET_HIGHLIGHT_COLOR
+  })
+  const handleHighlightColorChange = (newColor: string) => {
+    setTargetHighlightColor(newColor)
+    localStorage.setItem('memorization.targetHighlightColor', newColor)
+  }
   const [tiledTabs, setTiledTabs] = useState<boolean>(() => {
     return localStorage.getItem('memorization.tiledEditorTabs') === 'true'
   })
@@ -389,6 +482,185 @@ export default function Review() {
   const workbenchContainerRef = useRef<HTMLDivElement>(null)
   const tiledContainerRef = useRef<HTMLDivElement>(null)
   const workbenchRowRef = useRef<HTMLDivElement>(null)
+
+  const isCurrentCodeCard = useMemo(() => {
+    return Boolean(item && item.kind === 'card' && checkIsCodeCard(item))
+  }, [item])
+
+  // Separate Window IDE Popout State & Window Management
+  const [isIdePoppedOut, setIsIdePoppedOut] = useState(false)
+  const idePopupRef = useRef<Window | null>(null)
+  const [popoutDimensions, setPopoutDimensions] = useState<{ width: number; height: number }>({
+    width: typeof window !== 'undefined' ? window.innerWidth : 1200,
+    height: typeof window !== 'undefined' ? window.innerHeight : 800,
+  })
+  const [popoutShowProblem, setPopoutShowProblem] = useState(false)
+  const [popoutShowLexicon, setPopoutShowLexicon] = useState(false)
+  const [workbenchMarginCollapsed, setWorkbenchMarginCollapsed] = useState(false)
+
+  const handleDockBackIde = useCallback(() => {
+    if (idePopupRef.current && !idePopupRef.current.closed) {
+      idePopupRef.current.close()
+    }
+    idePopupRef.current = null
+    setIsIdePoppedOut(false)
+  }, [])
+
+  const handlePopOutIde = useCallback(() => {
+    if (layoutMode !== 'split') {
+      setLayoutMode('split')
+      localStorage.setItem('memorization.reviewLayoutMode', 'split')
+    }
+
+    if (idePopupRef.current && !idePopupRef.current.closed) {
+      idePopupRef.current.focus()
+      if ((item?.lexicon_glosses?.length ?? 0) > 0) {
+        setPopoutShowLexicon(true)
+      }
+      setIsIdePoppedOut(true)
+      return
+    }
+
+    const availW = typeof window !== 'undefined' ? window.screen?.availWidth || 1400 : 1400
+    const availH = typeof window !== 'undefined' ? window.screen?.availHeight || 900 : 900
+    const popup = window.open(
+      '',
+      'ArsMemoriaeIdeWindow',
+      `width=${availW},height=${availH},left=0,top=0,resizable=yes,scrollbars=yes`
+    )
+    if (!popup) {
+      alert('Popup was blocked by your browser. Please allow popups for Ars-Memoriae to expand the IDE into a separate window.')
+      return
+    }
+
+    const problemTitle = item?.title || item?.deck_name || 'Code Practice IDE'
+    popup.document.open()
+    popup.document.write('<!DOCTYPE html><html><head></head><body></body></html>')
+    popup.document.close()
+    popup.document.title = `Ars Memoriae · ${problemTitle}`
+    popup.document.head.innerHTML = ''
+
+    // Copy documentElement classes, CSS custom properties, and data-* attributes
+    popup.document.documentElement.className = document.documentElement.className
+    popup.document.documentElement.style.cssText = document.documentElement.style.cssText
+    Array.from(document.documentElement.attributes).forEach((attr) => {
+      if (attr.name.startsWith('data-')) {
+        popup.document.documentElement.setAttribute(attr.name, attr.value)
+      }
+    })
+
+    // Copy application stylesheets and styles
+    Array.from(document.querySelectorAll('link[rel="stylesheet"], link[rel="preconnect"], style')).forEach((node) => {
+      popup.document.head.appendChild(node.cloneNode(true))
+    })
+
+    // Add layout baseline styles
+    const baseStyle = popup.document.createElement('style')
+    baseStyle.textContent = `
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background-color: #121212;
+        color: #eff1f6;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        overflow: hidden;
+      }
+      #ars-ide-popout-root {
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        flex-direction: column;
+        background-color: #121212;
+        overflow: hidden;
+      }
+    `
+    popup.document.head.appendChild(baseStyle)
+
+    popup.document.body.className = 'bg-[#121212] text-slate-100 m-0 p-0 font-sans h-screen flex flex-col select-auto overflow-hidden'
+    popup.document.body.style.backgroundColor = '#121212'
+    popup.document.body.style.color = '#eff1f6'
+
+    const container = popup.document.createElement('div')
+    container.id = 'ars-ide-popout-root'
+    container.className = 'flex flex-col h-screen w-screen overflow-hidden'
+    popup.document.body.appendChild(container)
+
+    const updateDims = () => {
+      if (!popup || popup.closed) return
+      setPopoutDimensions({
+        width: popup.innerWidth,
+        height: popup.innerHeight,
+      })
+    }
+    updateDims()
+
+    popup.addEventListener('resize', updateDims)
+
+    popup.addEventListener('beforeunload', () => {
+      setIsIdePoppedOut(false)
+      idePopupRef.current = null
+    })
+
+    // Enable Escape, Alt+W, Alt+P to dock back, Alt+O to toggle problem statement
+    popup.document.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        handleDockBackIde()
+      } else if (e.altKey && (e.key === 'w' || e.key === 'W' || e.key === 'p' || e.key === 'P')) {
+        e.preventDefault()
+        handleDockBackIde()
+      } else if (e.altKey && (e.key === 'o' || e.key === 'O')) {
+        e.preventDefault()
+        setPopoutShowProblem((prev) => !prev)
+      }
+    })
+
+    idePopupRef.current = popup
+    if ((item?.lexicon_glosses?.length ?? 0) > 0) {
+      setPopoutShowLexicon(true)
+    }
+    setIsIdePoppedOut(true)
+  }, [handleDockBackIde, layoutMode, item?.title, item?.deck_name, item?.lexicon_glosses?.length])
+
+  // Clean up popup window on unmount or main window unload
+  useEffect(() => {
+    const handleUnload = () => {
+      if (idePopupRef.current && !idePopupRef.current.closed) {
+        idePopupRef.current.close()
+      }
+    }
+    window.addEventListener('beforeunload', handleUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload)
+      if (idePopupRef.current && !idePopupRef.current.closed) {
+        idePopupRef.current.close()
+      }
+    }
+  }, [])
+
+  // Register popout IDE window document for text highlight -> Define pill
+  useEffect(() => {
+    if (!isIdePoppedOut || !idePopupRef.current || idePopupRef.current.closed) {
+      return
+    }
+    return registerDocument(idePopupRef.current.document)
+  }, [isIdePoppedOut, registerDocument])
+
+  // If card changes to a non-code card while popped out, dock back
+  useEffect(() => {
+    if (!isCurrentCodeCard && isIdePoppedOut) {
+      handleDockBackIde()
+    }
+  }, [isCurrentCodeCard, isIdePoppedOut, handleDockBackIde])
+
+  // Update popup document title when item changes
+  useEffect(() => {
+    if (isIdePoppedOut && idePopupRef.current && !idePopupRef.current.closed) {
+      const problemTitle = item?.title || item?.deck_name || 'Code Practice IDE'
+      idePopupRef.current.document.title = `Ars Memoriae · ${problemTitle}`
+    }
+  }, [item?.title, item?.deck_name, isIdePoppedOut])
 
   const handleCopyReferenceCode = useCallback(async (refCode: string) => {
     if (!refCode) return
@@ -473,6 +745,7 @@ export default function Review() {
 
   // Longitudinal Weakness Memory Hint
   const [weaknessHint, setWeaknessHint] = useState<string | null>(null)
+  const [weaknessHintError, setWeaknessHintError] = useState<string | null>(null)
   const [weaknessHintLoading, setWeaknessHintLoading] = useState(false)
   const [showWeaknessHint, setShowWeaknessHint] = useState(false)
 
@@ -724,16 +997,15 @@ export default function Review() {
   async function handleRequestWeaknessHint() {
     if (!item || item.kind !== 'card') return
     setWeaknessHintLoading(true)
+    setWeaknessHintError(null)
+    setWeaknessHint(null)
     setShowWeaknessHint(true)
     try {
       const res = await api.weaknessHint(item.id)
       setWeaknessHint(res.hint)
-    } catch {
-      setWeaknessHint(
-        item.active_weaknesses?.[0]
-          ? `Focus on avoiding your prior difficulty: ${item.active_weaknesses[0]}.`
-          : 'Recall the core concepts and definitions carefully.'
-      )
+    } catch (err) {
+      setWeaknessHintError(err instanceof Error ? err.message : 'Past mistake hint failed')
+      setError(err)
     } finally {
       setWeaknessHintLoading(false)
     }
@@ -842,10 +1114,12 @@ export default function Review() {
     setCodeRunResult(null)
     setCodeRunning(false)
     setWeaknessHint(null)
+    setWeaknessHintError(null)
     setWeaknessHintLoading(false)
     setShowWeaknessHint(false)
     setActiveLineHint(null)
     setLineHintLoading(false)
+    setSharedQaHistory([])
     setEditorCursorLine(1)
     setDismissedReminderCardId(null)
     shownAt.current = Date.now()
@@ -1308,7 +1582,7 @@ export default function Review() {
     [item, answer, testCode, activeModel, user],
   )
 
-  async function grade(targetModel?: string, allowSmaller: boolean = true) {
+  async function grade(targetModel?: string, allowSmaller: boolean = false) {
     if (!item || item.kind !== 'card') return
 
     // Abort previous in-flight grading if still running
@@ -1327,6 +1601,7 @@ export default function Review() {
       const graded = await api.submitAnswer(item.id, answer, latency, testCode, {
         model: modelToUse,
         allow_smaller_model: allowSmaller,
+        language: isCurrentCodeCard ? codeLanguage : undefined,
         signal: abortController.signal,
       })
       if (abortController.signal.aborted) return
@@ -1364,10 +1639,15 @@ export default function Review() {
     if (!item || item.kind !== 'card') return
     setGuideLoading(true)
     setGuideDegraded(null)
+    setError(null)
     try {
+      const executionSummary = isCurrentCodeCard ? formatExecutionSummary(codeRunResult) : null
       const resp = await api.guide(item.id, guideHistory, message, {
         model: activeModel,
-        allow_smaller_model: true,
+        allow_smaller_model: false,
+        user_code: isCurrentCodeCard ? answer : undefined,
+        test_code: isCurrentCodeCard ? testCode || undefined : undefined,
+        execution_summary: executionSummary ?? undefined,
       })
       if (resp.degraded) {
         setGuideDegraded(resp.degraded_reason)
@@ -1383,6 +1663,7 @@ export default function Review() {
       setGuideOnTrack(resp.on_track)
       setGuideInput('')
     } catch (err) {
+      setGuideDegraded(err instanceof Error ? err.message : String(err))
       setError(err)
     } finally {
       setGuideLoading(false)
@@ -1401,30 +1682,33 @@ export default function Review() {
       const lines = answer.split('\n')
       const targetText = lineText !== undefined && lineText !== '' ? lineText : (lines[targetLine - 1] ?? '')
       setLineHintLoading(true)
+      setError(null)
       try {
         const resp = await api.socraticLineHint(item.id, {
           code: answer,
           line_number: targetLine,
           language: codeLanguage,
           test_code: testCode || undefined,
+          execution_summary: formatExecutionSummary(codeRunResult) ?? undefined,
           model: activeModel,
-          allow_smaller_model: true,
+          allow_smaller_model: false,
         })
         setActiveLineHint(resp)
       } catch (err) {
-        console.error('Failed to get Socratic line hint', err)
+        const errMsg = err instanceof Error ? err.message : 'Socratic line hint failed'
+        setError(err)
         setActiveLineHint({
-          hint: `Focus on line ${targetLine}: consider what state variable, expression, or operation connects your previous setup to what this step requires.`,
+          hint: '',
           line_number: targetLine,
           current_line_text: targetText,
-          degraded: true,
-          degraded_reason: err instanceof Error ? err.message : 'Network error',
+          degraded: false,
+          error: errMsg,
         })
       } finally {
         setLineHintLoading(false)
       }
     },
-    [item, answer, codeLanguage, testCode, editorCursorLine, activeModel]
+    [item, answer, codeLanguage, testCode, codeRunResult, editorCursorLine, activeModel]
   )
 
   async function confirm(finalGrade: Grade, options?: { retryImmediately?: boolean }) {
@@ -1918,6 +2202,14 @@ export default function Review() {
         e.preventDefault()
         void (answer.trim() ? grade() : reveal())
       }
+      if ((e.key === 'p' || e.key === 'P') && e.altKey) {
+        e.preventDefault()
+        if (isIdePoppedOut) {
+          handleDockBackIde()
+        } else if (isCurrentCodeCard) {
+          handlePopOutIde()
+        }
+      }
       if ((e.key === 's' || e.key === 'S') && e.altKey && e.shiftKey) {
         e.preventDefault()
         setSavedDrawerOpen((prev) => !prev)
@@ -2395,11 +2687,14 @@ export default function Review() {
                 onContinue={continueToQuestion}
                 onOpenSettings={() => navigate('/settings')}
                 codeLanguage={codeLanguage}
+                activeModel={activeModel}
+                onActiveModelChange={(m) => void handleSwitchModel(m)}
               />
             </div>
             <aside className="w-full xl:w-80 2xl:w-96 shrink-0 xl:sticky xl:top-16">
               <MarginLexiconPanel
                 cardId={item.id}
+                deckId={item.kind === 'card' ? item.deck_or_source_id : null}
                 deckName={item.deck_name}
                 thematicNature={item.card_thematic_nature || item.deck_thematic_nature}
                 cardFront={item.front}
@@ -2408,6 +2703,7 @@ export default function Review() {
                 onGlossesUpdated={(updatedGlosses) => {
                   item.lexicon_glosses = updatedGlosses
                 }}
+                codeLanguage={codeLanguage}
               />
             </aside>
           </div>
@@ -2446,7 +2742,1207 @@ export default function Review() {
 
     const singleRefDiff = !cleanRefCode || !answer.trim()
       ? { refSegments: null, stats: null }
-      : computeTokenDiff(answer, cleanRefCode, overlookedTerms, matchedTerms)
+      : computeTokenDiff(answer, cleanRefCode, overlookedTerms, matchedTerms, true)
+
+    const singleTargetRefLines = computeExpectedLines(item?.starter_code, cleanRefCode)
+    const firstSingleTargetRefLine = getFirstTargetLine(singleTargetRefLines)
+    const executionSummaryStr = formatExecutionSummary(codeRunResult)
+
+  const renderIdeWorkbench = (inPopout = false) => {
+    const currentViewportWidth = inPopout
+      ? popoutDimensions.width
+      : typeof window !== 'undefined'
+      ? window.innerWidth
+      : 1200
+
+    const isRightDock = workbenchLayout.consoleDockPosition === 'right' && !workbenchLayout.isStacked
+    const shouldFillTiledHeight = inPopout || currentViewportWidth >= 1024
+
+    const effectiveEditorHeight = inPopout
+      ? isRightDock
+        ? `${Math.max(380, popoutDimensions.height - 110)}px`
+        : `${Math.max(260, Math.floor(popoutDimensions.height * (workbenchLayout.consoleCollapsed ? 0.85 : 0.58)))}px`
+      : `${workbenchLayout.editorHeight}px`
+
+    const effectiveRefHintHeight = inPopout
+      ? `${Math.max(100, parseInt(effectiveEditorHeight, 10) - 33)}px`
+      : `${Math.max(100, workbenchLayout.editorHeight - 33)}px`
+
+    const workbenchContent = (
+              <div
+                ref={workbenchLayout.consoleDockPosition === 'right' ? workbenchRowRef : undefined}
+                className={
+                  isRightDock
+                    ? inPopout
+                      ? 'flex flex-col lg:flex-row items-stretch h-full flex-1 min-h-0 w-full min-w-0 overflow-hidden'
+                      : 'flex flex-col lg:flex-row items-stretch gap-2 w-full min-w-0'
+                    : inPopout
+                    ? 'flex flex-col h-full flex-1 min-h-0 w-full min-w-0 overflow-hidden'
+                    : 'flex flex-col gap-2 w-full min-w-0'
+                }
+              >
+                {/* Editor Container */}
+                <div
+                  className={
+                    isRightDock
+                      ? inPopout
+                        ? 'flex-1 min-w-[280px] min-w-0 h-full min-h-0 flex flex-col overflow-hidden'
+                        : 'flex-1 min-w-[280px] min-w-0'
+                      : inPopout
+                      ? 'flex-1 min-h-[180px] w-full flex flex-col min-w-0 overflow-hidden'
+                      : 'w-full'
+                  }
+                >
+                  <div
+                    className={
+                      inPopout
+                        ? 'bg-[#1a1a1a] h-full flex-1 min-h-0 flex flex-col overflow-hidden border-0 rounded-none'
+                        : 'card p-0 overflow-hidden border border-ink-line flex flex-col'
+                    }
+                  >
+                <div className="flex flex-wrap items-center justify-between border-b border-ink-line bg-[#1e1e1e] px-3 py-1.5 text-xs gap-1.5 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* View mode / Tabs selector */}
+                    {tiledTabs ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line shrink-0">
+                          <span
+                            className="px-2 py-0.5 text-xs font-semibold rounded bg-sky-600/30 text-sky-200 border border-sky-500/50 shadow-sm flex items-center gap-1.5 cursor-default select-none shrink-0"
+                            title="Tiled (Alt+S)"
+                          >
+                            <span>⧉</span>
+                            <span>Tiled</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={toggleTiledTabs}
+                            className="px-2 py-0.5 text-xs font-medium rounded text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition cursor-pointer shrink-0"
+                            title="Single tab (Alt+S)"
+                          >
+                            <span>⊟</span>
+                            <span>Single Tab</span>
+                          </button>
+                        </div>
+
+                        <div className="inline-flex items-center rounded-md bg-[#161616] p-0.5 border border-ink-line shrink-0 overflow-x-auto no-scrollbar">
+                          <span className="text-[10px] text-slate-500 px-1.5 font-medium uppercase tracking-wider shrink-0 select-none">Presets:</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTileLeftTab('solution')
+                              setTileRightTab('tests')
+                            }}
+                            className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
+                              tileLeftTab === 'solution' && tileRightTab === 'tests'
+                                ? 'bg-sky-600/40 text-sky-100 border border-sky-500/60 shadow-sm font-semibold'
+                                : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                            title="Classic TDD: Solution on left, Unit Tests on right"
+                          >
+                            <span>Sol</span>
+                            <span className="text-slate-500">↔</span>
+                            <span>Tests</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTileLeftTab('reference')
+                              setTileRightTab('solution')
+                            }}
+                            className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
+                              tileLeftTab === 'reference' && tileRightTab === 'solution'
+                                ? 'bg-sky-600/40 text-sky-100 border border-sky-500/60 shadow-sm font-semibold'
+                                : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                            title="Compare Reference Solution alongside Solution"
+                          >
+                            <span>Ref</span>
+                            <span className="text-slate-500">↔</span>
+                            <span>Sol</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTileLeftTab('reference')
+                              setTileRightTab('tests')
+                            }}
+                            className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
+                              tileLeftTab === 'reference' && tileRightTab === 'tests'
+                                ? 'bg-sky-600/40 text-sky-100 border border-sky-500/60 shadow-sm font-semibold'
+                                : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                            title="Compare Reference Solution alongside Unit Tests"
+                          >
+                            <span>Ref</span>
+                            <span className="text-slate-500">↔</span>
+                            <span>Tests</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTileLeftTab('tests')
+                              setTileRightTab('ref_tests')
+                            }}
+                            className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
+                              tileLeftTab === 'tests' && tileRightTab === 'ref_tests'
+                                ? 'bg-purple-600/40 text-purple-100 border border-purple-500/60 shadow-sm font-semibold'
+                                : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                            title="Compare Unit Tests alongside Completed Reference Tests"
+                          >
+                            <span>Tests</span>
+                            <span className="text-slate-500">↔</span>
+                            <span>Ref Tests</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const prevLeft = tileLeftTab
+                              const prevRight = tileRightTab
+                              setTileLeftTab(prevRight)
+                              setTileRightTab(prevLeft)
+                            }}
+                            className="px-1.5 py-0.5 text-xs font-medium rounded text-slate-400 hover:text-slate-200 hover:bg-[#282828] transition cursor-pointer border-l border-ink-line/60 ml-0.5 shrink-0 whitespace-nowrap"
+                            title="Swap Left and Right panes"
+                          >
+                            <span>⇄ Swap</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line">
+                        <button
+                          type="button"
+                          onClick={() => setActiveEditorTab('solution')}
+                          className={`px-2.5 py-1 text-xs font-medium rounded transition flex items-center gap-1.5 cursor-pointer ${
+                            activeEditorTab === 'solution'
+                              ? 'bg-sky-600/30 text-sky-200 border border-sky-500/50 shadow-sm'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                          title="Solution (Alt+T)"
+                        >
+                          <span>Sol</span>
+                          <span>Solution</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveEditorTab('tests')}
+                          className={`px-2.5 py-1 text-xs font-medium rounded transition flex items-center gap-1.5 cursor-pointer ${
+                            activeEditorTab === 'tests'
+                              ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/50 shadow-sm'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                          title="Unit Tests (Alt+T)"
+                        >
+                          <span>Tests</span>
+                          <span>Unit Tests</span>
+                          {testCode.trim() && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveEditorTab('reference')}
+                          className={`px-2.5 py-1 text-xs font-medium rounded transition flex items-center gap-1.5 cursor-pointer ${
+                            activeEditorTab === 'reference'
+                              ? 'bg-emerald-600/30 text-emerald-200 border border-emerald-500/50 shadow-sm'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                          title="Reference"
+                        >
+                          
+                          <span>Reference</span>
+                        </button>
+                        {Boolean(cleanRefTestsCode.trim()) && (
+                          <button
+                            type="button"
+                            onClick={() => setActiveEditorTab('ref_tests')}
+                            className={`px-2.5 py-1 text-xs font-medium rounded transition flex items-center gap-1.5 cursor-pointer ${
+                              activeEditorTab === 'ref_tests'
+                                ? 'bg-purple-600/30 text-purple-200 border border-purple-500/50 shadow-sm'
+                                : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                            title="Ref Tests"
+                          >
+                            <span>Tests</span>
+                            <span>Ref Tests</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={toggleTiledTabs}
+                          className="px-2.5 py-1 text-xs font-medium rounded text-sky-400 hover:text-sky-200 hover:bg-sky-500/10 flex items-center gap-1.5 transition border-l border-ink-line/60 ml-0.5 cursor-pointer"
+                          title="Tile side-by-side (Alt+S)"
+                        >
+                          <span>⧉</span>
+                          <span>Tile</span>
+                        </button>
+                      </div>
+                    )}
+
+                    <select
+                      value={codeLanguage}
+                      onChange={(e) => {
+                        const nextLang = e.target.value
+                        setCodeLanguage(nextLang)
+                        localStorage.setItem('memorization.reviewCodeLanguage', nextLang)
+                      }}
+                      className="rounded border border-ink-line bg-[#282828] px-2 py-0.5 text-xs font-semibold text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer shrink-0"
+                    >
+                      <option value="typescript">TypeScript</option>
+                      <option value="javascript">JavaScript</option>
+                      <option value="python">Python 3</option>
+                    </select>
+
+                    {/* Reset buttons in Single Tab Mode */}
+                    {!tiledTabs && activeEditorTab === 'solution' && item.starter_code && (
+                      <button
+                        type="button"
+                        onClick={() => setAnswer(item.starter_code || '')}
+                        className="text-slate-400 hover:text-slate-200 text-[11px] underline cursor-pointer"
+                        title="Reset code editor to original starter template"
+                      >
+                        Reset solution
+                      </button>
+                    )}
+                    {!tiledTabs && activeEditorTab === 'tests' && (
+                      <div className="flex items-center gap-2">
+                        {!testCode.trim() && Boolean(cleanRefTestsCode) && (
+                          <button
+                            type="button"
+                            onClick={() => setTestCode(cleanRefTestsCode)}
+                            className="text-purple-300 hover:text-purple-200 text-[11px] underline cursor-pointer"
+                            title="Load completed reference tests into unit tests editor"
+                          >
+                            Load reference tests
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setTestCode(buildStarterTestCode(item) || cleanRefTestsCode)}
+                          className="text-slate-400 hover:text-slate-200 text-[11px] underline cursor-pointer"
+                          title="Reset unit tests to starter assertions"
+                        >
+                          Reset tests
+                        </button>
+                      </div>
+                    )}
+                    {!tiledTabs && activeEditorTab === 'reference' && (
+                      <div className="flex items-center gap-2">
+                        {Boolean(cleanRefCode) && (revealed || singleRefViewMode === 'hint') && (
+                          <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line text-[11px] shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSingleRefViewMode('ide')
+                                localStorage.setItem('memorization.refViewMode', 'ide')
+                              }}
+                              className={`px-2 py-0.5 rounded transition cursor-pointer ${
+                                singleRefViewMode === 'ide'
+                                  ? 'bg-sky-600/30 text-sky-200 border border-sky-500/50 font-medium'
+                                  : 'text-slate-400 hover:text-slate-200'
+                              }`}
+                              title="IDE syntax-highlighted code format"
+                            >
+                              IDE
+                            </button>
+                            {revealed && Boolean(answer.trim()) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSingleRefViewMode('diff')
+                                  localStorage.setItem('memorization.refViewMode', 'diff')
+                                }}
+                                className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
+                                  singleRefViewMode === 'diff'
+                                    ? 'bg-amber-600/30 text-amber-200 border border-amber-500/50 font-medium'
+                                    : 'text-slate-400 hover:text-slate-200'
+                                }`}
+                                title="Token-by-token answer comparison diff against your Solution"
+                              >
+                                <span>Diff</span>
+                                {singleRefDiff.stats && singleRefDiff.stats.missingCount > 0 && (
+                                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                )}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSingleRefViewMode('hint')
+                                localStorage.setItem('memorization.refViewMode', 'hint')
+                              }}
+                              className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
+                                singleRefViewMode === 'hint'
+                                  ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50 font-medium'
+                                  : 'text-slate-400 hover:text-slate-200'
+                              }`}
+                              title="Hint-only mode: reveals only the current incomplete line"
+                            >
+                              <span>💡 Hint</span>
+                            </button>
+                          </div>
+                        )}
+                        {Boolean(cleanRefCode) && singleRefViewMode === 'ide' && singleTargetRefLines.size > 0 && (
+                          <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                            <button
+                              type="button"
+                              onClick={handleToggleFocusTargetCode}
+                              className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer text-xs ${
+                                focusTargetCode
+                                  ? 'bg-emerald-600/30 text-emerald-200 border border-emerald-500/50 font-medium shadow-sm'
+                                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                              }`}
+                              title={
+                                focusTargetCode
+                                  ? 'Focus Target Code active: boilerplate starter code is dimmed. Click to show full brightness.'
+                                  : 'Click to focus target code (dims boilerplate starter code)'
+                              }
+                            >
+                              <span>🎯 Target ({formatTargetLineSummary(singleTargetRefLines)})</span>
+                            </button>
+                            <HighlightColorPicker
+                              color={targetHighlightColor}
+                              onChange={handleHighlightColorChange}
+                            />
+                          </div>
+                        )}
+                        {revealed && (
+                          <button
+                            type="button"
+                            onClick={() => handleHideSolution('hide')}
+                            className="px-2 py-0.5 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[11px] font-medium transition cursor-pointer flex items-center gap-1 shrink-0"
+                            title="Hide solution and return to active practice"
+                          >
+                            <span>🔒 Hide</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => void handleCopyReferenceCode(cleanRefCode)}
+                          disabled={!cleanRefCode}
+                          className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
+                          title="Copy reference code to clipboard"
+                        >
+                          <span>{copiedRef ? 'Copied' : 'Copy ref'}</span>
+                        </button>
+                      </div>
+                    )}
+                    {!tiledTabs && activeEditorTab === 'ref_tests' && (
+                      <div className="flex items-center gap-2">
+                        {Boolean(cleanRefTestsCode) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTestCode(cleanRefTestsCode)
+                              setActiveEditorTab('tests')
+                            }}
+                            className="text-purple-300 hover:text-purple-200 text-[11px] underline cursor-pointer"
+                            title="Load reference tests into editable Unit Tests editor"
+                          >
+                            Load to tests
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => void handleCopyReferenceTests(cleanRefTestsCode)}
+                          disabled={!cleanRefTestsCode}
+                          className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
+                          title="Copy completed reference tests to clipboard"
+                        >
+                          <span>{copiedRefTests ? 'Copied' : 'Copy ref tests'}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3 text-xs shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-slate-500 text-[11px] shrink-0">Confidence:</span>
+                      {[
+                        { lvl: 1, label: '1', color: 'text-rose-300' },
+                        { lvl: 2, label: '2', color: 'text-amber-300' },
+                        { lvl: 3, label: '3', color: 'text-sky-300' },
+                        { lvl: 4, label: '4', color: 'text-emerald-300' },
+                      ].map(({ lvl, label, color }) => (
+                        <button
+                          key={lvl}
+                          type="button"
+                          onClick={() => setConfidence(confidence === lvl ? null : lvl)}
+                          className={`rounded px-1.5 py-0.5 text-[11px] transition cursor-pointer ${
+                            confidence === lvl
+                              ? `bg-white/10 ${color} font-bold ring-1 ring-inset ring-current`
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Workbench Layout Toolbar */}
+                    <div className="inline-flex items-center rounded-md bg-[#161616] p-0.5 border border-ink-line text-xs gap-0.5 shrink-0">
+                      {!inPopout && (
+                        <button
+                          type="button"
+                          onClick={workbenchLayout.toggleColumnsSwapped}
+                          className={`px-1.5 py-0.5 text-[11px] font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                            workbenchLayout.columnsSwapped
+                              ? 'bg-sky-600/30 text-sky-200 border border-sky-500/40'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                          title="Swap Problem and Workbench columns"
+                        >
+                          <span>⇄ Swap Col</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          workbenchLayout.setConsoleDockPosition(
+                            workbenchLayout.consoleDockPosition === 'bottom' ? 'right' : 'bottom',
+                          )
+                        }
+                        className={`px-1.5 py-0.5 text-[11px] font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                          workbenchLayout.consoleDockPosition === 'right'
+                            ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/40'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title={
+                          workbenchLayout.consoleDockPosition === 'bottom'
+                            ? 'Dock testcases on right (3-column layout)'
+                            : 'Dock testcases at bottom'
+                        }
+                      >
+                        <span>{workbenchLayout.consoleDockPosition === 'bottom' ? '⊞ Dock Right' : '⊟ Dock Bottom'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={workbenchLayout.toggleStacked}
+                        className={`px-1.5 py-0.5 text-[11px] font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                          workbenchLayout.isStacked
+                            ? 'bg-amber-600/30 text-amber-200 border border-amber-500/40'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title={workbenchLayout.isStacked ? 'Switch to side-by-side split' : 'Switch to stacked top/bottom layout'}
+                      >
+                        <span>{workbenchLayout.isStacked ? '⧉ Split' : '☰ Stack'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={workbenchLayout.resetLayout}
+                        className="px-1.5 py-0.5 text-[11px] font-medium rounded text-slate-500 hover:text-slate-300 transition cursor-pointer"
+                        title="Reset layout dimensions and positions to default"
+                      >
+                        <span>↺ Reset</span>
+                      </button>
+                    </div>
+
+                    {revealed && (
+                      <CopyLearningSummaryButton
+                        item={item}
+                        answer={answer}
+                        testCode={testCode}
+                        result={result}
+                        codeLanguage={codeLanguage}
+                        codeRunResult={codeRunResult}
+                        variant="compact"
+                      />
+                    )}
+                    {!inPopout && (
+                      <button
+                        type="button"
+                        onClick={handlePopOutIde}
+                        className="px-2 py-0.5 text-xs font-medium rounded bg-[#161616] hover:bg-[#222] text-sky-400 hover:text-sky-300 border border-sky-500/40 shadow-sm flex items-center gap-1 transition cursor-pointer shrink-0"
+                        title="Expand IDE into a separate window for multi-monitor or full workspace (Alt+P)"
+                      >
+                        <span>⧉</span>
+                        <span>Separate Window</span>
+                      </button>
+                    )}
+                    {!inPopout && <FullscreenButton size="sm" showLabel={false} />}
+                  </div>
+                </div>
+
+                {/* Body: Tiled Side-by-Side View vs Single Tab View */}
+                {tiledTabs ? (
+                  <div
+                    ref={tiledContainerRef}
+                    style={
+                      inPopout || currentViewportWidth < 1024
+                        ? undefined
+                        : { height: `${Math.max(460, workbenchLayout.editorHeight + 76)}px` }
+                    }
+                    className={`flex flex-col lg:flex-row items-stretch bg-[#161616] relative overflow-hidden w-full divide-y lg:divide-y-0 divide-ink-line ${
+                      inPopout ? 'flex-1 min-h-0' : ''
+                    }`}
+                  >
+                    <div
+                      style={
+                        currentViewportWidth < 1024
+                          ? undefined
+                          : { width: `${workbenchLayout.tiledLeftWidthPercent}%` }
+                      }
+                      className="w-full lg:w-auto min-w-0 lg:min-w-[200px] shrink-0 flex flex-col min-h-0"
+                    >
+                      <TiledEditorPane
+                        paneId="left"
+                        currentTab={tileLeftTab}
+                        onTabChange={setTileLeftTab}
+                        answer={answer}
+                        onAnswerChange={setAnswer}
+                        testCode={testCode}
+                        onTestCodeChange={setTestCode}
+                        cleanRefCode={cleanRefCode}
+                        starterTestsCode={starterTestsCode}
+                        cleanRefTestsCode={cleanRefTestsCode}
+                        codeLanguage={codeLanguage}
+                        revealed={revealed}
+                        onReveal={() => void reveal()}
+                        item={item}
+                        copiedRef={copiedRef}
+                        onCopyRef={handleCopyReferenceCode}
+                        copiedStarterTests={copiedStarterTests}
+                        onCopyStarterTests={handleCopyStarterTests}
+                        copiedRefTests={copiedRefTests}
+                        onCopyRefTests={handleCopyReferenceTests}
+                        height={effectiveEditorHeight}
+                        fillHeight={shouldFillTiledHeight}
+                        onRun={() => void handleRunReviewCode()}
+                        onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
+                        activeLineHint={activeLineHint}
+                        lineHintLoading={lineHintLoading}
+                        onRequestLineHint={handleRequestLineHint}
+                        onDismissLineHint={() => setActiveLineHint(null)}
+                        onCursorChange={(l) => {
+                          if (tileLeftTab === 'solution') setEditorCursorLine(l)
+                        }}
+                        onGradeSolution={() => void (answer.trim() ? grade() : reveal())}
+                        grading={grading}
+                        learnMode={learnMode}
+                        overlookedPhrases={overlookedTerms}
+                        matchedPhrases={matchedTerms}
+                        onHide={() => handleHideSolution('hide')}
+                        logicGuardEnabled={logicGuardEnabled}
+                        onLogicGuardToggle={handleToggleLogicGuard}
+                        activeModel={activeModel}
+                        onActiveModelChange={(m) => void handleSwitchModel(m)}
+                        executionSummary={executionSummaryStr}
+                        sharedQaHistory={sharedQaHistory}
+                        onSharedQaHistoryChange={setSharedQaHistory}
+                      />
+                    </div>
+
+                    <div className="hidden lg:flex items-stretch shrink-0">
+                      <ResizableSplitter
+                        direction="horizontal"
+                        variant="flush"
+                        onResize={(delta) => {
+                          const width = tiledContainerRef.current?.getBoundingClientRect().width || (inPopout ? popoutDimensions.width : 800)
+                          workbenchLayout.handleTiledResize(delta, width)
+                        }}
+                        onDoubleClick={workbenchLayout.resetTiledSplit}
+                        collapseTooltip="Drag to resize panes (Double-click to reset 50/50)"
+                      />
+                    </div>
+
+                    <div className="w-full lg:w-auto min-w-0 lg:min-w-[200px] flex-1 flex flex-col min-h-0">
+                      <TiledEditorPane
+                        paneId="right"
+                        currentTab={tileRightTab}
+                        onTabChange={setTileRightTab}
+                        answer={answer}
+                        onAnswerChange={setAnswer}
+                        testCode={testCode}
+                        onTestCodeChange={setTestCode}
+                        cleanRefCode={cleanRefCode}
+                        starterTestsCode={starterTestsCode}
+                        cleanRefTestsCode={cleanRefTestsCode}
+                        codeLanguage={codeLanguage}
+                        revealed={revealed}
+                        onReveal={() => void reveal()}
+                        item={item}
+                        copiedRef={copiedRef}
+                        onCopyRef={handleCopyReferenceCode}
+                        copiedStarterTests={copiedStarterTests}
+                        onCopyStarterTests={handleCopyStarterTests}
+                        copiedRefTests={copiedRefTests}
+                        onCopyRefTests={handleCopyReferenceTests}
+                        height={effectiveEditorHeight}
+                        fillHeight={shouldFillTiledHeight}
+                        onRun={() => void handleRunReviewCode()}
+                        onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
+                        activeLineHint={activeLineHint}
+                        lineHintLoading={lineHintLoading}
+                        onRequestLineHint={handleRequestLineHint}
+                        onDismissLineHint={() => setActiveLineHint(null)}
+                        onCursorChange={(l) => {
+                          if (tileRightTab === 'solution') setEditorCursorLine(l)
+                        }}
+                        onGradeSolution={() => void (answer.trim() ? grade() : reveal())}
+                        grading={grading}
+                        learnMode={learnMode}
+                        overlookedPhrases={overlookedTerms}
+                        matchedPhrases={matchedTerms}
+                        onHide={() => handleHideSolution('hide')}
+                        logicGuardEnabled={logicGuardEnabled}
+                        onLogicGuardToggle={handleToggleLogicGuard}
+                        activeModel={activeModel}
+                        onActiveModelChange={(m) => void handleSwitchModel(m)}
+                        executionSummary={executionSummaryStr}
+                        sharedQaHistory={sharedQaHistory}
+                        onSharedQaHistoryChange={setSharedQaHistory}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* Single Tab View */
+                  activeEditorTab === 'reference' ? (
+                    revealed || singleRefViewMode === 'hint' ? (
+                      <div className={inPopout ? 'flex flex-col flex-1 min-h-0 overflow-hidden' : 'flex flex-col'}>
+                        {singleRefViewMode === 'hint' && (
+                          <div className="px-3 py-1.5 bg-amber-950/40 border-b border-amber-500/30 flex items-center justify-between text-xs text-amber-200 shrink-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-amber-300">💡 Hint Mode:</span>
+                              <span>
+                                Only line {findIncompleteLineNumber(answer, cleanRefCode)} is visible
+                              </span>
+                            </div>
+                            {revealed && (
+                              <button
+                                type="button"
+                                onClick={() => handleHideSolution('hide')}
+                                className="px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-semibold cursor-pointer"
+                                title="Hide the solution and continue practicing"
+                              >
+                                🔒 Unreveal & Practice
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        <CodeEditor
+                          code={cleanRefCode}
+                          onChange={() => {}}
+                          language={codeLanguage}
+                          readOnly={true}
+                          fillHeight={inPopout}
+                          height={
+                            singleRefViewMode === 'hint'
+                              ? effectiveRefHintHeight
+                              : effectiveEditorHeight
+                          }
+                          placeholder="// Reference solution"
+                          context={item?.front || item?.deck_name}
+                          deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
+                          cardId={item?.id ?? null}
+                          userCode={answer}
+                          userTestCode={testCode}
+                          executionSummary={executionSummaryStr}
+                          revealed={revealed}
+                          sharedQaHistory={sharedQaHistory}
+                          onSharedQaHistoryChange={setSharedQaHistory}
+                          activeModel={activeModel}
+                          onActiveModelChange={(m) => void handleSwitchModel(m)}
+                          diffSegments={singleRefViewMode === 'diff' ? singleRefDiff.refSegments : null}
+                          diffStats={singleRefViewMode === 'diff' ? singleRefDiff.stats : null}
+                          hintOnly={singleRefViewMode === 'hint'}
+                          hintOnlyLine={findIncompleteLineNumber(answer, cleanRefCode)}
+                          targetLineNumbers={singleTargetRefLines}
+                          focusTargetCode={focusTargetCode}
+                          targetHighlightColor={targetHighlightColor}
+                          initialScrollLine={firstSingleTargetRefLine ?? undefined}
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        style={inPopout ? undefined : { height: effectiveEditorHeight }}
+                        className={`flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3 ${
+                          inPopout ? 'flex-1 min-h-[200px]' : ''
+                        }`}
+                      >
+                        <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shadow-inner">
+                          <svg className="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-semibold text-slate-200">Reference Solution</h4>
+                          <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
+                            Hidden until revealed.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <button
+                            type="button"
+                            onClick={() => void reveal()}
+                            className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 cursor-pointer"
+                          >
+                            <span>Reveal Solution</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSingleRefViewMode('hint')
+                              localStorage.setItem('memorization.refViewMode', 'hint')
+                            }}
+                            className="px-3 py-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
+                            title="Peek only the next line of code without revealing full answer"
+                          >
+                            <span>💡 Line Hint</span>
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  ) : activeEditorTab === 'ref_tests' ? (
+                    revealed || learnMode ? (
+                      <CodeEditor
+                        code={cleanRefTestsCode}
+                        onChange={() => {}}
+                        language={codeLanguage}
+                        readOnly={true}
+                        fillHeight={inPopout}
+                        height={effectiveEditorHeight}
+                        placeholder="// Completed reference test suite"
+                        context={item?.front || item?.deck_name}
+                        deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
+                        cardId={item?.id ?? null}
+                        userCode={answer}
+                        userTestCode={testCode}
+                        executionSummary={executionSummaryStr}
+                        revealed={revealed}
+                        sharedQaHistory={sharedQaHistory}
+                        onSharedQaHistoryChange={setSharedQaHistory}
+                        activeModel={activeModel}
+                        onActiveModelChange={(m) => void handleSwitchModel(m)}
+                      />
+                    ) : (
+                      <div
+                        style={inPopout ? undefined : { height: effectiveEditorHeight }}
+                        className={`flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3 ${
+                          inPopout ? 'flex-1 min-h-[200px]' : ''
+                        }`}
+                      >
+                        <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shadow-inner">
+                          <svg className="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-semibold text-slate-200">Reference Tests</h4>
+                          <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
+                            Hidden until revealed.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <button
+                            type="button"
+                            onClick={() => void reveal()}
+                            className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 cursor-pointer"
+                          >
+                            <span>Reveal Tests</span>
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <CodeEditor
+                      code={activeEditorTab === 'solution' ? answer : testCode}
+                      onChange={activeEditorTab === 'solution' ? setAnswer : setTestCode}
+                      language={codeLanguage}
+                      fillHeight={inPopout}
+                      height={effectiveEditorHeight}
+                      onRun={() => void handleRunReviewCode()}
+                      onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
+                      activeModel={activeModel}
+                      onActiveModelChange={(m) => void handleSwitchModel(m)}
+                      activeLineHint={activeEditorTab === 'solution' ? activeLineHint : null}
+                      lineHintLoading={activeEditorTab === 'solution' ? lineHintLoading : false}
+                      onRequestLineHint={activeEditorTab === 'solution' ? handleRequestLineHint : undefined}
+                      onDismissLineHint={() => setActiveLineHint(null)}
+                      onCursorChange={(l) => setEditorCursorLine(l)}
+                      onGradeSolution={activeEditorTab === 'solution' ? () => void (answer.trim() ? grade() : reveal()) : undefined}
+                      grading={activeEditorTab === 'solution' ? grading : false}
+                      context={item?.front || item?.deck_name}
+                      deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
+                      cardId={item?.id ?? null}
+                      userCode={answer}
+                      userTestCode={testCode}
+                      executionSummary={executionSummaryStr}
+                      revealed={revealed}
+                      sharedQaHistory={sharedQaHistory}
+                      onSharedQaHistoryChange={setSharedQaHistory}
+                    />
+                  )
+                )}
+              </div>
+            </div>
+
+            {/* Splitter between Editor and Console */}
+            {!workbenchLayout.consoleCollapsed && (
+              isRightDock ? (
+                <div className="hidden lg:flex items-stretch shrink-0">
+                  <ResizableSplitter
+                    direction="horizontal"
+                    variant={inPopout ? 'flush' : 'pill'}
+                    onResize={(delta) => {
+                      const width = workbenchRowRef.current?.getBoundingClientRect().width || (inPopout ? popoutDimensions.width : 900)
+                      workbenchLayout.handleConsoleWidthResize(delta, width)
+                    }}
+                    onDoubleClick={workbenchLayout.resetConsoleWidth}
+                    onToggleCollapse={workbenchLayout.toggleConsoleCollapsed}
+                    isCollapsed={workbenchLayout.consoleCollapsed}
+                    collapseTooltip="Drag to resize Console width / Double-click to reset / Click to collapse"
+                  />
+                </div>
+              ) : (
+                <ResizableSplitter
+                  direction="vertical"
+                  variant={inPopout ? 'flush' : 'pill'}
+                  onResize={
+                    inPopout
+                      ? workbenchLayout.handleConsoleHeightResize
+                      : workbenchLayout.handleEditorHeightResize
+                  }
+                  onDoubleClick={
+                    inPopout
+                      ? workbenchLayout.resetConsoleHeight
+                      : workbenchLayout.resetEditorHeight
+                  }
+                  onToggleCollapse={workbenchLayout.toggleConsoleCollapsed}
+                  isCollapsed={workbenchLayout.consoleCollapsed}
+                  collapseTooltip={
+                    inPopout
+                      ? 'Drag to resize Console height / Double-click to reset / Click to collapse'
+                      : 'Drag to resize editor & console height / Double-click to reset / Click to collapse'
+                  }
+                />
+              )
+            )}
+
+            {/* Console Section (Docked Right vs Docked Bottom) */}
+            {isRightDock ? (
+              workbenchLayout.consoleCollapsed ? (
+                <div
+                  onClick={workbenchLayout.toggleConsoleCollapsed}
+                  className={
+                    inPopout
+                      ? 'hidden lg:flex w-10 border-l border-[#2a2d34] bg-[#161616] hover:bg-[#202020] cursor-pointer flex-col items-center py-4 text-slate-400 hover:text-white transition gap-3 select-none shrink-0'
+                      : 'hidden lg:flex w-10 rounded-xl border border-ink-line bg-[#161616] hover:bg-[#202020] cursor-pointer flex-col items-center py-4 text-slate-400 hover:text-white transition gap-3 select-none shrink-0'
+                  }
+                  title="Expand Testcases Console (Click to expand)"
+                >
+                  <span className="text-xs">◀</span>
+                  <span className="text-[11px] font-mono [writing-mode:vertical-rl] tracking-wider font-semibold">
+                    Testcases Console
+                  </span>
+                  {codeRunResult && (
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        codeRunResult.status === 'Accepted' ? 'bg-emerald-400' : 'bg-rose-400'
+                      }`}
+                      title={codeRunResult.status === 'Accepted' ? 'Tests Passed' : 'Tests Failed'}
+                    />
+                  )}
+                </div>
+              ) : (
+                <div
+                  style={{ width: `${workbenchLayout.consoleWidthPercent}%` }}
+                  className={
+                    inPopout
+                      ? 'w-full lg:w-auto min-w-[260px] shrink-0 h-full min-h-0 flex flex-col border-l border-[#2a2d34]'
+                      : 'w-full lg:w-auto min-w-[280px] shrink-0'
+                  }
+                >
+                  <CodeTestConsole
+                    testCases={item.test_cases || []}
+                    runResult={codeRunResult}
+                    running={codeRunning}
+                    onRun={handleRunReviewCode}
+                    onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
+                    submitting={grading}
+                    dockPosition="right"
+                    onToggleCollapse={workbenchLayout.toggleConsoleCollapsed}
+                    flush={inPopout}
+                  />
+                </div>
+              )
+            ) : (
+              /* Bottom Dock Console */
+              workbenchLayout.consoleCollapsed ? (
+                <div
+                  className={
+                    inPopout
+                      ? 'shrink-0 flex items-center justify-between px-3.5 py-2 bg-[#16171b] border-t border-[#2a2d34] text-xs text-slate-400'
+                      : 'flex items-center justify-between px-3.5 py-2 bg-[#1a1a1a] border border-ink-line rounded-xl text-xs text-slate-400'
+                  }
+                >
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={workbenchLayout.toggleConsoleCollapsed}
+                      className="flex items-center gap-1.5 text-slate-200 hover:text-white font-medium cursor-pointer"
+                      title="Expand Testcases Console"
+                    >
+                      <span className="text-sky-400">▲</span>
+                      <span className="font-semibold">Testcases Console</span>
+                      <span className="text-slate-500 text-[11px]">(Collapsed)</span>
+                    </button>
+                    {codeRunResult && (
+                      <span
+                        className={`text-[11px] px-2 py-0.5 rounded font-semibold ${
+                          codeRunResult.status === 'Accepted'
+                            ? 'bg-emerald-500/20 text-emerald-300'
+                            : 'bg-rose-500/20 text-rose-300'
+                        }`}
+                      >
+                        {codeRunResult.status === 'Accepted' ? 'Passed' : 'Failed'} ({codeRunResult.passed_count}/
+                        {codeRunResult.total_count})
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleRunReviewCode()}
+                      disabled={codeRunning}
+                      className="btn btn-secondary text-xs py-1 px-3 cursor-pointer"
+                    >
+                      {codeRunning ? 'Running…' : 'Run Tests'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={workbenchLayout.toggleConsoleCollapsed}
+                      className="text-xs text-sky-400 hover:text-sky-300 cursor-pointer font-medium"
+                    >
+                      Expand ▲
+                    </button>
+                  </div>
+                </div>
+              ) : inPopout ? (
+                <div className="shrink-0 w-full border-t border-[#2a2d34]">
+                  <CodeTestConsole
+                    testCases={item.test_cases || []}
+                    runResult={codeRunResult}
+                    running={codeRunning}
+                    onRun={handleRunReviewCode}
+                    onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
+                    submitting={grading}
+                    dockPosition="bottom"
+                    onToggleCollapse={workbenchLayout.toggleConsoleCollapsed}
+                    flush={true}
+                    heightPx={workbenchLayout.consoleHeight}
+                  />
+                </div>
+              ) : (
+                <CodeTestConsole
+                  testCases={item.test_cases || []}
+                  runResult={codeRunResult}
+                  running={codeRunning}
+                  onRun={handleRunReviewCode}
+                  onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
+                  submitting={grading}
+                  dockPosition="bottom"
+                  onToggleCollapse={workbenchLayout.toggleConsoleCollapsed}
+                />
+              )
+            )}
+          </div>
+    )
+
+    if (!inPopout) {
+      return workbenchContent
+    }
+
+    return (
+      <div className="flex flex-col h-screen w-screen bg-[#121212] text-slate-100 overflow-hidden select-auto font-sans">
+        {/* Popout Window Top Header Bar */}
+        <div className="h-11 shrink-0 flex items-center justify-between px-3.5 bg-[#18181b] border-b border-[#2a2d34] text-xs text-slate-200 select-none gap-3">
+          {/* Left: Window Title & Metadata */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-1.5 font-bold text-sky-400">
+              <span className="text-base">⚡</span>
+              <span className="tracking-wide">Ars Memoriae</span>
+              <span className="text-slate-600">/</span>
+              <span className="text-slate-300 font-medium truncate max-w-[320px]">
+                {item?.title || item?.deck_name || 'Code Practice IDE'}
+              </span>
+            </div>
+            {item?.difficulty && (
+              <span
+                className={`chip text-[10px] py-0.5 px-2 font-semibold ${
+                  item.difficulty === 'Easy'
+                    ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
+                    : item.difficulty === 'Medium'
+                    ? 'border-amber-500/40 text-amber-300 bg-amber-500/10'
+                    : 'border-rose-500/40 text-rose-300 bg-rose-500/10'
+                }`}
+              >
+                {item.difficulty}
+              </span>
+            )}
+            <span className="chip text-[10px] py-0.5 px-2 border-sky-500/40 text-sky-300 bg-sky-500/10 font-mono uppercase">
+              {codeLanguage}
+            </span>
+            {item?.deck_name && (
+              <span className="chip text-[10px] py-0.5 px-2 text-slate-400 hidden sm:inline">
+                {item.deck_name}
+              </span>
+            )}
+          </div>
+
+          {/* Right: Controls (Problem Drawer, Lexicon Margin, Fullscreen, Dock Back) */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setPopoutShowProblem((prev) => !prev)}
+              className={`px-2.5 py-1 text-xs font-medium rounded transition flex items-center gap-1.5 cursor-pointer ${
+                popoutShowProblem
+                  ? 'bg-sky-600/30 text-sky-200 border border-sky-500/50 shadow-sm'
+                  : 'bg-[#222] hover:bg-[#2a2a2a] text-slate-300 border border-slate-700'
+              }`}
+              title="Toggle problem statement drawer (Alt+O)"
+            >
+              <span>📋</span>
+              <span>{popoutShowProblem ? 'Hide Problem' : 'Problem Statement'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPopoutShowLexicon((prev) => !prev)}
+              className={`px-2.5 py-1 text-xs font-medium rounded transition flex items-center gap-1.5 cursor-pointer ${
+                popoutShowLexicon
+                  ? 'bg-sky-600/30 text-sky-200 border border-sky-500/50 shadow-sm'
+                  : 'bg-[#222] hover:bg-[#2a2a2a] text-slate-300 border border-slate-700'
+              }`}
+              title="Toggle Card Lexicon & Definitions margin panel"
+            >
+              <span>📚</span>
+              <span>Lexicon</span>
+              {(item?.lexicon_glosses?.length || 0) > 0 && (
+                <span className="rounded-full bg-sky-500/30 px-1.5 py-0.2 text-[10px] font-bold text-sky-200">
+                  {item?.lexicon_glosses?.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (idePopupRef.current?.document.fullscreenElement) {
+                  void idePopupRef.current.document.exitFullscreen()
+                } else {
+                  void idePopupRef.current?.document.documentElement.requestFullscreen()
+                }
+              }}
+              className="px-2.5 py-1 text-xs font-medium rounded bg-[#222] hover:bg-[#2a2a2a] text-slate-300 border border-slate-700 transition flex items-center gap-1 cursor-pointer"
+              title="Toggle Fullscreen"
+            >
+              <span>⛶</span>
+              <span>Fullscreen</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDockBackIde}
+              className="px-2.5 py-1 text-xs font-semibold rounded bg-sky-600/40 hover:bg-sky-600/60 text-sky-100 border border-sky-500/60 shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+              title="Dock IDE back into main browser window (Esc / Alt+P)"
+            >
+              <span>⤓</span>
+              <span>Dock Back</span>
+              <kbd className="text-[10px] bg-slate-900/60 px-1 py-0.2 rounded text-sky-200">Esc</kbd>
+            </button>
+          </div>
+        </div>
+
+        {/* Main Content Area: Problem Drawer + Editor & Console + Margin Lexicon */}
+        <div className="flex flex-1 flex-row min-h-0 overflow-hidden relative">
+          {/* Slide-over Problem Statement Drawer in Separate Window */}
+          {popoutShowProblem && item && (
+            <div className="w-[380px] xl:w-[420px] max-w-[42vw] shrink-0 border-r border-[#2a2d34] bg-[#16181d] p-4 overflow-y-auto space-y-4 text-xs">
+              <div className="flex items-center justify-between pb-2 border-b border-ink-line">
+                <h3 className="font-bold text-sm text-slate-100">Problem Description</h3>
+                <button
+                  type="button"
+                  onClick={() => setPopoutShowProblem(false)}
+                  className="text-slate-400 hover:text-slate-200 text-sm font-mono cursor-pointer"
+                  title="Close problem drawer (Alt+O)"
+                >
+                  ✕
+                </button>
+              </div>
+              {item.title && <h2 className="text-base font-bold text-slate-100">{item.title}</h2>}
+              <RichText
+                text={item.front ?? ''}
+                className="text-xs leading-relaxed text-slate-200"
+                codeLanguage={codeLanguage}
+                deckId={item.kind === 'card' ? item.deck_or_source_id : null}
+              />
+              {(item.time_complexity || item.space_complexity || (item.edge_cases && item.edge_cases.length > 0)) && (
+                <div className="rounded-lg border border-ink-line/70 bg-ink-soft/40 p-3 space-y-2 text-xs">
+                  <p className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
+                    Target Complexity &amp; Constraints:
+                  </p>
+                  <div className="flex flex-wrap gap-3 text-slate-300">
+                    {item.time_complexity && (
+                      <span>
+                        <strong>Time:</strong> <code className="text-sky-300 font-mono font-bold">{item.time_complexity}</code>
+                      </span>
+                    )}
+                    {item.space_complexity && (
+                      <span>
+                        <strong>Space:</strong> <code className="text-sky-300 font-mono font-bold">{item.space_complexity}</code>
+                      </span>
+                    )}
+                  </div>
+                  {item.edge_cases && item.edge_cases.length > 0 && (
+                    <div className="pt-1 border-t border-ink-line/50">
+                      <span className="text-slate-400 font-medium">Critical Edge Cases: </span>
+                      <span className="text-amber-200/90 italic">{item.edge_cases.join(', ')}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* The Workbench Body (Editor + Console) */}
+          <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden bg-[#121212]">
+            {Boolean(error) && (
+              <div className="px-3 pt-2 shrink-0">
+                <ErrorNote error={error} />
+              </div>
+            )}
+            {workbenchContent}
+          </div>
+
+          {/* Right Margin Lexicon Sidebar in Separate Window */}
+          {item && (
+            <aside
+              className={
+                popoutShowLexicon
+                  ? 'w-[300px] xl:w-[320px] max-w-[36vw] shrink-0 border-l border-[#2a2d34] bg-[#111318] h-full min-h-0 flex flex-col overflow-hidden'
+                  : 'hidden'
+              }
+            >
+              <MarginLexiconPanel
+                embedded={true}
+                cardId={item.id}
+                deckId={item.kind === 'card' ? item.deck_or_source_id : null}
+                deckName={item.deck_name}
+                thematicNature={item.card_thematic_nature || item.deck_thematic_nature}
+                cardFront={item.front}
+                cardBack={item.back}
+                initialGlosses={item.lexicon_glosses}
+                codeLanguage={codeLanguage}
+                onLookupTriggered={() => setPopoutShowLexicon(true)}
+                onGlossesUpdated={(updatedGlosses) => {
+                  item.lexicon_glosses = updatedGlosses
+                }}
+              />
+            </aside>
+          )}
+        </div>
+      </div>
+    )
+  }
 
     return (
       <div className="space-y-6">
@@ -2760,18 +4256,20 @@ export default function Review() {
 
         {isCodeCard && layoutMode === 'split' ? (
           /* ════════════════════════════════════════════════════════════════════
-             LEETCODE-STYLE 50/50 SPLIT IDE WORKBENCH
+             LEETCODE-STYLE SPLIT IDE WORKBENCH WITH RIGHT MARGIN LEXICON
              Left: Problem specs, primer, guide, solution, LLM rubric & grades
-             Right: Python editor and interactive sandbox testcase console
+             Center: Editor & interactive sandbox testcase console
+             Right Margin: Persistent Card Concordance & Lexicon definitions
              ════════════════════════════════════════════════════════════════════ */
-          <div
-            ref={workbenchContainerRef}
-            className={`w-full min-w-0 transition-all ${
-              workbenchLayout.isStacked
-                ? 'flex flex-col gap-4'
-                : 'flex flex-col lg:flex-row items-stretch gap-0 relative'
-            }`}
-          >
+          <div className="flex flex-col xl:flex-row items-start gap-4 w-full">
+            <div
+              ref={workbenchContainerRef}
+              className={`flex-1 w-full min-w-0 transition-all ${
+                workbenchLayout.isStacked
+                  ? 'flex flex-col gap-4'
+                  : 'flex flex-col lg:flex-row items-stretch gap-0 relative'
+              }`}
+            >
             {/* Left Column: Problem & Review Pane */}
             {workbenchLayout.leftCollapsed ? (
               <button
@@ -2912,6 +4410,19 @@ export default function Review() {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
+                      onClick={isIdePoppedOut ? handleDockBackIde : handlePopOutIde}
+                      className={`chip cursor-pointer transition-colors flex items-center gap-1 font-semibold ${
+                        isIdePoppedOut
+                          ? 'border-sky-500/60 bg-sky-950/60 text-sky-200'
+                          : 'border-sky-500/40 text-sky-300 hover:bg-sky-500/10'
+                      }`}
+                      title={isIdePoppedOut ? 'Dock IDE back to this window (Esc / Alt+P)' : 'Expand IDE into separate window (Alt+P)'}
+                    >
+                      <span>{isIdePoppedOut ? '⤓' : '⧉'}</span>
+                      <span className="hidden sm:inline">{isIdePoppedOut ? 'Dock IDE' : 'Pop Out IDE'}</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={toggleLayoutMode}
                       className="chip cursor-pointer border-ink-line text-slate-400 hover:text-slate-200 transition-colors"
                       title="Switch to single card view"
@@ -2958,7 +4469,12 @@ export default function Review() {
               {/* Problem Title & Statement */}
               <div>
                 {item.title && <h2 className="text-xl font-bold text-slate-100 mb-2">{item.title}</h2>}
-                <RichText text={item.front ?? ''} className="text-base leading-relaxed text-slate-200" />
+                <RichText
+                  text={item.front ?? ''}
+                  className="text-base leading-relaxed text-slate-200"
+                  codeLanguage={codeLanguage}
+                  deckId={item.kind === 'card' ? item.deck_or_source_id : null}
+                />
               </div>
 
               {/* Complexity & Constraints Box */}
@@ -3077,11 +4593,11 @@ export default function Review() {
                       </div>
                       {weaknessHintLoading ? (
                         <p className="text-amber-300/70 italic">Consulting past weakness memory…</p>
-                      ) : (
-                        <p className="text-amber-100 leading-relaxed">
-                          {weaknessHint || (item.active_weaknesses?.[0] ? `Recall your past struggle with: ${item.active_weaknesses[0]}` : 'Recall the core concepts and definitions.')}
-                        </p>
-                      )}
+                      ) : weaknessHintError ? (
+                        <p className="text-rose-300 leading-relaxed">{weaknessHintError}</p>
+                      ) : weaknessHint ? (
+                        <p className="text-amber-100 leading-relaxed">{weaknessHint}</p>
+                      ) : null}
                     </div>
                   )}
 
@@ -3360,847 +4876,75 @@ export default function Review() {
                 workbenchLayout.columnsSwapped ? 'order-1' : 'order-3'
               } ${workbenchLayout.isStacked ? 'w-full' : ''}`}
             >
-              <div
-                ref={workbenchLayout.consoleDockPosition === 'right' ? workbenchRowRef : undefined}
-                className={
-                  workbenchLayout.consoleDockPosition === 'right' && !workbenchLayout.isStacked
-                    ? 'flex flex-col lg:flex-row items-stretch gap-2 w-full min-w-0'
-                    : 'flex flex-col gap-2 w-full min-w-0'
-                }
-              >
-                {/* Editor Container */}
-                <div
-                  style={
-                    workbenchLayout.consoleDockPosition === 'right' && !workbenchLayout.isStacked
-                      ? workbenchLayout.consoleCollapsed
-                        ? { width: 'calc(100% - 48px)' }
-                        : { width: `calc(${100 - workbenchLayout.consoleWidthPercent}% - 8px)` }
-                      : undefined
-                  }
-                  className={
-                    workbenchLayout.consoleDockPosition === 'right' && !workbenchLayout.isStacked
-                      ? 'flex-1 min-w-[280px]'
-                      : 'w-full'
-                  }
-                >
-                  <div className="card p-0 overflow-hidden border border-ink-line">
-                <div className="flex flex-wrap items-center justify-between border-b border-ink-line bg-[#1e1e1e] px-4 py-2 text-xs gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {/* View mode / Tabs selector */}
-                    {tiledTabs ? (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line shrink-0">
-                          <span
-                            className="px-2 py-0.5 text-xs font-semibold rounded bg-sky-600/30 text-sky-200 border border-sky-500/50 shadow-sm flex items-center gap-1.5 cursor-default select-none shrink-0"
-                            title="Tiled (Alt+S)"
-                          >
-                            <span>⧉</span>
-                            <span>Tiled</span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={toggleTiledTabs}
-                            className="px-2 py-0.5 text-xs font-medium rounded text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition cursor-pointer shrink-0"
-                            title="Single tab (Alt+S)"
-                          >
-                            <span>⊟</span>
-                            <span>Single Tab</span>
-                          </button>
-                        </div>
-
-                        <div className="inline-flex items-center rounded-md bg-[#161616] p-0.5 border border-ink-line shrink-0 overflow-x-auto no-scrollbar">
-                          <span className="text-[10px] text-slate-500 px-1.5 font-medium uppercase tracking-wider shrink-0 select-none">Presets:</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTileLeftTab('solution')
-                              setTileRightTab('tests')
-                            }}
-                            className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
-                              tileLeftTab === 'solution' && tileRightTab === 'tests'
-                                ? 'bg-sky-600/40 text-sky-100 border border-sky-500/60 shadow-sm font-semibold'
-                                : 'text-slate-400 hover:text-slate-200'
-                            }`}
-                            title="Classic TDD: Solution on left, Unit Tests on right"
-                          >
-                            <span>Sol</span>
-                            <span className="text-slate-500">↔</span>
-                            <span>Tests</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTileLeftTab('reference')
-                              setTileRightTab('solution')
-                            }}
-                            className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
-                              tileLeftTab === 'reference' && tileRightTab === 'solution'
-                                ? 'bg-sky-600/40 text-sky-100 border border-sky-500/60 shadow-sm font-semibold'
-                                : 'text-slate-400 hover:text-slate-200'
-                            }`}
-                            title="Compare Reference Solution alongside Solution"
-                          >
-                            <span>Ref</span>
-                            <span className="text-slate-500">↔</span>
-                            <span>Sol</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTileLeftTab('reference')
-                              setTileRightTab('tests')
-                            }}
-                            className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
-                              tileLeftTab === 'reference' && tileRightTab === 'tests'
-                                ? 'bg-sky-600/40 text-sky-100 border border-sky-500/60 shadow-sm font-semibold'
-                                : 'text-slate-400 hover:text-slate-200'
-                            }`}
-                            title="Compare Reference Solution alongside Unit Tests"
-                          >
-                            <span>Ref</span>
-                            <span className="text-slate-500">↔</span>
-                            <span>Tests</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTileLeftTab('tests')
-                              setTileRightTab('ref_tests')
-                            }}
-                            className={`px-2 py-0.5 text-xs font-medium rounded transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
-                              tileLeftTab === 'tests' && tileRightTab === 'ref_tests'
-                                ? 'bg-purple-600/40 text-purple-100 border border-purple-500/60 shadow-sm font-semibold'
-                                : 'text-slate-400 hover:text-slate-200'
-                            }`}
-                            title="Compare Unit Tests alongside Completed Reference Tests"
-                          >
-                            <span>Tests</span>
-                            <span className="text-slate-500">↔</span>
-                            <span>Ref Tests</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const prevLeft = tileLeftTab
-                              const prevRight = tileRightTab
-                              setTileLeftTab(prevRight)
-                              setTileRightTab(prevLeft)
-                            }}
-                            className="px-1.5 py-0.5 text-xs font-medium rounded text-slate-400 hover:text-slate-200 hover:bg-[#282828] transition cursor-pointer border-l border-ink-line/60 ml-0.5 shrink-0 whitespace-nowrap"
-                            title="Swap Left and Right panes"
-                          >
-                            <span>⇄ Swap</span>
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line">
-                        <button
-                          type="button"
-                          onClick={() => setActiveEditorTab('solution')}
-                          className={`px-2.5 py-1 text-xs font-medium rounded transition flex items-center gap-1.5 cursor-pointer ${
-                            activeEditorTab === 'solution'
-                              ? 'bg-sky-600/30 text-sky-200 border border-sky-500/50 shadow-sm'
-                              : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                          title="Solution (Alt+T)"
-                        >
-                          <span>Sol</span>
-                          <span>Solution</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveEditorTab('tests')}
-                          className={`px-2.5 py-1 text-xs font-medium rounded transition flex items-center gap-1.5 cursor-pointer ${
-                            activeEditorTab === 'tests'
-                              ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/50 shadow-sm'
-                              : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                          title="Unit Tests (Alt+T)"
-                        >
-                          <span>Tests</span>
-                          <span>Unit Tests</span>
-                          {testCode.trim() && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveEditorTab('reference')}
-                          className={`px-2.5 py-1 text-xs font-medium rounded transition flex items-center gap-1.5 cursor-pointer ${
-                            activeEditorTab === 'reference'
-                              ? 'bg-emerald-600/30 text-emerald-200 border border-emerald-500/50 shadow-sm'
-                              : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                          title="Reference"
-                        >
-                          
-                          <span>Reference</span>
-                        </button>
-                        {Boolean(cleanRefTestsCode.trim()) && (
-                          <button
-                            type="button"
-                            onClick={() => setActiveEditorTab('ref_tests')}
-                            className={`px-2.5 py-1 text-xs font-medium rounded transition flex items-center gap-1.5 cursor-pointer ${
-                              activeEditorTab === 'ref_tests'
-                                ? 'bg-purple-600/30 text-purple-200 border border-purple-500/50 shadow-sm'
-                                : 'text-slate-400 hover:text-slate-200'
-                            }`}
-                            title="Ref Tests"
-                          >
-                            <span>Tests</span>
-                            <span>Ref Tests</span>
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={toggleTiledTabs}
-                          className="px-2.5 py-1 text-xs font-medium rounded text-sky-400 hover:text-sky-200 hover:bg-sky-500/10 flex items-center gap-1.5 transition border-l border-ink-line/60 ml-0.5 cursor-pointer"
-                          title="Tile side-by-side (Alt+S)"
-                        >
-                          <span>⧉</span>
-                          <span>Tile</span>
-                        </button>
-                      </div>
-                    )}
-
-                    <select
-                      value={codeLanguage}
-                      onChange={(e) => {
-                        const nextLang = e.target.value
-                        setCodeLanguage(nextLang)
-                        localStorage.setItem('memorization.reviewCodeLanguage', nextLang)
-                      }}
-                      className="rounded border border-ink-line bg-[#282828] px-2 py-0.5 text-xs font-semibold text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer shrink-0"
-                    >
-                      <option value="typescript">TypeScript</option>
-                      <option value="javascript">JavaScript</option>
-                      <option value="python">Python 3</option>
-                    </select>
-
-                    {/* Reset buttons in Single Tab Mode */}
-                    {!tiledTabs && activeEditorTab === 'solution' && item.starter_code && (
-                      <button
-                        type="button"
-                        onClick={() => setAnswer(item.starter_code || '')}
-                        className="text-slate-400 hover:text-slate-200 text-[11px] underline cursor-pointer"
-                        title="Reset code editor to original starter template"
-                      >
-                        Reset solution
-                      </button>
-                    )}
-                    {!tiledTabs && activeEditorTab === 'tests' && (
-                      <div className="flex items-center gap-2">
-                        {!testCode.trim() && Boolean(cleanRefTestsCode) && (
-                          <button
-                            type="button"
-                            onClick={() => setTestCode(cleanRefTestsCode)}
-                            className="text-purple-300 hover:text-purple-200 text-[11px] underline cursor-pointer"
-                            title="Load completed reference tests into unit tests editor"
-                          >
-                            Load reference tests
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setTestCode(buildStarterTestCode(item) || cleanRefTestsCode)}
-                          className="text-slate-400 hover:text-slate-200 text-[11px] underline cursor-pointer"
-                          title="Reset unit tests to starter assertions"
-                        >
-                          Reset tests
-                        </button>
-                      </div>
-                    )}
-                    {!tiledTabs && activeEditorTab === 'reference' && (
-                      <div className="flex items-center gap-2">
-                        {Boolean(cleanRefCode) && (revealed || singleRefViewMode === 'hint') && (
-                          <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line text-[11px] shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSingleRefViewMode('ide')
-                                localStorage.setItem('memorization.refViewMode', 'ide')
-                              }}
-                              className={`px-2 py-0.5 rounded transition cursor-pointer ${
-                                singleRefViewMode === 'ide'
-                                  ? 'bg-sky-600/30 text-sky-200 border border-sky-500/50 font-medium'
-                                  : 'text-slate-400 hover:text-slate-200'
-                              }`}
-                              title="IDE syntax-highlighted code format"
-                            >
-                              IDE
-                            </button>
-                            {revealed && Boolean(answer.trim()) && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSingleRefViewMode('diff')
-                                  localStorage.setItem('memorization.refViewMode', 'diff')
-                                }}
-                                className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
-                                  singleRefViewMode === 'diff'
-                                    ? 'bg-amber-600/30 text-amber-200 border border-amber-500/50 font-medium'
-                                    : 'text-slate-400 hover:text-slate-200'
-                                }`}
-                                title="Token-by-token answer comparison diff against your Solution"
-                              >
-                                <span>Diff</span>
-                                {singleRefDiff.stats && singleRefDiff.stats.missingCount > 0 && (
-                                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" />
-                                )}
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSingleRefViewMode('hint')
-                                localStorage.setItem('memorization.refViewMode', 'hint')
-                              }}
-                              className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
-                                singleRefViewMode === 'hint'
-                                  ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50 font-medium'
-                                  : 'text-slate-400 hover:text-slate-200'
-                              }`}
-                              title="Hint-only mode: reveals only the current incomplete line"
-                            >
-                              <span>💡 Hint</span>
-                            </button>
-                          </div>
-                        )}
-                        {revealed && (
-                          <button
-                            type="button"
-                            onClick={() => handleHideSolution('hide')}
-                            className="px-2 py-0.5 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[11px] font-medium transition cursor-pointer flex items-center gap-1 shrink-0"
-                            title="Hide solution and return to active practice"
-                          >
-                            <span>🔒 Hide</span>
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => void handleCopyReferenceCode(cleanRefCode)}
-                          disabled={!cleanRefCode}
-                          className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
-                          title="Copy reference code to clipboard"
-                        >
-                          <span>{copiedRef ? 'Copied' : 'Copy ref'}</span>
-                        </button>
-                      </div>
-                    )}
-                    {!tiledTabs && activeEditorTab === 'ref_tests' && (
-                      <div className="flex items-center gap-2">
-                        {Boolean(cleanRefTestsCode) && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTestCode(cleanRefTestsCode)
-                              setActiveEditorTab('tests')
-                            }}
-                            className="text-purple-300 hover:text-purple-200 text-[11px] underline cursor-pointer"
-                            title="Load reference tests into editable Unit Tests editor"
-                          >
-                            Load to tests
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => void handleCopyReferenceTests(cleanRefTestsCode)}
-                          disabled={!cleanRefTestsCode}
-                          className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
-                          title="Copy completed reference tests to clipboard"
-                        >
-                          <span>{copiedRefTests ? 'Copied' : 'Copy ref tests'}</span>
-                        </button>
-                      </div>
-                    )}
+              {isIdePoppedOut ? (
+                <div className="card border border-ink-line bg-[#161a22]/80 p-8 flex flex-col items-center justify-center text-center space-y-4 min-h-[460px] shadow-xl">
+                  <div className="w-16 h-16 rounded-2xl bg-sky-950/80 border border-sky-500/40 text-sky-400 flex items-center justify-center text-3xl shadow-lg ring-1 ring-sky-500/30">
+                    ⧉
                   </div>
-
-                  <div className="flex items-center gap-3 text-xs shrink-0">
-                    <div className="flex items-center gap-1 shrink-0">
-                      <span className="text-slate-500 text-[11px] shrink-0">Confidence:</span>
-                      {[
-                        { lvl: 1, label: '1', color: 'text-rose-300' },
-                        { lvl: 2, label: '2', color: 'text-amber-300' },
-                        { lvl: 3, label: '3', color: 'text-sky-300' },
-                        { lvl: 4, label: '4', color: 'text-emerald-300' },
-                      ].map(({ lvl, label, color }) => (
-                        <button
-                          key={lvl}
-                          type="button"
-                          onClick={() => setConfidence(confidence === lvl ? null : lvl)}
-                          className={`rounded px-1.5 py-0.5 text-[11px] transition cursor-pointer ${
-                            confidence === lvl
-                              ? `bg-white/10 ${color} font-bold ring-1 ring-inset ring-current`
-                              : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                    {/* Workbench Layout Toolbar */}
-                    <div className="inline-flex items-center rounded-md bg-[#161616] p-0.5 border border-ink-line text-xs gap-0.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={workbenchLayout.toggleColumnsSwapped}
-                        className={`px-1.5 py-0.5 text-[11px] font-medium rounded transition flex items-center gap-1 cursor-pointer ${
-                          workbenchLayout.columnsSwapped
-                            ? 'bg-sky-600/30 text-sky-200 border border-sky-500/40'
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                        title="Swap Problem and Workbench columns"
-                      >
-                        <span>⇄ Swap Col</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          workbenchLayout.setConsoleDockPosition(
-                            workbenchLayout.consoleDockPosition === 'bottom' ? 'right' : 'bottom',
-                          )
-                        }
-                        className={`px-1.5 py-0.5 text-[11px] font-medium rounded transition flex items-center gap-1 cursor-pointer ${
-                          workbenchLayout.consoleDockPosition === 'right'
-                            ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/40'
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                        title={
-                          workbenchLayout.consoleDockPosition === 'bottom'
-                            ? 'Dock testcases on right (3-column layout)'
-                            : 'Dock testcases at bottom'
-                        }
-                      >
-                        <span>{workbenchLayout.consoleDockPosition === 'bottom' ? '⊞ Dock Right' : '⊟ Dock Bottom'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={workbenchLayout.toggleStacked}
-                        className={`px-1.5 py-0.5 text-[11px] font-medium rounded transition flex items-center gap-1 cursor-pointer ${
-                          workbenchLayout.isStacked
-                            ? 'bg-amber-600/30 text-amber-200 border border-amber-500/40'
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                        title={workbenchLayout.isStacked ? 'Switch to side-by-side split' : 'Switch to stacked top/bottom layout'}
-                      >
-                        <span>{workbenchLayout.isStacked ? '⧉ Split' : '☰ Stack'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={workbenchLayout.resetLayout}
-                        className="px-1.5 py-0.5 text-[11px] font-medium rounded text-slate-500 hover:text-slate-300 transition cursor-pointer"
-                        title="Reset layout dimensions and positions to default"
-                      >
-                        <span>↺ Reset</span>
-                      </button>
-                    </div>
-
-                    {revealed && (
-                      <CopyLearningSummaryButton
-                        item={item}
-                        answer={answer}
-                        testCode={testCode}
-                        result={result}
-                        codeLanguage={codeLanguage}
-                        codeRunResult={codeRunResult}
-                        variant="compact"
-                      />
-                    )}
-                    <FullscreenButton size="sm" showLabel={false} />
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-bold text-slate-100">IDE Popped Out in Separate Window</h3>
+                    <p className="text-sm text-slate-400 max-w-md">
+                      Your code editor, tests, and sandbox test runner are running in a dedicated window.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => idePopupRef.current?.focus()}
+                      className="btn btn-primary text-xs px-4 py-2 font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer"
+                      title="Bring the separate IDE window to the front"
+                    >
+                      <span>🔍 Bring to Front</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDockBackIde}
+                      className="btn text-xs px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 flex items-center gap-1.5 cursor-pointer"
+                      title="Dock IDE back into this window (Esc / Alt+P)"
+                    >
+                      <span>⤓ Dock Back Here</span>
+                      <kbd className="text-[10px] bg-slate-900 px-1.5 py-0.5 rounded text-slate-400">Esc</kbd>
+                    </button>
                   </div>
                 </div>
-
-                {/* Body: Tiled Side-by-Side View vs Single Tab View */}
-                {tiledTabs ? (
-                  <div
-                    ref={tiledContainerRef}
-                    className="flex flex-col lg:flex-row bg-[#161616] relative overflow-hidden w-full divide-y lg:divide-y-0 divide-ink-line"
-                  >
-                    <div
-                      style={
-                        typeof window !== 'undefined' && window.innerWidth < 1024
-                          ? undefined
-                          : { width: `${workbenchLayout.tiledLeftWidthPercent}%` }
-                      }
-                      className="w-full lg:w-auto min-w-0 lg:min-w-[200px] shrink-0"
-                    >
-                      <TiledEditorPane
-                        paneId="left"
-                        currentTab={tileLeftTab}
-                        onTabChange={setTileLeftTab}
-                        answer={answer}
-                        onAnswerChange={setAnswer}
-                        testCode={testCode}
-                        onTestCodeChange={setTestCode}
-                        cleanRefCode={cleanRefCode}
-                        starterTestsCode={starterTestsCode}
-                        cleanRefTestsCode={cleanRefTestsCode}
-                        codeLanguage={codeLanguage}
-                        revealed={revealed}
-                        onReveal={() => void reveal()}
-                        item={item}
-                        copiedRef={copiedRef}
-                        onCopyRef={handleCopyReferenceCode}
-                        copiedStarterTests={copiedStarterTests}
-                        onCopyStarterTests={handleCopyStarterTests}
-                        copiedRefTests={copiedRefTests}
-                        onCopyRefTests={handleCopyReferenceTests}
-                        height={`${workbenchLayout.editorHeight}px`}
-                        onRun={() => void handleRunReviewCode()}
-                        onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
-                        activeLineHint={activeLineHint}
-                        lineHintLoading={lineHintLoading}
-                        onRequestLineHint={handleRequestLineHint}
-                        onDismissLineHint={() => setActiveLineHint(null)}
-                        onCursorChange={(l) => {
-                          if (tileLeftTab === 'solution') setEditorCursorLine(l)
-                        }}
-                        onGradeSolution={() => void (answer.trim() ? grade() : reveal())}
-                        grading={grading}
-                        learnMode={learnMode}
-                        overlookedPhrases={overlookedTerms}
-                        matchedPhrases={matchedTerms}
-                        solutionCursorLine={editorCursorLine}
-                        onHide={() => handleHideSolution('hide')}
-                        logicGuardEnabled={logicGuardEnabled}
-                        onLogicGuardToggle={handleToggleLogicGuard}
-                      />
-                    </div>
-
-                    <div className="hidden lg:flex items-stretch">
-                      <ResizableSplitter
-                        direction="horizontal"
-                        onResize={(delta) => {
-                          const width = tiledContainerRef.current?.getBoundingClientRect().width || 800
-                          workbenchLayout.handleTiledResize(delta, width)
-                        }}
-                        onDoubleClick={workbenchLayout.resetTiledSplit}
-                        collapseTooltip="Drag to resize panes (Double-click to reset 50/50)"
-                      />
-                    </div>
-
-                    <div
-                      style={
-                        typeof window !== 'undefined' && window.innerWidth < 1024
-                          ? undefined
-                          : { width: `calc(${100 - workbenchLayout.tiledLeftWidthPercent}% - 8px)` }
-                      }
-                      className="w-full lg:w-auto min-w-0 lg:min-w-[200px] flex-1"
-                    >
-                      <TiledEditorPane
-                        paneId="right"
-                        currentTab={tileRightTab}
-                        onTabChange={setTileRightTab}
-                        answer={answer}
-                        onAnswerChange={setAnswer}
-                        testCode={testCode}
-                        onTestCodeChange={setTestCode}
-                        cleanRefCode={cleanRefCode}
-                        starterTestsCode={starterTestsCode}
-                        cleanRefTestsCode={cleanRefTestsCode}
-                        codeLanguage={codeLanguage}
-                        revealed={revealed}
-                        onReveal={() => void reveal()}
-                        item={item}
-                        copiedRef={copiedRef}
-                        onCopyRef={handleCopyReferenceCode}
-                        copiedStarterTests={copiedStarterTests}
-                        onCopyStarterTests={handleCopyStarterTests}
-                        copiedRefTests={copiedRefTests}
-                        onCopyRefTests={handleCopyReferenceTests}
-                        height={`${workbenchLayout.editorHeight}px`}
-                        onRun={() => void handleRunReviewCode()}
-                        onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
-                        activeLineHint={activeLineHint}
-                        lineHintLoading={lineHintLoading}
-                        onRequestLineHint={handleRequestLineHint}
-                        onDismissLineHint={() => setActiveLineHint(null)}
-                        onCursorChange={(l) => {
-                          if (tileRightTab === 'solution') setEditorCursorLine(l)
-                        }}
-                        onGradeSolution={() => void (answer.trim() ? grade() : reveal())}
-                        grading={grading}
-                        learnMode={learnMode}
-                        overlookedPhrases={overlookedTerms}
-                        matchedPhrases={matchedTerms}
-                        solutionCursorLine={editorCursorLine}
-                        onHide={() => handleHideSolution('hide')}
-                        logicGuardEnabled={logicGuardEnabled}
-                        onLogicGuardToggle={handleToggleLogicGuard}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  /* Single Tab View */
-                  activeEditorTab === 'reference' ? (
-                    revealed || singleRefViewMode === 'hint' ? (
-                      <div className="flex flex-col">
-                        {singleRefViewMode === 'hint' && (
-                          <div className="px-3 py-1.5 bg-amber-950/40 border-b border-amber-500/30 flex items-center justify-between text-xs text-amber-200 shrink-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-amber-300">💡 Hint Mode:</span>
-                              <span>
-                                Only line {findIncompleteLineNumber(answer, cleanRefCode, editorCursorLine)} is visible
-                              </span>
-                            </div>
-                            {revealed && (
-                              <button
-                                type="button"
-                                onClick={() => handleHideSolution('hide')}
-                                className="px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-semibold cursor-pointer"
-                                title="Hide the solution and continue practicing"
-                              >
-                                🔒 Unreveal & Practice
-                              </button>
-                            )}
-                          </div>
-                        )}
-                        <CodeEditor
-                          code={cleanRefCode}
-                          onChange={() => {}}
-                          language={codeLanguage}
-                          readOnly={true}
-                          height={
-                            singleRefViewMode === 'hint'
-                              ? `${Math.max(100, workbenchLayout.editorHeight - 33)}px`
-                              : `${workbenchLayout.editorHeight}px`
-                          }
-                          placeholder="// Reference solution"
-                          context={item?.deck_name || item?.front}
-                          deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
-                          diffSegments={singleRefViewMode === 'diff' ? singleRefDiff.refSegments : null}
-                          diffStats={singleRefViewMode === 'diff' ? singleRefDiff.stats : null}
-                          hintOnly={singleRefViewMode === 'hint'}
-                          hintOnlyLine={findIncompleteLineNumber(answer, cleanRefCode, editorCursorLine)}
-                        />
-                      </div>
-                    ) : (
-                      <div
-                        style={{ height: `${workbenchLayout.editorHeight}px` }}
-                        className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3"
-                      >
-                        <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shadow-inner">
-                          <svg className="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                        </div>
-                        <div className="space-y-1">
-                          <h4 className="text-sm font-semibold text-slate-200">Reference Solution</h4>
-                          <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
-                            Hidden until revealed.
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <button
-                            type="button"
-                            onClick={() => void reveal()}
-                            className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 cursor-pointer"
-                          >
-                            <span>Reveal Solution</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSingleRefViewMode('hint')
-                              localStorage.setItem('memorization.refViewMode', 'hint')
-                            }}
-                            className="px-3 py-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
-                            title="Peek only the next line of code without revealing full answer"
-                          >
-                            <span>💡 Line Hint</span>
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  ) : activeEditorTab === 'ref_tests' ? (
-                    revealed || learnMode ? (
-                      <CodeEditor
-                        code={cleanRefTestsCode}
-                        onChange={() => {}}
-                        language={codeLanguage}
-                        readOnly={true}
-                        height={`${workbenchLayout.editorHeight}px`}
-                        placeholder="// Completed reference test suite"
-                        context={item?.deck_name || item?.front}
-                        deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
-                      />
-                    ) : (
-                      <div
-                        style={{ height: `${workbenchLayout.editorHeight}px` }}
-                        className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3"
-                      >
-                        <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shadow-inner">
-                          <svg className="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                        </div>
-                        <div className="space-y-1">
-                          <h4 className="text-sm font-semibold text-slate-200">Reference Tests</h4>
-                          <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
-                            Hidden until revealed.
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <button
-                            type="button"
-                            onClick={() => void reveal()}
-                            className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 cursor-pointer"
-                          >
-                            <span>Reveal Tests</span>
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  ) : (
-                    <CodeEditor
-                      code={activeEditorTab === 'solution' ? answer : testCode}
-                      onChange={activeEditorTab === 'solution' ? setAnswer : setTestCode}
-                      language={codeLanguage}
-                      height={`${workbenchLayout.editorHeight}px`}
-                      onRun={() => void handleRunReviewCode()}
-                      onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
-                      activeLineHint={activeEditorTab === 'solution' ? activeLineHint : null}
-                      lineHintLoading={activeEditorTab === 'solution' ? lineHintLoading : false}
-                      onRequestLineHint={activeEditorTab === 'solution' ? handleRequestLineHint : undefined}
-                      onDismissLineHint={() => setActiveLineHint(null)}
-                      onCursorChange={(l) => setEditorCursorLine(l)}
-                      onGradeSolution={activeEditorTab === 'solution' ? () => void (answer.trim() ? grade() : reveal()) : undefined}
-                      grading={activeEditorTab === 'solution' ? grading : false}
-                      context={item?.deck_name || item?.front}
-                      deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
-                    />
-                  )
-                )}
-              </div>
+              ) : (
+                renderIdeWorkbench(false)
+              )}
+            </div>
+          {isIdePoppedOut &&
+            idePopupRef.current &&
+            createPortal(
+              renderIdeWorkbench(true),
+              idePopupRef.current.document.getElementById('ars-ide-popout-root') ||
+                idePopupRef.current.document.body,
+            )}
             </div>
 
-            {/* Splitter between Editor and Console */}
-            {!workbenchLayout.consoleCollapsed && (
-              workbenchLayout.consoleDockPosition === 'right' && !workbenchLayout.isStacked ? (
-                <div className="hidden lg:flex items-stretch">
-                  <ResizableSplitter
-                    direction="horizontal"
-                    onResize={(delta) => {
-                      const width = workbenchRowRef.current?.getBoundingClientRect().width || 900
-                      workbenchLayout.handleConsoleWidthResize(delta, width)
-                    }}
-                    onDoubleClick={workbenchLayout.resetConsoleWidth}
-                    onToggleCollapse={workbenchLayout.toggleConsoleCollapsed}
-                    isCollapsed={workbenchLayout.consoleCollapsed}
-                    collapseTooltip="Drag to resize Console width / Double-click to reset / Click to collapse"
-                  />
-                </div>
-              ) : (
-                <ResizableSplitter
-                  direction="vertical"
-                  onResize={workbenchLayout.handleEditorHeightResize}
-                  onDoubleClick={workbenchLayout.resetEditorHeight}
-                  onToggleCollapse={workbenchLayout.toggleConsoleCollapsed}
-                  isCollapsed={workbenchLayout.consoleCollapsed}
-                  collapseTooltip="Drag to resize editor & console height / Double-click to reset / Click to collapse"
+            {/* Right Margin: Concordance, Lexicon & Persistent Card Memory */}
+            {!isIdePoppedOut && (
+              <aside
+                className={`shrink-0 transition-all duration-200 xl:sticky xl:top-16 ${
+                  workbenchMarginCollapsed ? 'w-full xl:w-12' : 'w-full xl:w-72 2xl:w-80'
+                }`}
+              >
+                <MarginLexiconPanel
+                  cardId={item.id}
+                  deckId={item.kind === 'card' ? item.deck_or_source_id : null}
+                  deckName={item.deck_name}
+                  thematicNature={item.card_thematic_nature || item.deck_thematic_nature}
+                  cardFront={item.front}
+                  cardBack={item.back}
+                  initialGlosses={item.lexicon_glosses}
+                  collapsedRailOnDesktop={true}
+                  onCollapseChange={setWorkbenchMarginCollapsed}
+                  codeLanguage={codeLanguage}
+                  onGlossesUpdated={(updatedGlosses) => {
+                    item.lexicon_glosses = updatedGlosses
+                  }}
                 />
-              )
-            )}
-
-            {/* Console Section (Docked Right vs Docked Bottom) */}
-            {workbenchLayout.consoleDockPosition === 'right' && !workbenchLayout.isStacked ? (
-              workbenchLayout.consoleCollapsed ? (
-                <div
-                  onClick={workbenchLayout.toggleConsoleCollapsed}
-                  className="hidden lg:flex w-10 rounded-xl border border-ink-line bg-[#161616] hover:bg-[#202020] cursor-pointer flex-col items-center py-4 text-slate-400 hover:text-white transition gap-3 select-none shrink-0"
-                  title="Expand Testcases Console (Click to expand)"
-                >
-                  <span className="text-xs">◀</span>
-                  <span className="text-[11px] font-mono [writing-mode:vertical-rl] tracking-wider font-semibold">
-                    Testcases Console
-                  </span>
-                  {codeRunResult && (
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        codeRunResult.status === 'Accepted' ? 'bg-emerald-400' : 'bg-rose-400'
-                      }`}
-                      title={codeRunResult.status === 'Accepted' ? 'Tests Passed' : 'Tests Failed'}
-                    />
-                  )}
-                </div>
-              ) : (
-                <div
-                  style={{ width: `${workbenchLayout.consoleWidthPercent}%` }}
-                  className="w-full lg:w-auto min-w-[280px] shrink-0"
-                >
-                  <CodeTestConsole
-                    testCases={item.test_cases || []}
-                    runResult={codeRunResult}
-                    running={codeRunning}
-                    onRun={handleRunReviewCode}
-                    onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
-                    submitting={grading}
-                    dockPosition="right"
-                    onToggleCollapse={workbenchLayout.toggleConsoleCollapsed}
-                  />
-                </div>
-              )
-            ) : (
-              /* Bottom Dock Console */
-              workbenchLayout.consoleCollapsed ? (
-                <div className="flex items-center justify-between px-3.5 py-2 bg-[#1a1a1a] border border-ink-line rounded-xl text-xs text-slate-400">
-                  <div className="flex items-center gap-2.5">
-                    <button
-                      type="button"
-                      onClick={workbenchLayout.toggleConsoleCollapsed}
-                      className="flex items-center gap-1.5 text-slate-200 hover:text-white font-medium cursor-pointer"
-                      title="Expand Testcases Console"
-                    >
-                      <span className="text-sky-400">▲</span>
-                      <span className="font-semibold">Testcases Console</span>
-                      <span className="text-slate-500 text-[11px]">(Collapsed)</span>
-                    </button>
-                    {codeRunResult && (
-                      <span
-                        className={`text-[11px] px-2 py-0.5 rounded font-semibold ${
-                          codeRunResult.status === 'Accepted'
-                            ? 'bg-emerald-500/20 text-emerald-300'
-                            : 'bg-rose-500/20 text-rose-300'
-                        }`}
-                      >
-                        {codeRunResult.status === 'Accepted' ? 'Passed' : 'Failed'} ({codeRunResult.passed_count}/
-                        {codeRunResult.total_count})
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void handleRunReviewCode()}
-                      disabled={codeRunning}
-                      className="btn btn-secondary text-xs py-1 px-3 cursor-pointer"
-                    >
-                      {codeRunning ? 'Running…' : 'Run Tests'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={workbenchLayout.toggleConsoleCollapsed}
-                      className="text-xs text-sky-400 hover:text-sky-300 cursor-pointer font-medium"
-                    >
-                      Expand ▲
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <CodeTestConsole
-                  testCases={item.test_cases || []}
-                  runResult={codeRunResult}
-                  running={codeRunning}
-                  onRun={handleRunReviewCode}
-                  onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
-                  submitting={grading}
-                  dockPosition="bottom"
-                  onToggleCollapse={workbenchLayout.toggleConsoleCollapsed}
-                />
-              )
+              </aside>
             )}
           </div>
-        </div>
-      </div>
         ) : (
           /* ════════════════════════════════════════════════════════════════════
              CLASSIC CARD VIEW WITH MARGIN CONCORDANCE & LEXICON
@@ -4251,14 +4995,25 @@ export default function Review() {
                 {item.grading_profile && <span className="chip">{item.grading_profile}</span>}
                 <span className="chip">priority {item.priority}</span>
                 {isCodeCard && (
-                  <button
-                    type="button"
-                    onClick={toggleLayoutMode}
-                    className="chip cursor-pointer border-sky-500/40 text-sky-300 hover:bg-sky-500/10 transition-colors"
-                    title="Split IDE"
-                  >
-                    Split IDE
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={toggleLayoutMode}
+                      className="chip cursor-pointer border-sky-500/40 text-sky-300 hover:bg-sky-500/10 transition-colors"
+                      title="Split IDE"
+                    >
+                      Split IDE
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handlePopOutIde}
+                      className="chip cursor-pointer border-sky-500/50 bg-sky-950/40 text-sky-300 hover:bg-sky-900/50 hover:text-white transition-colors flex items-center gap-1 font-semibold"
+                      title="Expand IDE into a separate window (Alt+P)"
+                    >
+                      <span>⧉</span>
+                      <span>Pop Out IDE</span>
+                    </button>
+                  </>
                 )}
                 {!revealed && (
                   <button
@@ -4414,7 +5169,12 @@ export default function Review() {
                 <OcclusionCard payload={item.occlusion} revealed={revealed} />
               </div>
             ) : (
-              <RichText text={item.front ?? ''} className="text-lg leading-relaxed text-slate-100" />
+              <RichText
+                text={item.front ?? ''}
+                className="text-lg leading-relaxed text-slate-100"
+                codeLanguage={codeLanguage}
+                deckId={item.kind === 'card' ? item.deck_or_source_id : null}
+              />
             )}
 
             {/* ── Reconsolidation Mutated Prompt Panel ── */}
@@ -4991,6 +5751,30 @@ export default function Review() {
                                   </button>
                                 </div>
                               )}
+                              {Boolean(cleanRefCode) && singleRefViewMode === 'ide' && singleTargetRefLines.size > 0 && (
+                                <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                                  <button
+                                    type="button"
+                                    onClick={handleToggleFocusTargetCode}
+                                    className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer text-xs ${
+                                      focusTargetCode
+                                        ? 'bg-emerald-600/30 text-emerald-200 border border-emerald-500/50 font-medium shadow-sm'
+                                        : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                                    }`}
+                                    title={
+                                      focusTargetCode
+                                        ? 'Focus Target Code active: boilerplate starter code is dimmed. Click to show full brightness.'
+                                        : 'Click to focus target code (dims boilerplate starter code)'
+                                    }
+                                  >
+                                    <span>🎯 Target ({formatTargetLineSummary(singleTargetRefLines)})</span>
+                                  </button>
+                                  <HighlightColorPicker
+                                    color={targetHighlightColor}
+                                    onChange={handleHighlightColorChange}
+                                  />
+                                </div>
+                              )}
                               {revealed && (
                                 <button
                                   type="button"
@@ -5080,10 +5864,14 @@ export default function Review() {
                             learnMode={learnMode}
                             overlookedPhrases={overlookedTerms}
                             matchedPhrases={matchedTerms}
-                            solutionCursorLine={editorCursorLine}
                             logicGuardEnabled={logicGuardEnabled}
                             onLogicGuardToggle={handleToggleLogicGuard}
                             onHide={() => handleHideSolution('hide')}
+                            activeModel={activeModel}
+                            onActiveModelChange={(m) => void handleSwitchModel(m)}
+                            executionSummary={executionSummaryStr}
+                            sharedQaHistory={sharedQaHistory}
+                            onSharedQaHistoryChange={setSharedQaHistory}
                           />
                           <TiledEditorPane
                             paneId="right"
@@ -5121,10 +5909,14 @@ export default function Review() {
                             learnMode={learnMode}
                             overlookedPhrases={overlookedTerms}
                             matchedPhrases={matchedTerms}
-                            solutionCursorLine={editorCursorLine}
                             logicGuardEnabled={logicGuardEnabled}
                             onLogicGuardToggle={handleToggleLogicGuard}
                             onHide={() => handleHideSolution('hide')}
+                            activeModel={activeModel}
+                            onActiveModelChange={(m) => void handleSwitchModel(m)}
+                            executionSummary={executionSummaryStr}
+                            sharedQaHistory={sharedQaHistory}
+                            onSharedQaHistoryChange={setSharedQaHistory}
                           />
                         </div>
                       ) : (
@@ -5137,7 +5929,7 @@ export default function Review() {
                                   <div className="flex items-center gap-2">
                                     <span className="font-semibold text-amber-300">💡 Hint Mode:</span>
                                     <span>
-                                      Only line {findIncompleteLineNumber(answer, cleanRefCode, editorCursorLine)} is visible
+                                      Only line {findIncompleteLineNumber(answer, cleanRefCode)} is visible
                                     </span>
                                   </div>
                                   {revealed && (
@@ -5159,12 +5951,25 @@ export default function Review() {
                                 readOnly={true}
                                 height={singleRefViewMode === 'hint' ? '288px' : '320px'}
                                 placeholder="// Reference solution"
-                                context={item?.deck_name || item?.front}
+                                context={item?.front || item?.deck_name}
                                 deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
+                                cardId={item?.id ?? null}
+                                userCode={answer}
+                                userTestCode={testCode}
+                                executionSummary={executionSummaryStr}
+                                revealed={revealed}
+                                sharedQaHistory={sharedQaHistory}
+                                onSharedQaHistoryChange={setSharedQaHistory}
+                                activeModel={activeModel}
+                                onActiveModelChange={(m) => void handleSwitchModel(m)}
                                 diffSegments={singleRefViewMode === 'diff' ? singleRefDiff.refSegments : null}
                                 diffStats={singleRefViewMode === 'diff' ? singleRefDiff.stats : null}
                                 hintOnly={singleRefViewMode === 'hint'}
-                                hintOnlyLine={findIncompleteLineNumber(answer, cleanRefCode, editorCursorLine)}
+                                hintOnlyLine={findIncompleteLineNumber(answer, cleanRefCode)}
+                                targetLineNumbers={singleTargetRefLines}
+                                focusTargetCode={focusTargetCode}
+                                targetHighlightColor={targetHighlightColor}
+                                initialScrollLine={firstSingleTargetRefLine ?? undefined}
                               />
                             </div>
                           ) : (
@@ -5209,8 +6014,17 @@ export default function Review() {
                               readOnly={true}
                               height="320px"
                               placeholder="// Completed reference test suite"
-                              context={item?.deck_name || item?.front}
+                              context={item?.front || item?.deck_name}
                               deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
+                              cardId={item?.id ?? null}
+                              userCode={answer}
+                              userTestCode={testCode}
+                              executionSummary={executionSummaryStr}
+                              revealed={revealed}
+                              sharedQaHistory={sharedQaHistory}
+                              onSharedQaHistoryChange={setSharedQaHistory}
+                              activeModel={activeModel}
+                              onActiveModelChange={(m) => void handleSwitchModel(m)}
                             />
                           ) : (
                             <div className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-2 h-[320px]">
@@ -5242,6 +6056,8 @@ export default function Review() {
                             height="320px"
                             onRun={() => void handleRunReviewCode()}
                             onSubmit={() => void (llmEnabled && answer.trim() ? grade() : reveal())}
+                            activeModel={activeModel}
+                            onActiveModelChange={(m) => void handleSwitchModel(m)}
                             activeLineHint={activeEditorTab === 'solution' ? activeLineHint : null}
                             lineHintLoading={activeEditorTab === 'solution' ? lineHintLoading : false}
                             onRequestLineHint={activeEditorTab === 'solution' ? handleRequestLineHint : undefined}
@@ -5249,8 +6065,15 @@ export default function Review() {
                             onCursorChange={(l) => setEditorCursorLine(l)}
                             onGradeSolution={activeEditorTab === 'solution' ? () => void (answer.trim() ? grade() : reveal()) : undefined}
                             grading={activeEditorTab === 'solution' ? grading : false}
-                            context={item?.deck_name || item?.front}
+                            context={item?.front || item?.deck_name}
                             deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
+                            cardId={item?.id ?? null}
+                            userCode={answer}
+                            userTestCode={testCode}
+                            executionSummary={executionSummaryStr}
+                            revealed={revealed}
+                            sharedQaHistory={sharedQaHistory}
+                            onSharedQaHistoryChange={setSharedQaHistory}
                             cleanRefCode={activeEditorTab === 'solution' ? cleanRefCode : undefined}
                             logicGuardEnabled={logicGuardEnabled}
                             onLogicGuardToggle={handleToggleLogicGuard}
@@ -5379,11 +6202,11 @@ export default function Review() {
                     </div>
                     {weaknessHintLoading ? (
                       <p className="text-amber-300/70 italic">Consulting past weakness memory…</p>
-                    ) : (
-                      <p className="text-amber-100 leading-relaxed">
-                        {weaknessHint || (item.active_weaknesses?.[0] ? `Recall your past struggle with: ${item.active_weaknesses[0]}` : 'Recall the core concepts and definitions.')}
-                      </p>
-                    )}
+                    ) : weaknessHintError ? (
+                      <p className="text-rose-300 leading-relaxed">{weaknessHintError}</p>
+                    ) : weaknessHint ? (
+                      <p className="text-amber-100 leading-relaxed">{weaknessHint}</p>
+                    ) : null}
                   </div>
                 )}
                 {!llmEnabled && (
@@ -5624,6 +6447,7 @@ export default function Review() {
             <aside className="w-full xl:w-80 2xl:w-96 shrink-0 xl:sticky xl:top-16">
               <MarginLexiconPanel
                 cardId={item.id}
+                deckId={item.kind === 'card' ? item.deck_or_source_id : null}
                 deckName={item.deck_name}
                 thematicNature={item.card_thematic_nature || item.deck_thematic_nature}
                 cardFront={item.front}
@@ -5632,6 +6456,7 @@ export default function Review() {
                 onGlossesUpdated={(updatedGlosses) => {
                   item.lexicon_glosses = updatedGlosses
                 }}
+                codeLanguage={codeLanguage}
               />
             </aside>
           </div>
@@ -5873,6 +6698,8 @@ function LessonGate({
   onContinue,
   onOpenSettings: _onOpenSettings,
   codeLanguage = 'typescript',
+  activeModel,
+  onActiveModelChange,
 }: {
   item: QueueItem
   lesson: Lesson | null
@@ -5881,6 +6708,8 @@ function LessonGate({
   onContinue: () => void
   onOpenSettings?: () => void
   codeLanguage?: string
+  activeModel?: string | null
+  onActiveModelChange?: (modelId: string) => void
 }) {
   const { openLexicon } = useLexicon()
   const isCode = checkIsCodeCard(item) || looksLikeCode(item.back)
@@ -5982,6 +6811,8 @@ function LessonGate({
           hideFooter={false}
           borderless={true}
           placeholder="// Expected answer solution"
+          activeModel={activeModel}
+          onActiveModelChange={onActiveModelChange}
         />
       </div>
 
@@ -6091,6 +6922,8 @@ function LessonGate({
                     hideFooter={false}
                     borderless={true}
                     placeholder="// Completed unit test suite"
+                    activeModel={activeModel}
+                    onActiveModelChange={onActiveModelChange}
                   />
                 </div>
               </div>
@@ -6219,6 +7052,8 @@ function LessonGate({
           <RichText
             text={item.front || item.title || 'No prompt specified'}
             className="text-sm md:text-base font-medium text-slate-100 leading-relaxed"
+            codeLanguage={detectedLang}
+            deckId={item.kind === 'card' ? item.deck_or_source_id : null}
           />
         )}
       </div>
@@ -6501,15 +7336,15 @@ function VramConstraintPrompt({
           </div>
 
           {result.available_fallback_models &&
-            result.available_fallback_models.filter(isAllowedQwenCoderModel).length > 1 && (
+            result.available_fallback_models.filter(isAllowedGradingModel).length > 1 && (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Other local models:</span>
+                <span className="text-xs text-slate-400">Other models:</span>
                 <select
                   value={chosenModel}
                   onChange={(e) => setChosenModel(e.target.value)}
                   className="select text-xs py-1 px-2.5 bg-slate-900 border-slate-700 text-slate-200 font-mono rounded"
                 >
-                  {result.available_fallback_models.filter(isAllowedQwenCoderModel).map((m) => (
+                  {result.available_fallback_models.filter(isAllowedGradingModel).map((m) => (
                     <option key={m} value={m}>
                       {m}
                     </option>
@@ -6562,47 +7397,16 @@ function VramConstraintPrompt({
   )
 }
 
-/** Model metadata formatter for local Ollama Qwen models */
-function getModelInfo(modelName: string): { label: string; short: string; badge?: string; desc?: string } {
-  const m = (modelName || '').toLowerCase()
-  if (m.includes('9b')) {
-    return {
-      label: 'Qwen 3.5 9B (Q4_K_M)',
-      short: 'Qwen 3.5 9B',
-      badge: 'Advanced / Multimodal',
-      desc: 'Dense hybrid reasoning & multimodal evaluation (~5.3 GB)',
-    }
-  }
-  if (m.includes('7b')) {
-    return {
-      label: 'Qwen 2.5 Coder 7B',
-      short: 'Qwen 7B',
-      badge: 'Recommended',
-      desc: 'High precision code & logic grader (~4.7 GB)',
-    }
-  }
-  if (m.includes('3b')) {
-    return {
-      label: 'Qwen 2.5 Coder 3B',
-      short: 'Qwen 3B',
-      badge: 'Balanced',
-      desc: 'Balanced reasoning for moderate VRAM (~1.9 GB)',
-    }
-  }
-  if (m.includes('1.5b')) {
-    return {
-      label: 'Qwen 2.5 Coder 1.5B',
-      short: 'Qwen 1.5B',
-      badge: 'Fast / Low VRAM',
-      desc: 'Ultra lightweight & instant response (~986 MB)',
-    }
-  }
-  const clean = modelName.replace(/:latest$/, '')
-  return {
-    label: clean,
-    short: clean.split(':')[0] || clean,
-    desc: 'Local Ollama quantized Qwen Coder model',
-  }
+/** Model metadata formatter for Antigravity subscription and local Ollama models */
+function getModelInfo(modelName: string): {
+  label: string
+  short: string
+  archetype: string
+  badge?: string
+  desc?: string
+  provider: 'ollama' | 'antigravity'
+} {
+  return getModelDisplayInfo(modelName)
 }
 
 interface DiscreteModelSelectorProps {
@@ -6617,8 +7421,7 @@ interface DiscreteModelSelectorProps {
 }
 
 /** Discrete model switcher positioned adjacent to grading button.
- *  Allows user to switch active local model at will, or retry grading with another model.
- *  Strictly restricted to quantized Qwen 2.5 Coder models in 7B, 3B, and 1.5B sizes.
+ *  Allows switching between Antigravity Subscription models and local Ollama archetypes.
  */
 function DiscreteModelSelector({
   activeModel,
@@ -6630,11 +7433,20 @@ function DiscreteModelSelector({
   onGradeWithModel,
   className = '',
 }: DiscreteModelSelectorProps) {
+  const { user } = useAuth()
+  const canUseAntigravity = Boolean(user?.can_use_antigravity)
   const [open, setOpen] = useState(false)
+  const [vram, setVram] = useState<VramMetrics | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const isAgyActive = canUseAntigravity && isAntigravityModel(activeModel)
 
   useEffect(() => {
     if (!open) return
+    if (isAgyActive) {
+      setVram(null)
+    } else {
+      api.vramStatus(activeModel).then(setVram).catch(() => {})
+    }
     const handleDown = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setOpen(false)
@@ -6649,18 +7461,19 @@ function DiscreteModelSelector({
       document.removeEventListener('mousedown', handleDown)
       document.removeEventListener('keydown', handleKey)
     }
-  }, [open])
+  }, [open, activeModel, isAgyActive])
 
-  // Permit quantized Qwen models (Qwen 3.5 9B and Qwen 2.5 Coder in 7B, 3B, and 1.5B)
   const models = useMemo<string[]>(() => {
-    const installedAllowed = installedModels.filter(isAllowedQwenCoderModel)
-    const baseStandard = ['qwen3.5:9b', 'qwen2.5-coder:7b', 'qwen2.5-coder:3b', 'qwen2.5-coder:1.5b']
-    const active = isAllowedQwenCoderModel(activeModel) ? [activeModel] : []
-    return Array.from(new Set([...installedAllowed, ...active, ...baseStandard].filter(isAllowedQwenCoderModel)))
-  }, [activeModel, installedModels])
+    if (!canUseAntigravity) {
+      return ['qwen3.5:9b', 'qwen2.5-coder:7b', 'qwen3.5:4b']
+    }
+    const agyInstalled = installedModels.filter(isAntigravityModel)
+    const agyList = agyInstalled.length > 0 ? agyInstalled : ANTIGRAVITY_MODELS.map((a) => a.id)
+    return [...agyList, 'qwen3.5:9b', 'qwen2.5-coder:7b', 'qwen3.5:4b']
+  }, [installedModels, canUseAntigravity])
 
   const currentInfo = getModelInfo(activeModel)
-  const isFast = currentInfo.badge?.toLowerCase().includes('fast')
+  const isFast = currentInfo.badge?.toLowerCase().includes('fast') || currentInfo.badge?.toLowerCase().includes('speed')
 
   return (
     <div className={`relative inline-block ${className}`} ref={menuRef}>
@@ -6676,7 +7489,9 @@ function DiscreteModelSelector({
         }`}
         title={`Model: ${activeModel}`}
       >
-        <span className="text-[10px] font-mono text-slate-400 uppercase">{isFast ? "Fast" : "AI"}</span>
+        <span className="text-[10px] font-mono text-slate-400 uppercase">
+          {isAgyActive ? 'AGY' : isFast ? 'Fast' : 'AI'}
+        </span>
         <span className="font-mono text-[11px] font-semibold tracking-tight">{currentInfo.short}</span>
         <span
           className={`text-[9px] text-slate-400 transition-transform duration-150 ${
@@ -6688,37 +7503,85 @@ function DiscreteModelSelector({
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-0 mb-2 w-80 rounded-xl border border-slate-700/80 bg-slate-900/95 p-3 shadow-2xl backdrop-blur-md z-50 text-xs">
+        <div className="absolute bottom-full left-0 mb-2 w-88 rounded-xl border border-slate-700/80 bg-slate-900/95 p-3 shadow-2xl backdrop-blur-md z-50 text-xs">
           <div className="flex items-center justify-between pb-2 border-b border-slate-800">
             <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-slate-100">Local AI Grader</span>
-              <span className="text-[10px] text-slate-400 font-mono">Qwen 2.5</span>
+              <span className="font-semibold text-slate-100">AI Grading Engine</span>
+              <span className="text-[10px] text-slate-400 font-mono">AGY &amp; Local</span>
             </div>
             <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Quantized
+              {isAgyActive ? 'Subscription' : 'Quantized'}
             </span>
           </div>
 
-          <div className="my-2 space-y-1.5 max-h-60 overflow-y-auto pr-1">
+          {/* Live VRAM Telemetry inside Discrete Switcher (Ollama only) */}
+          {!isAgyActive && vram && (
+            <div className="my-2 rounded-lg border border-slate-800 bg-slate-950/80 p-2 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-300 font-semibold flex items-center gap-1">
+                  <svg className="w-3 h-3 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                    <line x1="8" y1="21" x2="16" y2="21" />
+                    <line x1="12" y1="17" x2="12" y2="21" />
+                  </svg>
+                  <span>VRAM Hardware Telemetry</span>
+                </span>
+                <span className="text-[10px] font-mono text-slate-400 truncate max-w-[140px]">{vram.gpu_name}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5 text-center font-mono">
+                <div className="rounded bg-slate-900/80 p-1 border border-slate-800/60">
+                  <div className="text-[9px] uppercase text-slate-400">Capacity</div>
+                  <div className="font-bold text-slate-100 text-[11px]">
+                    {vram.capacity_gb != null ? `${vram.capacity_gb.toFixed(1)} GB` : 'N/A'}
+                  </div>
+                </div>
+                <div className="rounded bg-sky-950/40 p-1 border border-sky-500/30">
+                  <div className="text-[9px] uppercase text-sky-300">Model VRAM</div>
+                  <div className="font-bold text-sky-200 text-[11px]">
+                    {vram.model_loaded && vram.model_vram_gb
+                      ? `${vram.model_vram_gb.toFixed(1)} GB`
+                      : `~${vram.model_approx_gb || 0} GB`}
+                  </div>
+                </div>
+                <div className="rounded bg-emerald-950/40 p-1 border border-emerald-500/30">
+                  <div className="text-[9px] uppercase text-emerald-300">Available</div>
+                  <div className="font-bold text-emerald-200 text-[11px]">
+                    {vram.available_gb != null ? `${vram.available_gb.toFixed(1)} GB` : 'N/A'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="my-2 space-y-1.5 max-h-64 overflow-y-auto pr-1">
             {models.map((m) => {
-              const isCurrent = m === activeModel
+              const isAgyItem = isAntigravityModel(m)
+              const isCurrent = isAgyItem
+                ? m.toLowerCase() === activeModel.toLowerCase()
+                : m === activeModel ||
+                  (!isAntigravityModel(activeModel) &&
+                    Boolean(activeModel) &&
+                    activeModel.toLowerCase().includes(m.split(':')[0]))
               const info = getModelInfo(m)
               const isInstalled = installedModels.some(
-                (im) => im.toLowerCase() === m.toLowerCase() || im.toLowerCase().startsWith(m.toLowerCase()),
+                (im) =>
+                  im.toLowerCase() === m.toLowerCase() ||
+                  (!isAgyItem && im.toLowerCase().startsWith(m.toLowerCase())),
               )
+              const isSelectable = isInstalled || isAgyItem
               return (
                 <div
                   key={m}
                   className={`group flex items-center justify-between rounded-lg border p-2 transition ${
                     isCurrent
-                      ? 'border-sky-500/50 bg-sky-950/40 text-sky-100'
-                      : isInstalled
+                      ? 'border-sky-500/60 bg-sky-950/40 text-sky-100 ring-1 ring-sky-500/30'
+                      : isSelectable
                       ? 'border-slate-800 bg-slate-900/40 hover:border-slate-700 hover:bg-slate-800/60 text-slate-300 cursor-pointer'
                       : 'border-slate-800/60 bg-slate-900/20 text-slate-500'
                   }`}
                   onClick={() => {
-                    if (isInstalled) {
+                    if (isSelectable) {
                       onSelectModel(m)
                       setOpen(false)
                     } else {
@@ -6728,16 +7591,18 @@ function DiscreteModelSelector({
                 >
                   <div className="flex-1 min-w-0 pr-2">
                     <div className="flex items-center gap-1.5">
-                      <span className={`font-medium truncate ${isInstalled ? 'text-slate-100' : 'text-slate-400'}`}>
+                      <span className={`font-semibold truncate ${isSelectable ? 'text-slate-100' : 'text-slate-400'}`}>
                         {info.label}
                       </span>
                       {info.badge && (
                         <span
                           className={`text-[9px] px-1 py-0.2 rounded font-semibold border ${
-                            info.badge.includes('Fast')
+                            info.provider === 'antigravity'
+                              ? 'border-indigo-400/40 text-indigo-200 bg-indigo-500/15'
+                              : info.badge.includes('Speed') || info.badge.includes('Fast')
                               ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
-                              : info.badge.includes('Balanced')
-                              ? 'border-amber-500/40 text-amber-300 bg-amber-500/10'
+                              : info.badge.includes('Technical')
+                              ? 'border-indigo-500/40 text-indigo-300 bg-indigo-500/10'
                               : 'border-sky-500/40 text-sky-300 bg-sky-500/10'
                           }`}
                         >
@@ -6748,18 +7613,21 @@ function DiscreteModelSelector({
                         <span className="text-[10px] text-sky-400 font-bold ml-auto shrink-0">Active</span>
                       )}
                     </div>
+                    <div className="text-[10px] font-medium italic text-sky-300/90 mt-0.5">
+                      {info.archetype}
+                    </div>
                     {info.desc && (
-                      <p className="text-[11px] text-slate-400 truncate mt-0.5">{info.desc}</p>
+                      <p className="text-[10px] text-slate-400 truncate mt-0.5">{info.desc}</p>
                     )}
                   </div>
 
-                  {/* Immediate Action: Grade if installed, or Pull prompt if not installed */}
-                  {isInstalled ? (
+                  {/* Immediate Action: Grade if selectable, or Pull prompt if local model missing */}
+                  {isSelectable ? (
                     hasAnswer && (
                       <button
                         type="button"
                         className="shrink-0 rounded px-2 py-1 text-[11px] font-medium border border-slate-700 bg-slate-800 hover:border-sky-500 hover:bg-sky-600 hover:text-white text-slate-200 transition"
-                        title={`Grade answer now using ${m}`}
+                        title={`Grade answer now using ${info.label}`}
                         onClick={(e) => {
                           e.stopPropagation()
                           onGradeWithModel(m)
@@ -6772,14 +7640,14 @@ function DiscreteModelSelector({
                   ) : (
                     <button
                       type="button"
+                      className="shrink-0 text-[10px] font-mono text-sky-400 hover:text-sky-200 underline cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation()
                         void navigator.clipboard.writeText(`ollama pull ${m}`)
                       }}
-                      className="shrink-0 text-[10px] px-2 py-0.5 rounded border border-slate-700 bg-slate-800/80 text-slate-400 hover:text-sky-300 hover:border-sky-500/40 font-mono transition"
-                      title={`Click to copy command: ollama pull ${m}`}
+                      title={`Copy pull command: ollama pull ${m}`}
                     >
-                      pull {info.short.toLowerCase().replace('qwen ', '')}
+                      Pull
                     </button>
                   )}
                 </div>

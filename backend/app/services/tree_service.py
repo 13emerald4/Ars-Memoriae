@@ -34,7 +34,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import and_, case, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Card, Deck, Extract, KnowledgeNode, Note, Source, User
@@ -482,14 +482,13 @@ async def detach_entity_node(db: AsyncSession, entity_node_filter) -> None:
     Called from the deck/source delete paths: without it the node's FK cascade
     would silently take any topics a user had filed underneath it.
     """
-    node = await db.scalar(select(KnowledgeNode).where(entity_node_filter))
-    if node is None:
-        return
-    kids = list(
-        (await db.scalars(select(KnowledgeNode).where(KnowledgeNode.parent_id == node.id))).all()
-    )
-    for kid in kids:
-        kid.parent_id = node.parent_id
+    nodes = list((await db.scalars(select(KnowledgeNode).where(entity_node_filter))).all())
+    for node in nodes:
+        kids = list(
+            (await db.scalars(select(KnowledgeNode).where(KnowledgeNode.parent_id == node.id))).all()
+        )
+        for kid in kids:
+            kid.parent_id = node.parent_id
     await db.flush()
 
 
@@ -524,9 +523,8 @@ async def delete_all_tree(db: AsyncSession, user: User) -> dict[str, int]:
             notes = (await db.scalars(select(Note).where(Note.id.in_(note_ids)))).all()
             for note in notes:
                 await db.delete(note)
-        decks = (await db.scalars(select(Deck).where(Deck.id.in_(deck_ids)))).all()
-        for deck in decks:
-            await db.delete(deck)
+        await db.execute(delete(Card).where(Card.deck_id.in_(deck_ids)))
+        await db.execute(delete(Deck).where(Deck.id.in_(deck_ids)))
 
     # 3. All remaining knowledge nodes for this user
     nodes = (await db.scalars(select(KnowledgeNode).where(KnowledgeNode.user_id == user.id))).all()

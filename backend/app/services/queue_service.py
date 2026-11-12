@@ -1040,6 +1040,7 @@ async def compose_deck_persist_queue(
         .where(*conditions)
         .order_by(
             Card.position.asc().nulls_last(),
+            Deck.position.asc().nulls_last(),
             Card.due.is_(None),
             Card.due.asc(),
             _effective_priority_sql().desc(),

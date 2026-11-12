@@ -101,17 +101,8 @@ async def get_lesson(db: AsyncSession, user: User, card: Card) -> dict:
         }
 
     cached = await db.get(CardLesson, card.id)
-    if cached is not None:
-        return {
-            "available": True,
-            "reason": None,
-            "body": cached.body,
-            "key_points": list(cached.key_points or []),
-            "generated": True,
-            "model_used": cached.model_used,
-            "cached": True,
-            "citations": citations,
-        }
+    service = GradingService.for_user(user)
+    model = service.model
 
     def source_only(reason: str | None) -> dict:
         return {
@@ -125,36 +116,49 @@ async def get_lesson(db: AsyncSession, user: User, card: Card) -> dict:
             "citations": citations,
         }
 
-    # Deliberately not cached: a fallback is a stand-in for a lesson that
-    # couldn't be written yet, so starting Ollama later should produce the real
-    # thing rather than replay a stale substitute forever.
+    # If consent is off, return source-only excerpts when no cached lesson exists
+    # for the active state.
     if not user.llm_grading_consent:
         return source_only("consent_not_given")
+
+    if cached is not None and cached.model_used == model:
+        return {
+            "available": True,
+            "reason": None,
+            "body": cached.body,
+            "key_points": list(cached.key_points or []),
+            "generated": True,
+            "model_used": cached.model_used,
+            "cached": True,
+            "citations": citations,
+        }
 
     note = card.note
     front, back = render(
         note.note_type.template_kind, note.field_values or {}, card.template_slot
     )
-    model = user.grading_model
-    try:
-        result = await GradingService(model=model).generate_lesson(
-            front=front,
-            back=back,
-            passages=_teaching_text(citations),
-            max_words=LESSON_MAX_WORDS,
-        )
-    except GradingUnavailable as exc:
-        log.info("lesson generation unavailable for card %s: %s", card.id, exc)
-        return source_only(str(exc))
-
-    db.add(
-        CardLesson(
-            card_id=card.id,
-            body=result["lesson"],
-            key_points=result["key_points"],
-            model_used=model,
-        )
+    result = await service.generate_lesson(
+        front=front,
+        back=back,
+        passages=_teaching_text(citations),
+        max_words=LESSON_MAX_WORDS,
+        model=model,
     )
+
+    used_model = service.last_used_model or model
+    if cached is not None:
+        cached.body = result["lesson"]
+        cached.key_points = result["key_points"]
+        cached.model_used = used_model
+    else:
+        db.add(
+            CardLesson(
+                card_id=card.id,
+                body=result["lesson"],
+                key_points=result["key_points"],
+                model_used=used_model,
+            )
+        )
     await db.commit()
 
     return {
@@ -163,7 +167,7 @@ async def get_lesson(db: AsyncSession, user: User, card: Card) -> dict:
         "body": result["lesson"],
         "key_points": result["key_points"],
         "generated": True,
-        "model_used": model,
+        "model_used": used_model,
         "cached": False,
         "citations": citations,
     }

@@ -16,6 +16,7 @@ import { CodeTestConsole } from '../components/CodeTestConsole'
 import { Empty, ErrorNote, Section, Spinner } from '../components/ui'
 import { FullscreenButton } from '../components/FullscreenContext'
 import { useTheme } from '../components/ThemeContext'
+import { useAuth } from '../hooks/useAuth'
 
 const BLIND75_CATEGORIES = [
   { name: 'Arrays & Hashing', desc: 'Hash maps, frequency counters, and prefix products' },
@@ -39,6 +40,7 @@ const BLIND75_CATEGORIES = [
 ]
 
 export default function CodeLab() {
+  const { user, refresh } = useAuth()
   const [viewMode, setViewMode] = useState<'workbench' | 'tree' | 'roadmap' | 'stats'>('workbench')
   const [layoutMode, setLayoutMode] = useState<'split' | 'code' | 'problem'>('split')
   const [problems, setProblems] = useState<CodeProblemSummary[]>([])
@@ -799,6 +801,7 @@ export default function CodeLab() {
                   problemSlug={problemDetail.slug}
                   code={code}
                   language={language}
+                  activeModel={user?.grading_model}
                 />
               )}
             </div>
@@ -820,6 +823,10 @@ export default function CodeLab() {
                   running={running}
                   submitting={submitting}
                   height="420px"
+                  activeModel={user?.grading_model}
+                  onActiveModelChange={(m) => {
+                    void api.updateMe({ grading_model: m }).then(() => refresh())
+                  }}
                 />
               </div>
 

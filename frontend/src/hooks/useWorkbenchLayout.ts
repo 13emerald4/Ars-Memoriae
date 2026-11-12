@@ -4,6 +4,7 @@ export interface WorkbenchLayoutState {
   leftWidthPercent: number
   tiledLeftWidthPercent: number
   editorHeight: number
+  consoleHeight: number
   columnsSwapped: boolean
   isStacked: boolean
   leftCollapsed: boolean
@@ -18,6 +19,7 @@ export const DEFAULT_WORKBENCH_LAYOUT: WorkbenchLayoutState = {
   leftWidthPercent: 38,
   tiledLeftWidthPercent: 50,
   editorHeight: 460,
+  consoleHeight: 220,
   columnsSwapped: false,
   isStacked: false,
   leftCollapsed: false,
@@ -50,6 +52,11 @@ function loadLayoutState(): WorkbenchLayoutState {
         typeof parsed.editorHeight === 'number' ? parsed.editorHeight : DEFAULT_WORKBENCH_LAYOUT.editorHeight,
         240,
         950,
+      ),
+      consoleHeight: clamp(
+        typeof parsed.consoleHeight === 'number' ? parsed.consoleHeight : DEFAULT_WORKBENCH_LAYOUT.consoleHeight,
+        130,
+        460,
       ),
       columnsSwapped: Boolean(parsed.columnsSwapped),
       isStacked: Boolean(parsed.isStacked),
@@ -107,6 +114,13 @@ export function useWorkbenchLayout() {
     })
   }, [])
 
+  const handleConsoleHeightResize = useCallback((deltaPx: number) => {
+    setLayout((prev) => {
+      const nextHeight = clamp(prev.consoleHeight - deltaPx, 130, 460)
+      return { ...prev, consoleHeight: Math.round(nextHeight), consoleCollapsed: false }
+    })
+  }, [])
+
   const handleConsoleWidthResize = useCallback((deltaPx: number, containerWidthPx: number) => {
     if (!containerWidthPx || containerWidthPx <= 0) return
     const deltaPercent = (deltaPx / containerWidthPx) * 100
@@ -158,6 +172,10 @@ export function useWorkbenchLayout() {
     setLayout((prev) => ({ ...prev, editorHeight: DEFAULT_WORKBENCH_LAYOUT.editorHeight, consoleCollapsed: false }))
   }, [])
 
+  const resetConsoleHeight = useCallback(() => {
+    setLayout((prev) => ({ ...prev, consoleHeight: DEFAULT_WORKBENCH_LAYOUT.consoleHeight, consoleCollapsed: false }))
+  }, [])
+
   const resetConsoleWidth = useCallback(() => {
     setLayout((prev) => ({ ...prev, consoleWidthPercent: DEFAULT_WORKBENCH_LAYOUT.consoleWidthPercent, consoleCollapsed: false }))
   }, [])
@@ -167,6 +185,7 @@ export function useWorkbenchLayout() {
     handleMainResize,
     handleTiledResize,
     handleEditorHeightResize,
+    handleConsoleHeightResize,
     handleConsoleWidthResize,
     toggleColumnsSwapped,
     toggleStacked,
@@ -177,6 +196,7 @@ export function useWorkbenchLayout() {
     resetMainSplit,
     resetTiledSplit,
     resetEditorHeight,
+    resetConsoleHeight,
     resetConsoleWidth,
   }
 }

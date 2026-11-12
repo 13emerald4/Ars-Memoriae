@@ -213,9 +213,41 @@ async def test_concept_graph_and_spreading_activation(auth_client):
     assert del_resp.status_code == 204, del_resp.text
 
 
+def _fake_neuro_llm(fail: bool = False):
+    import json
+    from app.services.grading_service import GradingUnavailable
+
+    async def _mock_call(self, *args, **kwargs):
+        if fail:
+            raise GradingUnavailable("selected model failed")
+        blob = (" ".join(str(a) for a in args) + " " + " ".join(str(v) for v in kwargs.values())).lower()
+        if "variant_question" in blob:
+            return json.dumps({"variant_question": "What fails if the pivot picks the minimum element?"})
+        if "vignette" in blob:
+            return json.dumps({"vignette": "A glowing silver powerhouse juggling lightning bolts of ATP."})
+        if "is_accurate" in blob:
+            return json.dumps({"is_accurate": False, "feedback": "HTTP 418 means I'm a teapot, not a server timeout."})
+        if "discriminative_challenge" in blob:
+            return json.dumps(
+                {
+                    "discriminative_challenge": "Which algorithm guarantees O(N log N) in the worst case?",
+                    "key_distinction": "MergeSort guarantees O(N log N) worst case; QuickSort can degrade to O(N^2).",
+                    "divergent_conditions": [
+                        {"condition": "Sorted input with naive pivot", "choice_a": "O(N^2)", "choice_b": "O(N log N)"}
+                    ],
+                }
+            )
+        return "{}"
+
+    return _mock_call
+
+
 @pytest.mark.asyncio
-async def test_prompt_mutation_endpoint(auth_client):
+async def test_prompt_mutation_endpoint(auth_client, monkeypatch):
     """Test generating a variant prompt for memory reconsolidation."""
+    from app.services.grading_service import GradingService
+
+    monkeypatch.setattr(GradingService, "_call_ollama", _fake_neuro_llm())
     deck_id = await _deck(auth_client, "Mutation Deck")
     note = await _note(auth_client, deck_id, "What is QuickSort time complexity?", "Average O(N log N)")
     card_id = note["cards"][0]["id"]
@@ -232,8 +264,11 @@ async def test_prompt_mutation_endpoint(auth_client):
 
 
 @pytest.mark.asyncio
-async def test_mnemonic_synthesis_endpoint(auth_client):
+async def test_mnemonic_synthesis_endpoint(auth_client, monkeypatch):
     """Test synthesizing a multi-sensory bizarre mnemonic vignette."""
+    from app.services.grading_service import GradingService
+
+    monkeypatch.setattr(GradingService, "_call_ollama", _fake_neuro_llm())
     deck_id = await _deck(auth_client, "Mnemonic Deck")
     note = await _note(auth_client, deck_id, "Mitochondria", "Powerhouse of the cell generating ATP")
     card_id = note["cards"][0]["id"]
@@ -246,8 +281,11 @@ async def test_mnemonic_synthesis_endpoint(auth_client):
 
 
 @pytest.mark.asyncio
-async def test_pretest_prediction_endpoint(auth_client):
+async def test_pretest_prediction_endpoint(auth_client, monkeypatch):
     """Test evaluating a pre-test prediction hypothesis and calculating RPE feedback."""
+    from app.services.grading_service import GradingService
+
+    monkeypatch.setattr(GradingService, "_call_ollama", _fake_neuro_llm())
     deck_id = await _deck(auth_client, "Prediction Deck")
     note = await _note(auth_client, deck_id, "What does HTTP 418 signify?", "I'm a teapot")
     card_id = note["cards"][0]["id"]
@@ -269,16 +307,19 @@ async def test_pretest_prediction_endpoint(auth_client):
 
 
 @pytest.mark.asyncio
-async def test_contrast_drill_endpoint(auth_client):
+async def test_contrast_drill_endpoint(auth_client, monkeypatch):
     """Test generating a Dentate Gyrus pattern separation contrast drill for sister pairs."""
+    from app.services.grading_service import GradingService
+
+    monkeypatch.setattr(GradingService, "_call_ollama", _fake_neuro_llm())
     deck_id = await _deck(auth_client, "Algorithms Contrast Deck")
-    n1 = await _note(
+    await _note(
         auth_client,
         deck_id,
         "What is the average time complexity of QuickSort algorithm?",
         "QuickSort averages O(N log N) with randomized pivot selection.",
     )
-    n2 = await _note(
+    await _note(
         auth_client,
         deck_id,
         "What is the average time complexity of MergeSort algorithm?",
@@ -301,4 +342,30 @@ async def test_contrast_drill_endpoint(auth_client):
         assert drill["pair_id"] == pair_id
         assert len(drill["discriminative_challenge"]) > 0
         assert len(drill["key_distinction"]) > 0
+
+
+@pytest.mark.asyncio
+async def test_neuroscience_endpoints_raise_503_on_llm_failure(auth_client, monkeypatch):
+    """All neuroscience endpoints must fail with HTTP 503 instead of returning heuristic fallbacks."""
+    from app.services.grading_service import GradingService
+
+    monkeypatch.setattr(GradingService, "_call_ollama", _fake_neuro_llm(fail=True))
+    deck_id = await _deck(auth_client, "Strict Failure Deck")
+    n1 = await _note(auth_client, deck_id, "QuickSort complexity?", "Average O(N log N)")
+    await _note(auth_client, deck_id, "MergeSort complexity?", "Always O(N log N)")
+    card_id = n1["cards"][0]["id"]
+
+    await auth_client.post("/api/interference/scan")
+    pairs = (await auth_client.get("/api/interference")).json()
+    assert pairs, "expected sister pair for contrast drill failure test"
+
+    for method_call in (
+        auth_client.post(f"/api/review/{card_id}/mutate-prompt", json={"mutation_type": "counterfactual"}),
+        auth_client.post(f"/api/review/{card_id}/generate-mnemonic"),
+        auth_client.post(f"/api/review/{card_id}/predict", json={"prediction": "timeout", "confidence": 4}),
+        auth_client.post(f"/api/interference/{pairs[0]['id']}/contrast-drill"),
+    ):
+        resp = await method_call
+        assert resp.status_code == 503, resp.text
+
 

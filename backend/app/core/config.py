@@ -7,7 +7,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(".env", str(Path(__file__).resolve().parents[2] / ".env")),
+        extra="ignore",
+    )
 
     # SQLite default lets the stack run without Postgres for local dev/tests;
     # docker-compose (§6.2) always supplies the asyncpg URL.
@@ -18,14 +21,29 @@ class Settings(BaseSettings):
     secret_key: str = ""
     secret_key_file: str = "./.secret_key"
 
-    # Local Qwen 2.5 Coder 3B engine via Ollama (configured for 8 GB VRAM stability)
+    # Local Qwen 2.5 Coder engine via Ollama (3B default for fast prose grading;
+    # 7B technical specialist for math/code, disputed, and low-confidence escalation)
     ollama_base_url: str = "http://localhost:11434"
     default_grading_model: str = "qwen2.5-coder:3b"
-    escalation_grading_model: str = "qwen2.5-coder:3b"
+    escalation_grading_model: str = "qwen2.5-coder:7b"
     grading_confidence_threshold: float = 0.6
     # Card generation sends up to 8000 chars of passage plus instructions;
     # 2048 tokens truncated them. 8k costs ~0.5 GB of KV cache.
     ollama_num_ctx: int = 8192
+    # Keep loaded model & prefix KV cache hot across multi-turn Q&A/hints on a card.
+    ollama_keep_alive: str = "15m"
+
+    # Antigravity subscription engine via local `agy` CLI (uses cached interactive login, zero API key).
+    # Empty = fail-closed (no account may use host Antigravity subscription unless explicitly listed).
+    antigravity_cli_path: str = "agy"
+    antigravity_timeout_seconds: float = 90.0
+    antigravity_allowed_emails: str = ""
+
+    @property
+    def antigravity_allowed_email_set(self) -> frozenset[str]:
+        return frozenset(
+            e.strip().lower() for e in self.antigravity_allowed_emails.split(",") if e.strip()
+        )
 
     cors_origins: str = "http://localhost:5173"
     enable_background_jobs: bool = True

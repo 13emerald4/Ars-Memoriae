@@ -205,7 +205,7 @@ export function SavedCardsDrawer({
                       : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
                 >
-                  {type === 'all' ? 'All' : type === 'code' ? 'Code' : 'Flashcards'}
+                  {type === 'all' ? 'Both' : type === 'code' ? 'Coding' : 'Q&A'}
                 </button>
               ))}
             </div>
@@ -284,7 +284,7 @@ export function SavedCardsDrawer({
                               : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
                           }`}
                         >
-                          {draft.isCodeCard ? 'Code' : 'Flashcard'}
+                          {draft.isCodeCard ? 'Coding' : 'Q&A'}
                         </span>
                         <span className="text-[10px] text-slate-400 dark:text-slate-500">
                           {formatRelativeTime(draft.savedAt)}

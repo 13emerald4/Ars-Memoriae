@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models import Card, Deck, LexiconCache, Note, User
-from app.services.grading_service import GradingService, parse_json
+from app.services.grading_service import GradingService, GradingUnavailable, parse_json
 
 log = logging.getLogger(__name__)
 
@@ -275,7 +275,10 @@ async def lookup_term(
     ]
     is_spanish = any(ind in combined_ctx_lower for ind in spanish_indicators)
 
-    # 1. Check database cache with domain validation
+    service = GradingService.for_user(user) if user else GradingService(model=settings.default_grading_model)
+    model_name = service.model
+
+    # 1. Check database cache with domain and active-model validation
     cached_entry = (
         await db.execute(
             select(LexiconCache)
@@ -288,7 +291,10 @@ async def lookup_term(
     if cached_entry:
         cached_domain_lower = (cached_entry.domain or "").lower()
         cached_def_lower = cached_entry.definition.lower()
-        mismatched = False
+        cached_model = (cached_entry.model_used or "").strip()
+        is_curated = cached_model == "curated_lexicon" and norm_term in CURATED_OFFLINE_DEFINITIONS
+        stale_model = cached_model == "heuristic_fallback" or (not is_curated and cached_model != model_name)
+        mismatched = stale_model
 
         if (is_cs_subject and not any(k in cached_domain_lower for k in ["computer", "programming", "algorithm", "software", "numerics"])) or (not is_cs_subject and any(k in cached_domain_lower for k in ["computer", "programming", "software", "algorithm"])) or (is_spanish and any(bad in cached_def_lower for bad in ["expected time of arrival", "estimated time of arrival"])) or (is_spanish and not any(k in cached_domain_lower or k in cached_def_lower for k in ["span", "españ", "vasc", "history", "culture", "literature", "latin", "art", "iber"])):
             mismatched = True
@@ -306,7 +312,7 @@ async def lookup_term(
                 "created_at": cached_entry.created_at,
             }
         else:
-            log.info("Bypassing incompatible cached lexicon entry for '%s' in context (%s)", clean_term, deck_name)
+            log.info("Bypassing incompatible/stale cached lexicon entry for '%s' in context (%s)", clean_term, deck_name)
 
     # 2. Check curated offline dictionary for instant match
     if norm_term in CURATED_OFFLINE_DEFINITIONS:
@@ -418,10 +424,7 @@ async def lookup_term(
         card_context=card_context_block,
     )
 
-    # 6. Query local LLM (Qwen 2.5 Coder via Ollama)
-    model_name = user.grading_model if user else settings.default_grading_model
-    service = GradingService(model=model_name)
-
+    # 6. Query LLM using the already-resolved active model
     try:
         raw_response = await service._generate(prompt, model=model_name)
         data = parse_json(raw_response)
@@ -430,31 +433,17 @@ async def lookup_term(
         example = data.get("example")
         domain = data.get("domain") or (thematic_nature or deck_name or ("Spanish History & Culture" if is_spanish else ("Computer Science" if is_cs_subject else "General Studies")))
         related_terms = data.get("related_terms") or []
-        model_used = model_name
+        model_used = service.last_used_model or model_name
 
         # Safety post-processing: If Spanish context was tainted with Expected Time of Arrival
         if is_spanish and "expected time of arrival" in definition.lower() and encyclopedic_ref:
             definition = "ETA (Euskadi Ta Askatasuna): armed Basque nationalist and separatist organization in Spain."
             domain = "Spanish History & Politics"
+    except GradingUnavailable:
+        raise
     except Exception as exc:
-        log.warning("Ollama lexicon lookup failed for '%s': %s; using heuristic fallback", clean_term, exc)
-        if encyclopedic_ref:
-            definition = encyclopedic_ref.split(":", 1)[-1].strip() if ":" in encyclopedic_ref else encyclopedic_ref
-            domain = "Spanish History & Culture" if is_spanish else "General Studies"
-            context_explanation = f"In this deck, '{clean_term}' is an essential historical/subject term."
-            example = None
-        elif is_cs_subject:
-            domain = "Computer Science"
-            definition = f"Technical term: {clean_term}."
-            context_explanation = f"In this passage, '{clean_term}' specifies an essential implementation detail or operational constraint."
-            example = None
-        else:
-            domain = thematic_nature or deck_name or ("Spanish History & Culture" if is_spanish else "General Studies")
-            definition = f"Concept: {clean_term}."
-            context_explanation = f"In this subject context, '{clean_term}' represents a core concept or term."
-            example = None
-        related_terms = []
-        model_used = "heuristic_fallback"
+        log.warning("Lexicon lookup failed on '%s' for '%s': %s", model_name, clean_term, exc)
+        raise GradingUnavailable(f"Lexicon lookup failed on '{model_name}': {exc}") from exc
 
     # Persist to database cache
     db_entry = LexiconCache(

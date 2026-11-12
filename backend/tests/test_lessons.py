@@ -158,7 +158,7 @@ class TestGeneration:
         assert second["body"] == first["body"]
         assert calls["n"] == 1, "a cached lesson must not re-hit the model"
 
-    async def test_generation_failure_falls_back_to_the_source(self, auth_client, monkeypatch):
+    async def test_generation_failure_raises_503_without_fallback(self, auth_client, monkeypatch):
         import app.services.lesson_service as svc
         from app.services.grading_service import GradingUnavailable
 
@@ -169,12 +169,10 @@ class TestGeneration:
         await auth_client.patch("/api/me", json={"llm_grading_consent": True})
 
         card_id, _ = await _card_with_citation(auth_client)
-        body = (await auth_client.get(f"/api/review/{card_id}/lesson")).json()
+        resp = await auth_client.get(f"/api/review/{card_id}/lesson")
 
-        assert body["available"] is True
-        assert body["generated"] is False
-        assert "quota" in body["reason"]
-        assert "debt minimization" in body["body"]
+        assert resp.status_code == 503, resp.text
+        assert "quota" in resp.json()["detail"]
 
 
 class TestLessonPrompt:

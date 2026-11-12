@@ -82,6 +82,7 @@ export interface SocraticLineHintRequest {
   line_number: number
   language?: string
   test_code?: string | null
+  execution_summary?: string | null
   model?: string
   allow_smaller_model?: boolean
 }
@@ -93,6 +94,7 @@ export interface SocraticLineHintResponse {
   current_line_text: string
   degraded: boolean
   degraded_reason?: string | null
+  error?: string | null
 }
 
 export interface QueueItem {
@@ -288,6 +290,7 @@ export interface User {
   enable_schema_checkpoints?: boolean
   enable_prompt_mutation?: boolean
   enable_prediction_mode?: boolean
+  can_use_antigravity?: boolean
 }
 
 export interface Deck {
@@ -898,10 +901,27 @@ export interface RecentLexiconItem {
   created_at: string
 }
 
+export interface VramMetrics {
+  capacity_gb: number | null
+  capacity_mb: number | null
+  available_gb: number | null
+  available_mb: number | null
+  used_gb: number | null
+  used_mb: number | null
+  model_vram_gb: number | null
+  model_vram_bytes: number | null
+  model_approx_gb: number | null
+  model_loaded: boolean
+  model_name: string | null
+  gpu_name: string | null
+  is_unified_memory: boolean
+}
+
 export interface QwenCoderModelOption {
   id: string
   name: string
-  size: '9B' | '7B' | '3B' | '1.5B' | string
+  archetype: string
+  size: '9B' | '7B' | '4B' | string
   vramApprox: string
   badge: string
   desc: string
@@ -910,36 +930,106 @@ export interface QwenCoderModelOption {
 export const ALLOWED_QWEN_CODER_MODELS: QwenCoderModelOption[] = [
   {
     id: 'qwen3.5:9b',
-    name: 'Qwen 3.5 9B (Q4_K_M)',
+    name: 'Qwen 3.5 9B',
+    archetype: '(The Heavy Generalist)',
     size: '9B',
-    vramApprox: '~5.3 GB',
-    badge: 'Advanced / Multimodal',
-    desc: 'Dense hybrid reasoning & multimodal evaluation',
+    vramApprox: '~5.3 GB VRAM',
+    badge: 'Heavy Generalist',
+    desc: 'Dense hybrid reasoning & multimodal evaluation workhorse',
   },
   {
     id: 'qwen2.5-coder:7b',
-    name: 'Qwen 2.5 Coder 7B',
+    name: 'Qwen2.5-Coder 7B',
+    archetype: '(The Technical Specialist)',
     size: '7B',
-    vramApprox: '~4.7 GB',
-    badge: 'Recommended',
-    desc: 'High precision code & logic grader',
+    vramApprox: '~4.7 GB VRAM',
+    badge: 'Technical Specialist',
+    desc: 'High-precision code syntax, logic grading & deep technical focus',
   },
   {
-    id: 'qwen2.5-coder:3b',
-    name: 'Qwen 2.5 Coder 3B',
-    size: '3B',
-    vramApprox: '~1.9 GB',
-    badge: 'Balanced',
-    desc: 'Balanced reasoning for moderate VRAM',
+    id: 'qwen3.5:4b',
+    name: 'Qwen 3.5 4B / Gemma 4 E4B',
+    archetype: '(The Speed Demon)',
+    size: '4B',
+    vramApprox: '~2.5 GB VRAM',
+    badge: 'Speed Demon',
+    desc: 'Blistering fast token velocity & ultra-low latency inference',
+  },
+]
+
+export interface AntigravityModelOption {
+  id: string
+  slug: string
+  name: string
+  tier: string
+  desc: string
+}
+
+export const ANTIGRAVITY_MODEL_PREFIX = 'antigravity:'
+
+export const ANTIGRAVITY_MODELS: AntigravityModelOption[] = [
+  {
+    id: 'antigravity:gemini-3.8-flash-low',
+    slug: 'gemini-3.8-flash-low',
+    name: 'Gemini 3.8 Flash (Low)',
+    tier: 'Fast / Low Quota',
+    desc: 'Fastest Antigravity response with low subscription quota cost per grade',
   },
   {
-    id: 'qwen2.5-coder:1.5b',
-    name: 'Qwen 2.5 Coder 1.5B',
-    size: '1.5B',
-    vramApprox: '~986 MB',
-    badge: 'Fast / Low VRAM',
-    desc: 'Ultra lightweight & instant response',
+    id: 'antigravity:gemini-3.8-flash-medium',
+    slug: 'gemini-3.8-flash-medium',
+    name: 'Gemini 3.8 Flash (Medium)',
+    tier: 'Balanced Default',
+    desc: 'Balanced reasoning speed and grading accuracy via Antigravity CLI',
   },
+  {
+    id: 'antigravity:gemini-3.8-flash-high',
+    slug: 'gemini-3.8-flash-high',
+    name: 'Gemini 3.8 Flash (High)',
+    tier: 'Deep Reasoning',
+    desc: 'High reasoning effort for nuance, math, and technical grading',
+  },
+  {
+    id: 'antigravity:claude-sonnet-4-6',
+    slug: 'claude-sonnet-4-6',
+    name: 'Claude Sonnet 4.6 (Thinking)',
+    tier: 'Coding & Prose',
+    desc: 'Strong code review, Socratic tutoring, and prose evaluation',
+  },
+  {
+    id: 'antigravity:claude-opus-4-6-thinking',
+    slug: 'claude-opus-4-6-thinking',
+    name: 'Claude Opus 4.6 (Thinking)',
+    tier: 'Max Reasoning',
+    desc: 'Highest-depth reasoning for difficult proofs and complex designs',
+  },
+  {
+    id: 'antigravity:gpt-oss-120b-medium',
+    slug: 'gpt-oss-120b-medium',
+    name: 'GPT-OSS 120B (Medium)',
+    tier: 'Open Weights',
+    desc: '120B open-weights model hosted on your Antigravity subscription',
+  },
+]
+
+export const ALL_GENERATION_MODEL_OPTIONS: Array<{
+  id: string
+  name: string
+  badge: string
+  provider: 'ollama' | 'antigravity'
+}> = [
+  ...ANTIGRAVITY_MODELS.map((m) => ({
+    id: m.id,
+    name: `${m.name}`,
+    badge: `Antigravity · ${m.tier}`,
+    provider: 'antigravity' as const,
+  })),
+  ...ALLOWED_QWEN_CODER_MODELS.map((m) => ({
+    id: m.id,
+    name: `${m.name} ${m.archetype}`,
+    badge: m.badge,
+    provider: 'ollama' as const,
+  })),
 ]
 
 export function isAllowedQwenCoderModel(modelName: string): boolean {
@@ -947,10 +1037,129 @@ export function isAllowedQwenCoderModel(modelName: string): boolean {
   const m = modelName.toLowerCase().trim()
   if (m.includes('embed') || m.includes('rerank')) return false
   if (m.includes('qwen3.5') || m.includes('qwen-3.5')) {
-    return /(?:^|[:\-_])(9b)(?:[:\-_]|$)/i.test(m)
+    return /(?:^|[:\-_])(9b|4b)(?:[:\-_]|$)/i.test(m)
   }
-  if (!m.includes('qwen2.5-coder')) return false
-  return /(?:^|[:\-_])(7b|3b|1\.5b)(?:[:\-_]|$)/i.test(m)
+  if (m.includes('gemma')) {
+    return /(?:^|[:\-_])(e4b|4b|2b|gemma4|gemma3|gemma2)(?:[:\-_]|$)/i.test(m)
+  }
+  if (m.includes('qwen2.5-coder')) {
+    return /(?:^|[:\-_])(7b|3b|1\.5b)(?:[:\-_]|$)/i.test(m)
+  }
+  return false
+}
+
+export function isAntigravityModel(modelName?: string | null): boolean {
+  if (!modelName) return false
+  const m = modelName.toLowerCase().trim()
+  if (!m.startsWith(ANTIGRAVITY_MODEL_PREFIX)) return false
+  const slug = m.slice(ANTIGRAVITY_MODEL_PREFIX.length)
+  return /^(?:gemini|claude|gpt-oss)-[a-z0-9._-]{1,64}$/i.test(slug)
+}
+
+export function isAllowedGradingModel(modelName?: string | null): boolean {
+  if (!modelName) return false
+  return isAllowedQwenCoderModel(modelName) || isAntigravityModel(modelName)
+}
+
+export function getModelDisplayInfo(modelName: string): {
+  label: string
+  short: string
+  archetype: string
+  badge?: string
+  desc?: string
+  provider: 'ollama' | 'antigravity'
+} {
+  if (isAntigravityModel(modelName)) {
+    const cleanId = modelName.toLowerCase().trim()
+    const match = ANTIGRAVITY_MODELS.find((a) => a.id === cleanId)
+    if (match) {
+      return {
+        label: match.name,
+        short: match.name.replace(' (Medium)', ' (Med)').replace(' (Thinking)', ''),
+        archetype: `(Antigravity · ${match.tier})`,
+        badge: 'Subscription',
+        desc: match.desc,
+        provider: 'antigravity',
+      }
+    }
+    const slug = cleanId.slice(ANTIGRAVITY_MODEL_PREFIX.length)
+    return {
+      label: `Antigravity (${slug})`,
+      short: slug,
+      archetype: '(Antigravity Subscription)',
+      badge: 'Subscription',
+      desc: 'Runs via local agy CLI on your Antigravity subscription',
+      provider: 'antigravity',
+    }
+  }
+  const m = (modelName || '').toLowerCase()
+  if (m.includes('9b')) {
+    return {
+      label: 'Qwen 3.5 9B',
+      short: 'Qwen 3.5 9B',
+      archetype: '(The Heavy Generalist)',
+      badge: 'Heavy Generalist',
+      desc: 'Dense hybrid reasoning & multimodal evaluation (~5.3 GB VRAM)',
+      provider: 'ollama',
+    }
+  }
+  if (m.includes('7b')) {
+    return {
+      label: 'Qwen2.5-Coder 7B',
+      short: 'Qwen2.5-Coder 7B',
+      archetype: '(The Technical Specialist)',
+      badge: 'Technical Specialist',
+      desc: 'High precision code & logic grader (~4.7 GB VRAM)',
+      provider: 'ollama',
+    }
+  }
+  if (m.includes('4b') || m.includes('e4b') || m.includes('gemma') || m.includes('3b') || m.includes('1.5b')) {
+    return {
+      label: 'Qwen 3.5 4B / Gemma 4 E4B',
+      short: 'Qwen 3.5 4B / Gemma',
+      archetype: '(The Speed Demon)',
+      badge: 'Speed Demon',
+      desc: 'Ultra lightweight & instant response (~2.5 GB VRAM)',
+      provider: 'ollama',
+    }
+  }
+  const clean = (modelName || '').replace(/:latest$/, '')
+  return {
+    label: clean,
+    short: clean.split(':')[0] || clean,
+    archetype: '',
+    desc: 'Local Ollama quantized model',
+    provider: 'ollama',
+  }
+}
+
+export interface LlmProvidersBreakdown {
+  ollama?: {
+    connected: boolean
+    base_url: string
+    models: string[]
+    error?: string | null
+  }
+  antigravity?: {
+    connected: boolean
+    installed: boolean
+    cli_path?: string | null
+    models: string[]
+    catalog?: Array<{ id: string; slug: string; name: string; tier: string }>
+    error?: string | null
+  }
+}
+
+export interface LlmEngineStatusResponse {
+  connected: boolean
+  provider: string
+  base_url: string
+  model: string
+  models_installed: string[]
+  model_ready: boolean
+  error?: string | null
+  vram?: VramMetrics | null
+  providers?: LlmProvidersBreakdown
 }
 
 export interface HardwareModelOption {
@@ -1003,7 +1212,12 @@ export interface ExplainCodeSelectionRequest {
   mode?: 'occams_razor' | 'socratic' | 'both' | 'docs'
   model?: string | null
   deck_id?: string | null
+  card_id?: string | null
   doc_id?: string | null
+  user_code?: string | null
+  user_test_code?: string | null
+  execution_summary?: string | null
+  revealed?: boolean
 }
 
 export interface ExplainCodeSelectionResponse {
@@ -1069,6 +1283,7 @@ export interface DeckDocMessage {
   role: 'user' | 'assistant'
   content: string
   citation?: string | null
+  extracted_terms?: string[]
 }
 
 export interface AskDeckQuestionRequest {
@@ -1078,7 +1293,12 @@ export interface AskDeckQuestionRequest {
   language?: string
   context?: string | null
   deck_id?: string | null
+  card_id?: string | null
   doc_id?: string | null
+  user_code?: string | null
+  user_test_code?: string | null
+  execution_summary?: string | null
+  revealed?: boolean
   model?: string | null
   history?: DeckDocMessage[]
 }
@@ -1096,6 +1316,8 @@ export interface AskDeckQuestionResponse {
   }>
   model_used: string
   available_models?: string[]
+  extracted_glosses?: LexiconGlossItem[]
+  updated_card_glosses?: LexiconGlossItem[] | null
 }
 
 

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import uuid
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
@@ -36,13 +38,88 @@ from app.schemas.code_practice import (
     SubmitCodeRequest,
     SubmitCodeResponse,
 )
-from app.services.code_ai_service import CodeAiService, rank_extracts_for_query
+from app.services.code_ai_service import CodeAiService, merge_lexicon_glosses, rank_extracts_for_query
 from app.services.code_runner_service import run_code as execute_code
 from app.services.fundamentals_catalog import FUNDAMENTALS_CATALOG
 from app.services.note_service import sync_cards
 from app.services.problems_catalog import PROBLEMS_CATALOG
+from app.services.question_format_service import format_question_with_code_blocks
+from app.services.rendering import render
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/code", tags=["code_practice"])
+
+
+async def _load_card_context_for_user(
+    db: AsyncSession,
+    user: User,
+    card_id: str | None,
+) -> tuple[Card | None, dict[str, Any]]:
+    """Loads owned Card + rendered front/back/tests/weaknesses for LLM context grounding."""
+    if not card_id or not str(card_id).strip():
+        return None, {}
+    try:
+        card_uuid = uuid.UUID(str(card_id).strip())
+    except ValueError:
+        return None, {}
+
+    card_obj = await db.get(Card, card_uuid)
+    if card_obj is None:
+        return None, {}
+    deck_obj = card_obj.deck or await db.get(Deck, card_obj.deck_id)
+    if deck_obj is None or deck_obj.user_id != user.id:
+        return None, {}
+
+    note = card_obj.note
+    fv = note.field_values or {} if note is not None else {}
+    template_kind = note.note_type.template_kind if (note is not None and note.note_type is not None) else "basic"
+    front, back = render(template_kind, fv, card_obj.template_slot)
+    card_tests = str(
+        fv.get("starter_tests") or fv.get("ref_tests") or fv.get("test_code") or ""
+    ).strip()
+    return card_obj, {
+        "card_front": front,
+        "card_back": back,
+        "card_tests": card_tests or None,
+        "card_weaknesses": list(card_obj.active_weaknesses or []),
+    }
+
+
+async def _collect_deck_source_ids(
+    db: AsyncSession,
+    user: User,
+    deck_id: str | None,
+    doc_id: str | None = None,
+) -> list[uuid.UUID]:
+    """Walks the deck parent hierarchy to gather attached document source IDs."""
+    source_ids: list[uuid.UUID] = []
+    if deck_id:
+        try:
+            curr_deck = await db.get(Deck, parse_uuid(deck_id))
+            visited_deck_ids: set[uuid.UUID] = set()
+            while curr_deck and curr_deck.user_id == user.id and curr_deck.id not in visited_deck_ids:
+                visited_deck_ids.add(curr_deck.id)
+                for d in (curr_deck.source_documents or []):
+                    if isinstance(d, dict) and d.get("source_id"):
+                        try:
+                            sid = parse_uuid(d["source_id"])
+                            if not doc_id or str(sid) == doc_id or str(d.get("id")) == doc_id:
+                                if sid not in source_ids:
+                                    source_ids.append(sid)
+                        except Exception:
+                            pass
+                if curr_deck.parent_id:
+                    curr_deck = await db.get(Deck, curr_deck.parent_id)
+                else:
+                    break
+        except Exception as exc:
+            log.warning("Deck document hierarchy lookup failed: %s", exc)
+    if not deck_id and not source_ids:
+        user_sources = (
+            await db.execute(select(Source.id).where(Source.user_id == user.id).limit(20))
+        ).scalars().all()
+        source_ids = list(user_sources)
+    return source_ids
 
 
 # Languages the runner can actually execute. Anything else used to come back
@@ -358,15 +435,23 @@ async def socratic_hint(
     db: AsyncSession = Depends(get_db),
 ):
     """Generates Socratic AI guidance without giving away the direct answer."""
+    from app.services.grading_service import GradingUnavailable
+
     p = await _get_problem(db, id_or_slug, user)
-    ai_svc = CodeAiService(model=user.grading_model)
-    hint_text = await ai_svc.socratic_hint(
-        title=p.title,
-        description=p.description,
-        language=body.language,
-        code=body.code,
-        hint_type=body.hint_type,
-    )
+    ai_svc = CodeAiService.for_user(user, body.model)
+    try:
+        hint_text = await ai_svc.socratic_hint(
+            title=p.title,
+            description=p.description,
+            language=body.language,
+            code=body.code,
+            hint_type=body.hint_type,
+        )
+    except GradingUnavailable as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
     return SocraticCodeResponse(hint=hint_text)
 
 
@@ -382,37 +467,10 @@ async def explain_code_selection(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="selected_code cannot be empty",
         )
-    ai_svc = CodeAiService(model=body.model or user.grading_model)
+    ai_svc = CodeAiService.for_user(user, body.model)
     try:
-        source_ids = []
-        if body.deck_id:
-            try:
-                curr_deck = await db.get(Deck, parse_uuid(body.deck_id))
-                visited_deck_ids = set()
-                while curr_deck and curr_deck.user_id == user.id and curr_deck.id not in visited_deck_ids:
-                    visited_deck_ids.add(curr_deck.id)
-                    for d in (curr_deck.source_documents or []):
-                        if isinstance(d, dict) and d.get("source_id"):
-                            try:
-                                sid = parse_uuid(d["source_id"])
-                                if not body.doc_id or str(sid) == body.doc_id or str(d.get("id")) == body.doc_id:
-                                    if sid not in source_ids:
-                                        source_ids.append(sid)
-                            except Exception:
-                                pass
-                    if curr_deck.parent_id:
-                        curr_deck = await db.get(Deck, curr_deck.parent_id)
-                    else:
-                        break
-            except Exception as e:
-                log.warning("Deck document hierarchy lookup failed: %s", e)
-
-        # Fall back to user's general sources ONLY if no deck_id was specified
-        if not body.deck_id and not source_ids:
-            user_sources = (
-                await db.execute(select(Source.id).where(Source.user_id == user.id).limit(20))
-            ).scalars().all()
-            source_ids = list(user_sources)
+        _, card_ctx = await _load_card_context_for_user(db, user, body.card_id)
+        source_ids = await _collect_deck_source_ids(db, user, body.deck_id, body.doc_id)
 
         if source_ids:
             rows = (
@@ -433,7 +491,13 @@ async def explain_code_selection(
                     doc_excerpts=top_excerpts,
                     full_code=body.full_code,
                     language=body.language,
-                    model=body.model,
+                    model=ai_svc.grading_service.model,
+                    context=body.context,
+                    user_code=body.user_code,
+                    user_test_code=body.user_test_code,
+                    execution_summary=body.execution_summary,
+                    revealed=body.revealed,
+                    **card_ctx,
                 )
                 sections = []
                 citation = res.get("doc_citation") or "Deck Documentation"
@@ -460,7 +524,7 @@ async def explain_code_selection(
                     doc_citation=res.get("doc_citation"),
                     verbatim_passage=res.get("verbatim_passage"),
                     doc_matches=res.get("citations", []),
-                    model_used=res.get("model_used", body.model or user.grading_model or "qwen2.5-coder:7b"),
+                    model_used=res.get("model_used", ai_svc.grading_service.model),
                     available_models=res.get("available_models", []),
                 )
 
@@ -476,7 +540,7 @@ async def explain_code_selection(
             doc_citation=None,
             verbatim_passage=None,
             doc_matches=[],
-            model_used=body.model or user.grading_model or "qwen2.5-coder:7b",
+            model_used=ai_svc.grading_service.model,
             available_models=[],
         )
     except Exception as exc:
@@ -492,43 +556,16 @@ async def ask_deck_docs(
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ) -> AskDeckQuestionResponse:
-    """Answers a user's follow-up question grounded in code and attached deck documentation."""
+    """Answers a user's follow-up question grounded in card context, student work, code, and attached deck documentation."""
     if not body.question or not body.question.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="question cannot be empty",
         )
-    ai_svc = CodeAiService(model=body.model or user.grading_model)
+    ai_svc = CodeAiService.for_user(user, body.model)
     try:
-        source_ids = []
-        if body.deck_id:
-            try:
-                curr_deck = await db.get(Deck, parse_uuid(body.deck_id))
-                visited_deck_ids = set()
-                while curr_deck and curr_deck.user_id == user.id and curr_deck.id not in visited_deck_ids:
-                    visited_deck_ids.add(curr_deck.id)
-                    for d in (curr_deck.source_documents or []):
-                        if isinstance(d, dict) and d.get("source_id"):
-                            try:
-                                sid = parse_uuid(d["source_id"])
-                                if not body.doc_id or str(sid) == body.doc_id or str(d.get("id")) == body.doc_id:
-                                    if sid not in source_ids:
-                                        source_ids.append(sid)
-                            except Exception:
-                                pass
-                    if curr_deck.parent_id:
-                        curr_deck = await db.get(Deck, curr_deck.parent_id)
-                    else:
-                        break
-            except Exception as e:
-                log.warning("Deck document hierarchy lookup failed for ask_deck_docs: %s", e)
-
-        # Fall back to user's general sources ONLY if no deck_id was specified
-        if not body.deck_id and not source_ids:
-            user_sources = (
-                await db.execute(select(Source.id).where(Source.user_id == user.id).limit(20))
-            ).scalars().all()
-            source_ids = list(user_sources)
+        card_obj, card_ctx = await _load_card_context_for_user(db, user, body.card_id)
+        source_ids = await _collect_deck_source_ids(db, user, body.deck_id, body.doc_id)
 
         top_excerpts = []
         if source_ids:
@@ -554,15 +591,36 @@ async def ask_deck_docs(
             full_code=body.full_code,
             language=body.language,
             history=body.history,
-            model=body.model,
+            model=ai_svc.grading_service.model,
+            context=body.context,
+            user_code=body.user_code,
+            user_test_code=body.user_test_code,
+            execution_summary=body.execution_summary,
+            revealed=body.revealed,
+            **card_ctx,
         )
+
+        extracted_glosses = res.get("extracted_glosses", []) or []
+        updated_card_glosses: list[dict] | None = None
+
+        if card_obj is not None and extracted_glosses:
+            try:
+                merged = merge_lexicon_glosses(card_obj.lexicon_glosses, extracted_glosses)
+                card_obj.lexicon_glosses = list(merged)
+                await db.commit()
+                await db.refresh(card_obj)
+                updated_card_glosses = list(card_obj.lexicon_glosses or [])
+            except Exception as card_err:
+                log.warning("Failed to auto-populate card lexicon_glosses for card %s: %s", body.card_id, card_err)
 
         return AskDeckQuestionResponse(
             answer=res.get("answer", ""),
             doc_citation=res.get("doc_citation"),
             citations=res.get("citations", []),
-            model_used=res.get("model_used", body.model or user.grading_model or "qwen2.5-coder:7b"),
+            model_used=res.get("model_used", ai_svc.grading_service.model),
             available_models=res.get("available_models", []),
+            extracted_glosses=extracted_glosses,
+            updated_card_glosses=updated_card_glosses,
         )
     except Exception as exc:
         raise HTTPException(
@@ -579,7 +637,7 @@ async def forge_problem(
     db: AsyncSession = Depends(get_db),
 ):
     """Uses Qwen 2.5 Coder to generate a custom code challenge from a topic."""
-    ai_svc = CodeAiService(model=user.grading_model)
+    ai_svc = CodeAiService.for_user(user)
     try:
         generated = await ai_svc.forge_problem(
             topic=body.topic,
@@ -593,6 +651,18 @@ async def forge_problem(
         ) from e
 
     slug = generated.get("slug") or f"custom-{uuid.uuid4().hex[:8]}"
+    starter_map = generated.get("starter_codes", {}) or {}
+    primary_starter = (
+        starter_map.get(body.target_language)
+        or next(iter(starter_map.values()), "")
+        if isinstance(starter_map, dict)
+        else ""
+    )
+    formatted_description = format_question_with_code_blocks(
+        generated.get("description", ""),
+        starter_code=primary_starter,
+        language=body.target_language,
+    )
     prob = CodeProblem(
         id=uuid.uuid4(),
         user_id=user.id,
@@ -603,10 +673,10 @@ async def forge_problem(
         difficulty=generated.get("difficulty", body.difficulty),
         category=generated.get("category", "AI Generated"),
         tags=generated.get("tags", [body.topic]),
-        description=generated.get("description", ""),
+        description=formatted_description,
         examples=generated.get("examples", []),
         constraints=generated.get("constraints", []),
-        starter_codes=generated.get("starter_codes", {}),
+        starter_codes=starter_map,
         solutions=generated.get("solutions", {}),
         editorial=generated.get("editorial"),
         test_cases=generated.get("test_cases", []),
@@ -677,11 +747,15 @@ async def export_problem_to_card(
         or (p.starter_codes or {}).get("tests")
     )
 
+    raw_front = f"### {p.title}\n\n{p.description}\n\n**Constraints:**\n" + "\n".join(
+        f"- {c}" for c in p.constraints
+    )
     fv = {
-        "Front": f"### {p.title}\n\n{p.description}\n\n**Constraints:**\n" + "\n".join(f"- {c}" for c in p.constraints),
+        "Front": format_question_with_code_blocks(raw_front, starter_code=starter, language=lang),
         "Back": sol,
         "title": p.title,
         "starter_code": starter,
+        "language": lang,
         "test_cases": p.test_cases or [],
         "difficulty": p.difficulty,
         "category": p.category,

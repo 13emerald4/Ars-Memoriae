@@ -73,7 +73,7 @@ async def generate_remediation(card_id: uuid.UUID) -> None:
             card.note.note_type.template_kind, card.note.field_values or {}, card.template_slot
         )
         failed = await recent_failed_answers(db, card_id)
-        service = GradingService(model=user.grading_model)
+        service = GradingService.for_user(user)
         try:
             result = await service.suggest_leech_remediation(front, back, card.lapse_count, failed)
         except GradingUnavailable as exc:

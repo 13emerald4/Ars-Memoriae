@@ -15,12 +15,18 @@ export interface DiffStats {
   recallPercent: number
 }
 
-const TOKEN_REGEX = /(!\[\]\([^)]+\)|\[audio\]\([^)]+\)|(?<=^|\n)\s*(?:\d+|[a-zA-Z]|[ivxIVX]+)[\.\)]\s*|[\p{L}\p{N}_$]+(?:-[\p{L}\p{N}_$]+)*|[^\s\p{L}\p{N}]+|\s+)/gu
+export const TOKEN_REGEX = /(!\[\]\([^)]+\)|\[audio\]\([^)]+\)|(?<=^|\n)\s*(?:\d+|[a-zA-Z]|[ivxIVX]+)[\.\)]\s+|[\p{L}\p{N}_$]+(?:-[\p{L}\p{N}_$]+)*|[^\s\p{L}\p{N}]+|\s+)/gu
+export const CODE_TOKEN_REGEX = /(!\[\]\([^)]+\)|\[audio\]\([^)]+\)|[\p{L}\p{N}_$]+|[^\s\p{L}\p{N}]+|\s+)/gu
 
-function isWord(token: string): boolean {
+export function isWord(token: string): boolean {
   if (!token || /^\s+$/.test(token)) return false
-  if (/^\s*(?:\d+|[a-zA-Z]|[ivxIVX]+)[\.\)]\s*$/u.test(token)) return false
+  if (/^\s*(?:\d+|[a-zA-Z]|[ivxIVX]+)[\.\)]\s+$/u.test(token)) return false
   return /^[\p{L}\p{N}_$]+(?:-[\p{L}\p{N}_$]+)*$/u.test(token)
+}
+
+export function isCodeWord(token: string): boolean {
+  if (!token || /^\s+$/.test(token)) return false
+  return /^[\p{L}\p{N}_$]+$/u.test(token)
 }
 
 function normalize(token: string): string {
@@ -29,6 +35,12 @@ function normalize(token: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^\p{L}\p{N}_$-]/gu, '')
+}
+
+function normalizeCode(token: string): string {
+  return token
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}_$]/gu, '')
 }
 
 const CONTRACTIONS: Record<string, string[]> = {
@@ -48,7 +60,7 @@ const STOPWORDS = new Set([
   'the', 'a', 'an', 'and', 'or', 'but', 'nor',
   'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'into', 'like', 'through',
   'after', 'over', 'between', 'out', 'against', 'during', 'without', 'before', 'under', 'around', 'among',
-  'is', 'are', 'was', 'were', 'be', 'been', 'being', 'it', 'its', 'that', 'this', 'these', 'those',
+  'is', 'are', 'was', 'were', 'be', 'been', 'being', 'it', 'its', 'that', 'these', 'those',
 ])
 
 function isStopword(token: string): boolean {
@@ -175,26 +187,34 @@ export function computeTokenDiff(
   userText: string,
   refText: string,
   _extraOverlooked: string[] = [],
-  extraMatched: string[] = []
+  extraMatched: string[] = [],
+  isCodeMode?: boolean
 ): {
   userSegments: TokenSegment[]
   refSegments: TokenSegment[]
   stats: DiffStats
 } {
-  const userRawTokens = userText.match(TOKEN_REGEX) || []
-  const refRawTokens = refText.match(TOKEN_REGEX) || []
+  const isCode = isCodeMode ?? (looksLikeCode(refText) || looksLikeCode(userText))
+  const tokenRegex = isCode ? CODE_TOKEN_REGEX : TOKEN_REGEX
+  const wordCheck = isCode ? isCodeWord : isWord
+  const normFn = isCode ? normalizeCode : normalize
+
+  const userRawTokens = userText.match(tokenRegex) || []
+  const refRawTokens = refText.match(tokenRegex) || []
 
   // User word sets
   const userWords = new Set<string>()
   const userStems = new Set<string>()
   let userWordCount = 0
   for (const t of userRawTokens) {
-    if (isWord(t)) {
+    if (wordCheck(t)) {
       userWordCount++
-      const w = normalize(t)
+      const w = normFn(t)
       if (w) userWords.add(w)
-      const st = stem(t)
-      if (st.length >= 3) userStems.add(st)
+      if (!isCode) {
+        const st = stem(t)
+        if (st.length >= 3) userStems.add(st)
+      }
     }
   }
 
@@ -202,22 +222,26 @@ export function computeTokenDiff(
   const refWords = new Set<string>()
   const refStems = new Set<string>()
   for (const t of refRawTokens) {
-    if (isWord(t)) {
-      const w = normalize(t)
+    if (wordCheck(t)) {
+      const w = normFn(t)
       if (w) refWords.add(w)
-      const st = stem(t)
-      if (st.length >= 3) refStems.add(st)
+      if (!isCode) {
+        const st = stem(t)
+        if (st.length >= 3) refStems.add(st)
+      }
     }
   }
 
   function wordMatches(tok: string, targetWords: Set<string>, targetStems: Set<string>): boolean {
-    const w = normalize(tok)
+    const w = normFn(tok)
     if (!w) return false
     if (targetWords.has(w)) return true
-    const contractions = CONTRACTIONS[w]
-    if (contractions && contractions.some((c) => targetWords.has(c))) return true
-    const st = stem(tok)
-    if (st.length >= 3 && targetStems.has(st)) return true
+    if (!isCode) {
+      const contractions = CONTRACTIONS[w]
+      if (contractions && contractions.some((c) => targetWords.has(c))) return true
+      const st = stem(tok)
+      if (st.length >= 3 && targetStems.has(st)) return true
+    }
     return false
   }
 
@@ -225,7 +249,7 @@ export function computeTokenDiff(
   const matchedSet = new Set(extraMatched.map((p) => p.trim().toLowerCase()).filter(Boolean))
   const semanticMatchedWords = new Set<string>()
   for (const phrase of matchedSet) {
-    const words = phrase.match(TOKEN_REGEX)?.filter(isWord).map(normalize) || []
+    const words = phrase.match(tokenRegex)?.filter(wordCheck).map(normFn) || []
     for (const w of words) {
       if (w) semanticMatchedWords.add(w)
     }
@@ -239,11 +263,11 @@ export function computeTokenDiff(
     if (/^!\[\]\(/.test(tok) || /^\[audio\]\(/.test(tok)) {
       return { text: tok, type: 'media' }
     }
-    if (!isWord(tok)) {
+    if (!wordCheck(tok)) {
       return { text: tok, type: 'punct' }
     }
 
-    const isMatch = wordMatches(tok, userWords, userStems) || semanticMatchedWords.has(normalize(tok))
+    const isMatch = wordMatches(tok, userWords, userStems) || semanticMatchedWords.has(normFn(tok))
     if (isMatch) {
       refMatchedCount++
       return { text: tok, type: 'matched' }
@@ -258,7 +282,7 @@ export function computeTokenDiff(
     if (/^!\[\]\(/.test(tok) || /^\[audio\]\(/.test(tok)) {
       return { text: tok, type: 'media' }
     }
-    if (!isWord(tok)) {
+    if (!wordCheck(tok)) {
       return { text: tok, type: 'punct' }
     }
 
@@ -271,11 +295,13 @@ export function computeTokenDiff(
     return { text: tok, type: 'missing' }
   })
 
-  const { pruned: prunedRef, revertedCount } = pruneOrphanedStopwords(annotatedRef)
+  const { pruned: prunedRef, revertedCount } = isCode
+    ? { pruned: annotatedRef, revertedCount: 0 }
+    : pruneOrphanedStopwords(annotatedRef)
   refMatchedCount = Math.max(0, refMatchedCount - revertedCount)
   refMissingCount += revertedCount
 
-  const { pruned: prunedUser } = pruneOrphanedStopwords(annotatedUser)
+  const prunedUser = isCode ? annotatedUser : pruneOrphanedStopwords(annotatedUser).pruned
 
   const mergedRef = mergeContiguousTokens(prunedRef)
   const mergedUser = mergeContiguousTokens(prunedUser)
@@ -429,12 +455,17 @@ export function AnswerComparison({
   )
 
   const { userSegments, refSegments, stats } = useMemo(() => {
+    const activeRef = isCode ? cleanRef : referenceAnswer
+    const activeUser = isCode ? cleanUser : userAnswer
+    const tokenRegex = isCode ? CODE_TOKEN_REGEX : TOKEN_REGEX
+    const wordCheck = isCode ? isCodeWord : isWord
+
     if (!hasUserAnswer) {
       return {
         userSegments: [],
-        refSegments: [{ text: referenceAnswer, type: 'neutral' as const }],
+        refSegments: [{ text: activeRef, type: 'neutral' as const }],
         stats: {
-          refWordCount: (referenceAnswer.match(TOKEN_REGEX) || []).filter(isWord).length,
+          refWordCount: (activeRef.match(tokenRegex) || []).filter(wordCheck).length,
           userWordCount: 0,
           matchedCount: 0,
           missingCount: 0,
@@ -442,8 +473,8 @@ export function AnswerComparison({
         },
       }
     }
-    return computeTokenDiff(userAnswer, referenceAnswer, overlookedPhrases, matchedPhrases)
-  }, [userAnswer, referenceAnswer, hasUserAnswer, overlookedPhrases, matchedPhrases])
+    return computeTokenDiff(activeUser, activeRef, overlookedPhrases, matchedPhrases, isCode)
+  }, [userAnswer, referenceAnswer, hasUserAnswer, overlookedPhrases, matchedPhrases, isCode, cleanRef, cleanUser])
 
   return (
     <div className={`space-y-3 ${className}`}>

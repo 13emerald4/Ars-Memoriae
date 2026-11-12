@@ -10,6 +10,7 @@ the calibration loop in §4.3 has something to learn from.
 
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from datetime import UTC, datetime
@@ -139,6 +140,125 @@ def _manual(
     )
 
 
+_RUNNABLE_LANGUAGES = {
+    "python": "python",
+    "py": "python",
+    "typescript": "typescript",
+    "ts": "typescript",
+    "javascript": "javascript",
+    "js": "javascript",
+}
+_TS_MARKERS = (
+    "```ts",
+    "```typescript",
+    "interface ",
+    "type ",
+    "function ",
+    ": number",
+    ": string",
+    ": boolean",
+    "const ",
+    "let ",
+    "public ",
+    "private ",
+)
+_SANDBOX_HARNESS_IDENTIFIERS = (
+    "describe",
+    "test",
+    "it",
+    "expect",
+    "assertEquals",
+    "assertNotEquals",
+    "assertTrue",
+    "assertFalse",
+    "assertNull",
+    "assertNotNull",
+    "assertThrows",
+    "checkExpect",
+    "checkExpectExact",
+    "checkError",
+    "checkErrorExact",
+    "assertOk",
+    "assertErr",
+    "fail",
+)
+
+
+def _infer_code_language(
+    field_values: dict, user_answer: str, requested_language: str | None = None
+) -> str:
+    for candidate in (requested_language, field_values.get("language")):
+        if isinstance(candidate, str):
+            mapped = _RUNNABLE_LANGUAGES.get(candidate.strip().lower())
+            if mapped:
+                return mapped
+    sample = str(field_values.get("starter_code") or user_answer or field_values.get("Front") or "")
+    if "def " in sample or "class Solution:" in sample:
+        return "python"
+    if any(marker in sample for marker in _TS_MARKERS):
+        return "typescript"
+    return "python"
+
+
+def _is_harness_redeclaration_error(exec_res: dict, has_student_test_code: bool) -> bool:
+    if has_student_test_code or exec_res.get("status") != "Compile Error":
+        return False
+    err = str(exec_res.get("error") or "")
+    return any(f"Identifier '{ident}' has already been declared" in err for ident in _SANDBOX_HARNESS_IDENTIFIERS)
+
+
+def _format_execution_summary(exec_res: dict) -> str:
+    status_text = str(exec_res.get("status") or "Unknown")
+    passed = int(exec_res.get("passed_count", 0))
+    total = int(exec_res.get("total_count", 0))
+    lines = [
+        f"Verified Sandbox Test Execution: {status_text} ({passed}/{total} test cases passed).",
+    ]
+    if exec_res.get("error"):
+        lines.append(f"Sandbox error: {str(exec_res['error']).strip()[:400]}")
+    for tc in (exec_res.get("results") or [])[:4]:
+        idx = tc.get("test_index")
+        ok = "PASS" if tc.get("passed") else "FAIL"
+        detail = f"Case {idx}: {ok}"
+        if not tc.get("passed"):
+            if tc.get("error"):
+                detail += f" (error={str(tc['error'])[:180]})"
+            else:
+                detail += (
+                    f" (expected={json.dumps(tc.get('expected'))[:120]}, "
+                    f"actual={json.dumps(tc.get('actual'))[:120]})"
+                )
+        lines.append(f"- {detail}")
+    if status_text == "Accepted" and total > 0 and passed == total:
+        lines.append(
+            "All sandbox unit tests PASSED at runtime. Do NOT claim the user's code fails these tests "
+            "or returns a starter stub value such as -1; evaluate code quality, complexity, and edge cases not tested above."
+        )
+    else:
+        lines.append(
+            "Sandbox tests did NOT all pass. Ground your score and weaknesses in the failing cases or error shown above."
+        )
+    return "\n".join(lines)
+
+
+def _apply_execution_guardrails(result: dict, exec_res: dict) -> None:
+    total = int(exec_res.get("total_count", 0))
+    if total <= 0 or "score" not in result:
+        return
+    passed = int(exec_res.get("passed_count", 0))
+    exec_status = exec_res.get("status")
+    score = int(result["score"])
+    if exec_status == "Accepted" and passed == total:
+        score = max(score, 70)
+    elif passed == 0:
+        score = min(score, 39)
+    elif passed < total:
+        cap = round(35 + 50 * (passed / total))
+        score = min(score, cap)
+    result["score"] = score
+    result["grade"] = grade_for_score(score)
+
+
 @router.post("/{card_id}/answer", response_model=SubmitAnswerResponse)
 async def submit_answer(
     card_id: str,
@@ -148,8 +268,9 @@ async def submit_answer(
 ) -> SubmitAnswerResponse:
     card = await _owned_card(db, user, parse_uuid(card_id))
     note = card.note
+    fv = note.field_values or {}
     front, back = render(
-        note.note_type.template_kind, note.field_values or {}, card.template_slot
+        note.note_type.template_kind, fv, card.template_slot
     )
     # Computed once and attached to every response shape below — including the
     # manual fallback — since it's informational only and has no bearing on
@@ -182,16 +303,24 @@ async def submit_answer(
             auto_note,
         )
 
-    # §4.3 cache: identical resubmits must not burn API calls.
+    service = GradingService.for_user(user, body.model)
+    target_model = service.model
+
+    # §4.3 cache: identical resubmits on the *same* model reuse the cache;
+    # switching models always re-grades with the newly selected model.
     answer_hash = new_answer_hash(body.typed_answer)
     cached = await db.get(GradingCache, (card.id, answer_hash))
     overlap = heuristic_overlap(back, body.typed_answer)
 
-    # The UI always names a model, usually the user's own; only a *different*
-    # one is an explicit request to regrade rather than reuse the cache.
-    model_override = bool(body.model) and body.model != user.grading_model
+    cached_model = (
+        (cached.response.get("_cached_for_model") or cached.response.get("model_used"))
+        if cached is not None and isinstance(cached.response, dict)
+        else None
+    )
+    model_override = cached is not None and cached_model != target_model
     if cached is not None and not model_override:
         result = dict(cached.response)
+        result.pop("_cached_for_model", None)
         return _build_response(
             result,
             back,
@@ -202,44 +331,52 @@ async def submit_answer(
             latency_ms=body.latency_ms,
         )
 
-    profile = select_grading_profile(note.note_type.grading_profile, note.note_type.template_kind)
-    target_model = body.model or user.grading_model
-    service = GradingService(model=target_model)
-    try:
-        result = await service.grade_with_escalation(
-            front=front,
-            back=back,
-            user_answer=body.typed_answer,
-            profile=profile,
-            card_type=note.note_type.template_kind,
+    exec_res: dict | None = None
+    execution_summary: str | None = None
+    test_cases = fv.get("test_cases") or []
+    if isinstance(test_cases, list) and len(test_cases) > 0 and body.typed_answer.strip():
+        code_lang = _infer_code_language(fv, body.typed_answer, body.language)
+        candidate_exec = await run_code(
+            code=body.typed_answer,
+            test_cases=test_cases,
+            language=code_lang,
             test_code=body.test_code,
-            previous_weaknesses=card.active_weaknesses or [],
-            model=target_model,
-            allow_smaller_model=body.allow_smaller_model,
-            force_escalate=await _disputed_recently(db, card.id),
+            timeout_sec=4.0,
         )
+        if not _is_harness_redeclaration_error(candidate_exec, bool(body.test_code)):
+            exec_res = candidate_exec
+            execution_summary = _format_execution_summary(candidate_exec)
+
+    profile = select_grading_profile(note.note_type.grading_profile, note.note_type.template_kind)
+    try:
+        grade_kwargs: dict = {
+            "front": front,
+            "back": back,
+            "user_answer": body.typed_answer,
+            "profile": profile,
+            "card_type": note.note_type.template_kind,
+            "test_code": body.test_code,
+            "previous_weaknesses": card.active_weaknesses or [],
+            "model": target_model,
+            "allow_smaller_model": False,
+            "force_escalate": await _disputed_recently(db, card.id),
+        }
+        if execution_summary is not None:
+            grade_kwargs["execution_summary"] = execution_summary
+        result = await service.grade_with_escalation(**grade_kwargs)
     except VramExhaustedError as exc:
-        return _manual(
-            back,
-            "vram_constrained",
-            latency_note,
-            auto_exceeded,
-            user.automaticity_threshold_ms,
-            auto_note,
-            vram_constrained=True,
-            failed_model=exc.failed_model,
-            fallback_model=exc.fallback_model,
-            available_fallback_models=exc.available_models,
-        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=exc.message,
+        ) from exc
     except GradingUnavailable as exc:
-        return _manual(
-            back,
-            str(exc),
-            latency_note,
-            auto_exceeded,
-            user.automaticity_threshold_ms,
-            auto_note,
-        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    if exec_res is not None:
+        _apply_execution_guardrails(result, exec_res)
 
     # Built before the commit: a rollback below would expire `user`.
     response = _build_response(
@@ -250,11 +387,12 @@ async def submit_answer(
         latency_note=latency_note,
         latency_ms=body.latency_ms,
     )
+    cache_payload = {**result, "_cached_for_model": target_model}
     if cached is not None:
-        cached.response = result
+        cached.response = cache_payload
         cached.created_at = datetime.now(UTC)
     else:
-        db.add(GradingCache(card_id=card.id, answer_hash=answer_hash, response=result))
+        db.add(GradingCache(card_id=card.id, answer_hash=answer_hash, response=cache_payload))
     try:
         await db.commit()
     except IntegrityError:
@@ -337,7 +475,13 @@ async def card_lesson(
     shouldn't pay for lessons nobody asked to see.
     """
     card = await _owned_card(db, user, parse_uuid(card_id))
-    return LessonOut(**await lesson_service.get_lesson(db, user, card))
+    try:
+        return LessonOut(**await lesson_service.get_lesson(db, user, card))
+    except (GradingUnavailable, VramExhaustedError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=getattr(exc, "message", str(exc)),
+        ) from exc
 
 
 @router.post("/{card_id}/guide", response_model=SocraticResponse)
@@ -359,8 +503,8 @@ async def socratic_guide(
 
     if not user.llm_grading_consent:
         return SocraticResponse(message="", degraded=True, degraded_reason="consent_not_given")
-    target_model = body.model or user.grading_model
-    service = GradingService(model=target_model)
+    service = GradingService.for_user(user, body.model)
+    target_model = service.model
     try:
         result = await service.ask_socratic_question(
             front=front,
@@ -369,20 +513,21 @@ async def socratic_guide(
             latest=body.message,
             active_weaknesses=card.active_weaknesses or [],
             model=target_model,
-            allow_smaller_model=body.allow_smaller_model,
+            allow_smaller_model=False,
+            user_code=body.user_code,
+            test_code=body.test_code,
+            execution_summary=body.execution_summary,
         )
     except VramExhaustedError as exc:
-        return SocraticResponse(
-            message="",
-            degraded=True,
-            degraded_reason=f"Model '{exc.failed_model}' ran out of GPU VRAM. Switch to a smaller model (e.g. Qwen 2.5 Coder 3B).",
-            vram_constrained=True,
-            failed_model=exc.failed_model,
-            fallback_model=exc.fallback_model,
-            available_fallback_models=exc.available_models,
-        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=exc.message,
+        ) from exc
     except GradingUnavailable as exc:
-        return SocraticResponse(message="", degraded=True, degraded_reason=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
 
     return SocraticResponse(
         message=result["message"],
@@ -412,33 +557,36 @@ async def card_weakness_hint(
         )
 
     if not user.llm_grading_consent:
-        # Fallback without LLM generation
         return WeaknessHintResponse(
             hint=f"Focus on your previous stumbling block: {card.active_weaknesses[0]}.",
             active_weaknesses=card.active_weaknesses,
             has_past_weaknesses=True,
         )
 
-    service = GradingService(model=user.grading_model)
+    service = GradingService.for_user(user)
     try:
         result = await service.generate_weakness_hint(
             front=front,
             back=back,
             active_weaknesses=card.active_weaknesses,
-            model=user.grading_model,
-            allow_smaller_model=True,
+            model=service.model,
+            allow_smaller_model=False,
         )
         return WeaknessHintResponse(
             hint=result["hint"],
             active_weaknesses=card.active_weaknesses,
             has_past_weaknesses=result.get("has_past_weaknesses", True),
         )
-    except GradingUnavailable:
-        return WeaknessHintResponse(
-            hint=f"Watch out for previous difficulty: {card.active_weaknesses[0]}.",
-            active_weaknesses=card.active_weaknesses,
-            has_past_weaknesses=True,
-        )
+    except VramExhaustedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=exc.message,
+        ) from exc
+    except GradingUnavailable as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
 
 
 @router.post("/{card_id}/line-hint", response_model=SocraticLineHintResponse)
@@ -472,8 +620,8 @@ async def socratic_line_hint(
             degraded_reason="consent_not_given",
         )
 
-    target_model = body.model or user.grading_model
-    service = GradingService(model=target_model)
+    service = GradingService.for_user(user, body.model)
+    target_model = service.model
     try:
         result = await service.ask_socratic_line_hint(
             front=front,
@@ -482,7 +630,9 @@ async def socratic_line_hint(
             line_number=clamped_line,
             language=body.language,
             model=target_model,
-            allow_smaller_model=body.allow_smaller_model,
+            allow_smaller_model=False,
+            test_code=body.test_code,
+            execution_summary=body.execution_summary,
         )
         return SocraticLineHintResponse(
             hint=result["hint"],
@@ -491,35 +641,21 @@ async def socratic_line_hint(
             current_line_text=result["current_line_text"],
         )
     except VramExhaustedError as exc:
-        return SocraticLineHintResponse(
-            hint=f"Focus on line {clamped_line}: consider what operation or state change connects your previous setup to the expected return type.",
-            target_concept="Algorithmic Step",
-            line_number=clamped_line,
-            current_line_text=current_line_text,
-            degraded=True,
-            degraded_reason=f"Model ran out of GPU memory: {exc}",
-        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=exc.message,
+        ) from exc
     except GradingUnavailable as exc:
-        return SocraticLineHintResponse(
-            hint=f"Focus on line {clamped_line}: consider what operation or state change connects your previous setup to the expected return type.",
-            target_concept="Algorithmic Step",
-            line_number=clamped_line,
-            current_line_text=current_line_text,
-            degraded=True,
-            degraded_reason=str(exc),
-        )
-    except Exception:
-        # Logged in full here; the client gets a generic reason rather than
-        # whatever internal detail the exception carried.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
         log.exception("socratic line hint failed")
-        return SocraticLineHintResponse(
-            hint=f"Focus on line {clamped_line}: consider what operation or state change connects your previous setup to the expected return type.",
-            target_concept="Algorithmic Step",
-            line_number=clamped_line,
-            current_line_text=current_line_text,
-            degraded=True,
-            degraded_reason="hint_generation_failed",
-        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="hint_generation_failed",
+        ) from exc
 
 
 @router.post("/{card_id}/confirm", response_model=ConfirmReviewResponse)
@@ -747,9 +883,15 @@ async def mutate_card_prompt(
 ) -> MutatePromptResponse:
     """Generates an orthogonal prompt variant for reconsolidation invariant generalization."""
     card = await _owned_card(db, user, parse_uuid(card_id))
-    orig_front, mutated, model = await neuro_service.mutate_prompt(
-        db, user, card, mutation_type=body.mutation_type
-    )
+    try:
+        orig_front, mutated, model = await neuro_service.mutate_prompt(
+            db, user, card, mutation_type=body.mutation_type
+        )
+    except (GradingUnavailable, VramExhaustedError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=getattr(exc, "message", str(exc)),
+        ) from exc
     return MutatePromptResponse(
         card_id=str(card.id),
         original_front=orig_front,
@@ -767,7 +909,13 @@ async def generate_card_mnemonic(
 ) -> GenerateMnemonicResponse:
     """Synthesizes a bizarre, sensory-rich 2-sentence visual mnemonic vignette for this card."""
     card = await _owned_card(db, user, parse_uuid(card_id))
-    vignette, model = await neuro_service.generate_mnemonic_vignette(db, user, card)
+    try:
+        vignette, model = await neuro_service.generate_mnemonic_vignette(db, user, card)
+    except (GradingUnavailable, VramExhaustedError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=getattr(exc, "message", str(exc)),
+        ) from exc
     return GenerateMnemonicResponse(
         card_id=str(card.id),
         mnemonic_vignette=vignette,
@@ -784,9 +932,15 @@ async def submit_pretest_prediction(
 ) -> PretestPredictionResponse:
     """Evaluates a learner's pre-test hypothesis and logs prediction error (RPE)."""
     card = await _owned_card(db, user, parse_uuid(card_id))
-    result = await neuro_service.evaluate_pretest_prediction(
-        db, user, card, prediction=body.prediction, confidence=body.confidence
-    )
+    try:
+        result = await neuro_service.evaluate_pretest_prediction(
+            db, user, card, prediction=body.prediction, confidence=body.confidence
+        )
+    except (GradingUnavailable, VramExhaustedError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=getattr(exc, "message", str(exc)),
+        ) from exc
     db.add(
         ReviewLog(
             card_id=card.id,

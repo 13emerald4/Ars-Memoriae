@@ -26,6 +26,7 @@ from app.schemas.core import (
 from app.services import ir_service, tree_service
 from app.services.grading_service import GradingService, GradingUnavailable
 from app.services.note_service import default_note_type, sync_cards
+from app.services.question_format_service import format_question_with_code_blocks
 
 router = APIRouter(prefix="/api", tags=["incremental-reading"])
 
@@ -348,13 +349,13 @@ async def generate_cards(
     if not user.llm_grading_consent:
         return GenerateCardsResponse(degraded=True, reason="consent_not_given")
 
-    target_model = body.model or user.grading_model
+    service = GradingService.for_user(user, body.model)
     try:
-        raw = await GradingService(model=target_model).generate_cards(
-            passage, body.max_cards, model=target_model, thinking_budget=body.thinking_budget
+        raw = await service.generate_cards(
+            passage, body.max_cards, model=service.model, thinking_budget=body.thinking_budget
         )
     except GradingUnavailable as exc:
-        return GenerateCardsResponse(degraded=True, reason=str(exc))
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
     return GenerateCardsResponse(suggestions=[SuggestedCard(**c) for c in raw])
 
@@ -379,7 +380,14 @@ async def accept_cards(
             fields = {"Text": suggestion.cloze_text, "Extra": suggestion.back or ""}
         else:
             nt = await default_note_type(db, user, "basic")
-            fields = {"Front": suggestion.front, "Back": suggestion.back}
+            fields = {
+                "Front": format_question_with_code_blocks(
+                    suggestion.front,
+                    starter_code=getattr(suggestion, "starter_code", None),
+                    language=getattr(suggestion, "language", None),
+                ),
+                "Back": suggestion.back,
+            }
         if suggestion.image:
             fields["Image"] = suggestion.image.strip()
         note = Note(user_id=user.id, note_type_id=nt.id, field_values=fields)

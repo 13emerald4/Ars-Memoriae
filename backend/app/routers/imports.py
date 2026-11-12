@@ -17,6 +17,7 @@ from app.models import (
 from app.routers.deps import current_user
 from app.schemas.core import JsonImportNote, JsonImportRequest, JsonImportResult
 from app.services.note_service import default_note_type, sync_cards
+from app.services.question_format_service import format_question_with_code_blocks
 
 router = APIRouter(prefix="/api/import", tags=["import"])
 
@@ -111,7 +112,12 @@ async def import_json(
             if not has_front or not (item.back or "").strip():
                 warnings.append(f"note {i}: front (or image) and back are required — skipped")
                 continue
-            field_values = {"Front": item.front or "", "Back": item.back}
+            formatted_front = format_question_with_code_blocks(
+                item.front or "",
+                starter_code=item.starter_code,
+                language=getattr(item, "language", None),
+            )
+            field_values = {"Front": formatted_front, "Back": item.back}
             if item.image:
                 field_values["Image"] = item.image.strip()
             if item.back_image:

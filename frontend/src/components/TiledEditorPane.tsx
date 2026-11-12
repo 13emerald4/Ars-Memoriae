@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CodeEditor, type LineHintData } from './CodeEditor'
-import type { QueueItem } from '../api/types'
+import type { DeckDocMessage, QueueItem } from '../api/types'
 import { computeTokenDiff } from './AnswerComparison'
 import type { LogicWarning } from '../utils/logicGuard'
+import {
+  computeExpectedLines,
+  getFirstTargetLine,
+  formatTargetLineSummary,
+  findIncompleteLineNumber,
+  DEFAULT_TARGET_HIGHLIGHT_COLOR,
+} from '../utils/expectedCodeUtils'
+import { HighlightColorPicker } from './HighlightColorPicker'
 
 export type TilePaneTab = 'solution' | 'tests' | 'reference' | 'ref_tests' | 'starter_tests'
 
@@ -43,67 +51,19 @@ export interface TiledEditorPaneProps {
   onUnlockTests?: () => void
   overlookedPhrases?: string[]
   matchedPhrases?: string[]
-  solutionCursorLine?: number
   // Real-time Logic Guard props
   logicGuardEnabled?: boolean
   onLogicGuardToggle?: (enabled: boolean) => void
   onLogicWarningChange?: (warning: LogicWarning | null) => void
-}
-
-export function findIncompleteLineNumber(
-  solutionCode: string,
-  refCode: string,
-  preferredLine?: number
-): number {
-  if (!refCode) return 1
-  const refLines = refCode.split('\n')
-  const solLines = solutionCode.split('\n')
-
-  if (!solutionCode.trim()) {
-    const firstNonEmpty = refLines.findIndex((l) => l.trim().length > 0)
-    return firstNonEmpty !== -1 ? firstNonEmpty + 1 : 1
-  }
-
-  let firstIncomplete = 1
-  let found = false
-  const maxScan = Math.min(solLines.length, refLines.length)
-
-  for (let i = 0; i < maxScan; i++) {
-    const s = solLines[i]
-    const r = refLines[i]
-
-    if (s === r) {
-      continue
-    }
-
-    firstIncomplete = i + 1
-    found = true
-    break
-  }
-
-  if (!found) {
-    if (solLines.length < refLines.length) {
-      firstIncomplete = solLines.length + 1
-    } else {
-      firstIncomplete = Math.min(solLines.length, refLines.length)
-    }
-  }
-
-  // If user cursor is on a line that is within their written code and has divergent/incomplete content:
-  if (
-    preferredLine &&
-    preferredLine >= 1 &&
-    preferredLine <= refLines.length &&
-    preferredLine <= solLines.length &&
-    solLines[preferredLine - 1] !== refLines[preferredLine - 1]
-  ) {
-    const prefSolLine = solLines[preferredLine - 1] ?? ''
-    if (prefSolLine.trim().length > 0) {
-      return preferredLine
-    }
-  }
-
-  return Math.max(1, Math.min(firstIncomplete, refLines.length))
+  // Synced active AI model
+  activeModel?: string | null
+  onActiveModelChange?: (modelId: string) => void
+  fillHeight?: boolean
+  executionSummary?: string | null
+  sharedQaHistory?: DeckDocMessage[]
+  onSharedQaHistoryChange?: (
+    updater: DeckDocMessage[] | ((prev: DeckDocMessage[]) => DeckDocMessage[]),
+  ) => void
 }
 
 export function TiledEditorPane({
@@ -142,10 +102,15 @@ export function TiledEditorPane({
   onUnlockTests,
   overlookedPhrases = [],
   matchedPhrases = [],
-  solutionCursorLine,
   logicGuardEnabled = true,
   onLogicGuardToggle,
   onLogicWarningChange,
+  activeModel,
+  onActiveModelChange,
+  fillHeight = false,
+  executionSummary = null,
+  sharedQaHistory,
+  onSharedQaHistoryChange,
 }: TiledEditorPaneProps) {
   const [cursorLine, setCursorLine] = useState(1)
 
@@ -153,27 +118,66 @@ export function TiledEditorPane({
     return (localStorage.getItem('memorization.refViewMode') as 'ide' | 'diff' | 'hint') || 'ide'
   })
 
-  const [manualHintLine, setManualHintLine] = useState<number | null>(null)
+  const [manualRefHintLine, setManualRefHintLine] = useState<number | null>(null)
+  const [manualRefTestsHintLine, setManualRefTestsHintLine] = useState<number | null>(null)
 
   const handleToggleRefViewMode = (mode: 'ide' | 'diff' | 'hint') => {
     setRefViewMode(mode)
     localStorage.setItem('memorization.refViewMode', mode)
   }
 
+  const [focusTargetCode, setFocusTargetCode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('memorization.focusTargetCode')
+    return saved !== null ? saved === 'true' : true
+  })
+
+  const handleToggleFocusTargetCode = () => {
+    setFocusTargetCode((prev) => {
+      const next = !prev
+      localStorage.setItem('memorization.focusTargetCode', String(next))
+      return next
+    })
+  }
+
+  const [targetHighlightColor, setTargetHighlightColor] = useState<string>(() => {
+    return localStorage.getItem('memorization.targetHighlightColor') || DEFAULT_TARGET_HIGHLIGHT_COLOR
+  })
+
+  const handleHighlightColorChange = (newColor: string) => {
+    setTargetHighlightColor(newColor)
+    localStorage.setItem('memorization.targetHighlightColor', newColor)
+  }
+
+  const targetRefLines = useMemo(() => {
+    return computeExpectedLines(item?.starter_code, cleanRefCode)
+  }, [item?.starter_code, cleanRefCode])
+
+  const firstTargetRefLine = useMemo(() => {
+    return getFirstTargetLine(targetRefLines)
+  }, [targetRefLines])
+
+  const targetRefTestsLines = useMemo(() => {
+    return computeExpectedLines(starterTestsCode, cleanRefTestsCode)
+  }, [starterTestsCode, cleanRefTestsCode])
+
+  const firstTargetRefTestsLine = useMemo(() => {
+    return getFirstTargetLine(targetRefTestsLines)
+  }, [targetRefTestsLines])
+
   const detectedIncompleteLine = useMemo(() => {
-    return findIncompleteLineNumber(answer, cleanRefCode, solutionCursorLine)
-  }, [answer, cleanRefCode, solutionCursorLine])
+    return findIncompleteLineNumber(answer, cleanRefCode)
+  }, [answer, cleanRefCode])
 
   const totalRefLines = useMemo(() => {
     return cleanRefCode ? cleanRefCode.split('\n').length : 1
   }, [cleanRefCode])
 
-  const activeRefHintLine = manualHintLine ?? detectedIncompleteLine
+  const activeRefHintLine = manualRefHintLine ?? detectedIncompleteLine
 
-  // When answer or ref changes, clear manual override so hint follows user typing
+  // Reset manual hint pin only when switching reference code (card), never on Solution edits/cursor moves
   useEffect(() => {
-    setManualHintLine(null)
-  }, [answer, cleanRefCode])
+    setManualRefHintLine(null)
+  }, [cleanRefCode])
 
   const detectedTestsIncompleteLine = useMemo(() => {
     return findIncompleteLineNumber(testCode, cleanRefTestsCode)
@@ -183,13 +187,17 @@ export function TiledEditorPane({
     return cleanRefTestsCode ? cleanRefTestsCode.split('\n').length : 1
   }, [cleanRefTestsCode])
 
-  const activeRefTestsHintLine = manualHintLine ?? detectedTestsIncompleteLine
+  const activeRefTestsHintLine = manualRefTestsHintLine ?? detectedTestsIncompleteLine
+
+  useEffect(() => {
+    setManualRefTestsHintLine(null)
+  }, [cleanRefTestsCode])
 
   const { refSegments, stats: refDiffStats } = useMemo(() => {
     if (!cleanRefCode || !answer.trim()) {
       return { refSegments: null, stats: null }
     }
-    const diff = computeTokenDiff(answer, cleanRefCode, overlookedPhrases, matchedPhrases)
+    const diff = computeTokenDiff(answer, cleanRefCode, overlookedPhrases, matchedPhrases, true)
     return { refSegments: diff.refSegments, stats: diff.stats }
   }, [answer, cleanRefCode, overlookedPhrases, matchedPhrases])
 
@@ -197,15 +205,15 @@ export function TiledEditorPane({
     if (!cleanRefTestsCode || !testCode.trim()) {
       return { refTestsSegments: null, stats: null }
     }
-    const diff = computeTokenDiff(testCode, cleanRefTestsCode)
+    const diff = computeTokenDiff(testCode, cleanRefTestsCode, [], [], true)
     return { refTestsSegments: diff.refSegments, stats: diff.stats }
   }, [cleanRefTestsCode, testCode])
 
   return (
-    <div className="flex flex-col min-w-0 h-full">
+    <div className={`flex flex-col min-w-0 ${fillHeight ? 'h-full flex-1 min-h-0' : 'h-full'}`}>
       {/* ── Sub-Column Header & Tab Switcher ── */}
-      <div className="flex items-center justify-between border-b border-ink-line/80 bg-[#1e1e1e]/90 px-2.5 py-1 text-xs min-w-0 gap-2">
-        <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar">
+      <div className="h-9 min-h-[36px] shrink-0 flex flex-nowrap items-center justify-between border-b border-ink-line/80 bg-[#1e1e1e]/90 px-2.5 text-xs min-w-0 gap-2 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1.5 shrink-0">
           <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line shrink-0">
             <button
               type="button"
@@ -417,6 +425,43 @@ export function TiledEditorPane({
                     </button>
                   </div>
 
+                  {refViewMode === 'ide' && targetRefLines.size > 0 && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleToggleFocusTargetCode}
+                        className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer text-xs ${
+                          focusTargetCode
+                            ? 'bg-emerald-600/30 text-emerald-200 border border-emerald-500/50 font-medium shadow-sm'
+                            : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                        }`}
+                        title={
+                          focusTargetCode
+                            ? 'Focus Target Code active: boilerplate starter code is dimmed. Click to show full brightness.'
+                            : 'Click to focus target code (dims boilerplate starter code)'
+                        }
+                      >
+                        <span>🎯 Target ({formatTargetLineSummary(targetRefLines)})</span>
+                      </button>
+
+                      <HighlightColorPicker
+                        color={targetHighlightColor}
+                        onChange={handleHighlightColorChange}
+                      />
+
+                      {firstTargetRefLine && firstTargetRefLine > 10 && (
+                        <button
+                          type="button"
+                          onClick={() => setManualRefHintLine(firstTargetRefLine)}
+                          className="hidden sm:flex items-center gap-0.5 text-[11px] text-emerald-400 hover:text-emerald-200 hover:underline cursor-pointer font-mono"
+                          title={`Jump to first line of expected code (Line ${firstTargetRefLine})`}
+                        >
+                          ⤓ Ln {firstTargetRefLine}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {revealed && onHide && (
                     <button
                       type="button"
@@ -433,7 +478,7 @@ export function TiledEditorPane({
                       <button
                         type="button"
                         disabled={activeRefHintLine <= 1}
-                        onClick={() => setManualHintLine(Math.max(1, activeRefHintLine - 1))}
+                        onClick={() => setManualRefHintLine(Math.max(1, activeRefHintLine - 1))}
                         className="px-1 py-0.2 rounded hover:bg-amber-500/20 disabled:opacity-30 cursor-pointer text-amber-300"
                         title="Previous line hint"
                       >
@@ -445,16 +490,16 @@ export function TiledEditorPane({
                       <button
                         type="button"
                         disabled={activeRefHintLine >= totalRefLines}
-                        onClick={() => setManualHintLine(Math.min(totalRefLines, activeRefHintLine + 1))}
+                        onClick={() => setManualRefHintLine(Math.min(totalRefLines, activeRefHintLine + 1))}
                         className="px-1 py-0.2 rounded hover:bg-amber-500/20 disabled:opacity-30 cursor-pointer text-amber-300"
                         title="Next line hint"
                       >
                         ▶
                       </button>
-                      {manualHintLine !== null && manualHintLine !== detectedIncompleteLine && (
+                      {manualRefHintLine !== null && manualRefHintLine !== detectedIncompleteLine && (
                         <button
                           type="button"
-                          onClick={() => setManualHintLine(null)}
+                          onClick={() => setManualRefHintLine(null)}
                           className="text-[9px] underline text-amber-400 hover:text-amber-200 ml-1 cursor-pointer whitespace-nowrap"
                           title={`Reset to incomplete line (${detectedIncompleteLine})`}
                         >
@@ -570,6 +615,43 @@ export function TiledEditorPane({
                     </button>
                   </div>
 
+                  {refViewMode === 'ide' && targetRefTestsLines.size > 0 && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleToggleFocusTargetCode}
+                        className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer text-xs ${
+                          focusTargetCode
+                            ? 'bg-emerald-600/30 text-emerald-200 border border-emerald-500/50 font-medium shadow-sm'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title={
+                          focusTargetCode
+                            ? 'Focus Target Tests active: boilerplate starter tests are dimmed. Click to show full brightness.'
+                            : 'Click to focus target tests (dims boilerplate)'
+                        }
+                      >
+                        <span>🎯 Target ({formatTargetLineSummary(targetRefTestsLines)})</span>
+                      </button>
+
+                      <HighlightColorPicker
+                        color={targetHighlightColor}
+                        onChange={handleHighlightColorChange}
+                      />
+
+                      {firstTargetRefTestsLine && firstTargetRefTestsLine > 10 && (
+                        <button
+                          type="button"
+                          onClick={() => setManualRefTestsHintLine(firstTargetRefTestsLine)}
+                          className="hidden sm:flex items-center gap-0.5 text-[11px] text-emerald-400 hover:text-emerald-200 hover:underline cursor-pointer font-mono"
+                          title={`Jump to first line of expected tests (Line ${firstTargetRefTestsLine})`}
+                        >
+                          ⤓ Ln {firstTargetRefTestsLine}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {revealed && onHide && (
                     <button
                       type="button"
@@ -586,7 +668,7 @@ export function TiledEditorPane({
                       <button
                         type="button"
                         disabled={activeRefTestsHintLine <= 1}
-                        onClick={() => setManualHintLine(Math.max(1, activeRefTestsHintLine - 1))}
+                        onClick={() => setManualRefTestsHintLine(Math.max(1, activeRefTestsHintLine - 1))}
                         className="px-1 py-0.2 rounded hover:bg-amber-500/20 disabled:opacity-30 cursor-pointer text-amber-300"
                         title="Previous test line hint"
                       >
@@ -598,12 +680,22 @@ export function TiledEditorPane({
                       <button
                         type="button"
                         disabled={activeRefTestsHintLine >= totalRefTestsLines}
-                        onClick={() => setManualHintLine(Math.min(totalRefTestsLines, activeRefTestsHintLine + 1))}
+                        onClick={() => setManualRefTestsHintLine(Math.min(totalRefTestsLines, activeRefTestsHintLine + 1))}
                         className="px-1 py-0.2 rounded hover:bg-amber-500/20 disabled:opacity-30 cursor-pointer text-amber-300"
                         title="Next test line hint"
                       >
                         ▶
                       </button>
+                      {manualRefTestsHintLine !== null && manualRefTestsHintLine !== detectedTestsIncompleteLine && (
+                        <button
+                          type="button"
+                          onClick={() => setManualRefTestsHintLine(null)}
+                          className="text-[9px] underline text-amber-400 hover:text-amber-200 ml-1 cursor-pointer whitespace-nowrap"
+                          title={`Reset to incomplete test line (${detectedTestsIncompleteLine})`}
+                        >
+                          Incomplete (Ln {detectedTestsIncompleteLine})
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -679,164 +771,243 @@ export function TiledEditorPane({
       </div>
 
       {/* ── Sub-Column Editor Body ── */}
-      {currentTab === 'solution' && (
-        <CodeEditor
-          code={answer}
-          onChange={onAnswerChange}
-          language={codeLanguage}
-          height={height}
-          hideHeader={true}
-          borderless={true}
-          onRun={onRun}
-          onSubmit={onSubmit}
-          placeholder="// Write your solution here..."
-          activeLineHint={activeLineHint}
-          lineHintLoading={lineHintLoading}
-          onRequestLineHint={onRequestLineHint}
-          onDismissLineHint={onDismissLineHint}
-          onCursorChange={(l, c) => {
-            setCursorLine(l)
-            onCursorChange?.(l, c)
-          }}
-          onGradeSolution={onGradeSolution}
-          grading={grading}
-          cleanRefCode={cleanRefCode}
-          logicGuardEnabled={logicGuardEnabled}
-          onLogicGuardToggle={onLogicGuardToggle}
-          onLogicWarningChange={onLogicWarningChange}
-        />
-      )}
-
-      {currentTab === 'tests' && (
-        <CodeEditor
-          code={testCode}
-          onChange={onTestCodeChange}
-          language={codeLanguage}
-          height={height}
-          hideHeader={true}
-          borderless={true}
-          onRun={onRun}
-          onSubmit={onSubmit}
-          placeholder="// Write your unit tests here..."
-        />
-      )}
-
-      {currentTab === 'reference' && (
-        revealed || refViewMode === 'hint' ? (
+      <div className={fillHeight ? 'flex-1 min-h-0 flex flex-col overflow-hidden' : 'flex flex-col'}>
+        {currentTab === 'solution' && (
           <CodeEditor
-            code={cleanRefCode}
+            code={answer}
+            onChange={onAnswerChange}
+            language={codeLanguage}
+            height={height}
+            fillHeight={fillHeight}
+            compactFooter={true}
+            hideHeader={true}
+            borderless={true}
+            onRun={onRun}
+            onSubmit={onSubmit}
+            placeholder="// Write your solution here..."
+            context={item?.front || item?.deck_name}
+            deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
+            cardId={item?.id ?? null}
+            userCode={answer}
+            userTestCode={testCode}
+            executionSummary={executionSummary}
+            revealed={revealed}
+            sharedQaHistory={sharedQaHistory}
+            onSharedQaHistoryChange={onSharedQaHistoryChange}
+            activeModel={activeModel}
+            onActiveModelChange={onActiveModelChange}
+            activeLineHint={activeLineHint}
+            lineHintLoading={lineHintLoading}
+            onRequestLineHint={onRequestLineHint}
+            onDismissLineHint={onDismissLineHint}
+            onCursorChange={(l, c) => {
+              setCursorLine(l)
+              onCursorChange?.(l, c)
+            }}
+            onGradeSolution={onGradeSolution}
+            grading={grading}
+            cleanRefCode={cleanRefCode}
+            logicGuardEnabled={logicGuardEnabled}
+            onLogicGuardToggle={onLogicGuardToggle}
+            onLogicWarningChange={onLogicWarningChange}
+          />
+        )}
+
+        {currentTab === 'tests' && (
+          <CodeEditor
+            code={testCode}
+            onChange={onTestCodeChange}
+            language={codeLanguage}
+            height={height}
+            fillHeight={fillHeight}
+            compactFooter={true}
+            hideHeader={true}
+            borderless={true}
+            onRun={onRun}
+            onSubmit={onSubmit}
+            context={item?.front || item?.deck_name}
+            deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
+            cardId={item?.id ?? null}
+            userCode={answer}
+            userTestCode={testCode}
+            executionSummary={executionSummary}
+            revealed={revealed}
+            sharedQaHistory={sharedQaHistory}
+            onSharedQaHistoryChange={onSharedQaHistoryChange}
+            activeModel={activeModel}
+            onActiveModelChange={onActiveModelChange}
+            placeholder="// Write your unit tests here..."
+          />
+        )}
+
+        {currentTab === 'reference' && (
+          revealed || refViewMode === 'hint' ? (
+            <CodeEditor
+              code={cleanRefCode}
+              onChange={() => {}}
+              language={codeLanguage}
+              readOnly={true}
+              height={height}
+              fillHeight={fillHeight}
+              compactFooter={true}
+              hideHeader={true}
+              borderless={true}
+              placeholder="// Reference solution"
+              context={item?.front || item?.deck_name}
+              deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
+              cardId={item?.id ?? null}
+              userCode={answer}
+              userTestCode={testCode}
+              executionSummary={executionSummary}
+              revealed={revealed}
+              sharedQaHistory={sharedQaHistory}
+              onSharedQaHistoryChange={onSharedQaHistoryChange}
+              activeModel={activeModel}
+              onActiveModelChange={onActiveModelChange}
+              diffSegments={refViewMode === 'diff' ? refSegments : null}
+              diffStats={refViewMode === 'diff' ? refDiffStats : null}
+              hintOnly={refViewMode === 'hint'}
+              hintOnlyLine={activeRefHintLine}
+              onHintOnlyLineChange={setManualRefHintLine}
+              targetLineNumbers={targetRefLines}
+              focusTargetCode={focusTargetCode}
+              targetHighlightColor={targetHighlightColor}
+              initialScrollLine={firstTargetRefLine ?? undefined}
+            />
+          ) : (
+            <div
+              className={`flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3 ${
+                fillHeight ? 'flex-1 min-h-[180px]' : ''
+              }`}
+              style={fillHeight ? undefined : { height }}
+            >
+              <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shadow-inner font-mono text-sm font-bold">
+                [Locked]
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-semibold text-slate-200">Reference Solution Hidden</h4>
+                <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
+                  Commit your implementation first, or reveal now to study and compare alongside your code.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={onReveal}
+                  className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 cursor-pointer"
+                >
+                  <span>Reveal Reference Solution</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleRefViewMode('hint')}
+                  className="px-3 py-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                  title="Peek only the line of code currently incomplete without revealing the full solution"
+                >
+                  <span>💡 Peek Line Hint Only</span>
+                </button>
+              </div>
+            </div>
+          )
+        )}
+
+        {currentTab === 'ref_tests' && (
+          revealed || learnMode || refViewMode === 'hint' ? (
+            <CodeEditor
+              code={cleanRefTestsCode || ''}
+              onChange={() => {}}
+              language={codeLanguage}
+              readOnly={true}
+              height={height}
+              fillHeight={fillHeight}
+              compactFooter={true}
+              hideHeader={true}
+              borderless={true}
+              placeholder="// Completed reference test suite"
+              context={item?.front || item?.deck_name}
+              deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
+              cardId={item?.id ?? null}
+              userCode={answer}
+              userTestCode={testCode}
+              executionSummary={executionSummary}
+              revealed={revealed}
+              sharedQaHistory={sharedQaHistory}
+              onSharedQaHistoryChange={onSharedQaHistoryChange}
+              activeModel={activeModel}
+              onActiveModelChange={onActiveModelChange}
+              diffSegments={refViewMode === 'diff' ? refTestsSegments : null}
+              diffStats={refViewMode === 'diff' ? refTestsDiffStats : null}
+              hintOnly={refViewMode === 'hint'}
+              hintOnlyLine={activeRefTestsHintLine}
+              onHintOnlyLineChange={setManualRefTestsHintLine}
+              targetLineNumbers={targetRefTestsLines}
+              focusTargetCode={focusTargetCode}
+              targetHighlightColor={targetHighlightColor}
+              initialScrollLine={firstTargetRefTestsLine ?? undefined}
+            />
+          ) : (
+            <div
+              className={`flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3 ${
+                fillHeight ? 'flex-1 min-h-[180px]' : ''
+              }`}
+              style={fillHeight ? undefined : { height }}
+            >
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shadow-inner font-mono text-sm font-bold">
+                [Locked]
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-semibold text-slate-200">Completed Test Suite Hidden</h4>
+                <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
+                  Completed test solutions are hidden until revealed. Commit your implementation and tests or reveal below to view.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={onUnlockTests || onReveal}
+                  className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 cursor-pointer"
+                >
+                  <span>View Reference Tests</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleRefViewMode('hint')}
+                  className="px-3 py-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                  title="Peek only the test line currently incomplete"
+                >
+                  <span>💡 Peek Line Hint Only</span>
+                </button>
+              </div>
+            </div>
+          )
+        )}
+
+        {currentTab === 'starter_tests' && (
+          <CodeEditor
+            code={starterTestsCode}
             onChange={() => {}}
             language={codeLanguage}
             readOnly={true}
             height={height}
+            fillHeight={fillHeight}
+            compactFooter={true}
             hideHeader={true}
             borderless={true}
-            placeholder="// Reference solution"
-            diffSegments={refViewMode === 'diff' ? refSegments : null}
-            diffStats={refViewMode === 'diff' ? refDiffStats : null}
-            hintOnly={refViewMode === 'hint'}
-            hintOnlyLine={activeRefHintLine}
-            onHintOnlyLineChange={setManualHintLine}
+            context={item?.front || item?.deck_name}
+            deckId={item?.kind === 'card' ? item.deck_or_source_id : null}
+            cardId={item?.id ?? null}
+            userCode={answer}
+            userTestCode={testCode}
+            executionSummary={executionSummary}
+            revealed={revealed}
+            sharedQaHistory={sharedQaHistory}
+            onSharedQaHistoryChange={onSharedQaHistoryChange}
+            activeModel={activeModel}
+            onActiveModelChange={onActiveModelChange}
+            placeholder="// Starter test suite"
           />
-        ) : (
-          <div
-            className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3"
-            style={{ height }}
-          >
-            <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-xl text-sky-400 shadow-inner font-mono text-sm font-bold">
-              [Locked]
-            </div>
-            <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-slate-200">Reference Solution Hidden</h4>
-              <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
-                Commit your implementation first, or reveal now to study and compare alongside your code.
-              </p>
-            </div>
-            <div className="flex items-center gap-2 mt-2">
-              <button
-                type="button"
-                onClick={onReveal}
-                className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 cursor-pointer"
-              >
-                <span>Reveal Reference Solution</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleToggleRefViewMode('hint')}
-                className="px-3 py-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
-                title="Peek only the line of code currently incomplete without revealing the full solution"
-              >
-                <span>💡 Peek Line Hint Only</span>
-              </button>
-            </div>
-          </div>
-        )
-      )}
-
-      {currentTab === 'ref_tests' && (
-        revealed || learnMode || refViewMode === 'hint' ? (
-          <CodeEditor
-            code={cleanRefTestsCode || ''}
-            onChange={() => {}}
-            language={codeLanguage}
-            readOnly={true}
-            height={height}
-            hideHeader={true}
-            borderless={true}
-            placeholder="// Completed reference test suite"
-            diffSegments={refViewMode === 'diff' ? refTestsSegments : null}
-            diffStats={refViewMode === 'diff' ? refTestsDiffStats : null}
-            hintOnly={refViewMode === 'hint'}
-            hintOnlyLine={activeRefTestsHintLine}
-            onHintOnlyLineChange={setManualHintLine}
-          />
-        ) : (
-          <div
-            className="flex flex-col items-center justify-center p-6 text-center bg-[#181818] text-slate-400 space-y-3"
-            style={{ height }}
-          >
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-xl text-purple-400 shadow-inner font-mono text-sm font-bold">
-              [Locked]
-            </div>
-            <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-slate-200">Completed Test Suite Hidden</h4>
-              <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
-                Completed test solutions are hidden until revealed. Commit your implementation and tests or reveal below to view.
-              </p>
-            </div>
-            <div className="flex items-center gap-2 mt-2">
-              <button
-                type="button"
-                onClick={onUnlockTests || onReveal}
-                className="btn btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5 cursor-pointer"
-              >
-                <span>View Reference Tests</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleToggleRefViewMode('hint')}
-                className="px-3 py-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
-                title="Peek only the test line currently incomplete"
-              >
-                <span>💡 Peek Line Hint Only</span>
-              </button>
-            </div>
-          </div>
-        )
-      )}
-
-      {currentTab === 'starter_tests' && (
-        <CodeEditor
-          code={starterTestsCode}
-          onChange={() => {}}
-          language={codeLanguage}
-          readOnly={true}
-          height={height}
-          hideHeader={true}
-          borderless={true}
-          placeholder="// Starter test suite"
-        />
-      )}
+        )}
+      </div>
     </div>
   )
 }
