@@ -541,7 +541,7 @@ class CodeAiService:
             }
 
         formatted_excerpts = []
-        for idx, exc in enumerate(doc_excerpts, 1):
+        for exc in doc_excerpts:
             formatted_excerpts.append(
                 f"[Document: {exc['source_title']} · {exc.get('locator') or 'General'}]\n{exc['content']}\n"
             )

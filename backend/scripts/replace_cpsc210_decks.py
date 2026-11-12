@@ -18,8 +18,9 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
 from sqlalchemy import delete, select
+
 from app.db import SessionLocal
-from app.models import Card, CardReference, Deck, Import, Note, NoteType, ReviewLog, User
+from app.models import Card, CardReference, Deck, Import, Note, ReviewLog, User
 from app.services.note_service import default_note_type, sync_cards
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -61,7 +62,7 @@ async def ensure_deck(db, user_id, name: str, parent_id, default_priority: int, 
         query = query.where(Deck.parent_id.is_(None))
     else:
         query = query.where(Deck.parent_id == parent_id)
-        
+
     deck = await db.scalar(query)
     if deck is None:
         deck = Deck(
@@ -114,7 +115,6 @@ async def replace_cards_in_deck(db, user, deck: Deck, cards_list: list[dict], de
     for item in cards_list:
         front = (item.get("front") or item.get("title") or "").strip()
         back = (item.get("back") or "").strip()
-        title = (item.get("title") or "").strip()
 
         if not front or not back:
             continue
@@ -231,10 +231,10 @@ async def run_replace():
                 position=pos,
             )
             file_path = SOURCE_ROOT / rel_path
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
             cards_list = data["notes"]
-            
+
             created = await replace_cards_in_deck(db, user, child_deck, cards_list, default_prio=prio)
             total_la_cards += created
             report.append({
@@ -256,10 +256,10 @@ async def run_replace():
                 position=pos,
             )
             file_path = SOURCE_ROOT / rel_path
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
             cards_list = data["notes"]
-            
+
             created = await replace_cards_in_deck(db, user, child_deck, cards_list, default_prio=prio)
             total_lab_cards += created
             report.append({

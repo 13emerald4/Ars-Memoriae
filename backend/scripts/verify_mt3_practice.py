@@ -51,7 +51,7 @@ def verify():
     )
     cards = cursor.fetchall()
     assert len(cards) == 7, f"Expected 7 cards, found {len(cards)}"
-    print(f"PASS: Exactly 7 cards found in Practice Midterm deck.")
+    print("PASS: Exactly 7 cards found in Practice Midterm deck.")
 
     for i, (cid, fv_str, prio, tags_str, quote, locator) in enumerate(cards, 1):
         fv = json.loads(fv_str)

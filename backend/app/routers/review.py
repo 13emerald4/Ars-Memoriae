@@ -10,12 +10,15 @@ the calibration loop in §4.3 has something to learn from.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
+import weakref
+from collections import OrderedDict
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,7 +26,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import new_answer_hash
 from app.db import get_db
 from app.models import Card, Deck, GradingCache, ReviewLog, User
-from app.routers.deps import current_user, parse_uuid
+from app.routers.deps import (
+    code_execution_block_reason,
+    code_runner_user,
+    current_user,
+    parse_uuid,
+)
 from app.schemas.review import (
     ConfirmReviewRequest,
     ConfirmReviewResponse,
@@ -44,11 +52,15 @@ from app.schemas.review import (
     SubmitAnswerResponse,
     WeaknessHintResponse,
 )
-from app.services import leech_service, lesson_service, neuro_service, stuck_service
+from app.services import (
+    leech_service,
+    lesson_service,
+    neuro_service,
+    review_service,
+    stuck_service,
+)
 from app.services.code_runner_service import run_code
-from app.services.fsrs_service import GRADE_TO_RATING, FSRSService
 from app.services.grading_service import (
-    GRADES,
     GradingService,
     GradingUnavailable,
     VramExhaustedError,
@@ -63,7 +75,6 @@ from app.services.sync_service import sync_manager
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/review", tags=["review"])
 
-BIAS_LEARNING_RATE = 0.1
 
 
 async def _owned_card(db: AsyncSession, user: User, card_id: uuid.UUID) -> Card:
@@ -86,14 +97,6 @@ async def _disputed_recently(db: AsyncSession, card_id: uuid.UUID) -> bool:
     )
     flags = [r[0] for r in rows.all()]
     return len(flags) == 2 and all(flags)
-
-
-def _upcoming(event: datetime | None, now: datetime) -> datetime | None:
-    """The event date if it is still ahead of `now`, else None."""
-    if event is None:
-        return None
-    aware = event if event.tzinfo else event.replace(tzinfo=UTC)
-    return aware if aware > now else None
 
 
 def format_latency(latency_ms: int | None) -> str | None:
@@ -263,6 +266,7 @@ def _apply_execution_guardrails(result: dict, exec_res: dict) -> None:
 async def submit_answer(
     card_id: str,
     body: SubmitAnswerRequest,
+    request: Request,
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ) -> SubmitAnswerResponse:
@@ -334,7 +338,16 @@ async def submit_answer(
     exec_res: dict | None = None
     execution_summary: str | None = None
     test_cases = fv.get("test_cases") or []
-    if isinstance(test_cases, list) and len(test_cases) > 0 and body.typed_answer.strip():
+    # Grading a code card normally runs the answer against its test cases. A
+    # caller who may not execute code on the host still gets graded, just on
+    # the text alone.
+    may_execute = code_execution_block_reason(request) is None
+    if (
+        may_execute
+        and isinstance(test_cases, list)
+        and len(test_cases) > 0
+        and body.typed_answer.strip()
+    ):
         code_lang = _infer_code_language(fv, body.typed_answer, body.language)
         candidate_exec = await run_code(
             code=body.typed_answer,
@@ -658,6 +671,24 @@ async def socratic_line_hint(
         ) from exc
 
 
+# One confirm per card at a time. Two requests for the same card (a double
+# click, a key repeat, two tabs) would otherwise both read the card before
+# either wrote it, and schedule it twice from the same starting state.
+_confirm_locks: weakref.WeakValueDictionary[uuid.UUID, asyncio.Lock] = weakref.WeakValueDictionary()
+
+# Replies to confirms that carried a client_review_id, so a resend of the same
+# attempt returns the first outcome instead of logging a second review.
+_RECENT_CONFIRMS_MAX = 512
+_recent_confirms: OrderedDict[tuple[uuid.UUID, str], ConfirmReviewResponse] = OrderedDict()
+
+
+def _confirm_lock(card_id: uuid.UUID) -> asyncio.Lock:
+    lock = _confirm_locks.get(card_id)
+    if lock is None:
+        lock = _confirm_locks[card_id] = asyncio.Lock()
+    return lock
+
+
 @router.post("/{card_id}/confirm", response_model=ConfirmReviewResponse)
 async def confirm_review(
     card_id: str,
@@ -666,95 +697,29 @@ async def confirm_review(
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ConfirmReviewResponse:
-    card = await _owned_card(db, user, parse_uuid(card_id))
+    cid = parse_uuid(card_id)
+    replay_key = (user.id, body.client_review_id) if body.client_review_id else None
+    async with _confirm_lock(cid):
+        if replay_key and replay_key in _recent_confirms:
+            return _recent_confirms[replay_key]
+        response = await _confirm_review(cid, body, background, user, db)
+        if replay_key:
+            _recent_confirms[replay_key] = response
+            while len(_recent_confirms) > _RECENT_CONFIRMS_MAX:
+                _recent_confirms.popitem(last=False)
+        return response
+
+
+async def _confirm_review(
+    cid: uuid.UUID,
+    body: ConfirmReviewRequest,
+    background: BackgroundTasks,
+    user: User,
+    db: AsyncSession,
+) -> ConfirmReviewResponse:
+    card = await _owned_card(db, user, cid)
     deck = await db.get(Deck, card.deck_id)
     now = datetime.now(UTC)
-
-    state_before = card.state
-    last_review = card.last_review
-    elapsed_days = None
-    if last_review:
-        lr = last_review if last_review.tzinfo else last_review.replace(tzinfo=UTC)
-        elapsed_days = (now - lr).total_seconds() / 86400.0
-
-    # Per-deck desired retention is the "% bias per subject" knob (§16 Appendix).
-    # In Event Horizon mode, retention target dynamically ramps to peak_retention_target.
-    # A past event no longer ramps retention or compresses intervals.
-    target_event = _upcoming(deck.target_event_date or user.target_event_date, now)
-    retention = deck.desired_retention_override or (
-        user.peak_retention_target if target_event else user.desired_retention
-    )
-    fsrs = FSRSService(weights=user.fsrs_parameters, desired_retention=retention)
-
-    fsrs_card = FSRSService.to_fsrs_card(
-        state=card.state,
-        stability=card.stability,
-        difficulty=card.difficulty,
-        step=card.step,
-        due=card.due,
-        last_review=card.last_review,
-    )
-    _, new_state = fsrs.schedule(
-        fsrs_card, GRADE_TO_RATING[body.final_grade.value], now
-    )
-
-    # Event Horizon interval compression: ensure scheduled card due date
-    # does not drift past the target competition/exam date.
-    if target_event and "due" in new_state and new_state["due"]:
-        new_state["due"] = FSRSService.compress_for_event_horizon(
-            new_state["due"], now, target_event
-        )
-
-    # A lapse is a *review-state* card being failed — relearning failures inside
-    # the same lapse do not each count again (matches standard lapse definition).
-    if body.final_grade == Grade.again and state_before == "review":
-        card.lapse_count += 1
-
-    for key, value in new_state.items():
-        setattr(card, key, value)
-
-    # Recover the LLM's own verdict for the log, if the answer was graded.
-    llm_grade = llm_reasoning = None
-    llm_confidence = None
-    identified_weaknesses: list[str] = []
-    improvements: list[str] = []
-    persistent_weaknesses: list[str] = []
-    if body.typed_answer:
-        cached = await db.get(GradingCache, (card.id, new_answer_hash(body.typed_answer)))
-        if cached:
-            llm_grade = cached.response.get("grade")
-            llm_reasoning = cached.response.get("reasoning")
-            llm_confidence = cached.response.get("confidence")
-            identified_weaknesses = cached.response.get("weaknesses") or []
-            improvements = cached.response.get("improvements") or []
-            persistent_weaknesses = cached.response.get("persistent_weaknesses") or []
-
-    # Update Card longitudinal weakness state:
-    # 1. Any weakness listed in 'improvements' is resolved.
-    # 2. Any weakness in 'persistent_weaknesses' or 'identified_weaknesses' is active.
-    current_active = set(card.active_weaknesses or [])
-    current_active.difference_update(improvements)
-    current_active.update(persistent_weaknesses)
-    current_active.update(identified_weaknesses)
-
-    # If final grade is 'easy' or 'good' and no weaknesses/persistent weaknesses were flagged, resolve active weaknesses
-    if body.final_grade in (Grade.good, Grade.easy) and not identified_weaknesses and not persistent_weaknesses:
-        current_active.clear()
-
-    updated_active = sorted(current_active)
-    card.active_weaknesses = updated_active
-
-    history_entry = {
-        "reviewed_at": now.isoformat(),
-        "final_grade": body.final_grade.value,
-        "weaknesses_identified": identified_weaknesses,
-        "improvements": improvements,
-        "persistent_weaknesses": persistent_weaknesses,
-        "active_remaining": updated_active,
-    }
-    history = list(card.weakness_history or [])
-    history.append(history_entry)
-    card.weakness_history = history[-50:]
 
     # Computed against history only — called before this review's own row
     # exists, so the query never has to exclude its own result.
@@ -762,41 +727,22 @@ async def confirm_review(
         db, user, final_grade=body.final_grade.value, latency_ms=body.latency_ms
     )
 
-    db.add(
-        ReviewLog(
-            card_id=card.id,
-            reviewed_at=now,
-            typed_answer=body.typed_answer,
-            latency_ms=body.latency_ms,
-            llm_grade=llm_grade,
-            llm_reasoning=llm_reasoning,
-            llm_confidence=llm_confidence,
-            final_grade=body.final_grade.value,
-            overridden=body.overridden,
-            state_before=state_before,
-            elapsed_days=elapsed_days,
-            graduated_to_review=state_before != "review" and new_state.get("state") == "review",
-            user_confidence=body.confidence,
-            is_blitz=body.is_blitz,
-            weaknesses=identified_weaknesses,
-            improvements=improvements,
-            persistent_weaknesses=persistent_weaknesses,
-        )
+    outcome = await review_service.record_review(
+        db,
+        user,
+        card,
+        deck,
+        grade=body.final_grade.value,
+        reviewed_at=now,
+        typed_answer=body.typed_answer,
+        latency_ms=body.latency_ms,
+        overridden=body.overridden,
+        confidence=body.confidence,
+        is_blitz=body.is_blitz,
     )
-
-    # §4.3 per-user calibration: a running average of the user's own overrides,
-    # not a fine-tune. Positive bias => the model grades this user too harshly.
-    if body.overridden and llm_grade in GRADES:
-        delta = GRADES.index(body.final_grade.value) - GRADES.index(llm_grade)
-        user.grading_bias = round(
-            (1 - BIAS_LEARNING_RATE) * user.grading_bias + BIAS_LEARNING_RATE * delta, 4
-        )
-
-    leech_flagged = leech_service.check_leech(card, user.leech_threshold)
-    if leech_flagged:
-        await leech_service.flag_leech(db, card)
-        if user.leech_remediation_opt_in and user.llm_grading_consent:
-            background.add_task(leech_service.generate_remediation, card.id)
+    leech_flagged = outcome.leech_flagged
+    if leech_flagged and user.leech_remediation_opt_in and user.llm_grading_consent:
+        background.add_task(leech_service.generate_remediation, card.id)
 
     await db.commit()
     await db.refresh(card)
@@ -849,10 +795,10 @@ async def confirm_review(
 async def run_card_code(
     card_id: str,
     body: RunReviewCodeRequest,
-    user: User = Depends(current_user),
+    user: User = Depends(code_runner_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Executes Python code against sample or custom testcases in an isolated sandbox for review cards."""
+    """Runs the answer against sample or custom testcases in a child process (not a sandbox)."""
     cid = parse_uuid(card_id, "card_id")
     card = await _owned_card(db, user, cid)
 

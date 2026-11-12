@@ -1,7 +1,10 @@
-"""Safe Python Code Execution Sandbox & Test Harness Runner.
+"""Code execution worker runner and test harness.
 
-Executes user code against test cases, capturing stdout, execution runtime,
-and verifying expected output with AST introspection and timeout guards.
+Runs user code against test cases in a child process, capturing stdout and
+runtime and checking expected output, with timeout, output and memory guards.
+
+This is NOT a sandbox (see `_run_worker`): the child runs as the backend's OS
+user. Who may reach it is decided in `app.routers.deps.code_runner_user`.
 """
 
 from __future__ import annotations

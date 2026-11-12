@@ -76,12 +76,12 @@ from starlette.websockets import WebSocketDisconnect
 
 def test_websocket_sync_authentication():
     client = TestClient(app)
-    # Connecting without token should fail policy violation (code 1008)
-    with (
-        pytest.raises(WebSocketDisconnect) as exc_info,
-        client.websocket_connect("/api/sync/ws"),
-    ):
-        pass
+    # A socket that connects without identifying itself is closed with a
+    # policy violation (1008) as soon as its first frame is not a valid AUTH.
+    with client.websocket_connect("/api/sync/ws") as ws:
+        ws.send_json({"type": "PING"})
+        with pytest.raises(WebSocketDisconnect) as exc_info:
+            ws.receive_json()
     assert exc_info.value.code == 1008
 
     # Generating a valid token for a dummy user id that doesn't exist in DB

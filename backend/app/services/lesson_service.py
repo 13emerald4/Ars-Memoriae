@@ -27,7 +27,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Card, CardLesson, CardReference, Extract, User
-from app.services.grading_service import GradingService, GradingUnavailable
+from app.services.grading_service import GradingService
 from app.services.rendering import render
 
 log = logging.getLogger(__name__)

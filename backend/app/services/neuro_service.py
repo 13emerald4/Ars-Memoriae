@@ -12,13 +12,12 @@ from __future__ import annotations
 import json
 import logging
 import re
-import uuid
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Card, Deck, Note, SisterPair, User
+from app.models import Card, SisterPair, User
 from app.services.grading_service import GradingService
 from app.services.rendering import render
 

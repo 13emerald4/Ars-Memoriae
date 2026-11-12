@@ -7,10 +7,10 @@ Updates:
    - `6 - Labs/` (Lab01 to Lab05) and their `_wrapped.json` counterparts
 """
 
-import os
-import sys
 import json
+import os
 import sqlite3
+import sys
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -176,7 +176,7 @@ def update_onedrive_files(base_path: str):
     for fname in la_files:
         fpath = os.path.join(la_dir, fname)
         la_name = fname.split("_")[-1].replace(".json", "")
-        with open(fpath, "r", encoding="utf-8") as f:
+        with open(fpath, encoding="utf-8") as f:
             data = json.load(f)
 
         notes = data.get("notes", [])
@@ -206,7 +206,7 @@ def update_onedrive_files(base_path: str):
 
     for fname, dname in lab_files:
         fpath = os.path.join(lab_dir, fname)
-        with open(fpath, "r", encoding="utf-8") as f:
+        with open(fpath, encoding="utf-8") as f:
             cards = json.load(f)
 
         for card in cards:
@@ -227,7 +227,7 @@ def update_onedrive_files(base_path: str):
         wrapped_fname = fname.replace(".json", "_wrapped.json")
         wrapped_fpath = os.path.join(lab_dir, wrapped_fname)
         if os.path.exists(wrapped_fpath):
-            with open(wrapped_fpath, "r", encoding="utf-8") as f:
+            with open(wrapped_fpath, encoding="utf-8") as f:
                 wrapped_data = json.load(f)
             wrapped_data["default_priority"] = 60
             wrapped_data["notes"] = cards

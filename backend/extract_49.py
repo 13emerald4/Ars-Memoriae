@@ -1,4 +1,3 @@
-import json
 import re
 import sys
 
@@ -33,7 +32,7 @@ for q_num in range(1, 50):
     if pos == -1:
         print(f"ERROR: Could not find Q{q_num}")
         continue
-    
+
     # Next question or end
     next_pos = p2_text.find(f"\n{q_num+1}.", pos + 2)
     if next_pos == -1:
@@ -52,6 +51,6 @@ for q_num in range(1, 50):
     # Clean out page headers like "=== PAGE 9 ===\nSPAN 321 · E XAMEN 1 · R ECUPERACIÓN Michael Polley"
     q_block_clean = re.sub(r'=== PAGE \d+ ===\s*SPAN 321[^\n]+\n', '', q_block)
     q_block_clean = re.sub(r'\n\d+\s*\n', '\n', q_block_clean)
-    
+
     first_line = q_block_clean.split('\n')[0]
     print(f"[{q_num:02d}] {first_line}")

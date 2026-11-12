@@ -1,4 +1,6 @@
-import json, re, sys
+import json
+import re
+import sys
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -68,62 +70,14 @@ for n in range(1, 50):
     if not info: continue
     title = info['title']
     star = '★ ' if info['star'] else ''
-    
+
     # Check matching in cards
     matched_cards = []
     for c in cards:
         cf = c['front'].lower()
         cb = c['back'].lower()
         # Specific matchers
-        if n == 1 and 'duró la dominación' in cf: matched_cards.append(c)
-        elif n == 2 and 'historia de españa como nación' in cf: matched_cards.append(c)
-        elif n == 3 and 'llegaron los romanos a iberia' in cf: matched_cards.append(c)
-        elif n == 4 and 'fechas de las tres guerras' in cf: matched_cards.append(c)
-        elif n == 5 and 'después de la i guerra púnica' in cf: matched_cards.append(c)
-        elif n == 6 and 'en la ii guerra púnica' in cf: matched_cards.append(c)
-        elif n == 7 and 'ampurias' in cf: matched_cards.append(c)
-        elif n == 8 and 'caída de cartago' in cf: matched_cards.append(c)
-        elif n == 9 and 'qué fue la conquista y cuánto duró' in cf: matched_cards.append(c)
-        elif n == 10 and 'pueblos opusieron resistencia' in cf: matched_cards.append(c)
-        elif n == 11 and 'pasar hispania a formar parte del imperio' in cf: matched_cards.append(c)
-        elif n == 12 and 'sistemas coexistieron' in cf: matched_cards.append(c)
-        elif n == 13 and 'derecho romano' in cf and 'mayor contribución' in cf: matched_cards.append(c)
-        elif n == 14 and 'paterfamilias' in cf: matched_cards.append(c)
-        elif n == 15 and 'clases sociales' in cf: matched_cards.append(c)
-        elif n == 16 and 'era el ius latii' in cf: matched_cards.append(c)
-        elif n == 17 and 'recibió hispania el ius latii' in cf: matched_cards.append(c)
-        elif n == 18 and 'diferenciaban las colonias' in cf: matched_cards.append(c)
-        elif n == 19 and 'importantes los municipios' in cf or 'importan' in cf: matched_cards.append(c)
-        elif n == 20 and 'provincias romanas había' in cf: matched_cards.append(c)
-        elif n == 21 and 'reconocer las divisiones' in cf or 'qué reconocían' in cf: matched_cards.append(c)
-        elif n == 22 and 'provincia moderna' in cf: matched_cards.append(c)
-        elif n == 23 and 'qué es la romanización' in cf: matched_cards.append(c)
-        elif n == 24 and 'siglo v' in cf and 'cuando cae el imperio' in cf: matched_cards.append(c)
-        elif n == 25 and 'igual la romanización' in cf: matched_cards.append(c)
-        elif n == 26 and 'propio ritmo' in cf: matched_cards.append(c)
-        elif n == 27 and 'lenguas salieron del latín' in cf: matched_cards.append(c)
-        elif n == 28 and 'emperadores' in cf and 'hispania' in cf: matched_cards.append(c)
-        elif n == 29 and 'carácter urbano' in cf: matched_cards.append(c)
-        elif n == 30 and 'arcos triunfales' in cf: matched_cards.append(c)
-        elif n == 31 and 'ejemplo de teatro romano' in cf: matched_cards.append(c)
-        elif n == 32 and 'bustos romanos' in cf: matched_cards.append(c)
-        elif n == 33 and 'venus de itálica' in cf: matched_cards.append(c)
-        elif n == 34 and 'mosaicos romanos' in cf: matched_cards.append(c)
-        elif n == 35 and 'séneca' in cf: matched_cards.append(c)
-        elif n == 36 and 'lucano' in cf: matched_cards.append(c)
-        elif n == 37 and 'elementos se componía la religión' in cf: matched_cards.append(c)
-        elif n == 38 and 'actitud tenía roma con las religiones' in cf: matched_cards.append(c)
-        elif n == 39 and 'amenaza para roma' in cf: matched_cards.append(c)
-        elif n == 40 and 'romanizó' in cf and 'cristianismo' in cf: matched_cards.append(c)
-        elif n == 41 and 'todas las clases sociales' in cf: matched_cards.append(c)
-        elif n == 42 and 'constantino' in cf: matched_cards.append(c)
-        elif n == 43 and 'teodosio' in cf: matched_cards.append(c)
-        elif n == 44 and 'padres de la iglesia' in cf: matched_cards.append(c)
-        elif n == 45 and 'iglesia es tan importante' in cf: matched_cards.append(c)
-        elif n == 46 and 'cómo fue la cristianización' in cf: matched_cards.append(c)
-        elif n == 47 and 'arquitectura cristiana' in cf: matched_cards.append(c)
-        elif n == 48 and 'escultura cristiana' in cf: matched_cards.append(c)
-        elif n == 49 and 'aurelio prudencio' in cf: matched_cards.append(c)
+        if (n == 1 and 'duró la dominación' in cf) or (n == 2 and 'historia de españa como nación' in cf) or (n == 3 and 'llegaron los romanos a iberia' in cf) or (n == 4 and 'fechas de las tres guerras' in cf) or (n == 5 and 'después de la i guerra púnica' in cf) or (n == 6 and 'en la ii guerra púnica' in cf) or (n == 7 and 'ampurias' in cf) or (n == 8 and 'caída de cartago' in cf) or (n == 9 and 'qué fue la conquista y cuánto duró' in cf) or (n == 10 and 'pueblos opusieron resistencia' in cf) or (n == 11 and 'pasar hispania a formar parte del imperio' in cf) or (n == 12 and 'sistemas coexistieron' in cf) or (n == 13 and 'derecho romano' in cf and 'mayor contribución' in cf) or (n == 14 and 'paterfamilias' in cf) or (n == 15 and 'clases sociales' in cf) or (n == 16 and 'era el ius latii' in cf) or (n == 17 and 'recibió hispania el ius latii' in cf) or (n == 18 and 'diferenciaban las colonias' in cf) or (n == 19 and 'importantes los municipios' in cf) or 'importan' in cf or (n == 20 and 'provincias romanas había' in cf) or (n == 21 and 'reconocer las divisiones' in cf) or 'qué reconocían' in cf or (n == 22 and 'provincia moderna' in cf) or (n == 23 and 'qué es la romanización' in cf) or (n == 24 and 'siglo v' in cf and 'cuando cae el imperio' in cf) or (n == 25 and 'igual la romanización' in cf) or (n == 26 and 'propio ritmo' in cf) or (n == 27 and 'lenguas salieron del latín' in cf) or (n == 28 and 'emperadores' in cf and 'hispania' in cf) or (n == 29 and 'carácter urbano' in cf) or (n == 30 and 'arcos triunfales' in cf) or (n == 31 and 'ejemplo de teatro romano' in cf) or (n == 32 and 'bustos romanos' in cf) or (n == 33 and 'venus de itálica' in cf) or (n == 34 and 'mosaicos romanos' in cf) or (n == 35 and 'séneca' in cf) or (n == 36 and 'lucano' in cf) or (n == 37 and 'elementos se componía la religión' in cf) or (n == 38 and 'actitud tenía roma con las religiones' in cf) or (n == 39 and 'amenaza para roma' in cf) or (n == 40 and 'romanizó' in cf and 'cristianismo' in cf) or (n == 41 and 'todas las clases sociales' in cf) or (n == 42 and 'constantino' in cf) or (n == 43 and 'teodosio' in cf) or (n == 44 and 'padres de la iglesia' in cf) or (n == 45 and 'iglesia es tan importante' in cf) or (n == 46 and 'cómo fue la cristianización' in cf) or (n == 47 and 'arquitectura cristiana' in cf) or (n == 48 and 'escultura cristiana' in cf) or (n == 49 and 'aurelio prudencio' in cf): matched_cards.append(c)
 
     if not matched_cards:
         # Check if mentioned in combined question Card 12 (conquista)

@@ -12,19 +12,20 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import sys
 import zipfile
 from datetime import datetime
 from pathlib import Path
-import sys
 
 # Ensure backend directory is in sys.path
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
+
 from app.db import SessionLocal
-from app.models import Card, CardReference, Deck, Import, Note, NoteType, User
+from app.models import Card, CardReference, Deck, Import, Note, User
 from app.services.note_service import default_note_type, sync_cards
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")

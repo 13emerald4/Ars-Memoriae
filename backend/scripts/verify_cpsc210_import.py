@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import sys
 from pathlib import Path
 
@@ -12,7 +11,8 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 import httpx
-from sqlalchemy import func, select
+from sqlalchemy import select
+
 from app.core.security import create_access_token
 from app.db import SessionLocal
 from app.models import Card, CardReference, Deck, Note, User
@@ -50,7 +50,7 @@ async def verify():
         labs_parent = await db.scalar(select(Deck).where(Deck.user_id == user.id, Deck.name == "Labs", Deck.parent_id == root.id))
         assert labs_parent, "Sub-parent 'Labs' not found"
 
-        print(f"Deck hierarchy verified:")
+        print("Deck hierarchy verified:")
         print(f"  Root: {root.name} (id={root.id})")
         print(f"    Sub-parent 1: {la_parent.name} (id={la_parent.id})")
         print(f"    Sub-parent 2: {labs_parent.name} (id={labs_parent.id})")
@@ -94,7 +94,7 @@ async def verify():
 
             print(f"  [PASS] {name}: {actual}/{expected} cards (code/qa verified)")
 
-        print(f"\nTotals in DB:")
+        print("\nTotals in DB:")
         print(f"  Total cards: {total_cards_db} (expected 89)")
         print(f"  Total code cards: {total_code_cards} (42 LA + 22 Lab = 64)")
         print(f"  Total QA cards: {total_qa_cards} (25 Lab QA = 25)")
@@ -108,7 +108,7 @@ async def verify():
             decks_api = resp.json()
             root_api = next((d for d in decks_api if d["name"] == "CPSC 210"), None)
             assert root_api, "Root deck 'CPSC 210' not found in GET /api/decks"
-            print(f"\nLive API GET /api/decks check:")
+            print("\nLive API GET /api/decks check:")
             print(f"  Root deck 'CPSC 210' found with total_card_count = {root_api.get('total_card_count')}")
 
         # 4. Sandbox Test of Sample Cards

@@ -14,6 +14,9 @@ os.environ["MEDIA_ROOT"] = str(TMP / "media")
 os.environ["ENABLE_BACKGROUND_JOBS"] = "0"
 # Most tests need several accounts; the closed default is tested explicitly.
 os.environ["ALLOW_REGISTRATION"] = "1"
+# The suite builds its schema straight from the models (see _schema below), so
+# startup must not also try to migrate it. Migrations have their own test.
+os.environ["AUTO_MIGRATE"] = "0"
 
 import httpx
 from asgi_lifespan import LifespanManager  # type: ignore

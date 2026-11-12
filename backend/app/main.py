@@ -46,27 +46,47 @@ logging.basicConfig(level=logging.INFO)
 
 
 async def _auto_migrate() -> None:
-    """Runs pending Alembic migrations on startup so fresh installs and git pulls work out of the box."""
+    """Runs pending Alembic migrations on startup so fresh installs and git pulls work out of the box.
+
+    A failure is fatal. Carrying on with a half-migrated schema fails later and
+    less clearly, one endpoint at a time, and can write rows the next migration
+    then trips over.
+    """
+
     def _run():
         from alembic.config import Config
 
         from alembic import command
-        alembic_ini = Path(__file__).resolve().parents[1] / "alembic.ini"
-        if alembic_ini.is_file():
-            cfg = Config(str(alembic_ini))
-            command.upgrade(cfg, "head")
 
+        alembic_ini = Path(__file__).resolve().parents[1] / "alembic.ini"
+        if not alembic_ini.is_file():
+            return False
+        cfg = Config(str(alembic_ini))
+        # Keep the server's own logging; see alembic/env.py.
+        cfg.attributes["configure_logger"] = False
+        command.upgrade(cfg, "head")
+        return True
+
+    log = logging.getLogger(__name__)
     try:
-        await asyncio.to_thread(_run)
-        logging.getLogger(__name__).info("Database schema is up to date.")
+        ran = await asyncio.to_thread(_run)
     except Exception as exc:
-        logging.getLogger(__name__).warning("Automatic database migration skipped or failed: %s", exc)
+        log.error(
+            "Database migration failed: %s. The app will not start on a schema it "
+            "cannot bring up to date. Fix the cause and restart, restore a backup of "
+            "the database, or (only if you manage the schema yourself) set AUTO_MIGRATE=0.",
+            exc,
+        )
+        raise RuntimeError(f"database migration failed: {exc}") from exc
+    if ran:
+        log.info("Database schema is up to date.")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Path(settings.media_root).mkdir(parents=True, exist_ok=True)
-    await _auto_migrate()
+    if settings.auto_migrate:
+        await _auto_migrate()
     for problem in security.insecure_defaults():
         logging.getLogger(__name__).warning("SECURITY: %s", problem)
     # Plugins load after the first-party strategies, so a plugin can override
@@ -99,6 +119,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def _security_headers(request, call_next):
+    """Baseline browser hardening. Uploaded media is served from this origin,
+    so nosniff matters most: a file stored as .png must never be interpreted as
+    a page. No CSP here: the app relies on inline styles and one inline script."""
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "same-origin")
+    return response
+
 
 for router in (
     auth.router,
@@ -161,6 +193,9 @@ if _frontend_dist.is_dir() and (_frontend_dist / "assets").is_dir():
     app.mount("/assets", StaticFiles(directory=str(_frontend_dist / "assets")), name="frontend_assets")
 
 
+_RESERVED_ROOTS = frozenset({"api", "media", "health", "docs", "openapi.json", "redoc", "assets"})
+
+
 @app.get("/", include_in_schema=False)
 async def serve_root():
     index_file = _frontend_dist / "index.html"
@@ -174,8 +209,11 @@ async def serve_root():
 
 @app.get("/{full_path:path}", include_in_schema=False)
 async def serve_spa_route(full_path: str):
-    # Do not intercept API, docs, openapi, or media routes
-    if full_path.startswith(("api", "media", "health", "docs", "openapi.json", "redoc")):
+    # Do not intercept API, docs, openapi, or media routes. Match whole path
+    # segments: a bare prefix test also swallowed client routes such as
+    # /apiary or /docs-archive.
+    first_segment = full_path.split("/", 1)[0]
+    if first_segment in _RESERVED_ROOTS:
         raise HTTPException(status_code=404, detail="Not Found")
 
     # The path arrives percent-decoded, so `..%2f` becomes a real `../`. Resolve

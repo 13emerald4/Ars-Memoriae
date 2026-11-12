@@ -1,23 +1,25 @@
 """Real-time synchronization router.
 
 Provides:
-- Authenticated WebSocket endpoint (`/api/ws/sync`) for instant desktop <-> mobile state updates.
+- Authenticated WebSocket endpoint (`/api/sync/ws`) for instant desktop <-> mobile state updates.
 - Server pairing & network discovery endpoint (`/api/sync/status`).
 - Offline batch review ingestion (`/api/sync/batch`).
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import socket
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import (
     APIRouter,
     BackgroundTasks,
     Depends,
     Query,
+    Request,
     WebSocket,
     WebSocketDisconnect,
     status,
@@ -26,17 +28,25 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
-from app.core.security import decode_access_token
-from app.db import get_db
+from app.core.security import decode_token
+from app.db import SessionLocal, get_db
 from app.models import Card, Deck, ReviewLog, User
-from app.routers.deps import current_user, parse_uuid
+from app.routers.deps import current_user, parse_uuid, user_for_claims
 from app.schemas.review import Grade
-from app.services.fsrs_service import GRADE_TO_RATING, FSRSService
+from app.services import review_service
 from app.services.sync_service import sync_manager
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/sync", tags=["sync"])
+
+# One offline session's worth. A phone that somehow queued more sends the rest
+# in its next batch.
+MAX_BATCH_REVIEWS = 500
+# A phone's clock may run a little fast; anything further ahead is a wrong
+# clock, and scheduling from it would push the card's next due date with it.
+MAX_CLOCK_SKEW = timedelta(minutes=5)
+# How long a socket may sit connected without identifying itself.
+WS_AUTH_TIMEOUT_SECONDS = 10.0
 
 
 def get_lan_ip() -> str:
@@ -65,13 +75,13 @@ class BatchReviewItem(BaseModel):
     final_grade: Grade
     typed_answer: str | None = None
     latency_ms: int | None = None
-    confidence: int | None = None
+    confidence: int | None = Field(default=None, ge=1, le=4)
     is_blitz: bool = False
     reviewed_at: datetime | None = None
 
 
 class BatchSyncRequest(BaseModel):
-    reviews: list[BatchReviewItem] = Field(default_factory=list)
+    reviews: list[BatchReviewItem] = Field(default_factory=list, max_length=MAX_BATCH_REVIEWS)
 
 
 class BatchSyncResponse(BaseModel):
@@ -80,10 +90,12 @@ class BatchSyncResponse(BaseModel):
 
 
 @router.get("/status", response_model=SyncStatusResponse)
-async def sync_status(user: User = Depends(current_user)) -> SyncStatusResponse:
+async def sync_status(request: Request, user: User = Depends(current_user)) -> SyncStatusResponse:
     """Returns local network details for 1-click mobile companion pairing."""
-    lan_ip = get_lan_ip()
-    port = getattr(settings, "port", 8000)
+    lan_ip = await asyncio.to_thread(get_lan_ip)
+    # The port this server is actually answering on, not an assumed 8000.
+    server = request.scope.get("server")
+    port = int(server[1]) if server and server[1] else 8000
     pairing_url = f"http://{lan_ip}:{port}"
     return SyncStatusResponse(
         lan_ip=lan_ip,
@@ -102,80 +114,75 @@ async def sync_batch_reviews(
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ) -> BatchSyncResponse:
-    """Ingests reviews recorded while the mobile app was offline."""
+    """Ingests reviews recorded while the mobile app was offline.
+
+    Each review goes through the same `record_review` as a desktop confirm.
+    Reviews are applied oldest first, each in its own savepoint, so one bad
+    item is rolled back alone and reported instead of poisoning the batch.
+    """
     synced_count = 0
     failed_items: list[dict[str, str]] = []
+    now = datetime.now(UTC)
 
-    for item in body.reviews:
+    def _when(item: BatchReviewItem) -> datetime:
+        return review_service.aware(item.reviewed_at) if item.reviewed_at else now
+
+    for item in sorted(body.reviews, key=_when):
+        review_time = _when(item)
+
+        def fail(reason: str, card_id: str = item.card_id) -> None:
+            failed_items.append({"card_id": card_id, "error": reason})
+
         try:
             cid = parse_uuid(item.card_id)
-            card = await db.get(Card, cid)
-            if not card:
-                failed_items.append({"card_id": item.card_id, "error": "card not found"})
-                continue
-            deck = await db.get(Deck, card.deck_id)
-            if not deck or deck.user_id != user.id:
-                failed_items.append({"card_id": item.card_id, "error": "card not owned"})
-                continue
+        except Exception:
+            fail("invalid card id")
+            continue
+        if review_time > now + MAX_CLOCK_SKEW:
+            fail("review time is in the future; check the device clock")
+            continue
 
-            review_time = item.reviewed_at or datetime.now(UTC)
-            if not review_time.tzinfo:
-                review_time = review_time.replace(tzinfo=UTC)
+        try:
+            async with db.begin_nested():
+                card = await db.get(Card, cid)
+                deck = await db.get(Deck, card.deck_id) if card else None
+                # Missing and not-yours answer alike.
+                if card is None or deck is None or deck.user_id != user.id:
+                    fail("card not found")
+                    continue
 
-            # Idempotency check: avoid double-logging identical reviews
-            existing_log = await db.execute(
-                select(ReviewLog.id)
-                .where(ReviewLog.card_id == card.id)
-                .where(ReviewLog.reviewed_at == review_time)
-            )
-            if existing_log.scalar_one_or_none():
-                continue
+                # Idempotency: the same review sent twice is recorded once.
+                already = await db.scalar(
+                    select(ReviewLog.id)
+                    .where(ReviewLog.card_id == card.id)
+                    .where(ReviewLog.reviewed_at == review_time)
+                    .limit(1)
+                )
+                if already:
+                    continue
 
-            state_before = card.state
-            last_review = card.last_review
-            elapsed_days = None
-            if last_review:
-                lr = last_review if last_review.tzinfo else last_review.replace(tzinfo=UTC)
-                elapsed_days = (review_time - lr).total_seconds() / 86400.0
+                # The card was reviewed elsewhere after this offline answer was
+                # given. Replaying it now would schedule backwards in time.
+                if card.last_review and review_service.aware(card.last_review) > review_time:
+                    fail("superseded by a newer review of this card")
+                    continue
 
-            retention = deck.desired_retention_override or user.desired_retention
-            fsrs = FSRSService(weights=user.fsrs_parameters, desired_retention=retention)
-            fsrs_card = FSRSService.to_fsrs_card(
-                state=card.state,
-                stability=card.stability,
-                difficulty=card.difficulty,
-                step=card.step,
-                due=card.due,
-                last_review=card.last_review,
-            )
-            _, new_state = fsrs.schedule(
-                fsrs_card, GRADE_TO_RATING[item.final_grade.value], review_time
-            )
-
-            if item.final_grade == Grade.again and state_before == "review":
-                card.lapse_count += 1
-
-            for key, val in new_state.items():
-                setattr(card, key, val)
-
-            db.add(
-                ReviewLog(
-                    card_id=card.id,
+                await review_service.record_review(
+                    db,
+                    user,
+                    card,
+                    deck,
+                    grade=item.final_grade.value,
                     reviewed_at=review_time,
                     typed_answer=item.typed_answer,
                     latency_ms=item.latency_ms,
-                    final_grade=item.final_grade.value,
-                    overridden=False,
-                    state_before=state_before,
-                    elapsed_days=elapsed_days,
-                    graduated_to_review=state_before != "review" and new_state.get("state") == "review",
-                    user_confidence=item.confidence,
+                    confidence=item.confidence,
                     is_blitz=item.is_blitz,
                 )
-            )
             synced_count += 1
         except Exception as exc:
-            failed_items.append({"card_id": item.card_id, "error": str(exc)})
+            log.warning("Offline review for card %s could not be applied: %s", item.card_id, exc)
+            fail("could not be applied")
 
     if synced_count > 0:
         await db.commit()
@@ -190,52 +197,76 @@ async def sync_batch_reviews(
     return BatchSyncResponse(synced_count=synced_count, failed_items=failed_items)
 
 
+async def _user_id_for_token(token: str) -> uuid.UUID | None:
+    """Resolves a token to a current user id on its own short-lived session.
+
+    A socket stays open for hours. Holding a request-scoped session for that
+    long keeps a transaction (and, on Postgres, a pooled connection) pinned
+    per open tab.
+    """
+    claims = decode_token(token)
+    if claims is None:
+        return None
+    async with SessionLocal() as db:
+        user = await user_for_claims(db, claims)
+        return user.id if user else None
+
+
 @router.websocket("/ws")
 async def websocket_sync_endpoint(
     websocket: WebSocket,
     token: str | None = Query(None),
-    db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Authenticated WebSocket endpoint for real-time mobile <-> desktop synchronization."""
-    if not token:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        return
+    """Authenticated WebSocket endpoint for real-time mobile <-> desktop synchronization.
 
-    user_id_str = decode_access_token(token)
-    if not user_id_str:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        return
+    A client identifies itself by sending ``{"type": "AUTH", "token": ...}`` as
+    its first frame. ``?token=`` in the URL is still accepted for clients that
+    predate that, but URLs end up in access logs and a token should not.
+    """
+    user_id: uuid.UUID | None = None
+    if token:
+        user_id = await _user_id_for_token(token)
+        if user_id is None:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+        await sync_manager.connect(user_id, websocket)
+    else:
+        await websocket.accept()
+        try:
+            first = await asyncio.wait_for(
+                websocket.receive_json(), timeout=WS_AUTH_TIMEOUT_SECONDS
+            )
+        except WebSocketDisconnect:
+            return
+        except Exception:
+            first = None
+        offered = first.get("token") if isinstance(first, dict) else None
+        if isinstance(first, dict) and first.get("type") == "AUTH" and isinstance(offered, str):
+            user_id = await _user_id_for_token(offered)
+        if user_id is None:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+        await sync_manager.register(user_id, websocket)
 
-    try:
-        user_uuid = uuid.UUID(user_id_str)
-        user = await db.get(User, user_uuid)
-    except Exception:
-        user = None
-
-    if not user:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        return
-
-    await sync_manager.connect(user.id, websocket)
     try:
         # Initial greeting with server time & connection confirmation
         await websocket.send_json({
             "type": "CONNECTED",
             "data": {
-                "user_id": str(user.id),
+                "user_id": str(user_id),
                 "server_time": datetime.now(UTC).isoformat(),
             },
         })
         while True:
             data = await websocket.receive_json()
-            msg_type = data.get("type")
-            if msg_type == "PING":
+            if isinstance(data, dict) and data.get("type") == "PING":
                 await websocket.send_json({
                     "type": "PONG",
                     "data": {"timestamp": datetime.now(UTC).isoformat()},
                 })
     except WebSocketDisconnect:
-        await sync_manager.disconnect(user.id, websocket)
+        pass
     except Exception as exc:
-        log.warning("WebSocket error for user %s: %s", user.id, exc)
-        await sync_manager.disconnect(user.id, websocket)
+        log.warning("WebSocket error for user %s: %s", user_id, exc)
+    finally:
+        await sync_manager.disconnect(user_id, websocket)

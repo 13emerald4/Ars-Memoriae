@@ -12,7 +12,7 @@ import json
 import sqlite3
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -45,14 +45,14 @@ def build_deck():
         print(f"Error: Data file {DATA_FILE} not found.")
         sys.exit(1)
 
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
+    with open(DATA_FILE, encoding="utf-8") as f:
         cards_data = json.load(f)
 
     print(f"Connecting to {DB_PATH}...")
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(UTC).isoformat()
 
     # 1. Check if root deck already exists
     cursor.execute("SELECT id FROM decks WHERE name = ? AND user_id = ?", (ROOT_DECK_NAME, USER_ID))

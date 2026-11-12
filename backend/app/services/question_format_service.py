@@ -127,7 +127,7 @@ def _collect_top_level_blocks(lines: list[str]) -> list[tuple[str, str, str]]:
             continue
 
         name = decl_m.group(1)
-        block_lines = list(pending_comments) + [line]
+        block_lines = [*pending_comments, line]
         pending_comments.clear()
 
         depth = line.count("{") - line.count("}")
@@ -218,9 +218,7 @@ def _extract_class_spec_from_front(front: str, targets: list[str]) -> list[str]:
             )
             if m:
                 sig = m.group(1).strip()
-                if sig.startswith("constructor"):
-                    members.append(f"  public {sig} {{ /* TODO */ }}")
-                elif ":" in sig:
+                if sig.startswith("constructor") or ":" in sig:
                     members.append(f"  public {sig} {{ /* TODO */ }}")
                 else:
                     members.append(f"  public {sig} {{ /* TODO */ }}")
