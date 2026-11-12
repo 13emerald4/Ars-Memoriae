@@ -464,9 +464,9 @@ export function MarginLexiconPanel({
       >
         <div className="flex items-center gap-2 min-w-0">
           <span className="flex h-2 w-2 rounded-full bg-sky-400 animate-pulse" />
-          <h3 className="text-xs font-bold text-sky-200 tracking-wide uppercase truncate">
+          <h2 className="text-xs font-bold text-sky-200 tracking-wide uppercase truncate">
             Concordance &amp; Lexicon
-          </h3>
+          </h2>
           {glosses.length > 0 && (
             <span className="rounded-full bg-sky-500/20 border border-sky-400/40 px-2 py-0.2 text-[0.625rem] font-semibold text-sky-300 shrink-0">
               {glosses.length}

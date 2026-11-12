@@ -441,7 +441,7 @@ function ExtractWorkspace({ extractId }: { extractId: string }) {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5">
             <span className="text-slate-400 font-medium">Model:</span>
-            <select
+            <select aria-label="Model used to generate cards"
               className="input py-1 text-xs"
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
@@ -456,7 +456,7 @@ function ExtractWorkspace({ extractId }: { extractId: string }) {
 
           <div className="flex items-center gap-1.5">
             <span className="text-slate-400 font-medium">Thinking:</span>
-            <select
+            <select aria-label="Thinking budget"
               className="input py-1 text-xs"
               value={selectedThinking}
               onChange={(e) => setSelectedThinking(e.target.value)}
@@ -490,7 +490,7 @@ function ExtractWorkspace({ extractId }: { extractId: string }) {
           description="Review and accept cards below."
           actions={
             <div className="flex items-center gap-2">
-              <select className="input w-auto" value={deckId} onChange={(e) => setDeckId(e.target.value)}>
+              <select aria-label="Deck to add the cards to" className="input w-auto" value={deckId} onChange={(e) => setDeckId(e.target.value)}>
                 {decks.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}

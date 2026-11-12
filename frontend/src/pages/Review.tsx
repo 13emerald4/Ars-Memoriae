@@ -818,7 +818,7 @@ export default function Review() {
               <span className="font-bold uppercase tracking-wider text-[0.625rem] text-amber-400">
                 Past Failure Memory
               </span>
-              <span className="text-[0.625rem] text-amber-400/60 font-mono">
+              <span className="text-[0.625rem] text-amber-300/90 font-mono">
                 • avoid repeating this mistake
               </span>
             </div>
@@ -831,7 +831,7 @@ export default function Review() {
           <button
             type="button"
             onClick={() => setDismissedReminderCardId(item?.id ?? null)}
-            className="text-amber-400/60 hover:text-amber-200 text-xs px-1.5 py-0.5 rounded hover:bg-amber-500/10 cursor-pointer transition font-mono"
+            className="text-amber-300/90 hover:text-amber-200 text-xs px-1.5 py-0.5 rounded hover:bg-amber-500/10 cursor-pointer transition font-mono"
             title="Dismiss reminder for this card"
           >
             ✕
@@ -2118,7 +2118,7 @@ export default function Review() {
               type="button"
               onClick={() => handleRecordAndRetry()}
               disabled={confirming}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-sky-600 hover:bg-sky-500 text-white transition font-medium text-xs cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-sky-700 hover:bg-sky-600 text-white transition font-medium text-xs cursor-pointer disabled:opacity-50"
               title={`Record this review as ${suggestedGrade.toUpperCase()} and immediately retry the card (Alt+Shift+R)`}
             >
               <span>Record review &amp; retry</span>
@@ -2470,7 +2470,7 @@ export default function Review() {
                 {persistUnseenOnly && persistDeckId && (
                   <button
                     type="button"
-                    className="btn btn-primary bg-sky-600 hover:bg-sky-500 text-white font-bold flex items-center justify-center gap-2 py-2.5 px-5 shadow-lg shadow-sky-900/40"
+                    className="btn btn-primary bg-sky-700 hover:bg-sky-600 text-white font-bold flex items-center justify-center gap-2 py-2.5 px-5 shadow-lg shadow-sky-900/40"
                     onClick={() => startPersistMode(persistDeckId, persistDeckName, false)}
                   >
                     <span>Persist All Cards in Deck</span>
@@ -2478,7 +2478,7 @@ export default function Review() {
                 )}
                 <button
                   type="button"
-                  className="btn btn-primary bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center justify-center gap-2 py-2.5 px-5 shadow-lg shadow-emerald-900/40"
+                  className="btn btn-primary bg-emerald-700 hover:bg-emerald-600 text-white font-bold flex items-center justify-center gap-2 py-2.5 px-5 shadow-lg shadow-emerald-900/40"
                   onClick={handleContinuePersisting}
                 >
                   <span>{persistUnseenOnly ? 'Restart Unseen Drill' : 'Continue Persisting in this Deck'}</span>
@@ -2608,7 +2608,7 @@ export default function Review() {
               {allDecks.length > 0 ? (
                 <div className="mt-4 space-y-3">
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                    <select
+                    <select aria-label="Deck to study"
                       className="input flex-1 text-xs py-1.5"
                       value={selectedPersistDeckId}
                       onChange={(e) => setSelectedPersistDeckId(e.target.value)}
@@ -3043,7 +3043,7 @@ export default function Review() {
                       </div>
                     )}
 
-                    <select
+                    <select aria-label="Code language"
                       value={codeLanguage}
                       onChange={(e) => {
                         const nextLang = e.target.value
@@ -5241,7 +5241,7 @@ export default function Review() {
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <select
+                    <select aria-label="How to vary the prompt"
                       value={mutationType}
                       onChange={(e) => void handleMutatePrompt(e.target.value)}
                       className="text-[0.6875rem] bg-slate-900 border border-slate-700 text-slate-200 rounded px-1.5 py-0.5 cursor-pointer"
@@ -5323,7 +5323,7 @@ export default function Review() {
                     <span className="font-bold uppercase tracking-wider text-[0.625rem] text-indigo-300">
                        Associative Network (Spreading Activation)
                     </span>
-                    <span className="text-[0.625rem] text-indigo-400/60 font-mono">
+                    <span className="text-[0.625rem] text-indigo-300/90 font-mono">
                       • primed semantic representations
                     </span>
                   </div>
@@ -5419,7 +5419,7 @@ export default function Review() {
                       type="button"
                       disabled={pretestSubmitting || !pretestPrediction.trim()}
                       onClick={handleSubmitPretest}
-                      className="btn text-xs py-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded disabled:opacity-50 cursor-pointer"
+                      className="btn text-xs py-1 px-3 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold rounded disabled:opacity-50 cursor-pointer"
                     >
                       {pretestSubmitting ? 'Evaluating…' : 'Test Prediction'}
                     </button>
@@ -5681,7 +5681,7 @@ export default function Review() {
                             </div>
                           )}
 
-                          <select
+                          <select aria-label="Code language"
                             value={codeLanguage}
                             onChange={(e) => {
                               const nextLang = e.target.value
@@ -7388,7 +7388,7 @@ function VramConstraintPrompt({
             result.available_fallback_models.filter(isAllowedGradingModel).length > 1 && (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-400">Other models:</span>
-                <select
+                <select aria-label="Grading model"
                   value={chosenModel}
                   onChange={(e) => setChosenModel(e.target.value)}
                   className="select text-xs py-1 px-2.5 bg-slate-900 border-slate-700 text-slate-200 font-mono rounded"
@@ -7409,7 +7409,7 @@ function VramConstraintPrompt({
           type="button"
           disabled={loading}
           onClick={() => onSwitchModel(chosenModel)}
-          className="btn btn-primary text-xs py-2 px-4 font-medium flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-sm"
+          className="btn btn-primary text-xs py-2 px-4 font-medium flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white border-emerald-500 shadow-sm"
         >
           {loading ? (
             <>

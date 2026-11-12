@@ -709,7 +709,7 @@ function MoveMenu({
   const options = all.filter((n) => !banned.has(n.id) && n.kind !== 'extract')
 
   return (
-    <select
+    <select aria-label="Move to another topic"
       className="input py-1 text-xs"
       value=""
       onChange={(e) => {
@@ -768,7 +768,7 @@ function GateMenu({
 
   return (
     <span className="flex flex-wrap items-center gap-1 rounded-lg border border-ink-line bg-ink px-2 py-1">
-      <select
+      <select aria-label="Prerequisite topic"
         className="input w-40 py-1 text-xs"
         value={target}
         onChange={(e) => setTarget(e.target.value)}

@@ -13,6 +13,7 @@ import type {
 import { CodeEditor } from '../components/CodeEditor'
 import { CodeSocraticTutor } from '../components/CodeSocraticTutor'
 import { CodeTestConsole } from '../components/CodeTestConsole'
+import { RichText } from '../components/RichText'
 import { Empty, ErrorNote, Section, Spinner } from '../components/ui'
 import { FullscreenButton } from '../components/FullscreenContext'
 import { useTheme } from '../components/ThemeContext'
@@ -351,7 +352,7 @@ export default function CodeLab() {
       {/* ── 1. LEETCODE GLOBAL TOP NAVIGATION BAR ── */}
       <header className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#282828] bg-[#1a1a1a] px-3.5 py-2 shadow-md">
         {/* Left: Problem Navigator (Blind 75 selector + < > arrows + Shuffle) */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
           <button
             onClick={() => setViewMode('workbench')}
             className="flex items-center gap-1.5 text-xs font-bold text-[#eff1f6] hover:text-[#2cbb5d] transition pr-1"
@@ -362,13 +363,13 @@ export default function CodeLab() {
 
           {/* Categorized Dropdown Selector */}
           <div className="relative">
-            <select
+            <select aria-label="Problem"
               value={selectedSlug || ''}
               onChange={(e) => {
                 setSelectedSlug(e.target.value)
                 setViewMode('workbench')
               }}
-              className="rounded-lg border border-[#333333] bg-[#262626] px-3 py-1.5 text-xs font-bold text-[#eff1f6] focus:border-[#2cbb5d] focus:outline-none max-w-[280px] sm:max-w-[320px] cursor-pointer truncate"
+              className="rounded-lg border border-[#333333] bg-[#262626] px-3 py-1.5 text-xs font-bold text-[#eff1f6] focus:border-[#2cbb5d] focus:outline-none max-w-[min(280px,70vw)] sm:max-w-[320px] cursor-pointer truncate"
             >
               {groupedCategories.map((group) => (
                 <optgroup
@@ -411,7 +412,7 @@ export default function CodeLab() {
           {/* Shuffle button */}
           <button
             onClick={handleShuffle}
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#333333] bg-[#262626] text-xs text-[#8a8a8a] hover:text-[#eff1f6] hover:bg-[#333333] transition"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#333333] bg-[#262626] text-xs text-[#a3a3a3] hover:text-[#eff1f6] hover:bg-[#333333] transition"
             title="Random problem"
           >
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -432,29 +433,29 @@ export default function CodeLab() {
             className="flex items-center gap-1.5 rounded-lg border border-[#3a3a3a] bg-[#262626] hover:bg-[#333333] px-3.5 py-1 text-xs font-semibold text-[#eff1f6] transition disabled:opacity-40"
             title="Run (Ctrl+Enter)"
           >
-            <span className="text-xs text-[#8a8a8a]">▶</span>
+            <span className="text-xs text-[#a3a3a3]">▶</span>
             <span>{running ? 'Running…' : 'Run'}</span>
           </button>
 
           <button
             onClick={handleSubmit}
             disabled={running || submitting}
-            className="flex items-center gap-1.5 rounded-lg bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 px-4 py-1 text-xs font-bold text-white shadow transition disabled:opacity-40"
+            className="flex items-center gap-1.5 rounded-lg bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 px-4 py-1 text-xs font-bold text-[#06210f] shadow transition disabled:opacity-40"
             title="Submit (Ctrl+Shift+Enter)"
           >
             <span>{submitting ? 'Submitting…' : 'Submit'}</span>
           </button>
 
           {/* Reflex Timer */}
-          <div className="hidden md:flex items-center gap-1.5 rounded-lg border border-[#2d2d2d] bg-[#1e1e1e] px-2.5 py-1 text-xs font-mono text-[#8a8a8a]">
-            <svg className="w-3 h-3 text-[#8a8a8a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <div className="hidden md:flex items-center gap-1.5 rounded-lg border border-[#2d2d2d] bg-[#1e1e1e] px-2.5 py-1 text-xs font-mono text-[#a3a3a3]">
+            <svg className="w-3 h-3 text-[#a3a3a3]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />
             </svg>
             <span className="font-bold text-[#eff1f6]">{formatTimer(timerSec)}</span>
             <button
               onClick={() => setTimerActive((a) => !a)}
-              className="text-[0.625rem] font-bold text-[#8a8a8a] hover:text-[#eff1f6] ml-0.5"
+              className="text-[0.625rem] font-bold text-[#a3a3a3] hover:text-[#eff1f6] ml-0.5"
             >
               {timerActive ? 'Pause' : 'Start'}
             </button>
@@ -472,8 +473,8 @@ export default function CodeLab() {
               title="Split view"
               className={`rounded px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1 ${
                 viewMode === 'workbench' && layoutMode === 'split'
-                  ? 'bg-[#2cbb5d] text-white shadow'
-                  : 'text-[#8a8a8a] hover:text-[#eff1f6]'
+                  ? 'bg-[#2cbb5d] text-[#06210f] shadow'
+                  : 'text-[#a3a3a3] hover:text-[#eff1f6]'
               }`}
             >
               <span>◫</span>
@@ -487,8 +488,8 @@ export default function CodeLab() {
               title="Full editor"
               className={`rounded px-2 py-1 text-xs font-semibold transition hidden sm:inline ${
                 viewMode === 'workbench' && layoutMode === 'code'
-                  ? 'bg-[#2cbb5d] text-white shadow'
-                  : 'text-[#8a8a8a] hover:text-[#eff1f6]'
+                  ? 'bg-[#2cbb5d] text-[#06210f] shadow'
+                  : 'text-[#a3a3a3] hover:text-[#eff1f6]'
               }`}
             >
               Code Only
@@ -497,8 +498,8 @@ export default function CodeLab() {
               onClick={() => setViewMode('tree')}
               className={`rounded px-2.5 py-1 text-xs font-semibold transition ${
                 viewMode === 'tree'
-                  ? 'bg-[#2cbb5d] text-white shadow'
-                  : 'text-[#8a8a8a] hover:text-[#eff1f6]'
+                  ? 'bg-[#2cbb5d] text-[#06210f] shadow'
+                  : 'text-[#a3a3a3] hover:text-[#eff1f6]'
               }`}
             >
               Tree
@@ -507,8 +508,8 @@ export default function CodeLab() {
               onClick={() => setViewMode('roadmap')}
               className={`rounded px-2.5 py-1 text-xs font-semibold transition ${
                 viewMode === 'roadmap'
-                  ? 'bg-[#2cbb5d] text-white shadow'
-                  : 'text-[#8a8a8a] hover:text-[#eff1f6]'
+                  ? 'bg-[#2cbb5d] text-[#06210f] shadow'
+                  : 'text-[#a3a3a3] hover:text-[#eff1f6]'
               }`}
             >
               Roadmap
@@ -517,8 +518,8 @@ export default function CodeLab() {
               onClick={() => setViewMode('stats')}
               className={`rounded px-2.5 py-1 text-xs font-semibold transition ${
                 viewMode === 'stats'
-                  ? 'bg-[#2cbb5d] text-white shadow'
-                  : 'text-[#8a8a8a] hover:text-[#eff1f6]'
+                  ? 'bg-[#2cbb5d] text-[#06210f] shadow'
+                  : 'text-[#a3a3a3] hover:text-[#eff1f6]'
               }`}
             >
               Metrics
@@ -553,7 +554,7 @@ export default function CodeLab() {
           {(layoutMode === 'split' || layoutMode === 'problem') && (
             <div className="flex flex-col rounded-xl border border-[#282828] bg-[#1a1a1a] overflow-hidden shadow-2xl">
             {/* LeetCode Tab Bar */}
-            <div className="flex items-center gap-1 border-b border-[#282828] bg-[#262626] px-3 py-1.5 text-xs">
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar whitespace-nowrap border-b border-[#282828] bg-[#262626] px-3 py-1.5 text-xs">
               {(
                 [
                   ['description', 'Description'],
@@ -569,7 +570,7 @@ export default function CodeLab() {
                   className={`rounded-lg px-2.5 py-1 font-medium transition ${
                     activeTab === tabId
                       ? 'bg-[#1a1a1a] text-[#eff1f6] font-semibold shadow'
-                      : 'text-[#8a8a8a] hover:text-[#eff1f6]'
+                      : 'text-[#a3a3a3] hover:text-[#eff1f6]'
                   }`}
                 >
                   {label}
@@ -614,7 +615,7 @@ export default function CodeLab() {
 
                     <button
                       onClick={() => setShowTopics((s) => !s)}
-                      className="rounded-full bg-[#282828] hover:bg-[#333333] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#8a8a8a] hover:text-[#eff1f6] transition flex items-center gap-1"
+                      className="rounded-full bg-[#282828] hover:bg-[#333333] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#a3a3a3] hover:text-[#eff1f6] transition flex items-center gap-1"
                     >
                       <span>Topics</span>
                       <span className="text-[0.5625rem]">{showTopics ? '▲' : '▼'}</span>
@@ -623,7 +624,7 @@ export default function CodeLab() {
                     {problemDetail.hints.length > 0 && (
                       <button
                         onClick={() => setShowHints((h) => !h)}
-                        className="rounded-full bg-[#282828] hover:bg-[#333333] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#8a8a8a] hover:text-[#eff1f6] transition flex items-center gap-1"
+                        className="rounded-full bg-[#282828] hover:bg-[#333333] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#a3a3a3] hover:text-[#eff1f6] transition flex items-center gap-1"
                       >
                         <span>Hint</span>
                         <span className="text-[0.5625rem]">{showHints ? '▲' : '▼'}</span>
@@ -631,12 +632,12 @@ export default function CodeLab() {
                     )}
 
                     {decks.length > 0 && (
-                      <select
+                      <select aria-label="Add this problem to a deck"
                         onChange={(e) => {
                           if (e.target.value) handleExportCard(e.target.value)
                         }}
                         defaultValue=""
-                        className="rounded-full bg-[#282828] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#8a8a8a] focus:outline-none cursor-pointer"
+                        className="rounded-full bg-[#282828] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#a3a3a3] focus:outline-none cursor-pointer"
                       >
                         <option value="" disabled>
                           + Add to Deck…
@@ -679,9 +680,14 @@ export default function CodeLab() {
                   )}
 
                   {/* Problem Description Content */}
-                  <div className="prose prose-invert text-xs whitespace-pre-wrap leading-relaxed text-[#eff1f6]">
-                    {problemDetail.description}
-                  </div>
+                  {/* Problem text is markdown (`code`, **bold**, fenced blocks).
+                      As plain text it showed the backticks and asterisks. */}
+                  <RichText
+                    text={problemDetail.description}
+                    className="text-xs leading-relaxed text-[#eff1f6]"
+                    codeLanguage={language}
+                    compactCode
+                  />
 
                   {/* Examples (Formatted in LeetCode Box) */}
                   <div className="space-y-3 pt-2">
@@ -690,16 +696,16 @@ export default function CodeLab() {
                         <p className="font-bold text-[#eff1f6] text-xs">Example {idx + 1}:</p>
                         <div className="space-y-1.5 rounded-lg border border-[#333333] bg-[#222222]/70 p-3 font-mono text-xs">
                           <div>
-                            <span className="font-bold text-[#8a8a8a]">Input: </span>
+                            <span className="font-bold text-[#a3a3a3]">Input: </span>
                             <span className="text-[#eff1f6]">{ex.input}</span>
                           </div>
                           <div>
-                            <span className="font-bold text-[#8a8a8a]">Output: </span>
+                            <span className="font-bold text-[#a3a3a3]">Output: </span>
                             <span className="text-[#eff1f6]">{ex.output}</span>
                           </div>
                           {ex.explanation && (
-                            <div className="pt-1 text-[#8a8a8a] text-[0.6875rem] font-sans">
-                              <span className="font-bold text-[#8a8a8a]">Explanation: </span>
+                            <div className="pt-1 text-[#a3a3a3] text-[0.6875rem] font-sans">
+                              <span className="font-bold text-[#a3a3a3]">Explanation: </span>
                               {ex.explanation}
                             </div>
                           )}
@@ -729,11 +735,14 @@ export default function CodeLab() {
                     Algorithmic Intuition &amp; Complexity Proof
                   </h3>
                   {problemDetail.editorial ? (
-                    <div className="prose prose-invert text-xs whitespace-pre-wrap leading-relaxed text-[#eff1f6]">
-                      {problemDetail.editorial}
-                    </div>
+                    <RichText
+                      text={problemDetail.editorial}
+                      className="text-xs leading-relaxed text-[#eff1f6]"
+                      codeLanguage={language}
+                      compactCode
+                    />
                   ) : (
-                    <p className="text-[#8a8a8a] italic">No editorial written yet.</p>
+                    <p className="text-[#a3a3a3] italic">No editorial written yet.</p>
                   )}
                 </div>
               )}
@@ -746,7 +755,7 @@ export default function CodeLab() {
                   </h3>
                   {Object.entries(problemDetail.solutions).map(([lang, solCode]) => (
                     <div key={lang} className="space-y-1">
-                      <p className="font-bold text-xs uppercase text-[#8a8a8a]">{lang}</p>
+                      <p className="font-bold text-xs uppercase text-[#a3a3a3]">{lang}</p>
                       <pre className="rounded-lg border border-[#333333] bg-[#222222] p-3 text-xs text-[#eff1f6] font-mono overflow-x-auto whitespace-pre">
                         {solCode}
                       </pre>
@@ -760,7 +769,7 @@ export default function CodeLab() {
                 <div className="space-y-3">
                   <h3 className="text-sm font-bold text-[#eff1f6]">Submissions History</h3>
                   {submissions.length === 0 ? (
-                    <p className="text-[#8a8a8a] italic">No submissions recorded yet.</p>
+                    <p className="text-[#a3a3a3] italic">No submissions recorded yet.</p>
                   ) : (
                     <div className="space-y-2">
                       {submissions.map((sub) => (
@@ -776,11 +785,11 @@ export default function CodeLab() {
                             >
                               {sub.status}
                             </span>
-                            <span className="text-[#8a8a8a]">
+                            <span className="text-[#a3a3a3]">
                               ({sub.passed_tests}/{sub.total_tests})
                             </span>
                           </div>
-                          <div className="text-[#8a8a8a] text-[0.6875rem]">
+                          <div className="text-[#a3a3a3] text-[0.6875rem]">
                             {sub.runtime_ms ? `${sub.runtime_ms} ms` : ''} •{' '}
                             {new Date(sub.created_at).toLocaleTimeString([], {
                               hour: '2-digit',
@@ -866,7 +875,7 @@ export default function CodeLab() {
             </div>
 
             <div className="flex items-center gap-2">
-              <select
+              <select aria-label="Filter by difficulty"
                 value={difficultyFilter}
                 onChange={(e) => setDifficultyFilter(e.target.value)}
                 className="rounded-lg border border-[#333333] bg-[#262626] px-2.5 py-1 text-xs text-[#eff1f6] focus:outline-none"
@@ -877,7 +886,7 @@ export default function CodeLab() {
                 <option value="Hard">Hard</option>
               </select>
 
-              <select
+              <select aria-label="Filter by status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
                 className="rounded-lg border border-[#333333] bg-[#262626] px-2.5 py-1 text-xs text-[#eff1f6] focus:outline-none"
@@ -895,7 +904,7 @@ export default function CodeLab() {
                 <h2 className="text-base font-bold text-[#eff1f6]">
                   Blind 75 Curriculum Tree Hierarchy
                 </h2>
-                <p className="text-xs text-[#8a8a8a]">
+                <p className="text-xs text-[#a3a3a3]">
                   18 canonical category branches sorting {problems.length} problem subtrees by conceptual prerequisites.
                 </p>
               </div>
@@ -923,11 +932,11 @@ export default function CodeLab() {
                       className="flex cursor-pointer items-center justify-between rounded-xl border border-[#282828] bg-[#262626]/70 px-4 py-2 hover:border-[#3a3a3a] hover:bg-[#262626] transition select-none"
                     >
                       <div className="flex items-center gap-2.5 font-sans">
-                        <span className="text-[#8a8a8a] font-mono text-sm">
+                        <span className="text-[#a3a3a3] font-mono text-sm">
                           {isLastBranch ? '└──' : '├──'}
                         </span>
                         <span className="font-bold text-[#eff1f6] text-sm">{branch.category}</span>
-                        <span className="text-xs text-[#8a8a8a]">
+                        <span className="text-xs text-[#a3a3a3]">
                           ({branch.solved}/{branch.total} solved)
                         </span>
                       </div>
@@ -949,7 +958,7 @@ export default function CodeLab() {
                     {isExpanded && (
                       <div className="ml-5 border-l-2 border-[#333333] pl-4 pt-2 space-y-1 font-sans">
                         {branchProblems.length === 0 ? (
-                          <div className="text-[0.6875rem] text-[#8a8a8a] italic py-1 pl-4">
+                          <div className="text-[0.6875rem] text-[#a3a3a3] italic py-1 pl-4">
                             No problems match the current filter in this branch.
                           </div>
                         ) : (
@@ -972,7 +981,7 @@ export default function CodeLab() {
                                 }`}
                               >
                                 <div className="flex items-center gap-2.5 truncate pr-2">
-                                  <span className="font-mono text-[#8a8a8a] text-xs">
+                                  <span className="font-mono text-[#a3a3a3] text-xs">
                                     {isLastProblem ? '└──' : '├──'}
                                   </span>
                                   <span className="text-[0.625rem] font-mono">
@@ -981,7 +990,7 @@ export default function CodeLab() {
                                     ) : p.has_submission ? (
                                       <span className="text-[#ffc01e] font-bold">[Tried]</span>
                                     ) : (
-                                      <span className="text-[#8a8a8a]">[Todo]</span>
+                                      <span className="text-[#a3a3a3]">[Todo]</span>
                                     )}
                                   </span>
                                   <span className="truncate font-semibold">{p.title}</span>
@@ -999,7 +1008,7 @@ export default function CodeLab() {
                                   >
                                     {p.difficulty}
                                   </span>
-                                  <button className="btn btn-primary px-2 py-0.5 text-[0.6875rem] bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 text-white font-medium">
+                                  <button className="btn btn-primary px-2 py-0.5 text-[0.6875rem] bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 text-[#06210f] font-medium">
                                     Solve &rarr;
                                   </button>
                                 </div>
@@ -1022,7 +1031,7 @@ export default function CodeLab() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#282828] bg-[#1a1a1a] p-3">
             <div className="flex flex-1 items-center gap-2 min-w-[240px]">
-              <svg className="w-3.5 h-3.5 text-[#8a8a8a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg className="w-3.5 h-3.5 text-[#a3a3a3]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
@@ -1036,7 +1045,7 @@ export default function CodeLab() {
             </div>
 
             <div className="flex items-center gap-2">
-              <select
+              <select aria-label="Filter by category"
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
                 className="rounded-lg border border-[#333333] bg-[#262626] px-2.5 py-1 text-xs text-[#eff1f6] focus:outline-none"
@@ -1049,7 +1058,7 @@ export default function CodeLab() {
                 ))}
               </select>
 
-              <select
+              <select aria-label="Filter by difficulty"
                 value={difficultyFilter}
                 onChange={(e) => setDifficultyFilter(e.target.value)}
                 className="rounded-lg border border-[#333333] bg-[#262626] px-2.5 py-1 text-xs text-[#eff1f6] focus:outline-none"
@@ -1081,7 +1090,7 @@ export default function CodeLab() {
                   <div className="flex items-start justify-between gap-2 border-b border-[#282828] pb-2.5">
                     <div>
                       <h3 className="text-sm font-bold text-[#eff1f6]">{cat.name}</h3>
-                      <p className="mt-0.5 text-[0.6875rem] text-[#8a8a8a]">{cat.desc}</p>
+                      <p className="mt-0.5 text-[0.6875rem] text-[#a3a3a3]">{cat.desc}</p>
                     </div>
                     <span className="chip text-[0.6875rem] font-bold border-[#00b8a3]/30 bg-[#00b8a3]/10 text-[#00b8a3]">
                       {solvedCat}/{totalCat}
@@ -1110,7 +1119,7 @@ export default function CodeLab() {
                             {p.last_status === 'Accepted' ? (
                               <span className="text-[#2cbb5d] font-bold">[Solved]</span>
                             ) : (
-                              <span className="text-[#8a8a8a]">[Todo]</span>
+                              <span className="text-[#a3a3a3]">[Todo]</span>
                             )}
                           </span>
                           <span className="truncate font-medium text-[#eff1f6]">{p.title}</span>
@@ -1177,7 +1186,7 @@ export default function CodeLab() {
                 <div className="space-y-2.5">
                   {Object.entries(codeStats.retention).map(([bucket, rate]) => (
                     <div key={bucket} className="flex items-center gap-3">
-                      <span className="w-16 text-xs text-[#8a8a8a] font-mono">{bucket}</span>
+                      <span className="w-16 text-xs text-[#a3a3a3] font-mono">{bucket}</span>
                       <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#262626]">
                         <div
                           className="h-full rounded-full bg-[#2cbb5d] transition-all duration-300"
@@ -1216,7 +1225,7 @@ export default function CodeLab() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-2xl border border-[#333333] bg-[#1a1a1a] p-6 shadow-2xl space-y-4">
             <h3 className="text-base font-bold text-[#eff1f6]">Forge Custom Problem with AI</h3>
-            <p className="text-xs text-[#8a8a8a]">
+            <p className="text-xs text-[#a3a3a3]">
               Generate a brand new challenge or targeted drill using Qwen 2.5 Coder.
             </p>
 
@@ -1234,7 +1243,7 @@ export default function CodeLab() {
 
               <div>
                 <label className="font-semibold text-[#eff1f6] block mb-1">Target Difficulty:</label>
-                <select
+                <select aria-label="Difficulty of the generated problem"
                   value={forgeDifficulty}
                   onChange={(e) => setForgeDifficulty(e.target.value)}
                   className="w-full rounded-xl border border-[#333333] bg-[#262626] px-3 py-2 text-[#eff1f6] focus:outline-none"
@@ -1257,7 +1266,7 @@ export default function CodeLab() {
               <button
                 onClick={handleForge}
                 disabled={forging || !forgeTopic.trim()}
-                className="btn btn-primary px-3.5 py-1.5 text-xs bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 text-white font-bold"
+                className="btn btn-primary px-3.5 py-1.5 text-xs bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 text-[#06210f] font-bold"
               >
                 {forging ? 'Forging Problem…' : 'Generate Challenge'}
               </button>
@@ -1286,10 +1295,10 @@ function StatCard({
 }) {
   return (
     <div className="card bg-[#1a1a1a] border border-[#282828]" title={hint}>
-      <p className="text-xs uppercase tracking-wide text-[#8a8a8a]">{label}</p>
+      <p className="text-xs uppercase tracking-wide text-[#a3a3a3]">{label}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums text-[#eff1f6]">
         {Math.round(value).toLocaleString()}
-        {suffix && <span className="ml-0.5 text-base text-[#8a8a8a]">{suffix}</span>}
+        {suffix && <span className="ml-0.5 text-base text-[#a3a3a3]">{suffix}</span>}
       </p>
     </div>
   )
@@ -1307,15 +1316,15 @@ function VelocityCard({ velocity }: { velocity: Record<string, number> }) {
     >
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-[#282828] bg-[#1e1e1e] p-3">
-          <p className="text-xs text-[#8a8a8a]">Velocity Rate</p>
+          <p className="text-xs text-[#a3a3a3]">Velocity Rate</p>
           <p className="text-xl font-bold text-[#2cbb5d] tabular-nums">{rate} / hr</p>
         </div>
         <div className="rounded-xl border border-[#282828] bg-[#1e1e1e] p-3">
-          <p className="text-xs text-[#8a8a8a]">Mastered Total</p>
+          <p className="text-xs text-[#a3a3a3]">Mastered Total</p>
           <p className="text-xl font-bold text-[#eff1f6] tabular-nums">{total} problems</p>
         </div>
         <div className="rounded-xl border border-[#282828] bg-[#1e1e1e] p-3">
-          <p className="text-xs text-[#8a8a8a]">Active Practice Time</p>
+          <p className="text-xs text-[#a3a3a3]">Active Practice Time</p>
           <p className="text-xl font-bold text-[#569cd6] tabular-nums">{hours} hours</p>
         </div>
       </div>
@@ -1421,7 +1430,7 @@ function CodingLeeches({
                 </div>
                 <button
                   onClick={() => onSelect(l.slug)}
-                  className="btn btn-primary px-3 py-1 text-xs bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 text-white font-bold"
+                  className="btn btn-primary px-3 py-1 text-xs bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 text-[#06210f] font-bold"
                 >
                   Practice with Socratic AI
                 </button>
@@ -1436,7 +1445,7 @@ function CodingLeeches({
               )}
 
               <div className="mt-2.5 rounded-lg border border-[#333333] bg-[#222222] p-3">
-                <p className="text-xs text-[#8a8a8a]">{l.suggestion_rationale}</p>
+                <p className="text-xs text-[#a3a3a3]">{l.suggestion_rationale}</p>
               </div>
             </div>
           ))}

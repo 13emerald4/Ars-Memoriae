@@ -274,9 +274,9 @@ export default function FundamentalsStudio() {
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-sky-500/20 pb-2">
           <div className="flex items-center gap-2">
             <div>
-              <h3 className="font-bold text-sky-200 text-xs tracking-wide">
+              <h2 className="font-bold text-sky-200 text-xs tracking-wide">
                 Core Questions to Ponder as You Read
-              </h3>
+              </h2>
               <p className="text-[0.625rem] text-slate-400">
                 Active Inquiry — reflect on these fundamental mechanisms and edge cases throughout the lesson:
               </p>
@@ -320,7 +320,7 @@ export default function FundamentalsStudio() {
             size === 'md' ? 'px-3 py-1 text-xs' : 'px-2 py-0.5 text-[0.625rem]'
           } ${
             readingMode === m.id
-              ? 'bg-sky-500 text-white shadow'
+              ? 'bg-sky-700 text-white shadow'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -424,7 +424,7 @@ export default function FundamentalsStudio() {
               onClick={() => setActiveTrack(t.id)}
               className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
                 activeTrack === t.id
-                  ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20'
+                  ? 'bg-sky-700 text-white shadow-lg shadow-sky-500/20'
                   : 'bg-ink-soft text-slate-400 hover:text-slate-200 hover:bg-ink-soft/80'
               }`}
             >
@@ -477,7 +477,7 @@ export default function FundamentalsStudio() {
 
       {/* Main Split-Pane Workbench */}
       {drillDetail && (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 [&>*]:min-w-0">
           {/* Left Column: 3-Step Guided Workflow */}
           <div className="flex flex-col rounded-xl border border-ink-line bg-[#0d1117] overflow-hidden shadow-2xl">
             {/* Step Navigation Tabs */}
@@ -819,7 +819,7 @@ export default function FundamentalsStudio() {
                   {decks.length > 0 && (
                     <div className="border-t border-ink-line/60 pt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
                       <span className="text-slate-400">Add to Spaced Repetition deck:</span>
-                      <select
+                      <select aria-label="Jump to a lesson"
                         onChange={(e) => {
                           if (e.target.value) handleExportCard(e.target.value)
                         }}

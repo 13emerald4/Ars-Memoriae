@@ -251,12 +251,12 @@ export function ConcordanceReader({
     // Headers
     if (line.startsWith('# ')) {
       return (
-        <h1
+        <h2
           key={lineIdx}
           className="text-base font-bold text-slate-100 border-b border-ink-line pb-2 mt-2 mb-3"
         >
           {parseInlineMarkdown(line.replace('# ', ''))}
-        </h1>
+        </h2>
       )
     }
     if (line.startsWith('## ')) {
@@ -655,7 +655,7 @@ export function ConcordanceReader({
                     onClick={() => setSelectedCategory(cat)}
                     className={`rounded-lg px-2.5 py-1 text-[0.625rem] font-semibold transition ${
                       selectedCategory === cat
-                        ? 'bg-sky-500 text-white shadow'
+                        ? 'bg-sky-700 text-white shadow'
                         : 'bg-[#121927] text-slate-400 hover:text-slate-200'
                     }`}
                   >
