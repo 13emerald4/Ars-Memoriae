@@ -532,6 +532,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
                 <div>
                   <label className="block text-[0.6875rem] font-medium text-slate-300 mb-1">Choose File *</label>
                   <input
+                    aria-label="Document to attach to this deck"
                     type="file"
                     accept=".pdf,.txt,.md,.markdown,.html,.htm,.rst,.ts,.tsx,.js,.jsx,.py,.java,.json"
                     onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
@@ -699,6 +700,7 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
       <div className="space-y-4">
         {!doc ? (
           <input
+            aria-label="Document to turn into a deck"
             type="file"
             accept=".pdf,.txt,.md,.markdown,.html,.htm,.rst"
             disabled={Boolean(busy)}
@@ -736,7 +738,7 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
 
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">Model</label>
-                <select
+                <select aria-label="Model used to generate cards"
                   className="input w-full text-xs"
                   value={selectedModel}
                   onChange={(e) => setSelectedModel(e.target.value)}
@@ -751,7 +753,7 @@ function DocumentDeckPanel({ onImported }: { onImported: () => void }) {
 
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">Thinking level</label>
-                <select
+                <select aria-label="Thinking budget"
                   className="input w-full text-xs"
                   value={selectedThinking}
                   onChange={(e) => setSelectedThinking(e.target.value)}
@@ -1173,7 +1175,7 @@ function DeckList({
                 }
               }}
             >
-              <select
+              <select aria-label="Parent deck"
                 className="input w-36 text-xs py-1"
                 value={parentId}
                 onChange={(e) => setParentId(e.target.value)}
@@ -1238,7 +1240,7 @@ function DeckList({
                 <label className="block text-xs font-medium text-slate-300 mb-1">
                   Parent Deck
                 </label>
-                <select
+                <select aria-label="Parent deck"
                   className="input w-full text-xs"
                   value={parentId}
                   onChange={(e) => setParentId(e.target.value)}
@@ -1822,7 +1824,7 @@ function AddNote({
     >
       <form onSubmit={submit} className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <select
+          <select aria-label="Note type"
             className="input max-w-xs"
             value={noteTypeId}
             onChange={(e) => setNoteTypeId(e.target.value)}
@@ -2240,6 +2242,7 @@ function AddOcclusion({ deckId, onAdded }: { deckId: string; onAdded: () => void
       <div className="space-y-4">
         {!image ? (
           <input
+            aria-label="Image to occlude"
             type="file"
             accept="image/*"
             disabled={busy}
@@ -2803,6 +2806,7 @@ function JsonImportPanel({ onImported }: { onImported: () => void }) {
           onChange={(e) => setDeckName(e.target.value)}
         />
         <input
+          aria-label="JSON file to import"
           type="file"
           accept=".json,application/json"
           disabled={busy}

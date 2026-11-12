@@ -1668,7 +1668,7 @@ export function CodeEditor({
 
             {(availableModels.length > 0 || selectedModel || activeModel) && (
               <div className="flex items-center gap-1 shrink-0">
-                <select
+                <select aria-label="Model for this question"
                   value={selectedModel || activeModel || docSearchResult?.model_used || availableModels[0] || ''}
                   onChange={(e) => {
                     const newModel = e.target.value
@@ -2047,7 +2047,7 @@ export function CodeEditor({
               <button
                 type="submit"
                 disabled={isAskingQuestion || !qaInput.trim()}
-                className="rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-xs font-semibold text-white shadow transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="rounded-lg bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-xs font-semibold text-white shadow transition flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 {isAskingQuestion ? (
                   <>
@@ -2091,7 +2091,7 @@ export function CodeEditor({
                 <button
                   onClick={onReset}
                   title="Reset to boilerplate"
-                  className="flex items-center gap-1 rounded px-2 py-1 text-[#8a8a8a] hover:bg-[#333333] hover:text-[#eff1f6] transition text-xs"
+                  className="flex items-center gap-1 rounded px-2 py-1 text-[#a3a3a3] hover:bg-[#333333] hover:text-[#eff1f6] transition text-xs"
                 >
                   <span className="hidden sm:inline">Reset</span>
                 </button>
@@ -2099,7 +2099,7 @@ export function CodeEditor({
               <button
                 onClick={copyCode}
                 title="Copy code"
-                className="flex items-center gap-1 rounded px-2 py-1 text-[#8a8a8a] hover:bg-[#333333] hover:text-[#eff1f6] transition text-xs"
+                className="flex items-center gap-1 rounded px-2 py-1 text-[#a3a3a3] hover:bg-[#333333] hover:text-[#eff1f6] transition text-xs"
               >
                 <span className="hidden sm:inline">Copy</span>
               </button>
@@ -2107,10 +2107,10 @@ export function CodeEditor({
           </div>
 
           {/* Sub-Header: Language Selector, Explain Selection, Line Hint, Grade & Auto Indicator */}
-          <div className="flex items-center justify-between border-b border-[#282828] bg-[#1e1e1e] px-4 py-1.5 text-xs">
-            <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-b border-[#282828] bg-[#1e1e1e] px-4 py-1.5 text-xs">
+            <div className="flex shrink-0 items-center gap-2.5">
               {onLanguageChange ? (
-                <select
+                <select aria-label="Editor language"
                   value={language}
                   onChange={(e) => onLanguageChange(e.target.value)}
                   className="rounded bg-[#282828] px-2.5 py-1 text-xs font-medium text-[#eff1f6] border border-[#3a3a3a] focus:border-[#2cbb5d] focus:outline-none cursor-pointer"
@@ -2125,10 +2125,10 @@ export function CodeEditor({
                 <span className="text-xs font-medium text-[#eff1f6]">{currentLangLabel}</span>
               )}
 
-              <span className="text-xs text-[#8a8a8a] font-mono select-none">• Auto</span>
+              <span className="whitespace-nowrap text-xs text-[#a3a3a3] font-mono select-none">• Auto</span>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex flex-wrap items-center gap-1.5">
               {/* Search Deck Docs Button */}
               <button
                 type="button"
@@ -2144,7 +2144,7 @@ export function CodeEditor({
                 title="Search and ground selected code against attached deck documentation (Alt+D)"
               >
                 <span>{isSearchingDocs ? 'Searching Docs…' : selectedText.trim() ? 'Search Docs' : 'Deck Docs'}</span>
-                <span className="text-[0.625rem] text-emerald-400/60 font-mono hidden md:inline">(Alt+D)</span>
+                <span className="text-[0.625rem] text-emerald-300/90 font-mono hidden md:inline">(Alt+D)</span>
               </button>
 
               {/* Ask Local LLM Button */}
@@ -2164,7 +2164,7 @@ export function CodeEditor({
                 title="Directly ask local LLM a question about selected code using docs and pre-training (Alt+Q)"
               >
                 <span>{isAskingQuestion ? 'Asking…' : 'Ask LLM'}</span>
-                <span className="text-[0.625rem] text-sky-400/60 font-mono hidden md:inline">(Alt+Q)</span>
+                <span className="text-[0.625rem] text-sky-300/90 font-mono hidden md:inline">(Alt+Q)</span>
               </button>
 
               {onRequestLineHint && !readOnly && (
@@ -2182,7 +2182,7 @@ export function CodeEditor({
                   title={`Request Socratic Hint for line ${cursorLine} (Alt+H)`}
                 >
                   <span>{lineHintLoading ? 'Thinking…' : 'Hint'}</span>
-                  <span className="text-[0.625rem] text-amber-400/60 font-mono hidden md:inline">(Alt+H)</span>
+                  <span className="text-[0.625rem] text-amber-300/90 font-mono hidden md:inline">(Alt+H)</span>
                 </button>
               )}
               {cleanRefCode && onLogicGuardToggle && !readOnly && (
@@ -2233,7 +2233,7 @@ export function CodeEditor({
                 <button
                   onClick={onSubmit}
                   disabled={running || submitting}
-                  className="rounded bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 px-3.5 py-1 text-xs font-semibold text-white transition disabled:opacity-40"
+                  className="rounded bg-[#2cbb5d] hover:bg-[#2cbb5d]/90 px-3.5 py-1 text-xs font-semibold text-[#06210f] transition disabled:opacity-40"
                 >
                   {submitting ? 'Submitting…' : 'Submit'}
                 </button>
@@ -2624,7 +2624,7 @@ export function CodeEditor({
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex flex-wrap items-center gap-1.5">
               {onRequestLineHint && !lineHintLoading && (
                 <button
                   type="button"
@@ -2659,7 +2659,7 @@ export function CodeEditor({
       {/* Footer Info */}
       {!hideFooter && (
         <div
-          className={`flex items-center justify-between border-t border-[#282828] bg-[#1e1e1e] px-3 text-[0.6875rem] text-[#8a8a8a] font-mono min-w-0 gap-2 overflow-hidden shrink-0 ${
+          className={`flex items-center justify-between border-t border-[#282828] bg-[#1e1e1e] px-3 text-[0.6875rem] text-[#a3a3a3] font-mono min-w-0 gap-2 overflow-hidden shrink-0 ${
             compactFooter ? 'h-7' : 'h-8'
           }`}
         >
@@ -2667,7 +2667,7 @@ export function CodeEditor({
             <span className="text-[#eff1f6] font-semibold whitespace-nowrap">
               Ln {cursorLine}, Col {cursorCol}
             </span>
-            <span className="text-[#666666] hidden xl:inline whitespace-nowrap">
+            <span className="text-[#a3a3a3] hidden xl:inline whitespace-nowrap">
               • {lineCount}L / {code.length}C
             </span>
             {diffStats && (
@@ -2685,7 +2685,7 @@ export function CodeEditor({
               </div>
             )}
           </div>
-          <div className="flex items-center gap-1.5 text-[0.625rem] text-[#8a8a8a] shrink-0 overflow-hidden">
+          <div className="flex items-center gap-1.5 text-[0.625rem] text-[#a3a3a3] shrink-0 overflow-hidden">
             {!compactFooter && onRequestLineHint && !readOnly && (
               <span className="text-amber-400/90 shrink-0 hidden md:inline whitespace-nowrap">
                 <kbd className="rounded bg-[#282828] px-1 py-0.5 text-amber-300 border border-amber-500/30">Alt+H</kbd> Hint
@@ -2731,7 +2731,7 @@ export function CodeEditor({
               className={`cursor-pointer transition flex items-center gap-1 shrink-0 h-5 px-1.5 rounded border whitespace-nowrap ${
                 isPoppedOut
                   ? 'text-sky-300 font-semibold bg-sky-500/15 border-sky-500/40'
-                  : 'text-[#8a8a8a] hover:text-sky-200 border-transparent hover:bg-white/5'
+                  : 'text-[#a3a3a3] hover:text-sky-200 border-transparent hover:bg-white/5'
               }`}
               title={isPoppedOut ? 'Dock assistant window back to main editor (Alt+W)' : 'Pop out assistant to separate window for 2nd monitor (Alt+W)'}
             >

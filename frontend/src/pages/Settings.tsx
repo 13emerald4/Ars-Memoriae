@@ -290,9 +290,9 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-sky-500/20 pb-2.5">
               <div className="flex items-center gap-2.5">
                 <div>
-                  <h4 className="text-xs font-bold text-sky-200 uppercase tracking-wider">
+                  <h3 className="text-xs font-bold text-sky-200 uppercase tracking-wider">
                     Local Hardware Inspection
-                  </h4>
+                  </h3>
                   <p className="text-[0.6875rem] text-slate-300">
                     {hardware.os_name} · {hardware.ram_gb.toFixed(1)} GB RAM
                     {hardware.gpu_name ? ` · ${hardware.gpu_name}${hardware.vram_gb ? ` (${hardware.vram_gb.toFixed(1)} GB VRAM)` : ''}` : ' · Integrated / CPU'}
@@ -344,7 +344,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                 }`}
               />
               <div>
-                <h4 className="text-sm font-semibold text-slate-100 flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm font-semibold text-slate-100 flex items-center gap-2 flex-wrap">
                   <span>{activeInfo.label}</span>
                   <span className="chip text-[0.625rem] px-1.5 py-0.2 border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
                     Active Grader
@@ -359,18 +359,18 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                       Hardware Matched
                     </span>
                   )}
-                </h4>
+                </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Engine: <code className="font-mono text-slate-300">{status?.base_url || (isAgy ? 'Antigravity Subscription (agy CLI)' : 'http://localhost:11434')}</code>
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <select
+            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
+              <select aria-label="Active grading model"
                 value={activeModelId}
                 onChange={(e) => void activateModel(e.target.value)}
-                className="select text-xs py-1 px-2.5 bg-slate-900 border-slate-700 text-slate-200 font-mono rounded cursor-pointer"
+                className="select min-w-0 max-w-full truncate text-xs py-1 px-2.5 bg-slate-900 border border-slate-700 text-slate-200 font-mono rounded cursor-pointer"
                 title="Select active grading & assistant model"
               >
                 {canUseAntigravity && (
@@ -663,7 +663,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                     <div className="space-y-1.5">
                       <div className="flex items-start justify-between gap-1.5">
                         <div>
-                          <h5 className="font-bold text-sm text-slate-100">{opt.name}</h5>
+                          <h4 className="font-bold text-sm text-slate-100">{opt.name}</h4>
                           <p className="text-[0.6875rem] font-semibold italic text-sky-300 tracking-tight">
                             {opt.archetype}
                           </p>
@@ -781,7 +781,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
                       <div className="space-y-1.5">
                         <div className="flex items-start justify-between gap-1.5">
                           <div>
-                            <h5 className="font-bold text-sm text-slate-100">{opt.name}</h5>
+                            <h4 className="font-bold text-sm text-slate-100">{opt.name}</h4>
                             <p className="text-[0.6875rem] font-semibold italic text-indigo-300 tracking-tight">
                               {opt.tier}
                             </p>
@@ -1496,9 +1496,9 @@ function TypographyPanel() {
           </div>
 
           <div className="space-y-1.5 pt-1">
-            <h4 className="font-bold text-slate-100" style={{ fontSize: `${fontSize * 1.15}px` }}>
+            <h3 className="font-bold text-slate-100" style={{ fontSize: `${fontSize * 1.15}px` }}>
               Active Recall & FSRS Scheduling
-            </h4>
+            </h3>
             <p className="text-slate-300 leading-relaxed" style={{ fontSize: `${fontSize}px` }}>
               Every function has a contract. Type your answer to verify understanding with local AI reasoning and similarity checking.
             </p>
@@ -1717,7 +1717,7 @@ function TutorialPanel({
             <button
               type="button"
               onClick={() => onLaunchTutorial('tour', 'extensive')}
-              className="btn btn-primary w-full py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 border-emerald-500/50 text-white"
+              className="btn btn-primary w-full py-2 text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 border-emerald-500/50 text-white"
             >
               Start Full Tutorial (4 min) →
             </button>
@@ -2242,14 +2242,14 @@ function CognitiveThemePanel() {
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-2.5">
               <div>
-                <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
                   <span>Greyscale &amp; High-Contrast Mode</span>
                   {enableGreyscaleFriendly && (
                     <span className="rounded-full bg-white/20 border border-white/40 px-2 py-0.5 text-[0.625rem] font-semibold text-white">
                       Active
                     </span>
                   )}
-                </h4>
+                </h3>
                 <p className="text-xs text-slate-400">
                   Enhanced visibility for monochrome displays, Windows/macOS greyscale filters, e-ink monitors, and high-contrast accessibility.
                 </p>
@@ -2333,9 +2333,9 @@ function CognitiveThemePanel() {
         {/* Palettes Grid */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
               {themeMode === 'fixed' ? 'Choose Your Fixed Palette:' : 'Interactive Cognitive State Previews:'}
-            </h4>
+            </h3>
             {themeMode === 'dynamic' && (
               <span className="text-[0.6875rem] text-slate-500 italic">
                 (Click any state to preview its color scheme)
@@ -2519,7 +2519,7 @@ function FeatureRequestPanel() {
           </div>
           <div className="space-y-1">
             <label className="text-xs font-semibold text-slate-300">Category</label>
-            <select
+            <select aria-label="Feedback category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className="w-full rounded-lg border border-ink-line bg-[#1c1c1c] px-3 py-2 text-xs text-slate-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer"

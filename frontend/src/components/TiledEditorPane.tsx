@@ -311,7 +311,7 @@ export function TiledEditorPane({
               title={`Request Socratic Hint for line ${cursorLine} (Alt+H)`}
             >
               <span>{lineHintLoading ? 'Thinking…' : 'Hint'}</span>
-              <span className="text-[0.625rem] text-amber-400/60 font-mono hidden xl:inline">(Alt+H)</span>
+              <span className="text-[0.625rem] text-amber-300/90 font-mono hidden xl:inline">(Alt+H)</span>
             </button>
           )}
 

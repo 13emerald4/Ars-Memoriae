@@ -1184,7 +1184,7 @@ export function DeckCardsViewer({
                                 <button
                                   type="submit"
                                   disabled={!newCommentText.trim()}
-                                  className="px-3 py-1 rounded-md bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white text-xs font-medium transition cursor-pointer shadow-sm"
+                                  className="px-3 py-1 rounded-md bg-sky-700 hover:bg-sky-600 disabled:opacity-40 text-white text-xs font-medium transition cursor-pointer shadow-sm"
                                 >
                                   Add Comment
                                 </button>
@@ -1242,7 +1242,7 @@ export function DeckCardsViewer({
                       <button
                         type="button"
                         onClick={() => onSelectCard(selectedCard)}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-md transition cursor-pointer"
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white text-xs font-semibold shadow-md transition cursor-pointer"
                         title="Study now"
                       >
                         <span>Study Now</span>
@@ -1608,7 +1608,7 @@ export function DeckCardsViewer({
                   <button
                     type="submit"
                     disabled={!selectedFile || uploadingDoc}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-medium text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
                   >
                     {uploadingDoc ? (
                       <>

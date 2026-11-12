@@ -71,7 +71,7 @@ export function CodeTestConsole({
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1 font-medium transition ${
               activeTab === 'cases'
                 ? 'bg-[#1e1e1e] text-[#eff1f6] font-semibold shadow'
-                : 'text-[#8a8a8a] hover:text-[#eff1f6]'
+                : 'text-[#a3a3a3] hover:text-[#eff1f6]'
             }`}
           >
             <span>Testcases</span>
@@ -82,7 +82,7 @@ export function CodeTestConsole({
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1 font-medium transition ${
               activeTab === 'result'
                 ? 'bg-[#1e1e1e] text-[#eff1f6] font-semibold shadow'
-                : 'text-[#8a8a8a] hover:text-[#eff1f6]'
+                : 'text-[#a3a3a3] hover:text-[#eff1f6]'
             }`}
           >
             <span>Results</span>
@@ -227,7 +227,7 @@ export function CodeTestConsole({
                     >
                       {runResult.status}
                     </span>
-                    <span className="text-[#8a8a8a] text-xs font-sans">
+                    <span className="text-[#a3a3a3] text-xs font-sans">
                       {runResult.passed_count}/{runResult.total_count} passed
                     </span>
                   </div>

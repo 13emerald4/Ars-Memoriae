@@ -444,7 +444,8 @@ function AppLayout() {
             : `mx-auto max-w-6xl px-4 sm:px-6 ${isZenMode ? 'py-4' : 'py-6 sm:py-8'}`
         }`}
       >
-        <h1 className="sr-only">{pageTitle}</h1>
+        {/* Code Lab and Pre-LeetCode render their own visible <h1>. */}
+        {!location.pathname.startsWith('/code') && <h1 className="sr-only">{pageTitle}</h1>}
         <Suspense
           fallback={
             <div className="flex min-h-[50vh] items-center justify-center">

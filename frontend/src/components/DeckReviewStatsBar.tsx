@@ -436,7 +436,11 @@ export function DeckReviewStatsBar({
       className={`rounded-2xl border border-sky-500/25 bg-[#0b101b]/95 p-3.5 shadow-lg backdrop-blur text-xs transition-all duration-200 ${className}`}
     >
       {/* Top Header Row */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-ink-line/60">
+      <div
+        className={`flex flex-wrap items-center justify-between gap-2.5 ${
+          isExpanded ? 'pb-2 border-b border-ink-line/60' : ''
+        }`}
+      >
         <div className="flex items-center gap-2">
           <div>
             <div className="flex items-center gap-2">
