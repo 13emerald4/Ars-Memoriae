@@ -57,12 +57,15 @@ export function SessionHeader({
   onRetryPreviousCard?: () => void
 }) {
   const [quickPersistUnseenOnly, setQuickPersistUnseenOnly] = useState(false)
+  // Hooks stay above the early return: one declared after it is skipped on
+  // the renders that return null, and React then loses track of which state
+  // belongs to which hook.
+  const [modesOpen, setModesOpen] = useState(false)
   if (!session && !persistActive && !allCardsRunActive) return null
   const counts = session?.counts
   const caps = session?.caps
   const planned = ((counts?.review ?? 0) + (counts?.new ?? 0) + (counts?.ir ?? 0))
 
-  const [modesOpen, setModesOpen] = useState(false)
   const decksWithCards = (allDecks ?? []).filter((d) => d.card_count > 0).length
   const hasModeLaunchers =
     (!persistActive && !allCardsRunActive && decksWithCards > 0 && Boolean(onStartPersist || onStartAllCardsRun)) ||

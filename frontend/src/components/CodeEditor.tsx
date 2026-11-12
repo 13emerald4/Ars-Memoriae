@@ -234,7 +234,7 @@ function highlightLeetCode(code: string): string {
       }
     }
 
-    let color = '#eff1f6'
+    let color: string
     if (token.startsWith('#') || token.startsWith('//')) {
       color = '#6a9955' // Comments green
     } else if (token.startsWith('"') || token.startsWith("'")) {
@@ -285,7 +285,7 @@ function renderDiffSegment(text: string, type: string): string {
     return escapeHtml(text)
   }
 
-  let coreHtml = ''
+  let coreHtml: string
   if (type === 'missing') {
     coreHtml = `<span class="diff-segment-missing" style="background-color: rgba(245, 158, 11, 0.32); color: #fef08a; box-shadow: inset 0 -2px 0 #f59e0b; border-radius: 3px;" title="Missing from your solution">${escapeHtml(core)}</span>`
   } else if (type === 'matched') {

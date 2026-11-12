@@ -336,7 +336,7 @@ export function KnowledgeTree({
 
     const rect = e.currentTarget.getBoundingClientRect()
     const relY = (e.clientY - rect.top) / rect.height
-    let pos: DropPosition = 'inside'
+    let pos: DropPosition
     if (relY < 0.28) {
       pos = 'before'
     } else if (relY > 0.72) {

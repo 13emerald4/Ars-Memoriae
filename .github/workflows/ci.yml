@@ -24,6 +24,8 @@ jobs:
           node-version: "24"
       - run: pip install -e ".[dev]"
       - run: ruff check .
+      # No Ollama on the runner: the suite mocks it. A test that reaches for a
+      # real daemon is a bug in the test.
       - run: pytest -q
 
   frontend:
@@ -40,4 +42,21 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
       - run: npm run build
+      # frontend/dist is committed because the one-click launchers and the
+      # tunnel serve it straight from the repo. That only works if it matches
+      # the source, so a change to src/ without a rebuild fails here.
+      - name: Committed build matches the source
+        run: |
+          if ! git diff --quiet -- dist; then
+            echo "::error::frontend/dist is out of date. Run 'npm run build' in frontend/ and commit the result."
+            git diff --stat -- dist
+            exit 1
+          fi
+          if [ -n "$(git status --porcelain -- dist)" ]; then
+            echo "::error::frontend/dist has untracked or missing files. Run 'npm run build' in frontend/ and commit the result."
+            git status --porcelain -- dist
+            exit 1
+          fi
