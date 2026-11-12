@@ -46,6 +46,16 @@ export default function Settings() {
     void load()
   }, [load])
 
+  // A link such as /settings#settings-account. The browser looks for the
+  // anchor before this page has loaded its data and rendered the sections, so
+  // it finds nothing; scroll once they exist.
+  const ready = Boolean(user && queueCfg)
+  useEffect(() => {
+    if (!ready) return
+    const id = window.location.hash.slice(1)
+    if (id) document.getElementById(id)?.scrollIntoView()
+  }, [ready])
+
   if (!user || !queueCfg) return <Spinner />
 
   // One list drives both the jump bar and the page, so they cannot drift.

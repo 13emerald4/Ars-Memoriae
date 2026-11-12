@@ -134,8 +134,16 @@ if ($tunnelUrl) {
     Write-Host "HOW TO ACCESS FROM THE UBC LIBRARY MAC / LAB PC:" -ForegroundColor Cyan
     Write-Host "  1. Sit down at any Mac M1 or computer in Koerner / IKB / Woodward." -ForegroundColor Gray
     Write-Host "  2. Open Chrome or Safari and paste this link." -ForegroundColor Gray
-    Write-Host "  3. Log in with your email/password. All cards, code lab, and LLM" -ForegroundColor Gray
-    Write-Host "     grading will execute through this tunnel!" -ForegroundColor Gray
+    Write-Host "  3. Log in with your email/password. Cards, reading and LLM grading" -ForegroundColor Gray
+    Write-Host "     work through this tunnel." -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "RUNNING CODE REMOTELY IS OFF BY DEFAULT:" -ForegroundColor Yellow
+    Write-Host "  'Run' and 'Submit' execute programs on THIS computer, so they only" -ForegroundColor Gray
+    Write-Host "  work in a browser on this computer. Anyone who had your password and" -ForegroundColor Gray
+    Write-Host "  this link could otherwise run programs here. Code cards are still" -ForegroundColor Gray
+    Write-Host "  graded remotely, from the text of your answer." -ForegroundColor Gray
+    Write-Host "  To allow it anyway: add ALLOW_REMOTE_CODE_EXECUTION=1 to backend\.env" -ForegroundColor Gray
+    Write-Host "  and restart the backend." -ForegroundColor Gray
     Write-Host ""
     Write-Host "Press Ctrl+C or close this window when your study session is done." -ForegroundColor DarkGray
     Write-Host ""

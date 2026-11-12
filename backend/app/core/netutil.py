@@ -29,14 +29,35 @@ def _forwarded_addresses(request: Request) -> list[str]:
     return found
 
 
+def _hostname(value: str) -> str:
+    """Host header value without its port: "localhost:8000" -> "localhost",
+    "[::1]:8000" -> "::1"."""
+    value = value.strip().lower()
+    if value.startswith("["):
+        return value[1:].split("]", 1)[0]
+    return value.rsplit(":", 1)[0] if value.count(":") == 1 else value
+
+
 def is_local_request(request: Request) -> bool:
     """True only when the caller is on this machine.
 
-    A loopback socket with forwarding headers is a proxied request. Clients can
-    prepend their own entries to X-Forwarded-For (proxies append), so every
-    listed address must be loopback, not just the first.
+    Three things must all hold:
+
+    * the socket is loopback;
+    * no forwarding header names a non-loopback address. Clients can prepend
+      their own entries to X-Forwarded-For (proxies append), so every listed
+      address must be loopback, not just the first;
+    * the browser addressed the app by a loopback name. A tunnel delivers
+      requests from loopback too, and not every tunnel adds a forwarding
+      header, but the Host it passes on is the public one.
     """
     host = request.client.host if request.client else ""
     if host not in LOOPBACK:
         return False
-    return all(addr in LOOPBACK for addr in _forwarded_addresses(request))
+    if not all(addr in LOOPBACK for addr in _forwarded_addresses(request)):
+        return False
+    for name in ("host", "x-forwarded-host"):
+        raw = request.headers.get(name)
+        if raw and any(_hostname(part) not in LOOPBACK for part in raw.split(",") if part.strip()):
+            return False
+    return True

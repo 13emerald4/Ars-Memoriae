@@ -19,7 +19,7 @@ python -m venv .venv && .venv/bin/pip install -e ".[dev]"  # Windows: .venv\Scri
 .venv/bin/uvicorn app.main:app --reload --port 8000        # Dev server
 
 # Testing
-.venv/bin/pytest -q                   # Run all 420+ tests
+.venv/bin/pytest -q                   # Run all 510+ tests (no Ollama needed; it is mocked)
 .venv/bin/pytest tests/test_grading.py  # Single test file
 .venv/bin/pytest -k test_name         # Run specific test by name
 
@@ -36,9 +36,20 @@ Backend defaults to SQLite in development; Postgres is optional unless testing m
 cd frontend
 npm install
 npm run dev         # Dev server (port 5173)
-npm run build       # TypeScript check + Vite build
+npm run build       # TypeScript check + Vite build (writes frontend/dist)
 npm run typecheck   # Type-check only (no build)
+npm run lint        # ESLint (fails on errors; warnings are the backlog)
+npm test            # Vitest unit tests
 ```
+
+`frontend/dist` is committed: the one-click launchers and the tunnel serve it
+straight from the repo. **After changing anything under `frontend/src`, run
+`npm run build` and commit the result.** CI fails if the two disagree.
+
+In development the app talks to its own origin and Vite proxies `/api`,
+`/media` and the sync socket to the backend. Do not commit a
+`frontend/.env.local`; a checked-in `VITE_API_BASE_URL` is baked into the
+production bundle.
 
 ### Migrations
 
@@ -65,7 +76,7 @@ First-party implementations register themselves in `app/services/rendering.py` a
 
 ### Request Flow
 
-1. **Auth**: JWT tokens (14-day expiry), validated via `app/routers/deps.py:current_user()`
+1. **Auth**: JWT tokens (14-day expiry), validated via `app/routers/deps.py:current_user()`. Each token carries a version (compared with `users.token_version`, so a password change or "sign out everywhere" revokes all earlier tokens) and a scope: `full` for a browser session, `mobile` for the pairing QR. Account actions use `full_session_user`; anything that executes code uses `code_runner_user`
 2. **Routing**: `app/main.py` includes routers from `app/routers/` (auth, decks, queue, review, sources, imports, etc.)
 3. **Services**: Business logic in `app/services/` (fsrs_service, grading_service, queue_service, ir_service)
 4. **Models**: SQLAlchemy ORM in `app/models/`, 1:1 with database schema
@@ -73,7 +84,7 @@ First-party implementations register themselves in `app/services/rendering.py` a
 
 ### Database Schema Evolution
 
-The schema has evolved through 20 migrations:
+The schema has evolved through 26 migrations:
 
 - **0001_initial.py**: Core tables (users, decks, note_types, notes, cards, sources, extracts, reviews)
 - **0002_sister_pairs.py**: Sister-card interference tracking
@@ -81,6 +92,13 @@ The schema has evolved through 20 migrations:
 - **0004–0009**: Knowledge tree, card references, reading sources, lessons, mastery gating, study sessions
 - **0010–0019**: Velocity, reflection, analytics, memory-champion fields, code practice, weakness memory, lexicon, module visibility, deck documentation
 - **0020**: `users.timezone` (study-day boundary) and an index on `review_logs.reviewed_at`
+- **0021–0025**: deck and card ordering, tutorial flag, card lexicon glosses, neuroscience features (concept edges, loci, mnemonics)
+- **0026**: `users.token_version` (token revocation)
+
+Migrations run in-process at startup (`AUTO_MIGRATE=1`); a failure stops the
+app rather than leaving it on a half-migrated schema. `tests/test_hardening.py`
+upgrades an empty database to head and diffs it against the models, so a
+column added to a model without a migration fails the suite.
 
 When writing migrations, use the frozen type aliases at the top of each migration file (JSONType, StringArray, TS) to ensure Postgres/SQLite compatibility.
 
@@ -89,8 +107,11 @@ When writing migrations, use the frozen type aliases at the top of each migratio
 **`app/services/fsrs_service.py`**
 Wraps `py-fsrs` 6.x. Cards carry Difficulty/Stability/Retrievability. Intervals are fuzzed (±5%), backlogs are smoothed over `spread_days`, and `new` state is app-level (FSRS only has `Learning`/`Review`/`Relearning`).
 
+**`app/services/review_service.py`**
+`record_review()` is the only way a grade reaches FSRS. The confirm endpoint and the mobile app's offline batch (`/api/sync/batch`) both call it, so scheduling, lapse/leech accounting and weakness bookkeeping cannot drift apart. Never schedule a card anywhere else.
+
 **`app/services/grading_service.py`**
-Calls the local Ollama daemon (`OLLAMA_BASE_URL`, default model `qwen2.5-coder:7b`); no API key. Requests JSON output and parses it tolerantly. Implements:
+Calls the local Ollama daemon (`OLLAMA_BASE_URL`); no API key. A new account gets the model that fits the machine (detected at sign-up); `DEFAULT_GRADING_MODEL` (`qwen2.5-coder:3b`) is only the fallback. Requests JSON output and parses it tolerantly. Implements:
 - Rubric profiles (short_answer, conceptual, math_code)
 - Escalation to `ESCALATION_GRADING_MODEL` (low confidence, repeated overrides, math/code cards); no-op when it equals the grading model
 - Heuristic cross-check (keyword overlap vs. LLM grade)
@@ -113,7 +134,13 @@ Composes the priority queue:
 Typed API client with auth headers. All endpoints go through this.
 
 **`frontend/src/pages/`**
-Top-level routes (Review, Read, Decks, Stats, Settings, Tree, Login). The Review page handles both card reviews and reading extracts by switching on the `kind` field from `/api/queue/next`.
+Top-level routes (Review, Read, Decks, Stats, Settings, Tree, Login). The Review page handles both card reviews and reading extracts by switching on the `kind` field from `/api/queue/next`. Its sub-components and pure helpers live in `pages/review/`; `Review.tsx` itself is still large, so prefer adding to those modules (or a hook under `hooks/`) over growing it.
+
+**`frontend/src/components/dialogs.tsx`**
+`dialogs.confirm / prompt / notify` replace `window.confirm`, `prompt` and `alert`. Destructive bulk actions pass `requireText`.
+
+**`frontend/src/utils/storage.ts`**
+The only place that touches `localStorage`. It cannot throw, which matters because most reads happen inside `useState` initialisers.
 
 **`frontend/src/components/Occlusion.tsx`**
 Image occlusion editor (drag masks) and masked card renderer (all regions stay masked, tested one is highlighted).
@@ -138,9 +165,11 @@ Loaded plugins report at `GET /api/plugins` (including failures with tracebacks)
 ### Security Properties (Tested)
 
 - **SSRF containment**: User-submitted URLs (`POST /api/sources`) are validated per redirect hop. Private IPs (169.254.x.x, 127.x.x.x, RFC1918) are blocked unless `URL_FETCH_ALLOW_PRIVATE=1`.
-- **Tenant isolation**: Object-scoped routes check ownership before access (parametrized tests across 14 endpoints).
+- **Tenant isolation**: Object-scoped routes check ownership before access (parametrized tests across 14 endpoints, plus the graph endpoints in `test_hardening.py`). A foreign id answers exactly like a missing one.
+- **Code execution is local-only**: code practice runs the user's program as the backend's OS user; it is not a sandbox. Only a `full` session on the host machine may run code unless `ALLOW_REMOTE_CODE_EXECUTION=1`. A request that crossed a proxy is recognised by its forwarding headers (`app/core/netutil.py`).
+- **Revocable tokens**: `users.token_version`; the mobile pairing token is review-only and is never the browser's own session token.
 - **Secrets**: Passwords are scrypt-hashed. Code-practice workers run with a scrubbed environment so user code can't read `SECRET_KEY` or `DATABASE_URL`.
-- **Uploads**: Server-generated random filenames, content-type allowlist, 20 MB cap.
+- **Uploads**: Server-generated random filenames, type decided by file signature (not the declared content type), 20 MB cap, per-account quota.
 
 **Known limitation:** Media URLs (`/media/<user-id>/<random>.png`) are capability URLs served without auth. ~96 bits of entropy makes them unguessable but not access-controlled.
 
@@ -162,6 +191,10 @@ Coverage spans the entire review cycle, FSRS fuzzing/backlog smoothing, grading 
 5. **Models wrap JSON in prose or code fences.** Always parse LLM output with the tolerant `parse_json`, never `json.loads` directly.
 6. **Don't mutate the grading model instance.** Pass the escalated model per call, not by reassigning `self.model`.
 7. **"Today" is the user's study day**, not a UTC date: their time zone (`users.timezone`), rolling over at 04:00. Use `app/core/timeutil.py` (`day_start`, `day_key`) for daily caps and day buckets.
+8. **Theme colours are channel triplets.** `ink`, `ink-soft` and `ink-line` are `rgb(var(--theme-…-rgb) / <alpha-value>)`. Set the `-rgb` variable whenever you set the hex one (ThemeContext does both), or `bg-ink/90`-style classes compile to nothing.
+9. **Hooks go above early returns.** `npm run lint` enforces it.
+10. **Keyboard shortcuts match `e.code`, not `e.key`.** On macOS, Option+letter types a symbol.
+11. **Never call blocking code from an `async def` route** (subprocess, sync HTTP, scrypt). Use `asyncio.to_thread`.
 
 ## Environment Variables
 
@@ -172,6 +205,9 @@ Key settings (see `.env.example` for full list):
 - **`OLLAMA_NUM_CTX`**: Context window sent with every request (default 8192). Ollama drops the *start* of longer prompts — the instructions — so don't shrink it below the longest prompt
 - **`DATABASE_URL`**: Postgres or SQLite (`sqlite+aiosqlite:///./db.sqlite3` for dev)
 - **`ALLOW_REGISTRATION`**: 0 (default) = only the first account can sign up; 1 = open sign-up
+- **`ALLOW_REMOTE_CODE_EXECUTION`**: 0 (default) = only a browser on the host machine can run code; 1 = any signed-in session can (LAN, tunnel)
+- **`AUTO_MIGRATE`**: 1 (default) = apply migrations at startup and refuse to start if they fail
+- **`MEDIA_QUOTA_MB`**: per-account upload ceiling (default 2048; 0 = unlimited)
 - **`PLUGIN_DIR`**: Path to plugin directory (empty = disabled, the safe default)
 - **`ENABLE_BACKGROUND_JOBS`**: Set to 0 to disable nightly FSRS refit and cache eviction
 - **`URL_FETCH_ENABLED`**: Set to 0 to disable server-side URL fetching entirely
@@ -181,7 +217,8 @@ Key settings (see `.env.example` for full list):
 Interactive docs: <http://localhost:8000/docs> (OpenAPI/Swagger UI)
 
 Key endpoints:
-- `POST /api/auth/register`, `POST /api/auth/login`
+- `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/registration-status`
+- `POST /api/auth/change-password`, `POST /api/auth/logout-all`, `POST /api/auth/pairing-token`
 - `GET /api/queue/next` → `{kind: "card" | "extract", ...}`
 - `POST /api/review/submit` → FSRS update + optional LLM grading
 - `POST /api/import/json` → bulk note import
@@ -195,8 +232,8 @@ Key endpoints:
 - **Routers**: `backend/app/routers/` (FastAPI endpoints)
 - **Schemas**: `backend/app/schemas/` (Pydantic request/response)
 - **Migrations**: `backend/alembic/versions/`
-- **Tests**: `backend/tests/` (pytest, 420+ tests)
-- **Frontend pages**: `frontend/src/pages/`
+- **Tests**: `backend/tests/` (pytest, 510+ tests); `frontend/src/__tests__/` (Vitest)
+- **Frontend pages**: `frontend/src/pages/` (Review's parts in `frontend/src/pages/review/`)
 - **Frontend API client**: `frontend/src/api/client.ts`
 - **Plugin example**: `backend/plugins.example/`
 

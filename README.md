@@ -99,3 +99,10 @@ npm run build                             # TypeScript verification and asset bu
 - **Complete Ownership**: All decks, cards, logs, and settings reside in `backend/dev.db`. Moving or backing up your data requires only copying that file.
 - **Portability**: Full export to JSON and CSV available at any time via `GET /api/export` and `GET /api/export/review-logs.csv`.
 - **Standard Formats**: Transparent schemas and standard SQL ensure direct access and long-term durability.
+
+## Access From Other Devices
+
+- **What runs where**: a phone on your Wi-Fi, the mobile companion app or the remote tunnel can review cards, read and get answers graded. Running code (`Run`, `Submit`) is limited to a browser on the computer the app is installed on, because it executes your program as your own user on that machine. Code cards are still graded remotely, from the text of the answer.
+- **Opting in**: set `ALLOW_REMOTE_CODE_EXECUTION=1` in `backend/.env` and restart. Do this only if you accept that anyone who can sign in from outside can run programs on your computer.
+- **Pairing a phone**: Settings → Mobile → *Show pairing code*. The code carries a review-only token made for the phone, not your browser's session.
+- **Lost a device or shared a link**: Settings → Account → *Sign out everywhere else* revokes every other session and every paired phone. Changing your password does the same.

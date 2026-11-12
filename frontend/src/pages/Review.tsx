@@ -2346,7 +2346,7 @@ export default function Review() {
                   Modes
                 </span>
                 <div>
-                  <h3 className="font-semibold text-slate-100 text-sm">Deck Study Modes</h3>
+                  <h2 className="font-semibold text-slate-100 text-sm">Deck Study Modes</h2>
                   <p className="text-xs text-slate-400">
                     Drill a deck continuously via <strong className="text-emerald-300 font-semibold">Persist Review</strong> (until all Easy) or run <strong className="text-purple-300 font-semibold">All Cards Run</strong> (easiest to hardest, then FSRS takes over).
                   </p>
