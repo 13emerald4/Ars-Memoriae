@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import { API_BASE } from '../api/client'
 import { CodeEditor } from './CodeEditor'
 import { looksLikeCode, extractCleanCode, detectCodeLanguage } from '../utils/codeUtils'
 
@@ -339,7 +340,7 @@ function RenderTokenSegments({
           const img = seg.text.match(/^!\[\]\(([^)]+)\)$/)
           if (img) {
             const src = img[1].startsWith('/')
-              ? `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'}${img[1]}`
+              ? `${API_BASE}${img[1]}`
               : img[1]
             return (
               <img
@@ -353,7 +354,7 @@ function RenderTokenSegments({
           const audio = seg.text.match(/^\[audio\]\(([^)]+)\)$/)
           if (audio) {
             const src = audio[1].startsWith('/')
-              ? `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'}${audio[1]}`
+              ? `${API_BASE}${audio[1]}`
               : audio[1]
             return <audio key={i} controls src={src} className="my-2 w-full" />
           }
@@ -513,14 +514,14 @@ export function AnswerComparison({
               </span>
             )}
             {hasUserAnswer && (
-              <span className="rounded bg-white/5 px-1.5 py-0.5 text-[11px] font-mono text-slate-400">
+              <span className="rounded bg-white/5 px-1.5 py-0.5 text-[0.6875rem] font-mono text-slate-400">
                 {stats.userWordCount} {stats.userWordCount === 1 ? 'word' : 'words'}
               </span>
             )}
           </div>
 
           {hasUserAnswer && stats.refWordCount > 0 && (
-            <div className="flex items-center gap-2 text-[11px]">
+            <div className="flex items-center gap-2 text-[0.6875rem]">
               <span className="flex items-center gap-1 font-medium text-emerald-300">
                 <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
                 {stats.matchedCount}/{stats.refWordCount} recalled ({stats.recallPercent}%)
@@ -565,7 +566,7 @@ export function AnswerComparison({
               {isCode ? 'Reference Solution' : 'Reference'}
             </span>
             {isCode && (codeLanguage || refLang) && (
-              <span className="rounded bg-sky-500/10 px-1.5 py-0.5 text-[11px] font-mono text-sky-300 border border-sky-500/30">
+              <span className="rounded bg-sky-500/10 px-1.5 py-0.5 text-[0.6875rem] font-mono text-sky-300 border border-sky-500/30">
                 {codeLanguage || refLang}
               </span>
             )}
@@ -575,7 +576,7 @@ export function AnswerComparison({
               </span>
             )}
             {isCode && hasUserAnswer && (
-              <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line text-[11px] ml-1">
+              <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line text-[0.6875rem] ml-1">
                 <button
                   type="button"
                   onClick={() => setRefViewMode('ide')}
@@ -605,7 +606,7 @@ export function AnswerComparison({
           </div>
 
           {hasUserAnswer ? (
-            <div className="flex items-center gap-3 text-[11px]">
+            <div className="flex items-center gap-3 text-[0.6875rem]">
               {stats.missingCount > 0 && (
                 <span className="flex items-center gap-1.5 font-semibold text-amber-300" title="Missing">
                   <span className="inline-block h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
@@ -621,7 +622,7 @@ export function AnswerComparison({
             </div>
           ) : (
             (overlookedPhrases.length > 0 || matchedPhrases.length > 0) && (
-              <div className="flex items-center gap-3 text-[11px]">
+              <div className="flex items-center gap-3 text-[0.6875rem]">
                 {overlookedPhrases.length > 0 && (
                   <span className="flex items-center gap-1 font-medium text-amber-300">
                     <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />

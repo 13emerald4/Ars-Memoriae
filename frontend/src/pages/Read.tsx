@@ -1,3 +1,4 @@
+import { dialogs } from '../components/dialogs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
@@ -199,9 +200,18 @@ function SourceLibrary() {
                 <button
                   className="btn btn-danger"
                   onClick={async () => {
-                    if (!confirm(`Delete "${s.title}"? Cards made from it are kept.`)) return
-                    await api.deleteSource(s.id)
-                    await load()
+                    const ok = await dialogs.confirm({
+                      title: `Delete “${s.title}”?`,
+                      message: 'Cards made from it are kept.',
+                      danger: true,
+                    })
+                    if (!ok) return
+                    try {
+                      await api.deleteSource(s.id)
+                      await load()
+                    } catch (err) {
+                      dialogs.error(err, 'Failed to delete source.')
+                    }
                   }}
                 >
                   Delete
@@ -400,7 +410,7 @@ function ExtractWorkspace({ extractId }: { extractId: string }) {
           ref={bodyRef}
           onMouseUp={captureSelection}
           onKeyUp={captureSelection}
-          className="max-h-[30rem] select-text overflow-y-auto whitespace-pre-wrap text-[15px] leading-7 text-slate-200"
+          className="max-h-[30rem] select-text overflow-y-auto whitespace-pre-wrap text-[0.9375rem] leading-7 text-slate-200"
         >
           {extract.content}
         </div>

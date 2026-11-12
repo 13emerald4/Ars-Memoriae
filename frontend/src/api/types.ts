@@ -915,6 +915,12 @@ export interface VramMetrics {
   model_name: string | null
   gpu_name: string | null
   is_unified_memory: boolean
+  /** Where the capacity figure came from. "system-ram" means no dedicated GPU
+   *  was found and the number is the machine's RAM, not VRAM. */
+  memory_source?: 'nvidia-smi' | 'apple-unified' | 'gpu-adapter' | 'system-ram' | 'cloud'
+  /** False when used/available are placeholders rather than readings. They
+   *  must then be shown as unknown, never as live telemetry. */
+  usage_measured?: boolean
 }
 
 export interface QwenCoderModelOption {

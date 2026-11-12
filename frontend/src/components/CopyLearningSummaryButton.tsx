@@ -69,7 +69,7 @@ export function CopyLearningSummaryButton({
       } ${className}`}
     >
       <span>{copied ? 'Copied' : 'Copy Summary'}</span>
-      <span className="ml-1 rounded border border-current/25 px-1 py-0.2 font-mono text-[10px] opacity-75">
+      <span className="ml-1 rounded border border-current/25 px-1 py-0.2 font-mono text-[0.625rem] opacity-75">
         Ctrl+Shift+C
       </span>
     </button>

@@ -1,3 +1,4 @@
+import { dialogs } from './dialogs'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { api } from '../api/client'
@@ -321,11 +322,10 @@ function renderDocExplanation(text: string) {
           key={idx}
           className="rounded-lg border-l-4 border-emerald-400 bg-emerald-950/30 border-y border-r border-emerald-500/20 p-3 shadow-sm space-y-1.5"
         >
-          <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[10px] tracking-wider uppercase">
-            <span>📖</span>
+          <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[0.625rem] tracking-wider uppercase">
             <span>Verbatim Specification</span>
           </div>
-          <div className="font-mono text-[12px] leading-relaxed text-emerald-100/95 whitespace-pre-wrap pl-0.5">
+          <div className="font-mono text-[0.75rem] leading-relaxed text-emerald-100/95 whitespace-pre-wrap pl-0.5">
             {quoteText}
           </div>
         </div>
@@ -352,11 +352,10 @@ function renderDocExplanation(text: string) {
           key={idx}
           className="rounded-lg bg-black/40 border border-white/5 p-3.5 space-y-1.5 shadow-sm"
         >
-          <div className="flex items-center gap-1.5 text-emerald-300 font-bold text-[11px] tracking-wider uppercase">
-            <span>💡</span>
+          <div className="flex items-center gap-1.5 text-emerald-300 font-bold text-[0.6875rem] tracking-wider uppercase">
             <span>Meaning & Application</span>
           </div>
-          <div className="text-[13px] leading-6 text-slate-100 font-sans">
+          <div className="text-[0.8125rem] leading-6 text-slate-100 font-sans">
             {parts.map((part, pIdx) => {
               if (part.startsWith('**') && part.endsWith('**')) {
                 return (
@@ -369,7 +368,7 @@ function renderDocExplanation(text: string) {
                 return (
                   <code
                     key={pIdx}
-                    className="px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-300 font-mono text-[12px] border border-emerald-500/25 inline-block my-0.5"
+                    className="px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-300 font-mono text-[0.75rem] border border-emerald-500/25 inline-block my-0.5"
                   >
                     {part.slice(1, -1)}
                   </code>
@@ -396,8 +395,7 @@ function renderDocExplanation(text: string) {
           key={idx}
           className="flex items-start gap-2.5 rounded-lg bg-sky-950/30 border border-sky-500/30 px-3.5 py-2.5 text-sky-100 shadow-sm"
         >
-          <span className="text-sky-400 font-bold text-sm shrink-0 mt-0.5">⚡</span>
-          <div className="text-[12px] leading-relaxed text-sky-100/90 font-sans">
+          <div className="text-[0.75rem] leading-relaxed text-sky-100/90 font-sans">
             <span className="font-semibold text-sky-300 mr-1.5">Key Takeaway:</span>
             {parts.map((part, pIdx) => {
               if (part.startsWith('**') && part.endsWith('**')) {
@@ -411,7 +409,7 @@ function renderDocExplanation(text: string) {
                 return (
                   <code
                     key={pIdx}
-                    className="px-1.5 py-0.5 rounded bg-black/60 text-sky-200 font-mono text-[11px] border border-sky-500/20"
+                    className="px-1.5 py-0.5 rounded bg-black/60 text-sky-200 font-mono text-[0.6875rem] border border-sky-500/20"
                   >
                     {part.slice(1, -1)}
                   </code>
@@ -430,7 +428,7 @@ function renderDocExplanation(text: string) {
     return (
       <div
         key={idx}
-        className="p-3 rounded-lg bg-black/30 border border-white/10 text-slate-200 text-[13px] leading-relaxed"
+        className="p-3 rounded-lg bg-black/30 border border-white/10 text-slate-200 text-[0.8125rem] leading-relaxed"
       >
         <p>
           {parts.map((part, pIdx) => {
@@ -446,7 +444,7 @@ function renderDocExplanation(text: string) {
               return (
                 <code
                   key={pIdx}
-                  className="px-1.5 py-0.5 rounded bg-black/60 text-emerald-200 font-mono text-[11px] border border-emerald-500/20"
+                  className="px-1.5 py-0.5 rounded bg-black/60 text-emerald-200 font-mono text-[0.6875rem] border border-emerald-500/20"
                 >
                   {part.slice(1, -1)}
                 </code>
@@ -472,7 +470,7 @@ function renderFormattedMarkdown(text: string) {
       return (
         <pre
           key={idx}
-          className="my-1.5 p-2 rounded bg-black/70 border border-emerald-500/25 font-mono text-[11px] text-emerald-200 overflow-x-auto whitespace-pre leading-relaxed"
+          className="my-1.5 p-2 rounded bg-black/70 border border-emerald-500/25 font-mono text-[0.6875rem] text-emerald-200 overflow-x-auto whitespace-pre leading-relaxed"
         >
           {codeLines}
         </pre>
@@ -481,7 +479,7 @@ function renderFormattedMarkdown(text: string) {
 
     const lines = trimmed.split('\n')
     return (
-      <div key={idx} className="space-y-1 text-[12px] leading-relaxed text-slate-200 font-sans">
+      <div key={idx} className="space-y-1 text-[0.75rem] leading-relaxed text-slate-200 font-sans">
         {lines.map((line, lIdx) => {
           const isBullet = line.trim().startsWith('- ') || line.trim().startsWith('* ')
           const cleanLine = isBullet ? line.trim().slice(2) : line
@@ -502,7 +500,7 @@ function renderFormattedMarkdown(text: string) {
                     return (
                       <code
                         key={pIdx}
-                        className="px-1.5 py-0.5 rounded bg-emerald-950/70 text-emerald-300 font-mono text-[11px] border border-emerald-500/25 inline-block mx-0.5"
+                        className="px-1.5 py-0.5 rounded bg-emerald-950/70 text-emerald-300 font-mono text-[0.6875rem] border border-emerald-500/25 inline-block mx-0.5"
                       >
                         {part.slice(1, -1)}
                       </code>
@@ -1081,7 +1079,7 @@ export function CodeEditor({
       'width=940,height=780,left=150,top=100,resizable=yes,scrollbars=yes'
     )
     if (!popup) {
-      alert('Popup was blocked by your browser. Please allow popups for Ars-Memoriae to use the secondary monitor window.')
+      dialogs.notify('The pop-out window was blocked. Allow pop-ups for this site to use a second window.', 'error')
       return
     }
 
@@ -1185,7 +1183,7 @@ export function CodeEditor({
           // This is the active hint line!
           const highlightedLine = highlightLeetCode(line)
           htmlParts.push(
-            `<span style="background-color: rgba(245, 158, 11, 0.22); color: #fef08a; box-shadow: -4px 0 0 rgba(245, 158, 11, 0.22), -7px 0 0 #f59e0b; display: inline-block; vertical-align: top; min-height: 24px; min-width: 100%; border-radius: 2px;" title="💡 Hint for line ${hintOnlyLine}">${highlightedLine}</span>`
+            `<span style="background-color: rgba(245, 158, 11, 0.22); color: #fef08a; box-shadow: -4px 0 0 rgba(245, 158, 11, 0.22), -7px 0 0 #f59e0b; display: inline-block; vertical-align: top; min-height: 24px; min-width: 100%; border-radius: 2px;" title=" Hint for line ${hintOnlyLine}">${highlightedLine}</span>`
           )
           maskedLines.push(line)
         } else {
@@ -1228,7 +1226,7 @@ export function CodeEditor({
         const highlighted = highlightLeetCode(line)
         if (idx === targetIdx) {
           htmlParts.push(
-            `<span style="background-color: rgba(244, 63, 94, 0.16); box-shadow: inset 0 -2px 0 rgba(244, 63, 94, 0.7); display: inline-block; vertical-align: top; min-height: 24px; min-width: 100%; border-radius: 2px;" title="⚠️ ${escapeHtml(activeLogicWarning.message)}">${highlighted}</span>`
+            `<span style="background-color: rgba(244, 63, 94, 0.16); box-shadow: inset 0 -2px 0 rgba(244, 63, 94, 0.7); display: inline-block; vertical-align: top; min-height: 24px; min-width: 100%; border-radius: 2px;" title=" ${escapeHtml(activeLogicWarning.message)}">${highlighted}</span>`
           )
         } else {
           htmlParts.push(highlighted)
@@ -1646,25 +1644,23 @@ export function CodeEditor({
             <span className="flex items-center gap-1.5 font-semibold text-xs tracking-wide whitespace-nowrap shrink-0">
               {docSearchResult ? (
                 <>
-                  <span className="text-emerald-400">📄</span>
                   <span className="text-emerald-200 font-bold">Deck Docs</span>
                   {docSearchResult?.doc_citation && (
-                    <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 font-mono text-[10px] font-semibold border border-emerald-500/40">
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 font-mono text-[0.625rem] font-semibold border border-emerald-500/40">
                       {docSearchResult.doc_citation}
                     </span>
                   )}
                 </>
               ) : (
                 <>
-                  <span className="text-sky-400">💬</span>
                   <span className="text-sky-200 font-bold">Ask Local LLM</span>
-                  <span className="hidden sm:inline px-1.5 py-0.5 rounded bg-sky-950/90 text-sky-300 font-sans text-[10px] font-semibold border border-sky-500/35">
+                  <span className="hidden sm:inline px-1.5 py-0.5 rounded bg-sky-950/90 text-sky-300 font-sans text-[0.625rem] font-semibold border border-sky-500/35">
                     Docs + Pre-training
                   </span>
                 </>
               )}
               {inPopup && (
-                <span className="px-1.5 py-0.5 rounded bg-sky-900/60 text-sky-200 font-mono text-[10px] border border-sky-500/30">
+                <span className="px-1.5 py-0.5 rounded bg-sky-900/60 text-sky-200 font-mono text-[0.625rem] border border-sky-500/30">
                   External Window
                 </span>
               )}
@@ -1683,7 +1679,7 @@ export function CodeEditor({
                     }
                   }}
                   title="Select Local LLM / Documentation model"
-                  className="h-6 rounded bg-[#0c3124] px-2 text-[10px] font-mono text-emerald-200 border border-emerald-500/30 focus:outline-none cursor-pointer"
+                  className="h-6 rounded bg-[#0c3124] px-2 text-[0.625rem] font-mono text-emerald-200 border border-emerald-500/30 focus:outline-none cursor-pointer"
                 >
                   {Array.from(
                     new Set([
@@ -1708,9 +1704,8 @@ export function CodeEditor({
                 type="button"
                 onClick={() => void triggerDocSearch(activeQaSnippet || selectedText)}
                 title="Search attached deck documentation for this snippet (Alt+D)"
-                className="h-6 rounded px-2 text-[11px] font-medium text-emerald-300 hover:text-emerald-100 hover:bg-emerald-500/20 transition cursor-pointer flex items-center gap-1 whitespace-nowrap"
+                className="h-6 rounded px-2 text-[0.6875rem] font-medium text-emerald-300 hover:text-emerald-100 hover:bg-emerald-500/20 transition cursor-pointer flex items-center gap-1 whitespace-nowrap"
               >
-                <span>📄</span>
                 <span className="hidden sm:inline">Search Docs</span>
               </button>
             )}
@@ -1720,7 +1715,7 @@ export function CodeEditor({
                   type="button"
                   onClick={handleCopyDocResult}
                   title="Copy document findings"
-                  className="h-6 rounded px-2 text-[11px] font-medium text-emerald-300 hover:text-emerald-100 hover:bg-emerald-500/20 transition cursor-pointer whitespace-nowrap"
+                  className="h-6 rounded px-2 text-[0.6875rem] font-medium text-emerald-300 hover:text-emerald-100 hover:bg-emerald-500/20 transition cursor-pointer whitespace-nowrap"
                 >
                   {copiedDocResult ? 'Copied' : 'Copy'}
                 </button>
@@ -1728,7 +1723,7 @@ export function CodeEditor({
                   type="button"
                   onClick={() => void triggerDocSearch(docSearchResult.selectedSnippet)}
                   title="Re-search documentation"
-                  className="h-6 rounded px-2 text-[11px] font-medium text-emerald-300 hover:text-emerald-100 hover:bg-emerald-500/20 transition cursor-pointer whitespace-nowrap"
+                  className="h-6 rounded px-2 text-[0.6875rem] font-medium text-emerald-300 hover:text-emerald-100 hover:bg-emerald-500/20 transition cursor-pointer whitespace-nowrap"
                 >
                   Re-search
                 </button>
@@ -1742,7 +1737,7 @@ export function CodeEditor({
                   setDismissedQaPrompts({})
                 }}
                 title="Clear conversation thread for this card"
-                className="h-6 rounded px-2 text-[10px] font-medium text-emerald-400/75 hover:text-emerald-200 hover:bg-emerald-500/15 transition cursor-pointer whitespace-nowrap"
+                className="h-6 rounded px-2 text-[0.625rem] font-medium text-emerald-400/75 hover:text-emerald-200 hover:bg-emerald-500/15 transition cursor-pointer whitespace-nowrap"
               >
                 Clear Thread
               </button>
@@ -1753,7 +1748,7 @@ export function CodeEditor({
                 type="button"
                 onClick={handlePopOut}
                 title="Pop out to separate window for second monitor (Alt+W)"
-                className="h-6 rounded px-2 text-[11px] font-medium text-sky-300 hover:text-sky-100 hover:bg-sky-500/20 transition cursor-pointer flex items-center gap-1 border border-sky-500/30 whitespace-nowrap"
+                className="h-6 rounded px-2 text-[0.6875rem] font-medium text-sky-300 hover:text-sky-100 hover:bg-sky-500/20 transition cursor-pointer flex items-center gap-1 border border-sky-500/30 whitespace-nowrap"
               >
                 <span>⧉</span>
                 <span className="hidden sm:inline">Pop Out</span>
@@ -1763,7 +1758,7 @@ export function CodeEditor({
                 type="button"
                 onClick={handleDockBack}
                 title="Dock back to main editor window (Alt+W)"
-                className="h-6 rounded px-2 text-[11px] font-medium text-amber-300 hover:text-amber-100 hover:bg-amber-500/20 transition cursor-pointer flex items-center gap-1 border border-amber-500/30 whitespace-nowrap"
+                className="h-6 rounded px-2 text-[0.6875rem] font-medium text-amber-300 hover:text-amber-100 hover:bg-amber-500/20 transition cursor-pointer flex items-center gap-1 border border-amber-500/30 whitespace-nowrap"
               >
                 <span>⤓</span>
                 <span>Dock Back</span>
@@ -1800,7 +1795,7 @@ export function CodeEditor({
 
         {/* Optional Selected Snippet Focus Strip */}
         {activeSnippet && (
-          <div className="shrink-0 px-3 py-1 bg-black/45 border-b border-emerald-500/15 flex items-center gap-2 text-[10px]">
+          <div className="shrink-0 px-3 py-1 bg-black/45 border-b border-emerald-500/15 flex items-center gap-2 text-[0.625rem]">
             <span className="text-emerald-400/75 uppercase tracking-wider font-semibold shrink-0">Focus:</span>
             <code className="font-mono text-emerald-200/90 truncate" title={activeSnippet}>
               {activeSnippet.replace(/\s+/g, ' ').slice(0, 140)}
@@ -1833,10 +1828,9 @@ export function CodeEditor({
             <>
               {!docSearchResult && isQaOpen && qaHistory.length === 0 && (
                 <div className="p-2.5 rounded-lg bg-sky-950/30 border border-sky-500/25 text-sky-200 text-xs flex items-start gap-2">
-                  <span className="text-base select-none leading-none mt-0.5">🤖</span>
                   <div className="min-w-0">
                     <p className="font-medium text-sky-100">Ask Local LLM Directly</p>
-                    <p className="text-[11px] text-sky-300/80 leading-relaxed">
+                    <p className="text-[0.6875rem] text-sky-300/80 leading-relaxed">
                       Grounded in the card prompt, your live code, unit tests, execution output, attached course docs, and pre-trained programming knowledge.
                     </p>
                   </div>
@@ -1864,9 +1858,9 @@ export function CodeEditor({
                   <button
                     type="button"
                     onClick={() => setShowDocMatches(!showDocMatches)}
-                    className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-300/80 hover:text-emerald-200 transition cursor-pointer py-0.5"
+                    className="flex items-center gap-1.5 text-[0.6875rem] font-medium text-emerald-300/80 hover:text-emerald-200 transition cursor-pointer py-0.5"
                   >
-                    <span className="text-[9px]">{showDocMatches ? '▼' : '▶'}</span>
+                    <span className="text-[0.5625rem]">{showDocMatches ? '▼' : '▶'}</span>
                     <span>
                       {showDocMatches ? 'Hide' : 'Show'} Matched Course Excerpt
                       {docSearchResult.doc_matches.length > 1 ? 's' : ''} ({docSearchResult.doc_matches.length})
@@ -1877,15 +1871,15 @@ export function CodeEditor({
                       {docSearchResult.doc_matches.map((m, mIdx) => (
                         <div
                           key={m.extract_id || mIdx}
-                          className="p-2 rounded bg-black/60 border border-emerald-500/20 text-slate-300 text-[11px] font-mono leading-relaxed"
+                          className="p-2 rounded bg-black/60 border border-emerald-500/20 text-slate-300 text-[0.6875rem] font-mono leading-relaxed"
                         >
-                          <div className="flex items-center justify-between text-emerald-400 font-semibold mb-1 text-[10px]">
+                          <div className="flex items-center justify-between text-emerald-400 font-semibold mb-1 text-[0.625rem]">
                             <span>{m.source_title}</span>
                             <span className="bg-emerald-950 px-1.5 py-0.2 rounded border border-emerald-500/30">
                               {m.locator || 'General'}
                             </span>
                           </div>
-                          <div className="text-slate-300 whitespace-pre-wrap font-mono text-[11px] line-clamp-4 hover:line-clamp-none transition">
+                          <div className="text-slate-300 whitespace-pre-wrap font-mono text-[0.6875rem] line-clamp-4 hover:line-clamp-none transition">
                             {m.content}
                           </div>
                         </div>
@@ -1897,9 +1891,9 @@ export function CodeEditor({
 
               {qaHistory.length > 0 && (
                 <div className="space-y-2.5 pt-1">
-                  <div className="flex items-center justify-between text-[10px] text-emerald-400/75 font-semibold uppercase tracking-wider">
+                  <div className="flex items-center justify-between text-[0.625rem] text-emerald-400/75 font-semibold uppercase tracking-wider">
                     <span>
-                      💬 {docSearchResult ? 'Follow-up Discussion' : 'Discussion'} ·{' '}
+                       {docSearchResult ? 'Follow-up Discussion' : 'Discussion'} ·{' '}
                       {isAntigravityModel(selectedModel || docSearchResult?.model_used) ? 'Antigravity' : 'Local'} ·{' '}
                       {activeModelDisplay.short}
                     </span>
@@ -1916,19 +1910,19 @@ export function CodeEditor({
                             : 'bg-[#061811] border border-emerald-500/40 text-slate-100 mr-2'
                         }`}
                       >
-                        <div className="flex items-center justify-between text-[10px] font-semibold mb-1">
+                        <div className="flex items-center justify-between text-[0.625rem] font-semibold mb-1">
                           <span className={isUser ? 'text-emerald-300' : 'text-emerald-400'}>
                             {isUser
-                              ? '👤 You'
-                              : `🤖 ${getModelDisplayInfo(selectedModel || docSearchResult?.model_used || 'Local LLM').label}`}
+                              ? ' You'
+                              : ` ${getModelDisplayInfo(selectedModel || docSearchResult?.model_used || 'Local LLM').label}`}
                           </span>
                           {turn.citation && !isUser ? (
-                            <span className="px-1.5 py-0.2 rounded bg-black/60 text-emerald-300 font-mono text-[9px] border border-emerald-500/30">
-                              📄 {turn.citation}
+                            <span className="px-1.5 py-0.2 rounded bg-black/60 text-emerald-300 font-mono text-[0.5625rem] border border-emerald-500/30">
+                               {turn.citation}
                             </span>
                           ) : !isUser ? (
-                            <span className="px-1.5 py-0.2 rounded bg-sky-950/60 text-sky-300 font-sans text-[9px] border border-sky-500/30">
-                              🧠 Pre-training
+                            <span className="px-1.5 py-0.2 rounded bg-sky-950/60 text-sky-300 font-sans text-[0.5625rem] border border-sky-500/30">
+                               Pre-training
                             </span>
                           ) : null}
                         </div>
@@ -1939,7 +1933,7 @@ export function CodeEditor({
                             <>
                               {renderFormattedMarkdown(turn.content)}
                               {turn.extracted_terms && turn.extracted_terms.length > 0 ? (
-                                <div className="mt-2 pt-1.5 border-t border-emerald-500/20 flex items-center gap-1.5 flex-wrap text-[10px] text-emerald-300">
+                                <div className="mt-2 pt-1.5 border-t border-emerald-500/20 flex items-center gap-1.5 flex-wrap text-[0.625rem] text-emerald-300">
                                   <span className="font-semibold text-emerald-400">✓ Added to Card Lexicon:</span>
                                   {turn.extracted_terms.map((t, i) => (
                                     <code
@@ -1969,10 +1963,10 @@ export function CodeEditor({
                                   <button
                                     type="button"
                                     onClick={() => void handleAddQaTurnToCard(tIdx, turn)}
-                                    className="text-[10px] text-sky-300/80 hover:text-sky-100 underline cursor-pointer transition"
+                                    className="text-[0.625rem] text-sky-300/80 hover:text-sky-100 underline cursor-pointer transition"
                                     title="Extract or pin these definitions to the card's Concordance & Lexicon sidebar"
                                   >
-                                    📌 Pin to Card Lexicon
+                                     Pin to Card Lexicon
                                   </button>
                                 </div>
                               ) : null}
@@ -2014,13 +2008,13 @@ export function CodeEditor({
           <div className="shrink-0 border-t border-emerald-500/20 bg-[#08100d] px-3 py-2 space-y-1.5">
             {qaHistory.length === 0 && !isAskingQuestion && (
               <div className="flex items-center flex-wrap gap-1.5">
-                <span className="text-[10px] text-emerald-400/70 font-medium mr-0.5">Quick:</span>
+                <span className="text-[0.625rem] text-emerald-400/70 font-medium mr-0.5">Quick:</span>
                 {promptSuggestions.map((prompt) => (
                   <button
                     key={prompt}
                     type="button"
                     onClick={() => void handleAskQuestion(prompt)}
-                    className="rounded-full bg-black/60 hover:bg-emerald-950/80 border border-emerald-500/30 hover:border-emerald-400 px-2 py-0.5 text-[10px] text-emerald-300 hover:text-emerald-100 transition cursor-pointer"
+                    className="rounded-full bg-black/60 hover:bg-emerald-950/80 border border-emerald-500/30 hover:border-emerald-400 px-2 py-0.5 text-[0.625rem] text-emerald-300 hover:text-emerald-100 transition cursor-pointer"
                   >
                     {prompt}
                   </button>
@@ -2063,7 +2057,7 @@ export function CodeEditor({
                 ) : (
                   <>
                     <span>Ask</span>
-                    <span className="text-[10px] opacity-75">↵</span>
+                    <span className="text-[0.625rem] opacity-75">↵</span>
                   </>
                 )}
               </button>
@@ -2149,9 +2143,8 @@ export function CodeEditor({
                 }`}
                 title="Search and ground selected code against attached deck documentation (Alt+D)"
               >
-                <span className="text-emerald-400">📄</span>
                 <span>{isSearchingDocs ? 'Searching Docs…' : selectedText.trim() ? 'Search Docs' : 'Deck Docs'}</span>
-                <span className="text-[10px] text-emerald-400/60 font-mono hidden md:inline">(Alt+D)</span>
+                <span className="text-[0.625rem] text-emerald-400/60 font-mono hidden md:inline">(Alt+D)</span>
               </button>
 
               {/* Ask Local LLM Button */}
@@ -2170,9 +2163,8 @@ export function CodeEditor({
                 }`}
                 title="Directly ask local LLM a question about selected code using docs and pre-training (Alt+Q)"
               >
-                <span className="text-sky-400">💬</span>
                 <span>{isAskingQuestion ? 'Asking…' : 'Ask LLM'}</span>
-                <span className="text-[10px] text-sky-400/60 font-mono hidden md:inline">(Alt+Q)</span>
+                <span className="text-[0.625rem] text-sky-400/60 font-mono hidden md:inline">(Alt+Q)</span>
               </button>
 
               {onRequestLineHint && !readOnly && (
@@ -2190,7 +2182,7 @@ export function CodeEditor({
                   title={`Request Socratic Hint for line ${cursorLine} (Alt+H)`}
                 >
                   <span>{lineHintLoading ? 'Thinking…' : 'Hint'}</span>
-                  <span className="text-[10px] text-amber-400/60 font-mono hidden md:inline">(Alt+H)</span>
+                  <span className="text-[0.625rem] text-amber-400/60 font-mono hidden md:inline">(Alt+H)</span>
                 </button>
               )}
               {cleanRefCode && onLogicGuardToggle && !readOnly && (
@@ -2208,7 +2200,7 @@ export function CodeEditor({
                       : 'Logic Guard is OFF: Click to enable real-time logic flaw detection'
                   }
                 >
-                  <span>{logicGuardEnabled ? '🛡️ Guard: ON' : '🛡️ Guard: OFF'}</span>
+                 <span>{logicGuardEnabled ? ' Guard: ON' : ' Guard: OFF'}</span>
                 </button>
               )}
 
@@ -2225,7 +2217,7 @@ export function CodeEditor({
                   title="Grade your solution with local Qwen 2.5 Coder 7B (Alt+G)"
                 >
                   <span>{grading || submitting ? 'Grading…' : 'Grade'}</span>
-                  <span className="text-[10px] text-emerald-300/70 font-mono hidden md:inline">(Alt+G)</span>
+                  <span className="text-[0.625rem] text-emerald-300/70 font-mono hidden md:inline">(Alt+G)</span>
                 </button>
               )}
               {onRun && (
@@ -2255,14 +2247,13 @@ export function CodeEditor({
       {activeLogicWarning && (
         <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-rose-950/90 via-[#260e14] to-rose-950/80 border-b border-rose-500/50 px-3.5 py-2 text-xs text-rose-200 animate-in fade-in slide-in-from-top-1 shadow-md shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="text-base select-none shrink-0 text-rose-400">⚠️</span>
             <div className="min-w-0 flex items-center gap-2 flex-wrap">
               <span className="font-bold text-rose-300 whitespace-nowrap">
                 Logic Flaw on Line {activeLogicWarning.lineNumber}:
               </span>
               <span className="text-rose-100">{activeLogicWarning.message}</span>
               {activeLogicWarning.suggestedFix && (
-                <span className="text-rose-300/80 italic text-[11px]">
+                <span className="text-rose-300/80 italic text-[0.6875rem]">
                   ({activeLogicWarning.suggestedFix})
                 </span>
               )}
@@ -2352,10 +2343,10 @@ export function CodeEditor({
                 }`}
                 title={
                   isLogicFlawed
-                    ? `⚠️ Logic flaw on line ${lineNum}: ${activeLogicWarning.message} (Click to jump back)`
+                    ? ` Logic flaw on line ${lineNum}: ${activeLogicWarning.message} (Click to jump back)`
                     : hintOnly
                     ? isHintOnlyTarget
-                      ? `💡 Active Hint (Line ${lineNum})`
+                      ? ` Active Hint (Line ${lineNum})`
                       : `Click to view hint for line ${lineNum}`
                     : isTargetLine
                     ? `Expected code line ${lineNum} (Click to jump)`
@@ -2364,17 +2355,21 @@ export function CodeEditor({
               >
                 {isTargetLine && !isLogicFlawed && !isHintOnlyTarget && (
                   <span
-                    className="text-[9px] mr-0.5 select-none font-bold"
+                    className="text-[0.5625rem] mr-0.5 select-none font-bold"
                     style={{ color: `rgb(${targetRgb!.r}, ${targetRgb!.g}, ${targetRgb!.b})` }}
                   >
                     ✦
                   </span>
                 )}
                 {isLogicFlawed && (
-                  <span className="text-[10px] text-rose-400 select-none">⚠️</span>
+                  <span className="text-[0.625rem] font-bold text-rose-400 select-none" aria-hidden="true">
+                    !
+                  </span>
                 )}
                 {hintOnly && isHintOnlyTarget && !isLogicFlawed && (
-                  <span className="text-[10px] text-amber-400 select-none">💡</span>
+                  <span className="text-[0.625rem] font-bold text-amber-400 select-none" aria-hidden="true">
+                    ›
+                  </span>
                 )}
                 {onRequestLineHint && !readOnly && !hintOnly && !isLogicFlawed && (
                   <button
@@ -2385,7 +2380,7 @@ export function CodeEditor({
                       triggerLineHint(lineNum)
                     }}
                     title={`Request Socratic Hint for line ${lineNum} (Alt+H)`}
-                    className={`cursor-pointer text-[10px] transition-opacity hover:scale-110 ${
+                    className={`cursor-pointer text-[0.625rem] transition-opacity hover:scale-110 ${
                       hasActiveHint
                         ? 'opacity-100'
                         : isCurrent
@@ -2409,7 +2404,7 @@ export function CodeEditor({
             ref={highlightRef}
             aria-hidden="true"
             dangerouslySetInnerHTML={{ __html: highlightedHtml + '\n' }}
-            className="pointer-events-none absolute inset-0 m-0 pt-3 pl-3 pr-12 pb-12 font-mono text-[13px] leading-6 overflow-hidden whitespace-pre font-normal text-[#eff1f6]"
+            className="pointer-events-none absolute inset-0 m-0 pt-3 pl-3 pr-12 pb-12 font-mono text-[0.8125rem] leading-6 overflow-hidden whitespace-pre font-normal text-[#eff1f6]"
             style={{
               fontFamily: 'Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
               tabSize: 4,
@@ -2446,9 +2441,8 @@ export function CodeEditor({
                 className="flex items-center gap-1.5 rounded-full bg-[#09221a]/95 hover:bg-[#0e3328] text-emerald-200 border border-emerald-400/60 px-3 py-1 text-xs font-semibold shadow-2xl transition cursor-pointer ring-2 ring-emerald-500/25 hover:scale-105 backdrop-blur-md"
                 title="Search attached deck documentation for this selected code (Alt+D)"
               >
-                <span className="text-emerald-400 font-bold">📄</span>
                 <span>Search Docs</span>
-                <kbd className="px-1 py-0.2 rounded bg-black/60 text-[10px] font-mono text-emerald-300 border border-emerald-500/30">Alt+D</kbd>
+                <kbd className="px-1 py-0.2 rounded bg-black/60 text-[0.625rem] font-mono text-emerald-300 border border-emerald-500/30">Alt+D</kbd>
               </button>
 
               {/* Option 2: Directly Ask Local LLM (Docs + Pre-training) */}
@@ -2466,9 +2460,8 @@ export function CodeEditor({
                 className="flex items-center gap-1.5 rounded-full bg-[#0c1f2e]/95 hover:bg-[#122e44] text-sky-200 border border-sky-400/60 px-3 py-1 text-xs font-semibold shadow-2xl transition cursor-pointer ring-2 ring-sky-500/25 hover:scale-105 backdrop-blur-md"
                 title="Directly ask local LLM a question about this code using docs and pre-training (Alt+Q)"
               >
-                <span className="text-sky-400 font-bold">💬</span>
                 <span>Ask LLM</span>
-                <kbd className="px-1 py-0.2 rounded bg-black/60 text-[10px] font-mono text-sky-300 border border-sky-500/30">Alt+Q</kbd>
+                <kbd className="px-1 py-0.2 rounded bg-black/60 text-[0.625rem] font-mono text-sky-300 border border-sky-500/30">Alt+Q</kbd>
               </button>
 
               {/* Option 3: Define Selected Token / Term via AI Lexicon */}
@@ -2488,9 +2481,8 @@ export function CodeEditor({
                     className="flex items-center gap-1.5 rounded-full bg-[#1a1333]/95 hover:bg-[#271d4b] text-indigo-200 border border-indigo-400/60 px-3 py-1 text-xs font-semibold shadow-2xl transition cursor-pointer ring-2 ring-indigo-500/25 hover:scale-105 backdrop-blur-md"
                     title="Define highlighted code/term using the LLM Lexicon (Alt+L)"
                   >
-                    <span className="text-indigo-300 font-bold">📖</span>
                     <span>Define</span>
-                    <kbd className="px-1 py-0.2 rounded bg-black/60 text-[10px] font-mono text-indigo-300 border border-indigo-500/30">Alt+L</kbd>
+                    <kbd className="px-1 py-0.2 rounded bg-black/60 text-[0.625rem] font-mono text-indigo-300 border border-indigo-500/30">Alt+L</kbd>
                   </button>
                 )}
             </div>
@@ -2517,7 +2509,7 @@ export function CodeEditor({
             autoCapitalize="off"
             autoComplete="off"
             autoCorrect="off"
-            className="code-editor-textarea absolute inset-0 m-0 w-full h-full resize-none bg-transparent p-3 font-mono font-normal text-[13px] leading-6 text-transparent caret-white focus:outline-none whitespace-pre overflow-auto selection:bg-sky-500/35 selection:text-transparent"
+            className="code-editor-textarea absolute inset-0 m-0 w-full h-full resize-none bg-transparent p-3 font-mono font-normal text-[0.8125rem] leading-6 text-transparent caret-white focus:outline-none whitespace-pre overflow-auto selection:bg-sky-500/35 selection:text-transparent"
             style={{
               fontFamily: 'Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
               tabSize: 4,
@@ -2545,7 +2537,7 @@ export function CodeEditor({
             <span className="text-base select-none">⧉</span>
             <span className="font-semibold text-sky-100 whitespace-nowrap">Local LLM & Docs active in separate window</span>
             {(docSearchResult?.selectedSnippet || activeQaSnippet) && (
-              <span className="font-mono text-[10px] text-sky-300 bg-black/60 px-2 py-0.5 rounded truncate max-w-xs border border-sky-500/25">
+              <span className="font-mono text-[0.625rem] text-sky-300 bg-black/60 px-2 py-0.5 rounded truncate max-w-xs border border-sky-500/25">
                 {(docSearchResult?.selectedSnippet || activeQaSnippet).replace(/\s+/g, ' ').slice(0, 40)}…
               </span>
             )}
@@ -2604,12 +2596,12 @@ export function CodeEditor({
                       : `Socratic Hint · Line ${hintLineNumber ?? cursorLine}`}
                   </span>
                   {hintTargetConcept && !activeLineHint?.error && (
-                    <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-300 border border-amber-500/30">
+                    <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[0.625rem] font-medium text-amber-300 border border-amber-500/30">
                       {hintTargetConcept}
                     </span>
                   )}
                   {hintCurrentLineText && (
-                    <span className="font-mono text-[11px] text-amber-200/80 bg-black/50 px-1.5 py-0.5 rounded truncate max-w-xs border border-white/5">
+                    <span className="font-mono text-[0.6875rem] text-amber-200/80 bg-black/50 px-1.5 py-0.5 rounded truncate max-w-xs border border-white/5">
                       {hintCurrentLineText}
                     </span>
                   )}
@@ -2638,7 +2630,7 @@ export function CodeEditor({
                   type="button"
                   onClick={() => triggerLineHint(hintLineNumber ?? cursorLine)}
                   title="Ask for another hint or re-evaluate with current code"
-                  className={`rounded px-2 py-1 text-[11px] font-medium transition cursor-pointer flex items-center gap-1 ${
+                  className={`rounded px-2 py-1 text-[0.6875rem] font-medium transition cursor-pointer flex items-center gap-1 ${
                     activeLineHint?.error
                       ? 'text-rose-200 hover:text-white hover:bg-rose-500/20'
                       : 'text-amber-300 hover:text-amber-100 hover:bg-amber-500/20'
@@ -2667,7 +2659,7 @@ export function CodeEditor({
       {/* Footer Info */}
       {!hideFooter && (
         <div
-          className={`flex items-center justify-between border-t border-[#282828] bg-[#1e1e1e] px-3 text-[11px] text-[#8a8a8a] font-mono min-w-0 gap-2 overflow-hidden shrink-0 ${
+          className={`flex items-center justify-between border-t border-[#282828] bg-[#1e1e1e] px-3 text-[0.6875rem] text-[#8a8a8a] font-mono min-w-0 gap-2 overflow-hidden shrink-0 ${
             compactFooter ? 'h-7' : 'h-8'
           }`}
         >
@@ -2679,7 +2671,7 @@ export function CodeEditor({
               • {lineCount}L / {code.length}C
             </span>
             {diffStats && (
-              <div className="flex items-center gap-1.5 ml-1 font-mono text-[10px]">
+              <div className="flex items-center gap-1.5 ml-1 font-mono text-[0.625rem]">
                 <span className="flex items-center gap-1 font-semibold text-emerald-300 bg-emerald-950/70 border border-emerald-500/40 px-1.5 py-0.5 rounded leading-none whitespace-nowrap">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
                   Recalled {diffStats.matchedCount}/{diffStats.refWordCount} ({diffStats.recallPercent}%)
@@ -2693,7 +2685,7 @@ export function CodeEditor({
               </div>
             )}
           </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-[#8a8a8a] shrink-0 overflow-hidden">
+          <div className="flex items-center gap-1.5 text-[0.625rem] text-[#8a8a8a] shrink-0 overflow-hidden">
             {!compactFooter && onRequestLineHint && !readOnly && (
               <span className="text-amber-400/90 shrink-0 hidden md:inline whitespace-nowrap">
                 <kbd className="rounded bg-[#282828] px-1 py-0.5 text-amber-300 border border-amber-500/30">Alt+H</kbd> Hint

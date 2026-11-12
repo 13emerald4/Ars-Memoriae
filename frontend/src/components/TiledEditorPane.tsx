@@ -11,6 +11,7 @@ import {
   DEFAULT_TARGET_HIGHLIGHT_COLOR,
 } from '../utils/expectedCodeUtils'
 import { HighlightColorPicker } from './HighlightColorPicker'
+import { storage } from '../utils/storage'
 
 export type TilePaneTab = 'solution' | 'tests' | 'reference' | 'ref_tests' | 'starter_tests'
 
@@ -115,7 +116,7 @@ export function TiledEditorPane({
   const [cursorLine, setCursorLine] = useState(1)
 
   const [refViewMode, setRefViewMode] = useState<'ide' | 'diff' | 'hint'>(() => {
-    return (localStorage.getItem('memorization.refViewMode') as 'ide' | 'diff' | 'hint') || 'ide'
+    return (storage.get('memorization.refViewMode') as 'ide' | 'diff' | 'hint') || 'ide'
   })
 
   const [manualRefHintLine, setManualRefHintLine] = useState<number | null>(null)
@@ -123,29 +124,29 @@ export function TiledEditorPane({
 
   const handleToggleRefViewMode = (mode: 'ide' | 'diff' | 'hint') => {
     setRefViewMode(mode)
-    localStorage.setItem('memorization.refViewMode', mode)
+    storage.set('memorization.refViewMode', mode)
   }
 
   const [focusTargetCode, setFocusTargetCode] = useState<boolean>(() => {
-    const saved = localStorage.getItem('memorization.focusTargetCode')
+    const saved = storage.get('memorization.focusTargetCode')
     return saved !== null ? saved === 'true' : true
   })
 
   const handleToggleFocusTargetCode = () => {
     setFocusTargetCode((prev) => {
       const next = !prev
-      localStorage.setItem('memorization.focusTargetCode', String(next))
+      storage.set('memorization.focusTargetCode', String(next))
       return next
     })
   }
 
   const [targetHighlightColor, setTargetHighlightColor] = useState<string>(() => {
-    return localStorage.getItem('memorization.targetHighlightColor') || DEFAULT_TARGET_HIGHLIGHT_COLOR
+    return storage.get('memorization.targetHighlightColor') || DEFAULT_TARGET_HIGHLIGHT_COLOR
   })
 
   const handleHighlightColorChange = (newColor: string) => {
     setTargetHighlightColor(newColor)
-    localStorage.setItem('memorization.targetHighlightColor', newColor)
+    storage.set('memorization.targetHighlightColor', newColor)
   }
 
   const targetRefLines = useMemo(() => {
@@ -310,7 +311,7 @@ export function TiledEditorPane({
               title={`Request Socratic Hint for line ${cursorLine} (Alt+H)`}
             >
               <span>{lineHintLoading ? 'Thinking…' : 'Hint'}</span>
-              <span className="text-[10px] text-amber-400/60 font-mono hidden xl:inline">(Alt+H)</span>
+              <span className="text-[0.625rem] text-amber-400/60 font-mono hidden xl:inline">(Alt+H)</span>
             </button>
           )}
 
@@ -329,7 +330,7 @@ export function TiledEditorPane({
                   : 'Logic Guard is OFF: Click to enable real-time logic flaw detection'
               }
             >
-              <span>{logicGuardEnabled ? '🛡️ Guard: ON' : '🛡️ Guard: OFF'}</span>
+             <span>{logicGuardEnabled ? ' Guard: ON' : ' Guard: OFF'}</span>
             </button>
           )}
 
@@ -346,7 +347,7 @@ export function TiledEditorPane({
               title="Grade your solution with local Qwen 2.5 Coder 7B (Alt+G)"
             >
               <span>{grading ? 'Grading…' : 'Grade'}</span>
-              <span className="text-[10px] text-emerald-300/70 font-mono hidden xl:inline">(Alt+G)</span>
+              <span className="text-[0.625rem] text-emerald-300/70 font-mono hidden xl:inline">(Alt+G)</span>
             </button>
           )}
 
@@ -375,13 +376,13 @@ export function TiledEditorPane({
           {currentTab === 'reference' && (
             <>
               {item?.time_complexity && (
-                <span className="rounded bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-mono text-sky-300 border border-sky-500/30 shrink-0 whitespace-nowrap">
+                <span className="rounded bg-sky-500/10 px-1.5 py-0.5 text-[0.625rem] font-mono text-sky-300 border border-sky-500/30 shrink-0 whitespace-nowrap">
                   {item.time_complexity}
                 </span>
               )}
               {revealed || refViewMode === 'hint' ? (
                 <>
-                  <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line text-[11px] shrink-0">
+                  <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line text-[0.6875rem] shrink-0">
                     <button
                       type="button"
                       onClick={() => handleToggleRefViewMode('ide')}
@@ -421,7 +422,7 @@ export function TiledEditorPane({
                       }`}
                       title="Hint only mode: show only the current line of code solution left incomplete in Solution tab (Click to toggle)"
                     >
-                      <span>💡 Hint</span>
+                     <span> Hint</span>
                     </button>
                   </div>
 
@@ -441,7 +442,7 @@ export function TiledEditorPane({
                             : 'Click to focus target code (dims boilerplate starter code)'
                         }
                       >
-                        <span>🎯 Target ({formatTargetLineSummary(targetRefLines)})</span>
+                       <span> Target ({formatTargetLineSummary(targetRefLines)})</span>
                       </button>
 
                       <HighlightColorPicker
@@ -453,7 +454,7 @@ export function TiledEditorPane({
                         <button
                           type="button"
                           onClick={() => setManualRefHintLine(firstTargetRefLine)}
-                          className="hidden sm:flex items-center gap-0.5 text-[11px] text-emerald-400 hover:text-emerald-200 hover:underline cursor-pointer font-mono"
+                          className="hidden sm:flex items-center gap-0.5 text-[0.6875rem] text-emerald-400 hover:text-emerald-200 hover:underline cursor-pointer font-mono"
                           title={`Jump to first line of expected code (Line ${firstTargetRefLine})`}
                         >
                           ⤓ Ln {firstTargetRefLine}
@@ -469,12 +470,12 @@ export function TiledEditorPane({
                       className="flex items-center gap-1 text-xs font-medium text-amber-300 hover:text-amber-100 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 transition px-2 py-0.5 rounded cursor-pointer shrink-0 whitespace-nowrap shadow-sm"
                       title="Hide reference solution and return to problem solving (Alt+U)"
                     >
-                      <span>🔒 Hide</span>
+                     <span> Hide</span>
                     </button>
                   )}
 
                   {refViewMode === 'hint' && (
-                    <div className="flex items-center gap-1 text-[11px] font-mono shrink-0 bg-amber-950/40 border border-amber-500/30 px-1.5 py-0.5 rounded-md text-amber-200">
+                    <div className="flex items-center gap-1 text-[0.6875rem] font-mono shrink-0 bg-amber-950/40 border border-amber-500/30 px-1.5 py-0.5 rounded-md text-amber-200">
                       <button
                         type="button"
                         disabled={activeRefHintLine <= 1}
@@ -484,7 +485,7 @@ export function TiledEditorPane({
                       >
                         ◀
                       </button>
-                      <span className="text-[10px] font-semibold text-amber-100 whitespace-nowrap">
+                      <span className="text-[0.625rem] font-semibold text-amber-100 whitespace-nowrap">
                         Ln {activeRefHintLine}/{totalRefLines}
                       </span>
                       <button
@@ -500,7 +501,7 @@ export function TiledEditorPane({
                         <button
                           type="button"
                           onClick={() => setManualRefHintLine(null)}
-                          className="text-[9px] underline text-amber-400 hover:text-amber-200 ml-1 cursor-pointer whitespace-nowrap"
+                          className="text-[0.5625rem] underline text-amber-400 hover:text-amber-200 ml-1 cursor-pointer whitespace-nowrap"
                           title={`Reset to incomplete line (${detectedIncompleteLine})`}
                         >
                           Incomplete (Ln {detectedIncompleteLine})
@@ -510,17 +511,17 @@ export function TiledEditorPane({
                         <button
                           type="button"
                           onClick={onHide}
-                          className="text-[10px] text-amber-300 hover:text-white bg-amber-600/30 hover:bg-amber-600/50 border border-amber-400/40 px-1.5 py-0.5 rounded cursor-pointer transition font-medium ml-1"
+                          className="text-[0.625rem] text-amber-300 hover:text-white bg-amber-600/30 hover:bg-amber-600/50 border border-amber-400/40 px-1.5 py-0.5 rounded cursor-pointer transition font-medium ml-1"
                           title="Lock solution and return to problem solving with line hints"
                         >
-                          🔒 Unreveal & Practice
+                           Unreveal & Practice
                         </button>
                       )}
                     </div>
                   )}
 
                   {refViewMode === 'diff' && refDiffStats && (
-                    <div className="hidden sm:flex items-center gap-1.5 text-[10px] shrink-0 font-mono">
+                    <div className="hidden sm:flex items-center gap-1.5 text-[0.625rem] shrink-0 font-mono">
                       <span className="text-emerald-300 flex items-center gap-1 bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-500/30">
                         <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
                         Recalled ({refDiffStats.matchedCount}/{refDiffStats.refWordCount})
@@ -559,7 +560,7 @@ export function TiledEditorPane({
                     className="px-2 py-0.5 rounded transition flex items-center gap-1 text-xs font-medium bg-amber-500/15 text-amber-200 border border-amber-500/40 hover:bg-amber-500/25 cursor-pointer shrink-0"
                     title="Peek only the line of code currently incomplete without revealing the full solution"
                   >
-                    <span>💡 Line Hint</span>
+                   <span> Line Hint</span>
                   </button>
                   <span className="text-xs text-amber-400/80 font-mono shrink-0 whitespace-nowrap">Locked</span>
                 </div>
@@ -571,7 +572,7 @@ export function TiledEditorPane({
             <>
               {revealed || learnMode || refViewMode === 'hint' ? (
                 <>
-                  <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line text-[11px] shrink-0">
+                  <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line text-[0.6875rem] shrink-0">
                     <button
                       type="button"
                       onClick={() => handleToggleRefViewMode('ide')}
@@ -611,7 +612,7 @@ export function TiledEditorPane({
                       }`}
                       title="Hint only mode: show only current incomplete test line (Click to toggle)"
                     >
-                      <span>💡 Hint</span>
+                     <span> Hint</span>
                     </button>
                   </div>
 
@@ -631,7 +632,7 @@ export function TiledEditorPane({
                             : 'Click to focus target tests (dims boilerplate)'
                         }
                       >
-                        <span>🎯 Target ({formatTargetLineSummary(targetRefTestsLines)})</span>
+                       <span> Target ({formatTargetLineSummary(targetRefTestsLines)})</span>
                       </button>
 
                       <HighlightColorPicker
@@ -643,7 +644,7 @@ export function TiledEditorPane({
                         <button
                           type="button"
                           onClick={() => setManualRefTestsHintLine(firstTargetRefTestsLine)}
-                          className="hidden sm:flex items-center gap-0.5 text-[11px] text-emerald-400 hover:text-emerald-200 hover:underline cursor-pointer font-mono"
+                          className="hidden sm:flex items-center gap-0.5 text-[0.6875rem] text-emerald-400 hover:text-emerald-200 hover:underline cursor-pointer font-mono"
                           title={`Jump to first line of expected tests (Line ${firstTargetRefTestsLine})`}
                         >
                           ⤓ Ln {firstTargetRefTestsLine}
@@ -659,12 +660,12 @@ export function TiledEditorPane({
                       className="flex items-center gap-1 text-xs font-medium text-amber-300 hover:text-amber-100 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 transition px-2 py-0.5 rounded cursor-pointer shrink-0 whitespace-nowrap shadow-sm"
                       title="Hide reference tests and return to problem solving (Alt+U)"
                     >
-                      <span>🔒 Hide</span>
+                     <span> Hide</span>
                     </button>
                   )}
 
                   {refViewMode === 'hint' && (
-                    <div className="flex items-center gap-1 text-[11px] font-mono shrink-0 bg-amber-950/40 border border-amber-500/30 px-1.5 py-0.5 rounded-md text-amber-200">
+                    <div className="flex items-center gap-1 text-[0.6875rem] font-mono shrink-0 bg-amber-950/40 border border-amber-500/30 px-1.5 py-0.5 rounded-md text-amber-200">
                       <button
                         type="button"
                         disabled={activeRefTestsHintLine <= 1}
@@ -674,7 +675,7 @@ export function TiledEditorPane({
                       >
                         ◀
                       </button>
-                      <span className="text-[10px] font-semibold text-amber-100 whitespace-nowrap">
+                      <span className="text-[0.625rem] font-semibold text-amber-100 whitespace-nowrap">
                         Ln {activeRefTestsHintLine}/{totalRefTestsLines}
                       </span>
                       <button
@@ -690,7 +691,7 @@ export function TiledEditorPane({
                         <button
                           type="button"
                           onClick={() => setManualRefTestsHintLine(null)}
-                          className="text-[9px] underline text-amber-400 hover:text-amber-200 ml-1 cursor-pointer whitespace-nowrap"
+                          className="text-[0.5625rem] underline text-amber-400 hover:text-amber-200 ml-1 cursor-pointer whitespace-nowrap"
                           title={`Reset to incomplete test line (${detectedTestsIncompleteLine})`}
                         >
                           Incomplete (Ln {detectedTestsIncompleteLine})
@@ -732,7 +733,7 @@ export function TiledEditorPane({
                     className="px-2 py-0.5 rounded transition flex items-center gap-1 text-xs font-medium bg-amber-500/15 text-amber-200 border border-amber-500/40 hover:bg-amber-500/25 cursor-pointer shrink-0"
                     title="Peek only the test line currently incomplete"
                   >
-                    <span>💡 Test Hint</span>
+                   <span> Test Hint</span>
                   </button>
                   <button
                     type="button"
@@ -904,7 +905,7 @@ export function TiledEditorPane({
                   className="px-3 py-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
                   title="Peek only the line of code currently incomplete without revealing the full solution"
                 >
-                  <span>💡 Peek Line Hint Only</span>
+                 <span> Peek Line Hint Only</span>
                 </button>
               </div>
             </div>
@@ -975,7 +976,7 @@ export function TiledEditorPane({
                   className="px-3 py-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
                   title="Peek only the test line currently incomplete"
                 >
-                  <span>💡 Peek Line Hint Only</span>
+                 <span> Peek Line Hint Only</span>
                 </button>
               </div>
             </div>

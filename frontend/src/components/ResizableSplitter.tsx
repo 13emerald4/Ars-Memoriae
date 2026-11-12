@@ -211,7 +211,7 @@ export function ResizableSplitter({
             e.stopPropagation()
             onToggleCollapse()
           }}
-          className={`absolute z-20 flex items-center justify-center bg-[#202020] border border-ink-line text-slate-400 hover:text-sky-200 hover:border-sky-400 text-[10px] shadow transition-all ${
+          className={`absolute z-20 flex items-center justify-center bg-[#202020] border border-ink-line text-slate-400 hover:text-sky-200 hover:border-sky-400 text-[0.625rem] shadow transition-all ${
             isFlush
               ? isH
                 ? 'top-1.5 rounded w-3.5 h-5'

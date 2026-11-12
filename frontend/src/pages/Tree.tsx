@@ -1,9 +1,11 @@
+import { dialogs } from '../components/dialogs'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Card, TreeNode } from '../api/types'
 import { KnowledgeTree, type KnowledgeTreeNode, type DropPosition } from '../components/KnowledgeTree'
-import { Empty, ErrorNote, PriorityBar, RichText, Section, Spinner } from '../components/ui'
+import { RichText } from '../components/RichText'
+import { Empty, ErrorNote, PriorityBar, Section, Spinner } from '../components/ui'
 
 function toKnowledgeTreeNodes(treeNodes: TreeNode[]): KnowledgeTreeNode[] {
   return treeNodes.map((tn) => ({
@@ -82,8 +84,12 @@ export default function Tree() {
   const handleAddChild = useCallback(
     async (parent: KnowledgeTreeNode | null) => {
       const parentName = parent && parent.id !== '__root__' ? parent.title : 'Root'
-      const title = prompt(`Enter new topic name under "${parentName}":`)
-      if (!title || !title.trim()) return
+      const title = await dialogs.prompt({
+        title: 'New topic',
+        label: `Name of the topic under “${parentName}”`,
+        confirmLabel: 'Add topic',
+      })
+      if (!title) return
       try {
         await api.createTopic({
           title: title.trim(),
@@ -99,8 +105,13 @@ export default function Tree() {
 
   const handleRename = useCallback(
     async (node: KnowledgeTreeNode) => {
-      const title = prompt(`Rename "${node.title}" to:`, node.title)
-      if (!title || !title.trim() || title.trim() === node.title) return
+      const title = await dialogs.prompt({
+        title: 'Rename',
+        label: `New name for “${node.title}”`,
+        defaultValue: node.title,
+        confirmLabel: 'Rename',
+      })
+      if (!title || title === node.title) return
       try {
         await api.updateNode(node.id, { title: title.trim() })
         await load()
@@ -113,7 +124,11 @@ export default function Tree() {
 
   const handleDelete = useCallback(
     async (node: KnowledgeTreeNode) => {
-      if (!confirm(`Are you sure you want to delete "${node.title}"?`)) return
+      const ok = await dialogs.confirm({
+        title: `Delete “${node.title}”?`,
+        danger: true,
+      })
+      if (!ok) return
       try {
         await api.deleteNode(node.id)
         await load()
@@ -239,12 +254,15 @@ export default function Tree() {
                 type="button"
                 className="btn btn-danger px-2.5 py-1 text-xs font-medium"
                 onClick={async () => {
-                  if (
-                    !confirm(
-                      'Are you sure you want to delete everything in the Knowledge Tree? This will delete all topics, decks, cards, reading sources, and extracts. This action cannot be undone.',
-                    )
-                  )
-                    return
+                  const ok = await dialogs.confirm({
+                    title: 'Delete the entire Knowledge Tree?',
+                    message:
+                      'This deletes every topic, deck, card, reading source and extract, along with their review history. It cannot be undone.',
+                    danger: true,
+                    requireText: 'DELETE',
+                    confirmLabel: 'Delete everything',
+                  })
+                  if (!ok) return
                   try {
                     await api.deleteAllTree()
                     await load()
@@ -502,14 +520,13 @@ function NodeRow({
             <button
               className="btn btn-danger px-2 py-1 text-xs"
               disabled={busy}
-              onClick={() => {
-                if (
-                  !confirm(
-                    `Delete the topic “${node.title}”? Anything inside it moves up a level — nothing is deleted.`,
-                  )
-                )
-                  return
-                void run(() => api.deleteNode(node.id))
+              onClick={async () => {
+                const ok = await dialogs.confirm({
+                  title: `Delete the topic “${node.title}”?`,
+                  message: 'Anything inside it moves up a level. Nothing else is deleted.',
+                  danger: true,
+                })
+                if (ok) void run(() => api.deleteNode(node.id))
               }}
             >
               Delete
@@ -519,9 +536,13 @@ function NodeRow({
             <button
               className="btn btn-danger px-2 py-1 text-xs"
               disabled={busy}
-              onClick={() => {
-                if (!confirm(`Delete article “${node.title}”? Cards made from it are kept.`)) return
-                void run(() => api.deleteSource(node.source_id!))
+              onClick={async () => {
+                const ok = await dialogs.confirm({
+                  title: `Delete article “${node.title}”?`,
+                  message: 'Cards made from it are kept.',
+                  danger: true,
+                })
+                if (ok) void run(() => api.deleteSource(node.source_id!))
               }}
             >
               Delete
@@ -531,9 +552,13 @@ function NodeRow({
             <button
               className="btn btn-danger px-2 py-1 text-xs"
               disabled={busy}
-              onClick={() => {
-                if (!confirm(`Delete deck “${node.title}” and its cards?`)) return
-                void run(() => api.deleteDeck(node.deck_id!))
+              onClick={async () => {
+                const ok = await dialogs.confirm({
+                  title: `Delete deck “${node.title}”?`,
+                  message: 'Its cards and their review history are deleted with it.',
+                  danger: true,
+                })
+                if (ok) void run(() => api.deleteDeck(node.deck_id!))
               }}
             >
               Delete
@@ -543,9 +568,9 @@ function NodeRow({
             <button
               className="btn btn-danger px-2 py-1 text-xs"
               disabled={busy}
-              onClick={() => {
-                if (!confirm(`Delete this extract?`)) return
-                void run(() => api.deleteExtract(node.extract_id!))
+              onClick={async () => {
+                const ok = await dialogs.confirm({ title: 'Delete this extract?', danger: true })
+                if (ok) void run(() => api.deleteExtract(node.extract_id!))
               }}
             >
               Delete
@@ -599,7 +624,7 @@ function BranchCards({ nodeId, depth }: { nodeId: string; depth: number }) {
         cards.map((c) => (
           <div key={c.id} className="rounded border border-ink-line px-3 py-2">
             <RichText text={c.front} className="text-xs text-slate-300" />
-            <div className="mt-1 flex flex-wrap gap-2 text-[11px]">
+            <div className="mt-1 flex flex-wrap gap-2 text-[0.6875rem]">
               <span className="chip">{c.state}</span>
               {c.due && <span className="chip">due {new Date(c.due).toLocaleDateString()}</span>}
               <span className="chip">p{c.priority}</span>
@@ -643,7 +668,7 @@ function PriorityMenu({
       />
       <span className="w-6 text-xs tabular-nums text-slate-400">{value}</span>
       <button
-        className="btn px-2 py-0.5 text-[11px]"
+        className="btn px-2 py-0.5 text-[0.6875rem]"
         onClick={() => {
           onApply(value, false)
           setOpen(false)
@@ -653,7 +678,7 @@ function PriorityMenu({
         Set
       </button>
       <button
-        className="btn px-2 py-0.5 text-[11px]"
+        className="btn px-2 py-0.5 text-[0.6875rem]"
         onClick={() => {
           onApply(value, true)
           setOpen(false)
@@ -770,7 +795,7 @@ function GateMenu({
         </>
       )}
       <button
-        className="btn px-2 py-0.5 text-[11px]"
+        className="btn px-2 py-0.5 text-[0.6875rem]"
         onClick={() => {
           onApply(target || null, threshold)
           setOpen(false)

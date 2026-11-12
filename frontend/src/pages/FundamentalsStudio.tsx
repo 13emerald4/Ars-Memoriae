@@ -24,12 +24,13 @@ import {
   sectionCount,
 } from '../services/reading_mode'
 import { getGuidingQuestions } from '../services/guiding_questions'
+import { storage } from '../utils/storage'
 
 const READING_MODE_KEY = 'memorization.readingMode'
 
 function loadReadingMode(): ReadingMode {
   try {
-    const saved = localStorage.getItem(READING_MODE_KEY)
+    const saved = storage.get(READING_MODE_KEY)
     if (saved === 'concise' || saved === 'normal' || saved === 'robust') return saved
   } catch {
     /* private mode / storage disabled — fall through to the default */
@@ -77,7 +78,7 @@ export default function FundamentalsStudio() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(READING_MODE_KEY, readingMode)
+      storage.set(READING_MODE_KEY, readingMode)
     } catch {
       /* storage unavailable — the choice just won't persist */
     }
@@ -88,7 +89,7 @@ export default function FundamentalsStudio() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(CONCORDANCE_ENABLED_STORAGE_KEY, String(concordanceEnabled))
+      storage.set(CONCORDANCE_ENABLED_STORAGE_KEY, String(concordanceEnabled))
     } catch {
       /* storage unavailable */
     }
@@ -276,12 +277,12 @@ export default function FundamentalsStudio() {
               <h3 className="font-bold text-sky-200 text-xs tracking-wide">
                 Core Questions to Ponder as You Read
               </h3>
-              <p className="text-[10px] text-slate-400">
+              <p className="text-[0.625rem] text-slate-400">
                 Active Inquiry — reflect on these fundamental mechanisms and edge cases throughout the lesson:
               </p>
             </div>
           </div>
-          <span className="chip border-sky-500/40 bg-sky-500/10 text-[10px] text-sky-300 font-semibold">
+          <span className="chip border-sky-500/40 bg-sky-500/10 text-[0.625rem] text-sky-300 font-semibold">
             Pre-Reading Focus
           </span>
         </div>
@@ -292,7 +293,7 @@ export default function FundamentalsStudio() {
               key={idx}
               className="flex items-start gap-2.5 rounded-lg border border-sky-500/15 bg-black/25 p-2.5 transition hover:border-sky-500/35 hover:bg-black/40"
             >
-              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-sky-500/20 font-mono text-[10px] font-bold text-sky-300">
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-sky-500/20 font-mono text-[0.625rem] font-bold text-sky-300">
                 {idx + 1}
               </span>
               <span className="leading-relaxed text-slate-200 font-medium">{q}</span>
@@ -316,7 +317,7 @@ export default function FundamentalsStudio() {
           title={m.hint}
           aria-pressed={readingMode === m.id}
           className={`rounded-md font-semibold transition ${
-            size === 'md' ? 'px-3 py-1 text-xs' : 'px-2 py-0.5 text-[10px]'
+            size === 'md' ? 'px-3 py-1 text-xs' : 'px-2 py-0.5 text-[0.625rem]'
           } ${
             readingMode === m.id
               ? 'bg-sky-500 text-white shadow'
@@ -339,7 +340,7 @@ export default function FundamentalsStudio() {
           : 'Concordance highlights off'
       }
       className={`flex items-center gap-1.5 rounded-lg border font-semibold transition shadow-sm ${
-        size === 'md' ? 'px-3 py-1 text-xs' : 'px-2 py-0.5 text-[10px]'
+        size === 'md' ? 'px-3 py-1 text-xs' : 'px-2 py-0.5 text-[0.625rem]'
       } ${
         concordanceEnabled
           ? 'border-sky-500/40 bg-sky-950/40 text-sky-200 hover:bg-sky-500/30 hover:text-white'
@@ -348,7 +349,7 @@ export default function FundamentalsStudio() {
     >
       <span>Concordance:</span>
       <span
-        className={`font-mono text-[9px] uppercase px-1 rounded ${
+        className={`font-mono text-[0.5625rem] uppercase px-1 rounded ${
           concordanceEnabled
             ? 'bg-sky-500/30 text-sky-200 font-bold'
             : 'bg-black/30 text-slate-500'
@@ -384,7 +385,7 @@ export default function FundamentalsStudio() {
             <h1 className="text-xl font-bold tracking-tight text-slate-100">
               Pre-LeetCode Fundamentals Studio
             </h1>
-            <span className="chip border-sky-500/40 bg-sky-950/40 text-sky-300 text-[11px] font-semibold">
+            <span className="chip border-sky-500/40 bg-sky-950/40 text-sky-300 text-[0.6875rem] font-semibold">
               Grounded in MIT 6.0001: Intro to CS &amp; Python (Grimson, Guttag, Bell)
             </span>
           </div>
@@ -396,7 +397,7 @@ export default function FundamentalsStudio() {
         {/* Speed-Run Timer Widget */}
         <div className="flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-950/20 px-3 py-1.5">
           <div className="text-right font-mono">
-            <p className="text-[10px] text-amber-400 font-bold uppercase">Reflex Target</p>
+            <p className="text-[0.625rem] text-amber-400 font-bold uppercase">Reflex Target</p>
             <p
               className={`text-base font-bold ${
                 timerSec <= 10 ? 'text-rose-400 animate-ping' : 'text-amber-300'
@@ -439,7 +440,7 @@ export default function FundamentalsStudio() {
         >
           <span>All Questions</span>
           {allDrills.length > 0 && (
-            <span className="chip border-sky-400/60 bg-sky-500/10 text-[10px] text-sky-300">
+            <span className="chip border-sky-400/60 bg-sky-500/10 text-[0.625rem] text-sky-300">
               {allDrills.filter((d) => d.last_status === 'Accepted').length}/{allDrills.length}
             </span>
           )}
@@ -523,7 +524,7 @@ export default function FundamentalsStudio() {
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setIsFullscreenReading(true)}
-                  className="flex items-center gap-1 rounded-lg border border-sky-500/30 bg-sky-950/40 px-2 py-1 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/20 hover:text-white transition shadow-sm"
+                  className="flex items-center gap-1 rounded-lg border border-sky-500/30 bg-sky-950/40 px-2 py-1 text-[0.6875rem] font-semibold text-sky-300 hover:bg-sky-500/20 hover:text-white transition shadow-sm"
                   title="Open Fullscreen Focus Reading Mode (Esc to exit)"
                 >
                   <span>Fullscreen</span>
@@ -538,7 +539,7 @@ export default function FundamentalsStudio() {
                   >
                     ◀
                   </button>
-                  <span className="text-[11px] text-slate-500 font-mono">
+                  <span className="text-[0.6875rem] text-slate-500 font-mono">
                     {currentIndex + 1}/{drills.length}
                   </span>
                   <button
@@ -588,12 +589,12 @@ export default function FundamentalsStudio() {
                       {concordanceToggle('sm')}
                       <button
                         onClick={() => setIsFullscreenReading(true)}
-                        className="flex items-center gap-1 rounded-md border border-sky-500/40 bg-sky-950/40 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/30 hover:text-white transition shadow"
+                        className="flex items-center gap-1 rounded-md border border-sky-500/40 bg-sky-950/40 px-2.5 py-1 text-[0.6875rem] font-bold text-sky-200 hover:bg-sky-500/30 hover:text-white transition shadow"
                         title="Expand to Fullscreen Focus Reading Mode"
                       >
                         <span>Fullscreen Mode</span>
                       </button>
-                      <span className="text-[11px] font-mono text-slate-400">
+                      <span className="text-[0.6875rem] font-mono text-slate-400">
                         Read time: {lessonReadTime}
                       </span>
                     </div>
@@ -611,7 +612,7 @@ export default function FundamentalsStudio() {
                       {lessonSections.shown < lessonSections.total && (
                         <button
                           onClick={() => setReadingMode('robust')}
-                          className="w-full rounded-lg border border-dashed border-sky-500/40 bg-sky-950/20 px-4 py-2.5 text-[11px] text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 transition"
+                          className="w-full rounded-lg border border-dashed border-sky-500/40 bg-sky-950/20 px-4 py-2.5 text-[0.6875rem] text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 transition"
                         >
                           Showing {lessonSections.shown} of {lessonSections.total} sections —
                           switch to <strong>Robust</strong> for the textbook reading and pitfalls &rarr;
@@ -625,7 +626,7 @@ export default function FundamentalsStudio() {
                   {/* Canonical Solution Snippet */}
                   {drillDetail.solutions?.python && (
                     <div className="space-y-1.5 pt-2">
-                      <p className="font-semibold text-slate-400 uppercase text-[10px] tracking-wider">
+                      <p className="font-semibold text-slate-400 uppercase text-[0.625rem] tracking-wider">
                         MIT 6.0001 Canonical Pattern:
                       </p>
                       <pre className="rounded-lg border border-emerald-500/30 bg-emerald-950/15 p-3.5 text-emerald-300 font-mono overflow-x-auto whitespace-pre text-xs">
@@ -635,7 +636,7 @@ export default function FundamentalsStudio() {
                   )}
 
                   <div className="pt-3 flex justify-between items-center border-t border-ink-line/60">
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[0.6875rem] text-slate-400">
                       Mastered the concept? Test your understanding with the exercise.
                     </span>
                     <button
@@ -693,7 +694,7 @@ export default function FundamentalsStudio() {
                   {/* Examples */}
                   {drillDetail.examples.length > 0 && (
                     <div className="rounded-lg border border-ink-line/60 bg-[#090d13] p-3 text-xs space-y-1.5">
-                      <p className="font-semibold text-slate-400 uppercase text-[10px] tracking-wider">
+                      <p className="font-semibold text-slate-400 uppercase text-[0.625rem] tracking-wider">
                         Example:
                       </p>
                       <p className="font-mono text-slate-300">
@@ -703,7 +704,7 @@ export default function FundamentalsStudio() {
                         <strong>Output:</strong> {drillDetail.examples[0].output}
                       </p>
                       {drillDetail.examples[0].explanation && (
-                        <p className="text-slate-400 text-[11px]">
+                        <p className="text-slate-400 text-[0.6875rem]">
                           {drillDetail.examples[0].explanation}
                         </p>
                       )}
@@ -713,10 +714,10 @@ export default function FundamentalsStudio() {
                   {/* Constraints */}
                   {drillDetail.constraints.length > 0 && (
                     <div className="rounded-lg border border-ink-line/40 bg-[#090d13] p-3 text-xs space-y-1">
-                      <p className="font-semibold text-slate-400 uppercase text-[10px] tracking-wider">
+                      <p className="font-semibold text-slate-400 uppercase text-[0.625rem] tracking-wider">
                         Constraints:
                       </p>
-                      <ul className="list-disc list-inside space-y-0.5 font-mono text-[11px] text-slate-400">
+                      <ul className="list-disc list-inside space-y-0.5 font-mono text-[0.6875rem] text-slate-400">
                         {drillDetail.constraints.map((c, i) => (
                           <li key={i}>{c}</li>
                         ))}
@@ -738,7 +739,7 @@ export default function FundamentalsStudio() {
                           <summary className="font-medium text-slate-300 cursor-pointer select-none">
                             Hint {i + 1}
                           </summary>
-                          <p className="mt-1.5 text-slate-400 text-[11px]">{hint}</p>
+                          <p className="mt-1.5 text-slate-400 text-[0.6875rem]">{hint}</p>
                         </details>
                       ))}
                     </div>
@@ -752,7 +753,7 @@ export default function FundamentalsStudio() {
                           <p className="font-bold text-slate-400 text-xs uppercase tracking-wider">
                             Answer / Solution
                           </p>
-                          <p className="text-[11px] text-slate-500">
+                          <p className="text-[0.6875rem] text-slate-500">
                             Stuck or want to check your approach against the textbook?
                           </p>
                         </div>
@@ -785,7 +786,7 @@ export default function FundamentalsStudio() {
                                     ''
                                   if (sol) void navigator.clipboard.writeText(sol)
                                 }}
-                                className="flex items-center gap-1 rounded bg-slate-800 px-2 py-1 text-[11px] font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition"
+                                className="flex items-center gap-1 rounded bg-slate-800 px-2 py-1 text-[0.6875rem] font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition"
                                 title="Copy solution to clipboard"
                               >
                                 Copy
@@ -798,7 +799,7 @@ export default function FundamentalsStudio() {
                                     ''
                                   if (sol) setCode(sol)
                                 }}
-                                className="flex items-center gap-1 rounded bg-sky-500/20 border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/30 hover:text-white transition"
+                                className="flex items-center gap-1 rounded bg-sky-500/20 border border-sky-500/40 px-2.5 py-1 text-[0.6875rem] font-bold text-sky-200 hover:bg-sky-500/30 hover:text-white transition"
                                 title="Load this solution into code editor"
                               >
                                 Load into Editor &rarr;
@@ -888,7 +889,7 @@ export default function FundamentalsStudio() {
               <div className="flex items-center gap-2.5">
                 <div>
                   <h3 className="text-base font-bold text-slate-100">All Questions, Every Chapter</h3>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[0.6875rem] text-slate-400">
                     {allDrills.filter((d) => d.last_status === 'Accepted').length} of {allDrills.length}{' '}
                     solved across {TRACKS.length} chapters
                   </p>
@@ -922,7 +923,7 @@ export default function FundamentalsStudio() {
 
               {overviewGroups.map(({ track, items }) => (
                 <div key={track.id} className="space-y-2">
-                  <h4 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  <h4 className="flex items-center gap-2 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
                     <span>{track.label}</span>
                     <span className="text-slate-600 font-normal normal-case">
                       ({items.filter((d) => d.last_status === 'Accepted').length}/{items.length})
@@ -948,11 +949,11 @@ export default function FundamentalsStudio() {
                               : 'bg-slate-600'
                           }`}
                         />
-                        <span className="text-slate-500 font-mono text-[11px] w-5 flex-shrink-0">
+                        <span className="text-slate-500 font-mono text-[0.6875rem] w-5 flex-shrink-0">
                           {idx + 1}.
                         </span>
                         <span className="flex-1 text-slate-200 font-medium">{d.title}</span>
-                        <span className="chip border-slate-700 text-slate-400 text-[10px] flex-shrink-0">
+                        <span className="chip border-slate-700 text-slate-400 text-[0.625rem] flex-shrink-0">
                           {d.difficulty}
                         </span>
                       </button>
@@ -1025,7 +1026,7 @@ export default function FundamentalsStudio() {
                 title="Exit Fullscreen (Esc)"
               >
                 <span>Exit Fullscreen</span>
-                <kbd className="text-[10px] font-mono bg-black/40 px-1.5 py-0.5 rounded text-slate-400">Esc</kbd>
+                <kbd className="text-[0.625rem] font-mono bg-black/40 px-1.5 py-0.5 rounded text-slate-400">Esc</kbd>
               </button>
             </div>
           </div>

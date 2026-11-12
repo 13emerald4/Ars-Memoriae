@@ -72,15 +72,32 @@ import type {
   PretestPredictionResponse,
   SpreadingActivationResponse,
 } from './types'
+import { storage } from '../utils/storage'
 
-// In production (served by FastAPI), use relative path '' so requests match current origin
+// Where the API lives. Empty means "this origin": in production FastAPI serves
+// the built app itself, and in development Vite proxies /api and /media to it.
+// Only set VITE_API_BASE_URL to reach a backend on a different origin.
 const BASE = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_BASE_URL ?? '')
+export const API_BASE = BASE
 const TOKEN_KEY = 'memorization.token'
 
+/** Turns a server path such as `/media/<user>/<file>.png` into something an
+ *  <img> can load. Absolute URLs pass through untouched. Every place that
+ *  renders uploaded media must go through this: a hard-coded host only works
+ *  on the machine the server runs on. */
+export function mediaUrl(path: string): string {
+  return path.startsWith('/') ? `${BASE}${path}` : path
+}
+
+/** Fired when the server rejects the stored token. AuthProvider listens and
+ *  drops back to the sign-in screen; without it the shell stayed up with every
+ *  request failing until a manual reload. */
+export const UNAUTHORIZED_EVENT = 'ars:unauthorized'
+
 export const token = {
-  get: () => localStorage.getItem(TOKEN_KEY),
-  set: (t: string) => localStorage.setItem(TOKEN_KEY, t),
-  clear: () => localStorage.removeItem(TOKEN_KEY),
+  get: () => storage.get(TOKEN_KEY),
+  set: (t: string) => storage.set(TOKEN_KEY, t),
+  clear: () => storage.remove(TOKEN_KEY),
 }
 
 export class ApiError extends Error {
@@ -99,9 +116,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   const resp = await fetch(`${BASE}${path}`, { ...init, headers })
 
-  if (resp.status === 401) {
+  // A 401 on a request that carried a token means the session is over. A 401
+  // without one is just a failed sign-in, and should say what the server said.
+  if (resp.status === 401 && t) {
     token.clear()
-    throw new ApiError(401, 'Session expired — please sign in again.')
+    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT))
+    throw new ApiError(401, 'Session expired. Please sign in again.')
   }
   if (resp.status === 204) return null as T
   if (!resp.ok) {
@@ -109,7 +129,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     try {
       const body = await resp.json()
       if (typeof body.detail === 'string') detail = body.detail
-      else if (Array.isArray(body.detail)) detail = body.detail.map((d: any) => d.msg).join('; ')
+      else if (Array.isArray(body.detail)) {
+        detail = body.detail
+          .map((d: { msg?: string }) => d.msg ?? '')
+          .filter(Boolean)
+          .join('; ')
+      }
     } catch {
       /* keep the status line */
     }
@@ -130,6 +155,14 @@ export const api = {
     post<{ access_token: string }>('/api/auth/register', { email, password }),
   login: (email: string, password: string) =>
     post<{ access_token: string }>('/api/auth/login', { email, password }),
+  registrationStatus: () => request<{ open: boolean }>('/api/auth/registration-status'),
+  changePassword: (current_password: string, new_password: string) =>
+    post<{ access_token: string }>('/api/auth/change-password', { current_password, new_password }),
+  // Revokes every token for the account and returns a fresh one for this tab.
+  logoutEverywhere: () => post<{ access_token: string }>('/api/auth/logout-all'),
+  // A review-only token for the mobile app's pairing QR (never this tab's own).
+  pairingToken: () =>
+    post<{ access_token: string; scope: string; expires_in: number }>('/api/auth/pairing-token'),
   me: () => request<User>('/api/me'),
   updateMe: (body: Partial<User>) => patch<User>('/api/me', body),
 
@@ -245,6 +278,9 @@ export const api = {
     latency_ms?: number,
     confidence?: number,
     is_blitz?: boolean,
+    // One id per attempt at a card. Resending the same attempt (double click,
+    // retry after a lost reply) is answered from the first, not recorded again.
+    client_review_id?: string,
   ) =>
     post<ConfirmReviewResponse>(`/api/review/${cardId}/confirm`, {
       final_grade,
@@ -253,6 +289,7 @@ export const api = {
       latency_ms,
       confidence,
       is_blitz: Boolean(is_blitz),
+      client_review_id,
     }),
 
   // ── decks / notes / cards ───────────────────────────────────────────────
@@ -591,48 +628,73 @@ export const api = {
     post<ContrastDrillResponse>(`/api/interference/${pairId}/contrast-drill`, {}),
 }
 
+/** Fresh id for one attempt at a card (see `confirmReview`). */
+export function newReviewAttemptId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID().replace(/-/g, '')
+  }
+  // randomUUID needs a secure context; plain http on a LAN address is not one.
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 14)}`.padEnd(16, '0')
+}
+
+const WS_POLICY_VIOLATION = 1008
+const WS_RETRY_MIN_MS = 2_000
+const WS_RETRY_MAX_MS = 60_000
+
 export function createSyncSocket(onMessage: (event: SyncEvent) => void): () => void {
-  const t = token.get()
-  if (!t) return () => {}
+  if (!token.get()) return () => {}
 
   let ws: WebSocket | null = null
-  let pingInterval: any = null
-  let reconnectTimeout: any = null
+  let pingInterval: ReturnType<typeof setInterval> | null = null
+  let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
+  let retryDelay = WS_RETRY_MIN_MS
   let disposed = false
 
   function connect() {
     if (disposed) return
+    // Read at connect time: the token can be replaced while the page is open
+    // (password change, "sign out everywhere").
+    const current = token.get()
+    if (!current) return
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = window.location.host
-    const wsBase = BASE ? BASE.replace(/^http/, 'ws') : `${protocol}//${host}`
-    ws = new WebSocket(`${wsBase}/api/sync/ws?token=${encodeURIComponent(t || '')}`)
+    const wsBase = BASE ? BASE.replace(/^http/, 'ws') : `${protocol}//${window.location.host}`
+    const socket = new WebSocket(`${wsBase}/api/sync/ws`)
+    ws = socket
 
-    ws.onopen = () => {
+    socket.onopen = () => {
+      // The token goes in the first frame, not the URL: URLs are written to
+      // server and proxy access logs.
+      socket.send(JSON.stringify({ type: 'AUTH', token: current }))
       pingInterval = setInterval(() => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'PING' }))
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: 'PING' }))
         }
       }, 25000)
     }
 
-    ws.onmessage = (e) => {
+    socket.onmessage = (e) => {
       try {
         const parsed = JSON.parse(e.data) as SyncEvent
+        if (parsed.type === 'CONNECTED') retryDelay = WS_RETRY_MIN_MS
         onMessage(parsed)
       } catch (err) {
         console.debug('Failed to parse WS sync event', err)
       }
     }
 
-    ws.onclose = () => {
+    socket.onclose = (e) => {
       if (pingInterval) clearInterval(pingInterval)
-      if (!disposed) {
-        reconnectTimeout = setTimeout(connect, 3000)
-      }
+      pingInterval = null
+      if (disposed) return
+      // The server refused the token. Retrying with the same one can only be
+      // refused again; a new sign-in creates a new socket.
+      if (e.code === WS_POLICY_VIOLATION) return
+      reconnectTimeout = setTimeout(connect, retryDelay)
+      retryDelay = Math.min(WS_RETRY_MAX_MS, retryDelay * 2)
     }
 
-    ws.onerror = () => {
-      if (ws) ws.close()
+    socket.onerror = () => {
+      socket.close()
     }
   }
 

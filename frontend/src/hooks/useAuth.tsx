@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { api, token } from '../api/client'
+import { api, token, UNAUTHORIZED_EVENT } from '../api/client'
 import type { User } from '../api/types'
 
 interface AuthState {
@@ -10,6 +10,7 @@ interface AuthState {
   signUp: (email: string, password: string) => Promise<void>
   signOut: () => void
   refresh: () => Promise<void>
+  adoptToken: (accessToken: string) => void
 }
 
 const Ctx = createContext<AuthState | null>(null)
@@ -68,9 +69,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }, [])
 
+  // The API client clears the token and fires this when the server rejects
+  // it (expired, revoked, password changed elsewhere). Dropping the user here
+  // is what sends the app back to the sign-in screen.
+  useEffect(() => {
+    const onUnauthorized = () => setUser(null)
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized)
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized)
+  }, [])
+
+  /** Stores a replacement token (after a password change or revoking other
+   *  sessions) without a round trip through the sign-in screen. */
+  const adoptToken = useCallback((accessToken: string) => {
+    token.set(accessToken)
+  }, [])
+
   const value = useMemo(
-    () => ({ user, loading, signIn, signUp, signOut, refresh }),
-    [user, loading, signIn, signUp, signOut, refresh],
+    () => ({ user, loading, signIn, signUp, signOut, refresh, adoptToken }),
+    [user, loading, signIn, signUp, signOut, refresh, adoptToken],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

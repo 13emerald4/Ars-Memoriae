@@ -30,7 +30,7 @@ export function AddToDefinitionsPrompt({
 
   if (alreadyAdded) {
     return (
-      <div className="rounded-lg border border-emerald-500/35 bg-emerald-950/40 px-2.5 py-1.5 flex items-center justify-between gap-2 text-[11px] text-emerald-200">
+      <div className="rounded-lg border border-emerald-500/35 bg-emerald-950/40 px-2.5 py-1.5 flex items-center justify-between gap-2 text-[0.6875rem] text-emerald-200">
         <span className="font-medium flex items-center gap-1.5 min-w-0 truncate">
           <span className="text-emerald-400 shrink-0">✓</span>
           <span className="truncate">Added to this card&apos;s definitions list</span>
@@ -39,7 +39,7 @@ export function AddToDefinitionsPrompt({
           <button
             type="button"
             onClick={onViewList}
-            className="shrink-0 text-[10px] font-semibold text-emerald-300 hover:text-emerald-100 underline cursor-pointer"
+            className="shrink-0 text-[0.625rem] font-semibold text-emerald-300 hover:text-emerald-100 underline cursor-pointer"
           >
             View list →
           </button>
@@ -68,13 +68,13 @@ export function AddToDefinitionsPrompt({
         </span>{' '}
         to this card&apos;s definitions list?
       </p>
-      {error && <p className="text-[11px] text-rose-300">{error}</p>}
+      {error && <p className="text-[0.6875rem] text-rose-300">{error}</p>}
       <div className="flex items-center gap-2">
         <button
           type="button"
           disabled={saving}
           onClick={onConfirm}
-          className="flex-1 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 disabled:opacity-50 text-white px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer shadow-sm"
+          className="flex-1 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 disabled:opacity-50 text-white px-2.5 py-1 text-[0.6875rem] font-semibold transition cursor-pointer shadow-sm"
         >
           {saving ? 'Adding…' : '✓ Yes, Add to Definitions'}
         </button>
@@ -83,7 +83,7 @@ export function AddToDefinitionsPrompt({
             type="button"
             disabled={saving}
             onClick={onDismiss}
-            className="rounded-lg border border-slate-700 bg-slate-900/70 hover:bg-slate-800 text-slate-300 px-2.5 py-1 text-[11px] font-medium transition cursor-pointer"
+            className="rounded-lg border border-slate-700 bg-slate-900/70 hover:bg-slate-800 text-slate-300 px-2.5 py-1 text-[0.6875rem] font-medium transition cursor-pointer"
           >
             No thanks
           </button>

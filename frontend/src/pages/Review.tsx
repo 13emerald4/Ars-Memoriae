@@ -1,7 +1,8 @@
+import { dialogs } from '../components/dialogs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { api } from '../api/client'
+import { api, API_BASE, newReviewAttemptId } from '../api/client'
 import type {
   CardReference,
   Deck,
@@ -30,7 +31,8 @@ import { CodeEditor } from '../components/CodeEditor'
 import { CodeTestConsole } from '../components/CodeTestConsole'
 import { OcclusionCard } from '../components/Occlusion'
 import SessionTimer, { formatClock, REVIEW_EVENT } from '../components/SessionTimer'
-import { Empty, ErrorNote, RichText, Spinner } from '../components/ui'
+import { RichText } from '../components/RichText'
+import { Empty, ErrorNote, Spinner } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
 import { useLexicon } from '../components/LexiconContext'
 import { MarginLexiconPanel } from '../components/MarginLexiconPanel'
@@ -71,6 +73,7 @@ import {
   extractCleanCode,
   detectCodeLanguage,
 } from '../utils/codeUtils'
+import { storage } from '../utils/storage'
 
 const LEARN_MODE_KEY = 'memorization.learnMode'
 
@@ -118,7 +121,7 @@ function formatExecutionSummary(res: RunCodeResponse | null): string | null {
         failedCases
           .map(
             (r) =>
-              `  - Test #${r.test_index + 1}: input=${JSON.stringify(r.input)} expected=${JSON.stringify(
+              `  - Test #${r.test_index}: input=${JSON.stringify(r.input)} expected=${JSON.stringify(
                 r.expected,
               )} actual=${JSON.stringify(r.actual)}${r.error ? ` err=${r.error}` : ''}${
                 r.stdout ? ` stdout=${r.stdout.slice(0, 200)}` : ''
@@ -222,7 +225,7 @@ ${testMethods || '    pass'}
     return `test('${testName}', checkExpect(() => ${fnName}(${args}), ${exp}));`
   })
 
-  return `// CPSC 210 Completed Reference Unit Tests
+  return `// Completed reference unit tests
 // Full suite asserting sample, boundary, and edge cases
 
 ${testBlocks.join('\n\n')}
@@ -335,12 +338,34 @@ export default function Review() {
   const [persistCardAttempts, setPersistCardAttempts] = useState<Record<string, number>>({})
   const [persistRound, setPersistRound] = useState(1)
   const [persistTotalReviews, setPersistTotalReviews] = useState(0)
+  // Cards whose first rating in this persist session has been sent to FSRS.
+  // Persist mode repeats a card until it is rated Easy; scheduling every one
+  // of those passes told FSRS the card was recalled many times in a row and
+  // pushed its next due date far out. Only the first, honest attempt is a
+  // review. The repeats are drill and are not recorded.
+  const persistRecordedRef = useRef<Set<string>>(new Set())
   const [persistCompleted, setPersistCompleted] = useState(false)
   const [allDecks, setAllDecks] = useState<Deck[]>([])
   const [selectedPersistDeckId, setSelectedPersistDeckId] = useState<string>('')
   const [dismissedUnseenDeckId, setDismissedUnseenDeckId] = useState<string | null>(null)
 
   const { setActiveDeckContext, registerDocument } = useLexicon()
+
+  // A card's saved definitions changed. The card object lives in several
+  // pieces of state (the current item, the persist and run lists, the
+  // "previous card"); each gets a new object rather than having the shared one
+  // edited in place, which React cannot see.
+  const applyGlossesToCard = useCallback(
+    (cardId: string, glosses: NonNullable<QueueItem['lexicon_glosses']>) => {
+      const patch = (c: QueueItem): QueueItem =>
+        c.id === cardId ? { ...c, lexicon_glosses: glosses } : c
+      setItem((prev) => (prev ? patch(prev) : prev))
+      setPreviousCard((prev) => (prev ? patch(prev) : prev))
+      setPersistCards((prev) => (prev.some((c) => c.id === cardId) ? prev.map(patch) : prev))
+      setAllCardsRunCards((prev) => (prev.some((c) => c.id === cardId) ? prev.map(patch) : prev))
+    },
+    [],
+  )
 
   const currentDeckInfo = useMemo(() => {
     if (!deckParam) return null
@@ -359,9 +384,7 @@ export default function Review() {
           item.category ||
           null,
         existingGlosses: item.lexicon_glosses || [],
-        onGlossesUpdated: (updated) => {
-          item.lexicon_glosses = updated
-        },
+        onGlossesUpdated: (updated) => applyGlossesToCard(item.id, updated),
       })
     } else if (currentDeckInfo) {
       setActiveDeckContext({
@@ -375,7 +398,7 @@ export default function Review() {
     return () => {
       setActiveDeckContext(null)
     }
-  }, [item, currentDeckInfo, setActiveDeckContext])
+  }, [item, currentDeckInfo, setActiveDeckContext, applyGlossesToCard])
 
   // All Cards Run Mode: Review every card in deck consecutively, easiest to hardest, then FSRS takes over
   const runParam = params.get('run') === 'all' || params.get('all_cards_run') === '1'
@@ -388,10 +411,10 @@ export default function Review() {
 
   // LeetCode-Style Split IDE & Code Execution Workbench
   const [layoutMode, setLayoutMode] = useState<'split' | 'classic'>(() => {
-    return (localStorage.getItem('memorization.reviewLayoutMode') as 'split' | 'classic') || 'split'
+    return (storage.get('memorization.reviewLayoutMode') as 'split' | 'classic') || 'split'
   })
   const [codeLanguage, setCodeLanguage] = useState<string>(() => {
-    return localStorage.getItem('memorization.reviewCodeLanguage') || 'typescript'
+    return storage.get('memorization.reviewCodeLanguage') || 'typescript'
   })
   const [codeRunning, setCodeRunning] = useState(false)
   const [codeRunResult, setCodeRunResult] = useState<RunCodeResponse | null>(null)
@@ -399,47 +422,47 @@ export default function Review() {
   const [sharedQaHistory, setSharedQaHistory] = useState<DeckDocMessage[]>([])
   const [activeEditorTab, setActiveEditorTab] = useState<'solution' | 'tests' | 'reference' | 'ref_tests'>('solution')
   const [singleRefViewMode, setSingleRefViewMode] = useState<'ide' | 'diff' | 'hint'>(() => {
-    return (localStorage.getItem('memorization.refViewMode') as 'ide' | 'diff' | 'hint') || 'ide'
+    return (storage.get('memorization.refViewMode') as 'ide' | 'diff' | 'hint') || 'ide'
   })
   const [focusTargetCode, setFocusTargetCode] = useState<boolean>(() => {
-    const saved = localStorage.getItem('memorization.focusTargetCode')
+    const saved = storage.get('memorization.focusTargetCode')
     return saved !== null ? saved === 'true' : true
   })
   const handleToggleFocusTargetCode = () => {
     setFocusTargetCode((prev) => {
       const next = !prev
-      localStorage.setItem('memorization.focusTargetCode', String(next))
+      storage.set('memorization.focusTargetCode', String(next))
       return next
     })
   }
   const [targetHighlightColor, setTargetHighlightColor] = useState<string>(() => {
-    return localStorage.getItem('memorization.targetHighlightColor') || DEFAULT_TARGET_HIGHLIGHT_COLOR
+    return storage.get('memorization.targetHighlightColor') || DEFAULT_TARGET_HIGHLIGHT_COLOR
   })
   const handleHighlightColorChange = (newColor: string) => {
     setTargetHighlightColor(newColor)
-    localStorage.setItem('memorization.targetHighlightColor', newColor)
+    storage.set('memorization.targetHighlightColor', newColor)
   }
   const [tiledTabs, setTiledTabs] = useState<boolean>(() => {
-    return localStorage.getItem('memorization.tiledEditorTabs') === 'true'
+    return storage.get('memorization.tiledEditorTabs') === 'true'
   })
   const [tileLeftTab, setTileLeftTabState] = useState<TilePaneTab>(() => {
-    const saved = localStorage.getItem('memorization.tileLeftTab') as TilePaneTab | null
+    const saved = storage.get('memorization.tileLeftTab') as TilePaneTab | null
     return saved || 'solution'
   })
   const [tileRightTab, setTileRightTabState] = useState<TilePaneTab>(() => {
-    const saved = localStorage.getItem('memorization.tileRightTab') as TilePaneTab | null
+    const saved = storage.get('memorization.tileRightTab') as TilePaneTab | null
     if (saved && saved !== 'solution') return saved
     return 'tests'
   })
 
   const setTileLeftTab = useCallback((tab: TilePaneTab) => {
     setTileLeftTabState(tab)
-    localStorage.setItem('memorization.tileLeftTab', tab)
+    storage.set('memorization.tileLeftTab', tab)
   }, [])
 
   const setTileRightTab = useCallback((tab: TilePaneTab) => {
     setTileRightTabState(tab)
-    localStorage.setItem('memorization.tileRightTab', tab)
+    storage.set('memorization.tileRightTab', tab)
   }, [])
 
   const [copiedRef, setCopiedRef] = useState(false)
@@ -449,28 +472,28 @@ export default function Review() {
   const toggleTiledTabs = useCallback(() => {
     setTiledTabs((prev) => {
       const next = !prev
-      localStorage.setItem('memorization.tiledEditorTabs', String(next))
+      storage.set('memorization.tiledEditorTabs', String(next))
       return next
     })
   }, [])
 
   const [logicGuardEnabled, setLogicGuardEnabled] = useState<boolean>(() => {
-    return localStorage.getItem('ars_logic_guard_enabled') !== 'false'
+    return storage.get('ars_logic_guard_enabled') !== 'false'
   })
 
   const handleToggleLogicGuard = useCallback((enabled: boolean) => {
     setLogicGuardEnabled(enabled)
-    localStorage.setItem('ars_logic_guard_enabled', enabled ? 'true' : 'false')
+    storage.set('ars_logic_guard_enabled', enabled ? 'true' : 'false')
   }, [])
 
   const handleHideSolution = useCallback((mode: 'hint' | 'hide' = 'hide') => {
     setRevealed(false)
     setResult(null)
     if (mode === 'hint') {
-      localStorage.setItem('memorization.refViewMode', 'hint')
+      storage.set('memorization.refViewMode', 'hint')
       setSingleRefViewMode('hint')
     } else {
-      localStorage.setItem('memorization.refViewMode', 'ide')
+      storage.set('memorization.refViewMode', 'ide')
       setSingleRefViewMode('ide')
     }
     setTimeout(() => {
@@ -509,7 +532,7 @@ export default function Review() {
   const handlePopOutIde = useCallback(() => {
     if (layoutMode !== 'split') {
       setLayoutMode('split')
-      localStorage.setItem('memorization.reviewLayoutMode', 'split')
+      storage.set('memorization.reviewLayoutMode', 'split')
     }
 
     if (idePopupRef.current && !idePopupRef.current.closed) {
@@ -529,7 +552,7 @@ export default function Review() {
       `width=${availW},height=${availH},left=0,top=0,resizable=yes,scrollbars=yes`
     )
     if (!popup) {
-      alert('Popup was blocked by your browser. Please allow popups for Ars-Memoriae to expand the IDE into a separate window.')
+      dialogs.notify('The separate IDE window was blocked. Allow pop-ups for this site to use it.', 'error')
       return
     }
 
@@ -607,10 +630,10 @@ export default function Review() {
       if (e.key === 'Escape') {
         e.preventDefault()
         handleDockBackIde()
-      } else if (e.altKey && (e.key === 'w' || e.key === 'W' || e.key === 'p' || e.key === 'P')) {
+      } else if (e.altKey && (e.code === 'KeyW' || e.code === 'KeyP')) {
         e.preventDefault()
         handleDockBackIde()
-      } else if (e.altKey && (e.key === 'o' || e.key === 'O')) {
+      } else if (e.altKey && e.code === 'KeyO') {
         e.preventDefault()
         setPopoutShowProblem((prev) => !prev)
       }
@@ -720,8 +743,17 @@ export default function Review() {
   // Learn & Practice: read a lesson built from the card's citations before
   // being asked the question.
   const [learnMode, setLearnMode] = useState(
-    () => localStorage.getItem(LEARN_MODE_KEY) === '1',
+    () => storage.get(LEARN_MODE_KEY) === '1',
   )
+  // Read through a ref by initCardState. As a dependency it rebuilt that
+  // callback, and with it `load` and the effect that calls `load`, so flipping
+  // the Learn & Practice toggle refetched the queue and wiped a half-typed
+  // answer.
+  const learnModeRef = useRef(learnMode)
+  learnModeRef.current = learnMode
+  // Identifies one attempt at the current card to the server, so a confirm
+  // that is sent twice is recorded once. Renewed whenever a card is (re)shown.
+  const reviewAttemptIdRef = useRef(newReviewAttemptId())
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [lessonLoading, setLessonLoading] = useState(false)
   const [taught, setTaught] = useState(false)
@@ -756,7 +788,7 @@ export default function Review() {
 
   // Card Failure Memory Reminder (§Feature)
   const [failureReminderEnabled, setFailureReminderEnabled] = useState<boolean>(() => {
-    return localStorage.getItem('memorization.failureReminderEnabled') !== 'false'
+    return storage.get('memorization.failureReminderEnabled') !== 'false'
   })
   const [dismissedReminderCardId, setDismissedReminderCardId] = useState<string | null>(null)
 
@@ -781,13 +813,12 @@ export default function Review() {
     return (
       <div className="rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 via-[#18130c] to-[#120f0c] p-3 text-xs text-amber-200 shadow-md flex items-start justify-between gap-3 animate-in fade-in duration-200 mb-3">
         <div className="flex items-start gap-2.5 min-w-0">
-          <span className="text-amber-400 text-sm shrink-0 mt-0.5 select-none">⚠️</span>
           <div className="space-y-0.5 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-bold uppercase tracking-wider text-[10px] text-amber-400">
+              <span className="font-bold uppercase tracking-wider text-[0.625rem] text-amber-400">
                 Past Failure Memory
               </span>
-              <span className="text-[10px] text-amber-400/60 font-mono">
+              <span className="text-[0.625rem] text-amber-400/60 font-mono">
                 • avoid repeating this mistake
               </span>
             </div>
@@ -1015,43 +1046,53 @@ export default function Review() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
 
-  // Blitz countdown timer
+  // Blitz countdown. The remaining time is derived from a fixed deadline
+  // rather than decremented: the old interval was torn down and restarted on
+  // every answer (its effect depended on the running tallies), losing up to a
+  // second each time, so a "60s" sprint ran long.
+  const blitzDeadlineRef = useRef(0)
   useEffect(() => {
     if (!blitzActive) return
-    const timer = setInterval(() => {
-      setBlitzTimeRemainingSec((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          // Sprint Finished! Compute summary
-          setBlitzActive(false)
-          const total = blitzCardsAnswered
-          const correct = blitzCorrectCount
-          const avgLatency =
-            blitzLatencies.length > 0
-              ? blitzLatencies.reduce((a, b) => a + b, 0) / blitzLatencies.length / 1000.0
-              : 0
-          const autoThreshold = user?.automaticity_threshold_ms ?? 3000
-          const autoCount = blitzLatencies.filter((l) => l <= autoThreshold).length
-          const autoRate = total > 0 ? Math.round((autoCount / total) * 100) : 100
-          const cpm = Math.round((total / (blitzDurationSec / 60)) * 10) / 10
-
-          setBlitzStats({
-            total,
-            correct,
-            avgLatencySec: Math.round(avgLatency * 10) / 10,
-            cpm,
-            automaticityRate: autoRate,
-          })
-          setBlitzSummaryOpen(true)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    const tick = () =>
+      setBlitzTimeRemainingSec(
+        Math.max(0, Math.ceil((blitzDeadlineRef.current - Date.now()) / 1000)),
+      )
+    tick()
+    const timer = setInterval(tick, 250)
     return () => clearInterval(timer)
-  }, [blitzActive, blitzCardsAnswered, blitzCorrectCount, blitzLatencies, blitzDurationSec, user])
+  }, [blitzActive])
+
+  // Sprint finished: compute the scorecard from the final tallies.
+  useEffect(() => {
+    if (!blitzActive || blitzTimeRemainingSec > 0) return
+    setBlitzActive(false)
+    const total = blitzCardsAnswered
+    const avgLatency =
+      blitzLatencies.length > 0
+        ? blitzLatencies.reduce((a, b) => a + b, 0) / blitzLatencies.length / 1000.0
+        : 0
+    const autoThreshold = user?.automaticity_threshold_ms ?? 3000
+    const autoCount = blitzLatencies.filter((l) => l <= autoThreshold).length
+    setBlitzStats({
+      total,
+      correct: blitzCorrectCount,
+      avgLatencySec: Math.round(avgLatency * 10) / 10,
+      cpm: Math.round((total / (blitzDurationSec / 60)) * 10) / 10,
+      automaticityRate: total > 0 ? Math.round((autoCount / total) * 100) : 100,
+    })
+    setBlitzSummaryOpen(true)
+  }, [
+    blitzActive,
+    blitzTimeRemainingSec,
+    blitzCardsAnswered,
+    blitzCorrectCount,
+    blitzLatencies,
+    blitzDurationSec,
+    user?.automaticity_threshold_ms,
+  ])
 
   function startBlitz(durationSec: number) {
+    blitzDeadlineRef.current = Date.now() + durationSec * 1000
     setBlitzDurationSec(durationSec)
     setBlitzTimeRemainingSec(durationSec)
     setBlitzCardsAnswered(0)
@@ -1080,7 +1121,7 @@ export default function Review() {
       setAnswer(next?.starter_code || '')
       const starterTests = buildStarterTestCode(next)
       const refTests = buildCompletedTestCode(next)
-      setTestCode(starterTests.trim() ? starterTests : (learnMode ? refTests : ''))
+      setTestCode(starterTests.trim() ? starterTests : (learnModeRef.current ? refTests : ''))
       if (next?.starter_code) {
         if (next.starter_code.includes('def ') || next.starter_code.includes('class Solution:')) {
           setCodeLanguage('python')
@@ -1123,8 +1164,9 @@ export default function Review() {
     setEditorCursorLine(1)
     setDismissedReminderCardId(null)
     shownAt.current = Date.now()
+    reviewAttemptIdRef.current = newReviewAttemptId()
     setDeckStatsTrigger((prev) => prev + 1)
-  }, [learnMode])
+  }, [])
 
   const handleJumpToCard = useCallback(
     (selectedCard: QueueItem) => {
@@ -1176,6 +1218,7 @@ export default function Review() {
       setPersistTotalReviews(0)
       setPersistGraspedIds(new Set())
       setPersistCardAttempts({})
+      persistRecordedRef.current = new Set()
 
       setParams((p) => {
         const next = new URLSearchParams(p)
@@ -1203,7 +1246,10 @@ export default function Review() {
           setPersistPendingQueue([])
           setItem(null)
         } else {
-          const cardParam = params.get('card') || params.get('card_id')
+          // Read from the address bar: this callback does not re-create when
+          // the query string changes.
+          const urlParams = new URLSearchParams(window.location.search)
+          const cardParam = urlParams.get('card') || urlParams.get('card_id')
           const targetCard = (cardParam && cards.find((c) => c.id === cardParam)) || cards[0]
           const queue = [targetCard.id, ...cards.filter((c) => c.id !== targetCard.id).map((c) => c.id)]
           setPersistPendingQueue(queue)
@@ -1430,7 +1476,7 @@ export default function Review() {
   function toggleLayoutMode() {
     setLayoutMode((prev) => {
       const next = prev === 'split' ? 'classic' : 'split'
-      localStorage.setItem('memorization.reviewLayoutMode', next)
+      storage.set('memorization.reviewLayoutMode', next)
       return next
     })
   }
@@ -1499,19 +1545,21 @@ export default function Review() {
     allCardsRunDeckId,
   ])
 
+  const itemId = item?.id ?? null
+  const itemKind = item?.kind ?? null
   useEffect(() => {
-    if (item?.kind === 'card' && !revealed) inputRef.current?.focus()
-  }, [item, revealed])
+    if (itemKind === 'card' && !revealed) inputRef.current?.focus()
+  }, [itemId, itemKind, revealed])
 
   // Learn & Practice: fetch the lesson whenever a fresh card needs one — on
   // load, and immediately if the mode is switched on mid-card (before the
   // gate below has been passed for this card).
   useEffect(() => {
-    if (!learnMode || !item || item.kind !== 'card' || taught) return
+    if (!learnMode || !itemId || itemKind !== 'card' || taught) return
     let cancelled = false
     setLessonLoading(true)
     api
-      .lesson(item.id)
+      .lesson(itemId)
       .then((l) => {
         if (!cancelled) setLesson(l)
       })
@@ -1522,12 +1570,12 @@ export default function Review() {
     return () => {
       cancelled = true
     }
-  }, [learnMode, item, taught])
+  }, [learnMode, itemId, itemKind, taught])
 
   function toggleLearnMode() {
     setLearnMode((prev) => {
       const next = !prev
-      localStorage.setItem(LEARN_MODE_KEY, next ? '1' : '0')
+      storage.set(LEARN_MODE_KEY, next ? '1' : '0')
       return next
     })
   }
@@ -1607,12 +1655,13 @@ export default function Review() {
       if (abortController.signal.aborted) return
       setResult(graded)
       setRevealed(true)
+      // Only a model the user picked for this grade becomes their saved
+      // preference. If the server fell back to a smaller one (out of memory),
+      // that is reported on the result (model_used) but changes nothing: it
+      // used to be written to the profile, quietly downgrading every later card.
       const actualModel = graded.model_used || modelToUse
-      if (actualModel && actualModel !== activeModel) {
-        setActiveModel(actualModel)
-      }
-      if (actualModel && actualModel !== user?.grading_model) {
-        void api.updateMe({ grading_model: actualModel }).then(() => refresh?.())
+      if (targetModel && actualModel === targetModel && targetModel !== user?.grading_model) {
+        void api.updateMe({ grading_model: targetModel }).then(() => refresh?.())
       }
     } catch (err: any) {
       if (abortController.signal.aborted || err?.name === 'AbortError') {
@@ -1652,9 +1701,6 @@ export default function Review() {
       if (resp.degraded) {
         setGuideDegraded(resp.degraded_reason)
         return
-      }
-      if (resp.model_used && resp.model_used !== activeModel) {
-        setActiveModel(resp.model_used)
       }
       const turns: SocraticTurn[] = [...guideHistory]
       if (message.trim()) turns.push({ role: 'student', text: message.trim() })
@@ -1711,7 +1757,10 @@ export default function Review() {
     [item, answer, codeLanguage, testCode, codeRunResult, editorCursorLine, activeModel]
   )
 
-  async function confirm(finalGrade: Grade, options?: { retryImmediately?: boolean }) {
+  async function confirm(
+    finalGrade: Grade,
+    options?: { retryImmediately?: boolean; forceRecord?: boolean },
+  ) {
     if (!item || item.kind !== 'card') return
     if (confirmingRef.current) return
     confirmingRef.current = true
@@ -1720,16 +1769,25 @@ export default function Review() {
     const latency = Date.now() - shownAt.current
     const currentItem = item
 
+    // In persist mode only the first rating of a card is scheduled (see
+    // persistRecordedRef); "Record review & retry" still records on request.
+    const practiceOnly =
+      persistActive && persistRecordedRef.current.has(currentItem.id) && !options?.forceRecord
+
     try {
-      const outcome = await api.confirmReview(
-        currentItem.id,
-        finalGrade,
-        overridden,
-        answer || undefined,
-        latency,
-        confidence || undefined,
-        blitzActive,
-      )
+      const outcome = practiceOnly
+        ? null
+        : await api.confirmReview(
+            currentItem.id,
+            finalGrade,
+            overridden,
+            answer || undefined,
+            latency,
+            confidence || undefined,
+            blitzActive,
+            reviewAttemptIdRef.current,
+          )
+      if (persistActive) persistRecordedRef.current.add(currentItem.id)
       // Counted only once the review is actually recorded.
       if (blitzActive) {
         setBlitzCardsAnswered((prev) => prev + 1)
@@ -1738,7 +1796,7 @@ export default function Review() {
         }
         setBlitzLatencies((prev) => [...prev, latency])
       }
-      if (outcome.stuck_alert) setStuckAlert(outcome.stuck_alert)
+      if (outcome?.stuck_alert) setStuckAlert(outcome.stuck_alert)
       // Let the session timer refresh its progress toward the card target.
       window.dispatchEvent(new Event(REVIEW_EVENT))
 
@@ -1765,7 +1823,9 @@ export default function Review() {
         setSkipReviewRecording(false)
         shownAt.current = Date.now()
         setLastOutcome(
-          `${finalGrade.toUpperCase()} recorded · Retrying card immediately.`
+          practiceOnly
+            ? `${finalGrade.toUpperCase()} (practice pass, not scheduled) · Retrying card immediately.`
+            : `${finalGrade.toUpperCase()} recorded · Retrying card immediately.`,
         )
         setDeckStatsTrigger((prev) => prev + 1)
         return
@@ -1846,15 +1906,19 @@ export default function Review() {
             initCardState(item)
           }
           setLastOutcome(
-            `${finalGrade} — kept in persist rotation (all cards must be rated Easy to grasp).`,
+            practiceOnly
+              ? `${finalGrade} (practice pass, not scheduled) — kept in rotation until rated Easy.`
+              : `${finalGrade} recorded — kept in rotation until rated Easy. Further passes are practice.`,
           )
         }
       } else {
-        setLastOutcome(
-          `${finalGrade} — next in ${formatInterval(outcome.interval_days)}${
-            outcome.leech_flagged ? ' · flagged as a leech' : ''
-          }${outcome.automaticity_exceeded ? ' · pace notice' : ''}`,
-        )
+        if (outcome) {
+          setLastOutcome(
+            `${finalGrade} — next in ${formatInterval(outcome.interval_days)}${
+              outcome.leech_flagged ? ' · flagged as a leech' : ''
+            }${outcome.automaticity_exceeded ? ' · pace notice' : ''}`,
+          )
+        }
         await load()
       }
 
@@ -2008,7 +2072,7 @@ export default function Review() {
         gradeOverride ||
         (result && !result.degraded_to_manual ? result.suggested_grade : 'hard') ||
         'hard'
-      void confirm(g, { retryImmediately: true })
+      void confirm(g, { retryImmediately: true, forceRecord: true })
     },
     [confirm, result],
   )
@@ -2027,43 +2091,38 @@ export default function Review() {
     const suggestedGrade: Grade =
       (result && !result.degraded_to_manual ? result.suggested_grade : 'hard') || 'hard'
 
+    // Collapsed by default: grading is the one decision that has to be made
+    // after every card, and three retry variants beside it competed with it.
+    // The shortcuts (Alt+R, Alt+Shift+R) work whether or not this is open.
     return (
-      <div className="mt-3 pt-2.5 border-t border-ink-line/60 flex flex-wrap items-center justify-between gap-2.5 text-xs bg-[#101622]/70 -mx-1 px-3 py-2 rounded-xl border border-ink-line/40 shadow-inner">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-amber-400 flex items-center gap-1">
-            <span className="text-sm">🔄</span>
-            <span>Retry Card:</span>
-          </span>
-          <span className="text-[11px] text-slate-400 hidden sm:inline">
-            Try this card again immediately
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
+      <details className="mt-3 rounded-lg border border-ink-line/70 bg-ink/40 text-xs">
+        <summary className="cursor-pointer select-none rounded-lg px-3 py-1.5 text-slate-400 hover:text-slate-200">
+          Retry this card
+          {retryAfterRating && <span className="ml-2 text-amber-300">· auto-retry on</span>}
+        </summary>
+        <div className="flex flex-wrap items-center gap-2 px-3 pb-2.5 pt-1">
           {/* Option 1: Retry without recording review */}
           <button
             type="button"
             onClick={handleRetryWithoutRecording}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/90 hover:bg-slate-700 hover:border-slate-500 text-slate-200 hover:text-white transition font-medium text-xs cursor-pointer shadow-xs active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/90 hover:bg-slate-700 hover:border-slate-500 text-slate-200 hover:text-white transition font-medium text-xs cursor-pointer"
             title="Clear and retry this card immediately without recording this review to spaced repetition (Alt+R)"
           >
-            <span className="text-rose-400 font-bold">✕</span>
             <span>Retry without recording</span>
-            <kbd className="hidden md:inline px-1 py-0.2 rounded bg-black/40 text-[10px] text-slate-400 font-mono">Alt+R</kbd>
+            <kbd className="hidden md:inline px-1 rounded bg-black/40 text-[0.625rem] text-slate-400 font-mono">Alt+R</kbd>
           </button>
 
           {/* Option 2: Record review and retry */}
-          <div className="inline-flex items-center rounded-lg border border-sky-500/50 bg-sky-950/70 p-0.5 shadow-xs">
+          <div className="inline-flex items-center rounded-lg border border-sky-500/50 bg-sky-950/70 p-0.5">
             <button
               type="button"
               onClick={() => handleRecordAndRetry()}
               disabled={confirming}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-sky-600 hover:bg-sky-500 text-white transition font-medium text-xs cursor-pointer disabled:opacity-50 active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-sky-600 hover:bg-sky-500 text-white transition font-medium text-xs cursor-pointer disabled:opacity-50"
               title={`Record this review as ${suggestedGrade.toUpperCase()} and immediately retry the card (Alt+Shift+R)`}
             >
-              <span className="text-sky-200 font-bold">✓</span>
               <span>Record review &amp; retry</span>
-              <span className="text-[10px] font-mono text-sky-100 bg-sky-800/90 px-1.5 py-0.2 rounded uppercase font-semibold">
+              <span className="text-[0.625rem] font-mono text-sky-100 bg-sky-800/90 px-1.5 rounded uppercase font-semibold">
                 {suggestedGrade}
               </span>
             </button>
@@ -2071,16 +2130,17 @@ export default function Review() {
             {/* Quick selector to choose a different grade before retrying */}
             <select
               value=""
+              aria-label="Record with a different grade and retry"
               onChange={(e) => {
                 if (e.target.value) {
                   handleRecordAndRetry(e.target.value as Grade)
                 }
               }}
               disabled={confirming}
-              className="bg-transparent text-sky-300 hover:text-white text-xs py-1 px-1.5 focus:outline-none cursor-pointer border-l border-sky-500/30 font-medium"
+              className="bg-transparent text-sky-300 hover:text-white text-xs py-1 px-1.5 cursor-pointer border-l border-sky-500/30 font-medium"
               title="Record with a specific grade and retry immediately"
             >
-              <option value="" disabled className="bg-[#121622] text-slate-400">▾ Other grade</option>
+              <option value="" disabled className="bg-[#121622] text-slate-400">Other grade</option>
               <option value="again" className="bg-[#121622] text-rose-300">Again (1)</option>
               <option value="hard" className="bg-[#121622] text-amber-300">Hard (2)</option>
               <option value="good" className="bg-[#121622] text-emerald-300">Good (3)</option>
@@ -2090,19 +2150,19 @@ export default function Review() {
 
           {/* Option 3: Auto-retry on rating toggle */}
           <label
-            className="inline-flex items-center gap-1.5 text-[11px] text-slate-300 hover:text-white cursor-pointer select-none px-2 py-1 rounded-lg bg-slate-800/40 hover:bg-slate-800/80 border border-slate-700/60 transition"
+            className="inline-flex items-center gap-1.5 text-[0.6875rem] text-slate-300 hover:text-white cursor-pointer select-none px-2 py-1 rounded-lg bg-slate-800/40 hover:bg-slate-800/80 border border-slate-700/60 transition"
             title="When enabled, clicking Again/Hard/Good/Easy (or pressing 1-4) records that rating and automatically starts an immediate retry"
           >
             <input
               type="checkbox"
               checked={retryAfterRating}
               onChange={(e) => setRetryAfterRating(e.target.checked)}
-              className="rounded border-slate-600 bg-slate-900 text-sky-500 focus:ring-0 w-3.5 h-3.5 cursor-pointer"
+              className="rounded border-slate-600 bg-slate-900 text-sky-500 w-3.5 h-3.5 cursor-pointer"
             />
             <span>Auto-retry on 1–4</span>
           </label>
         </div>
-      </div>
+      </details>
     )
   }
 
@@ -2136,8 +2196,14 @@ export default function Review() {
           void confirm(GRADES[Number(e.key) - 1], { retryImmediately: retryAfterRating })
         }
       }
+      // Alt shortcuts are matched on the physical key (e.code), not the
+      // character: on macOS Option+letter types a symbol (Option+S is "ß"),
+      // so comparing e.key against a letter never matched there.
+      const alt = e.altKey && !e.ctrlKey && !e.metaKey
+      const altKey = (code: string) => alt && e.code === code
+
       // Alt+R or Alt+Shift+R shortcuts to retry current card
-      if (revealed && (e.key === 'r' || e.key === 'R') && e.altKey) {
+      if (revealed && altKey('KeyR')) {
         e.preventDefault()
         if (e.shiftKey) {
           handleRecordAndRetry()
@@ -2150,7 +2216,7 @@ export default function Review() {
         e.preventDefault()
         void advanceWithoutReview()
       }
-      if (revealed && (e.key === 'c' || e.key === 'C') && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      if (revealed && e.code === 'KeyC' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
         e.preventDefault()
         void copyLearningSummaryToClipboard({
           item,
@@ -2161,15 +2227,21 @@ export default function Review() {
           codeRunResult,
         })
       }
-      if ((e.key === 's' || e.key === 'S') && e.altKey) {
+      // Alt+S tiles the editor; Alt+Shift+S opens the saved-cards drawer.
+      // They are one or the other: the drawer shortcut used to trigger both.
+      if (altKey('KeyS')) {
         e.preventDefault()
-        toggleTiledTabs()
+        if (e.shiftKey) {
+          setSavedDrawerOpen((prev) => !prev)
+        } else {
+          toggleTiledTabs()
+        }
       }
-      if (revealed && checkIsCodeCard(item) && (e.key === 'u' || e.key === 'U') && e.altKey) {
+      if (revealed && checkIsCodeCard(item) && altKey('KeyU')) {
         e.preventDefault()
         handleHideSolution('hint')
       }
-      if ((e.key === 't' || e.key === 'T') && e.altKey) {
+      if (altKey('KeyT')) {
         e.preventDefault()
         if (tiledTabs) {
           if (tileLeftTab === 'solution' && tileRightTab === 'tests') {
@@ -2186,33 +2258,29 @@ export default function Review() {
           setActiveEditorTab((prev) => (prev === 'solution' ? 'tests' : prev === 'tests' ? 'reference' : prev === 'reference' ? 'ref_tests' : 'solution'))
         }
       }
-      if ((e.key === 'd' || e.key === 'D') && e.altKey) {
+      if (altKey('KeyD')) {
         e.preventDefault()
         setDeckViewerOpen((prev) => !prev)
       }
-      if ((e.key === 'l' || e.key === 'L') && e.altKey) {
+      if (altKey('KeyL')) {
         e.preventDefault()
         void handleSaveForLater()
       }
-      if ((e.key === 'h' || e.key === 'H') && e.altKey) {
+      if (altKey('KeyH')) {
         e.preventDefault()
         void handleRequestLineHint(editorCursorLine)
       }
-      if ((e.key === 'g' || e.key === 'G') && e.altKey) {
+      if (altKey('KeyG')) {
         e.preventDefault()
         void (answer.trim() ? grade() : reveal())
       }
-      if ((e.key === 'p' || e.key === 'P') && e.altKey) {
+      if (altKey('KeyP')) {
         e.preventDefault()
         if (isIdePoppedOut) {
           handleDockBackIde()
         } else if (isCurrentCodeCard) {
           handlePopOutIde()
         }
-      }
-      if ((e.key === 's' || e.key === 'S') && e.altKey && e.shiftKey) {
-        e.preventDefault()
-        setSavedDrawerOpen((prev) => !prev)
       }
       if (!revealed && (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) && !isEditorTyping) {
         e.preventDefault()
@@ -2278,11 +2346,11 @@ export default function Review() {
 
             <div className="grid grid-cols-2 gap-3 py-3 border-y border-purple-500/20 bg-purple-950/20 rounded-xl px-4 text-xs font-mono">
               <div className="space-y-0.5">
-                <span className="text-slate-400 text-[10px] uppercase">Cards Reviewed</span>
+                <span className="text-slate-400 text-[0.625rem] uppercase">Cards Reviewed</span>
                 <p className="text-white font-bold text-base">{allCardsRunCards.length}</p>
               </div>
               <div className="space-y-0.5 border-l border-purple-500/20">
-                <span className="text-slate-400 text-[10px] uppercase">Progression</span>
+                <span className="text-slate-400 text-[0.625rem] uppercase">Progression</span>
                 <p className="text-purple-300 font-bold text-base">Easiest → Hardest</p>
               </div>
             </div>
@@ -2381,15 +2449,15 @@ export default function Review() {
 
             <div className="grid grid-cols-3 gap-3 py-3 border-y border-emerald-500/20 bg-emerald-950/20 rounded-xl px-4 text-xs font-mono">
               <div className="space-y-0.5">
-                <span className="text-slate-400 text-[10px] uppercase">Cards</span>
+                <span className="text-slate-400 text-[0.625rem] uppercase">Cards</span>
                 <p className="text-white font-bold text-base">{persistCards.length}</p>
               </div>
               <div className="space-y-0.5 border-x border-emerald-500/20">
-                <span className="text-slate-400 text-[10px] uppercase">Total Reviews</span>
+                <span className="text-slate-400 text-[0.625rem] uppercase">Total Reviews</span>
                 <p className="text-emerald-300 font-bold text-base">{persistTotalReviews}</p>
               </div>
               <div className="space-y-0.5">
-                <span className="text-slate-400 text-[10px] uppercase">Rounds</span>
+                <span className="text-slate-400 text-[0.625rem] uppercase">Rounds</span>
                 <p className="text-white font-bold text-base">{persistRound}</p>
               </div>
             </div>
@@ -2607,7 +2675,7 @@ export default function Review() {
 
                   {allDecks.filter((d) => d.card_count > 0).length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      <span className="text-[11px] text-slate-500">Quick run:</span>
+                      <span className="text-[0.6875rem] text-slate-500">Quick run:</span>
                       {allDecks
                         .filter((d) => d.card_count > 0)
                         .slice(0, 4)
@@ -2700,9 +2768,7 @@ export default function Review() {
                 cardFront={item.front}
                 cardBack={item.back}
                 initialGlosses={item.lexicon_glosses}
-                onGlossesUpdated={(updatedGlosses) => {
-                  item.lexicon_glosses = updatedGlosses
-                }}
+                onGlossesUpdated={(updatedGlosses) => applyGlossesToCard(item.id, updatedGlosses)}
                 codeLanguage={codeLanguage}
               />
             </aside>
@@ -2825,7 +2891,7 @@ export default function Review() {
                         </div>
 
                         <div className="inline-flex items-center rounded-md bg-[#161616] p-0.5 border border-ink-line shrink-0 overflow-x-auto no-scrollbar">
-                          <span className="text-[10px] text-slate-500 px-1.5 font-medium uppercase tracking-wider shrink-0 select-none">Presets:</span>
+                          <span className="text-[0.625rem] text-slate-500 px-1.5 font-medium uppercase tracking-wider shrink-0 select-none">Presets:</span>
                           <button
                             type="button"
                             onClick={() => {
@@ -2921,7 +2987,6 @@ export default function Review() {
                           }`}
                           title="Solution (Alt+T)"
                         >
-                          <span>Sol</span>
                           <span>Solution</span>
                         </button>
                         <button
@@ -2934,7 +2999,6 @@ export default function Review() {
                           }`}
                           title="Unit Tests (Alt+T)"
                         >
-                          <span>Tests</span>
                           <span>Unit Tests</span>
                           {testCode.trim() && (
                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
@@ -2964,7 +3028,6 @@ export default function Review() {
                             }`}
                             title="Ref Tests"
                           >
-                            <span>Tests</span>
                             <span>Ref Tests</span>
                           </button>
                         )}
@@ -2985,7 +3048,7 @@ export default function Review() {
                       onChange={(e) => {
                         const nextLang = e.target.value
                         setCodeLanguage(nextLang)
-                        localStorage.setItem('memorization.reviewCodeLanguage', nextLang)
+                        storage.set('memorization.reviewCodeLanguage', nextLang)
                       }}
                       className="rounded border border-ink-line bg-[#282828] px-2 py-0.5 text-xs font-semibold text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer shrink-0"
                     >
@@ -2999,7 +3062,7 @@ export default function Review() {
                       <button
                         type="button"
                         onClick={() => setAnswer(item.starter_code || '')}
-                        className="text-slate-400 hover:text-slate-200 text-[11px] underline cursor-pointer"
+                        className="text-slate-400 hover:text-slate-200 text-[0.6875rem] underline cursor-pointer"
                         title="Reset code editor to original starter template"
                       >
                         Reset solution
@@ -3011,7 +3074,7 @@ export default function Review() {
                           <button
                             type="button"
                             onClick={() => setTestCode(cleanRefTestsCode)}
-                            className="text-purple-300 hover:text-purple-200 text-[11px] underline cursor-pointer"
+                            className="text-purple-300 hover:text-purple-200 text-[0.6875rem] underline cursor-pointer"
                             title="Load completed reference tests into unit tests editor"
                           >
                             Load reference tests
@@ -3020,7 +3083,7 @@ export default function Review() {
                         <button
                           type="button"
                           onClick={() => setTestCode(buildStarterTestCode(item) || cleanRefTestsCode)}
-                          className="text-slate-400 hover:text-slate-200 text-[11px] underline cursor-pointer"
+                          className="text-slate-400 hover:text-slate-200 text-[0.6875rem] underline cursor-pointer"
                           title="Reset unit tests to starter assertions"
                         >
                           Reset tests
@@ -3030,12 +3093,12 @@ export default function Review() {
                     {!tiledTabs && activeEditorTab === 'reference' && (
                       <div className="flex items-center gap-2">
                         {Boolean(cleanRefCode) && (revealed || singleRefViewMode === 'hint') && (
-                          <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line text-[11px] shrink-0">
+                          <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line text-[0.6875rem] shrink-0">
                             <button
                               type="button"
                               onClick={() => {
                                 setSingleRefViewMode('ide')
-                                localStorage.setItem('memorization.refViewMode', 'ide')
+                                storage.set('memorization.refViewMode', 'ide')
                               }}
                               className={`px-2 py-0.5 rounded transition cursor-pointer ${
                                 singleRefViewMode === 'ide'
@@ -3051,7 +3114,7 @@ export default function Review() {
                                 type="button"
                                 onClick={() => {
                                   setSingleRefViewMode('diff')
-                                  localStorage.setItem('memorization.refViewMode', 'diff')
+                                  storage.set('memorization.refViewMode', 'diff')
                                 }}
                                 className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
                                   singleRefViewMode === 'diff'
@@ -3070,7 +3133,7 @@ export default function Review() {
                               type="button"
                               onClick={() => {
                                 setSingleRefViewMode('hint')
-                                localStorage.setItem('memorization.refViewMode', 'hint')
+                                storage.set('memorization.refViewMode', 'hint')
                               }}
                               className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
                                 singleRefViewMode === 'hint'
@@ -3079,7 +3142,7 @@ export default function Review() {
                               }`}
                               title="Hint-only mode: reveals only the current incomplete line"
                             >
-                              <span>💡 Hint</span>
+                             <span> Hint</span>
                             </button>
                           </div>
                         )}
@@ -3099,7 +3162,7 @@ export default function Review() {
                                   : 'Click to focus target code (dims boilerplate starter code)'
                               }
                             >
-                              <span>🎯 Target ({formatTargetLineSummary(singleTargetRefLines)})</span>
+                             <span> Target ({formatTargetLineSummary(singleTargetRefLines)})</span>
                             </button>
                             <HighlightColorPicker
                               color={targetHighlightColor}
@@ -3111,17 +3174,17 @@ export default function Review() {
                           <button
                             type="button"
                             onClick={() => handleHideSolution('hide')}
-                            className="px-2 py-0.5 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[11px] font-medium transition cursor-pointer flex items-center gap-1 shrink-0"
+                            className="px-2 py-0.5 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[0.6875rem] font-medium transition cursor-pointer flex items-center gap-1 shrink-0"
                             title="Hide solution and return to active practice"
                           >
-                            <span>🔒 Hide</span>
+                           <span> Hide</span>
                           </button>
                         )}
                         <button
                           type="button"
                           onClick={() => void handleCopyReferenceCode(cleanRefCode)}
                           disabled={!cleanRefCode}
-                          className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
+                          className="text-slate-400 hover:text-slate-200 text-[0.6875rem] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
                           title="Copy reference code to clipboard"
                         >
                           <span>{copiedRef ? 'Copied' : 'Copy ref'}</span>
@@ -3137,7 +3200,7 @@ export default function Review() {
                               setTestCode(cleanRefTestsCode)
                               setActiveEditorTab('tests')
                             }}
-                            className="text-purple-300 hover:text-purple-200 text-[11px] underline cursor-pointer"
+                            className="text-purple-300 hover:text-purple-200 text-[0.6875rem] underline cursor-pointer"
                             title="Load reference tests into editable Unit Tests editor"
                           >
                             Load to tests
@@ -3147,7 +3210,7 @@ export default function Review() {
                           type="button"
                           onClick={() => void handleCopyReferenceTests(cleanRefTestsCode)}
                           disabled={!cleanRefTestsCode}
-                          className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
+                          className="text-slate-400 hover:text-slate-200 text-[0.6875rem] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
                           title="Copy completed reference tests to clipboard"
                         >
                           <span>{copiedRefTests ? 'Copied' : 'Copy ref tests'}</span>
@@ -3158,7 +3221,7 @@ export default function Review() {
 
                   <div className="flex items-center gap-3 text-xs shrink-0">
                     <div className="flex items-center gap-1 shrink-0">
-                      <span className="text-slate-500 text-[11px] shrink-0">Confidence:</span>
+                      <span className="text-slate-500 text-[0.6875rem] shrink-0">Confidence:</span>
                       {[
                         { lvl: 1, label: '1', color: 'text-rose-300' },
                         { lvl: 2, label: '2', color: 'text-amber-300' },
@@ -3169,7 +3232,7 @@ export default function Review() {
                           key={lvl}
                           type="button"
                           onClick={() => setConfidence(confidence === lvl ? null : lvl)}
-                          className={`rounded px-1.5 py-0.5 text-[11px] transition cursor-pointer ${
+                          className={`rounded px-1.5 py-0.5 text-[0.6875rem] transition cursor-pointer ${
                             confidence === lvl
                               ? `bg-white/10 ${color} font-bold ring-1 ring-inset ring-current`
                               : 'text-slate-400 hover:text-slate-200'
@@ -3185,7 +3248,7 @@ export default function Review() {
                         <button
                           type="button"
                           onClick={workbenchLayout.toggleColumnsSwapped}
-                          className={`px-1.5 py-0.5 text-[11px] font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                          className={`px-1.5 py-0.5 text-[0.6875rem] font-medium rounded transition flex items-center gap-1 cursor-pointer ${
                             workbenchLayout.columnsSwapped
                               ? 'bg-sky-600/30 text-sky-200 border border-sky-500/40'
                               : 'text-slate-400 hover:text-slate-200'
@@ -3203,7 +3266,7 @@ export default function Review() {
                             workbenchLayout.consoleDockPosition === 'bottom' ? 'right' : 'bottom',
                           )
                         }
-                        className={`px-1.5 py-0.5 text-[11px] font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                        className={`px-1.5 py-0.5 text-[0.6875rem] font-medium rounded transition flex items-center gap-1 cursor-pointer ${
                           workbenchLayout.consoleDockPosition === 'right'
                             ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/40'
                             : 'text-slate-400 hover:text-slate-200'
@@ -3220,7 +3283,7 @@ export default function Review() {
                       <button
                         type="button"
                         onClick={workbenchLayout.toggleStacked}
-                        className={`px-1.5 py-0.5 text-[11px] font-medium rounded transition flex items-center gap-1 cursor-pointer ${
+                        className={`px-1.5 py-0.5 text-[0.6875rem] font-medium rounded transition flex items-center gap-1 cursor-pointer ${
                           workbenchLayout.isStacked
                             ? 'bg-amber-600/30 text-amber-200 border border-amber-500/40'
                             : 'text-slate-400 hover:text-slate-200'
@@ -3233,7 +3296,7 @@ export default function Review() {
                       <button
                         type="button"
                         onClick={workbenchLayout.resetLayout}
-                        className="px-1.5 py-0.5 text-[11px] font-medium rounded text-slate-500 hover:text-slate-300 transition cursor-pointer"
+                        className="px-1.5 py-0.5 text-[0.6875rem] font-medium rounded text-slate-500 hover:text-slate-300 transition cursor-pointer"
                         title="Reset layout dimensions and positions to default"
                       >
                         <span>↺ Reset</span>
@@ -3405,7 +3468,7 @@ export default function Review() {
                         {singleRefViewMode === 'hint' && (
                           <div className="px-3 py-1.5 bg-amber-950/40 border-b border-amber-500/30 flex items-center justify-between text-xs text-amber-200 shrink-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-semibold text-amber-300">💡 Hint Mode:</span>
+                             <span className="font-semibold text-amber-300"> Hint Mode:</span>
                               <span>
                                 Only line {findIncompleteLineNumber(answer, cleanRefCode)} is visible
                               </span>
@@ -3417,7 +3480,7 @@ export default function Review() {
                                 className="px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-semibold cursor-pointer"
                                 title="Hide the solution and continue practicing"
                               >
-                                🔒 Unreveal & Practice
+                                 Unreveal & Practice
                               </button>
                             )}
                           </div>
@@ -3483,12 +3546,12 @@ export default function Review() {
                             type="button"
                             onClick={() => {
                               setSingleRefViewMode('hint')
-                              localStorage.setItem('memorization.refViewMode', 'hint')
+                              storage.set('memorization.refViewMode', 'hint')
                             }}
                             className="px-3 py-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
                             title="Peek only the next line of code without revealing full answer"
                           >
-                            <span>💡 Line Hint</span>
+                           <span> Line Hint</span>
                           </button>
                         </div>
                       </div>
@@ -3630,7 +3693,7 @@ export default function Review() {
                   title="Expand Testcases Console (Click to expand)"
                 >
                   <span className="text-xs">◀</span>
-                  <span className="text-[11px] font-mono [writing-mode:vertical-rl] tracking-wider font-semibold">
+                  <span className="text-[0.6875rem] font-mono [writing-mode:vertical-rl] tracking-wider font-semibold">
                     Testcases Console
                   </span>
                   {codeRunResult && (
@@ -3683,11 +3746,11 @@ export default function Review() {
                     >
                       <span className="text-sky-400">▲</span>
                       <span className="font-semibold">Testcases Console</span>
-                      <span className="text-slate-500 text-[11px]">(Collapsed)</span>
+                      <span className="text-slate-500 text-[0.6875rem]">(Collapsed)</span>
                     </button>
                     {codeRunResult && (
                       <span
-                        className={`text-[11px] px-2 py-0.5 rounded font-semibold ${
+                        className={`text-[0.6875rem] px-2 py-0.5 rounded font-semibold ${
                           codeRunResult.status === 'Accepted'
                             ? 'bg-emerald-500/20 text-emerald-300'
                             : 'bg-rose-500/20 text-rose-300'
@@ -3758,7 +3821,6 @@ export default function Review() {
           {/* Left: Window Title & Metadata */}
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="flex items-center gap-1.5 font-bold text-sky-400">
-              <span className="text-base">⚡</span>
               <span className="tracking-wide">Ars Memoriae</span>
               <span className="text-slate-600">/</span>
               <span className="text-slate-300 font-medium truncate max-w-[320px]">
@@ -3767,7 +3829,7 @@ export default function Review() {
             </div>
             {item?.difficulty && (
               <span
-                className={`chip text-[10px] py-0.5 px-2 font-semibold ${
+                className={`chip text-[0.625rem] py-0.5 px-2 font-semibold ${
                   item.difficulty === 'Easy'
                     ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
                     : item.difficulty === 'Medium'
@@ -3778,11 +3840,11 @@ export default function Review() {
                 {item.difficulty}
               </span>
             )}
-            <span className="chip text-[10px] py-0.5 px-2 border-sky-500/40 text-sky-300 bg-sky-500/10 font-mono uppercase">
+            <span className="chip text-[0.625rem] py-0.5 px-2 border-sky-500/40 text-sky-300 bg-sky-500/10 font-mono uppercase">
               {codeLanguage}
             </span>
             {item?.deck_name && (
-              <span className="chip text-[10px] py-0.5 px-2 text-slate-400 hidden sm:inline">
+              <span className="chip text-[0.625rem] py-0.5 px-2 text-slate-400 hidden sm:inline">
                 {item.deck_name}
               </span>
             )}
@@ -3800,7 +3862,6 @@ export default function Review() {
               }`}
               title="Toggle problem statement drawer (Alt+O)"
             >
-              <span>📋</span>
               <span>{popoutShowProblem ? 'Hide Problem' : 'Problem Statement'}</span>
             </button>
 
@@ -3814,10 +3875,9 @@ export default function Review() {
               }`}
               title="Toggle Card Lexicon & Definitions margin panel"
             >
-              <span>📚</span>
               <span>Lexicon</span>
               {(item?.lexicon_glosses?.length || 0) > 0 && (
-                <span className="rounded-full bg-sky-500/30 px-1.5 py-0.2 text-[10px] font-bold text-sky-200">
+                <span className="rounded-full bg-sky-500/30 px-1.5 py-0.2 text-[0.625rem] font-bold text-sky-200">
                   {item?.lexicon_glosses?.length}
                 </span>
               )}
@@ -3847,7 +3907,7 @@ export default function Review() {
             >
               <span>⤓</span>
               <span>Dock Back</span>
-              <kbd className="text-[10px] bg-slate-900/60 px-1 py-0.2 rounded text-sky-200">Esc</kbd>
+              <kbd className="text-[0.625rem] bg-slate-900/60 px-1 py-0.2 rounded text-sky-200">Esc</kbd>
             </button>
           </div>
         </div>
@@ -3877,7 +3937,7 @@ export default function Review() {
               />
               {(item.time_complexity || item.space_complexity || (item.edge_cases && item.edge_cases.length > 0)) && (
                 <div className="rounded-lg border border-ink-line/70 bg-ink-soft/40 p-3 space-y-2 text-xs">
-                  <p className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
+                  <p className="font-semibold text-slate-400 uppercase tracking-wider text-[0.625rem]">
                     Target Complexity &amp; Constraints:
                   </p>
                   <div className="flex flex-wrap gap-3 text-slate-300">
@@ -3933,9 +3993,7 @@ export default function Review() {
                 initialGlosses={item.lexicon_glosses}
                 codeLanguage={codeLanguage}
                 onLookupTriggered={() => setPopoutShowLexicon(true)}
-                onGlossesUpdated={(updatedGlosses) => {
-                  item.lexicon_glosses = updatedGlosses
-                }}
+                onGlossesUpdated={(updatedGlosses) => applyGlossesToCard(item.id, updatedGlosses)}
               />
             </aside>
           )}
@@ -3991,7 +4049,7 @@ export default function Review() {
           dismissedUnseenDeckId !== deckParam && (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 via-amber-900/20 to-ink-soft p-3.5 shadow-md">
               <div className="flex items-center gap-2.5">
-                <span className="flex h-6 px-2 items-center justify-center rounded bg-amber-500/20 text-[10px] font-bold uppercase tracking-wider text-amber-300 border border-amber-500/30">
+                <span className="flex h-6 px-2 items-center justify-center rounded bg-amber-500/20 text-[0.625rem] font-bold uppercase tracking-wider text-amber-300 border border-amber-500/30">
                   Unseen Cards Available
                 </span>
                 <span className="text-xs text-slate-200">
@@ -4063,18 +4121,19 @@ export default function Review() {
                       Persist Review Mode: {persistDeckName || item?.deck_name || 'Active Deck'}
                     </span>
                     {persistUnseenOnly && (
-                      <span className="rounded bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
+                      <span className="rounded bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 text-[0.625rem] font-medium text-amber-300">
                         Unseen Cards Only
                       </span>
                     )}
-                    <span className="rounded-full bg-sky-500/20 border border-sky-500/40 px-2 py-0.5 text-[10px] font-mono text-sky-200">
+                    <span className="rounded-full bg-sky-500/20 border border-sky-500/40 px-2 py-0.5 text-[0.625rem] font-mono text-sky-200">
                       Round {persistRound}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className="text-[0.6875rem] text-slate-400 mt-0.5">
                     {persistUnseenOnly
                       ? 'Drilling previously unseen cards until all are rated Easy. Other ratings (Again, Hard, Good) keep the card in rotation.'
-                      : 'Drilling until all cards are rated Easy. Other ratings (Again, Hard, Good) keep the card in rotation.'}
+                      : 'Drilling until all cards are rated Easy. Other ratings (Again, Hard, Good) keep the card in rotation.'}{' '}
+                    Only your first rating of each card is scheduled; repeat passes are practice.
                   </p>
                 </div>
               </div>
@@ -4107,7 +4166,7 @@ export default function Review() {
                   <strong className="text-emerald-400 font-mono">
                     {persistGraspedIds.size} / {persistCards.length}
                   </strong>
-                  <span className="text-slate-500 text-[11px]">
+                  <span className="text-slate-500 text-[0.6875rem]">
                     ({persistPendingQueue.length} pending in current cycle)
                   </span>
                 </span>
@@ -4152,11 +4211,11 @@ export default function Review() {
                     <span className="font-bold text-slate-100 text-sm">
                       All Cards Run: {allCardsRunDeckName || item?.deck_name || 'Active Deck'}
                     </span>
-                    <span className="rounded-full bg-purple-500/20 border border-purple-500/40 px-2 py-0.5 text-[10px] font-mono text-purple-200">
+                    <span className="rounded-full bg-purple-500/20 border border-purple-500/40 px-2 py-0.5 text-[0.625rem] font-mono text-purple-200">
                       Easiest → Hardest
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className="text-[0.6875rem] text-slate-400 mt-0.5">
                     Reviewing every card in this deck consecutively in ascending difficulty order. Progress is automatically saved.
                   </p>
                 </div>
@@ -4197,7 +4256,7 @@ export default function Review() {
                   <strong className="text-purple-300 font-mono">
                     Card {allCardsRunIndex + 1} of {allCardsRunCards.length}
                   </strong>
-                  <span className="text-slate-500 text-[11px]">
+                  <span className="text-slate-500 text-[0.6875rem]">
                     ({Math.max(0, allCardsRunCards.length - (allCardsRunIndex + 1))} remaining)
                   </span>
                 </span>
@@ -4241,7 +4300,7 @@ export default function Review() {
               
               <div>
                 <span className="font-semibold">{draftRestoredNotice}</span>
-                <span className="text-indigo-300/80 ml-2 text-[11px]">— your work-in-progress solution and unit tests were restored.</span>
+                <span className="text-indigo-300/80 ml-2 text-[0.6875rem]">— your work-in-progress solution and unit tests were restored.</span>
               </div>
             </div>
             <button
@@ -4289,7 +4348,7 @@ export default function Review() {
                 </div>
                 <div className="flex-1 flex items-center justify-center">
                   <span
-                    className="text-[11px] font-semibold text-slate-400 group-hover:text-sky-200 tracking-wider uppercase whitespace-nowrap"
+                    className="text-[0.6875rem] font-semibold text-slate-400 group-hover:text-sky-200 tracking-wider uppercase whitespace-nowrap"
                     style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
                   >
                     {revealed ? 'Assessment & Specs' : 'Problem Description'}
@@ -4300,13 +4359,13 @@ export default function Review() {
                 )}
                 {currentFailureReminder && (
                   <span
-                    className="w-5 h-5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 my-1 flex items-center justify-center text-[10px]"
+                    className="w-5 h-5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 my-1 flex items-center justify-center text-[0.625rem]"
                     title={currentFailureReminder}
                   >
-                    ⚠️
+                    
                   </span>
                 )}
-                <span className="text-[10px] text-slate-500 mt-2 font-mono">
+                <span className="text-[0.625rem] text-slate-500 mt-2 font-mono">
                   {item.difficulty || 'Code'}
                 </span>
               </button>
@@ -4389,7 +4448,6 @@ export default function Review() {
                         }`}
                         title={currentFailureReminder}
                       >
-                        <span>⚠️</span>
                         <span>{failureReminderEnabled && dismissedReminderCardId !== item.id ? 'Prior Mistake' : 'Show Past Mistake'}</span>
                       </button>
                     ) : item.active_weaknesses && item.active_weaknesses.length > 0 ? (
@@ -4480,7 +4538,7 @@ export default function Review() {
               {/* Complexity & Constraints Box */}
               {(item.time_complexity || item.space_complexity || (item.edge_cases && item.edge_cases.length > 0)) && (
                 <div className="rounded-lg border border-ink-line/70 bg-ink-soft/40 p-3 space-y-2 text-xs">
-                  <p className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
+                  <p className="font-semibold text-slate-400 uppercase tracking-wider text-[0.625rem]">
                     Target Complexity &amp; Constraints:
                   </p>
                   <div className="flex flex-wrap gap-4 text-slate-300">
@@ -4515,14 +4573,14 @@ export default function Review() {
                   {skipReviewRecording && (
                     <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 shadow-sm flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold uppercase tracking-wider text-[11px] bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30">
-                          ⚡ Skip Grading Active
+                        <span className="font-bold uppercase tracking-wider text-[0.6875rem] bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30">
+                           Skip Grading Active
                         </span>
                         <span>Type your solution and test/grade it. Your grade will not be recorded as a card review.</span>
                       </div>
                       <button
                         type="button"
-                        className="text-[11px] underline text-amber-400 hover:text-amber-100 ml-2 shrink-0 cursor-pointer"
+                        className="text-[0.6875rem] underline text-amber-400 hover:text-amber-100 ml-2 shrink-0 cursor-pointer"
                         onClick={() => setSkipReviewRecording(false)}
                       >
                         Cancel
@@ -4585,7 +4643,7 @@ export default function Review() {
                         </span>
                         <button
                           type="button"
-                          className="text-[11px] underline text-amber-400 hover:text-amber-200"
+                          className="text-[0.6875rem] underline text-amber-400 hover:text-amber-200"
                           onClick={() => setShowWeaknessHint(false)}
                         >
                           hide
@@ -4711,9 +4769,9 @@ export default function Review() {
                     <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
-                          ⚡ Unrecorded Practice Mode
+                           Unrecorded Practice Mode
                         </span>
-                        <span className="chip border-amber-500/30 text-amber-300 bg-amber-500/20 text-[10px]">
+                        <span className="chip border-amber-500/30 text-amber-300 bg-amber-500/20 text-[0.625rem]">
                           Review Not Recorded
                         </span>
                       </div>
@@ -4745,7 +4803,7 @@ export default function Review() {
                           onClick={handleRetryWithoutRecording}
                           title="Clear input and retry card from scratch (unrecorded)"
                         >
-                          <span>🔄 Fresh Retry</span>
+                         <span> Fresh Retry</span>
                         </button>
                         <button
                           type="button"
@@ -4760,8 +4818,8 @@ export default function Review() {
                       </div>
                     </div>
                   ) : (
-                    <div>
-                      <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="review-grade-bar">
+                      <div className="mb-2 flex items-center justify-between flex-wrap gap-2">
                         <p className="label mb-0">
                           {result && !result.degraded_to_manual
                             ? result.needs_confirmation
@@ -4775,24 +4833,24 @@ export default function Review() {
                               <button
                                 type="button"
                                 onClick={() => handleHideSolution('hint')}
-                                className="text-[11px] text-amber-300 hover:text-amber-100 flex items-center gap-1 cursor-pointer bg-amber-500/15 hover:bg-amber-500/25 px-2.5 py-0.5 rounded border border-amber-500/40 transition font-medium shadow-sm"
+                                className="text-[0.6875rem] text-amber-300 hover:text-amber-100 flex items-center gap-1 cursor-pointer bg-amber-500/15 hover:bg-amber-500/25 px-2.5 py-0.5 rounded border border-amber-500/40 transition font-medium shadow-sm"
                                 title="Hide full solution, enable line hints, and return to practice mode (Alt+U)"
                               >
-                                <span>💡 Use Line Hints &amp; Keep Practicing</span>
+                               <span> Use Line Hints &amp; Keep Practicing</span>
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleHideSolution('hide')}
-                                className="text-[11px] text-slate-300 hover:text-white flex items-center gap-1 cursor-pointer bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded border border-white/15 transition font-medium"
+                                className="text-[0.6875rem] text-slate-300 hover:text-white flex items-center gap-1 cursor-pointer bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded border border-white/15 transition font-medium"
                                 title="Lock reference solution and return to practice mode"
                               >
-                                <span>🔒 Hide Solution</span>
+                               <span> Hide Solution</span>
                               </button>
                             </>
                           )}
                           <button
                             type="button"
-                            className="text-[11px] text-slate-500 hover:text-amber-300 underline cursor-pointer"
+                            className="text-[0.6875rem] text-slate-500 hover:text-amber-300 underline cursor-pointer"
                             onClick={() => setSkipReviewRecording(true)}
                             title="Don't record this card review"
                           >
@@ -4814,14 +4872,14 @@ export default function Review() {
                               }`}
                               title={retryAfterRating ? `Record as ${g.toUpperCase()} and retry card immediately` : `Record as ${g.toUpperCase()} and advance to next card`}
                             >
-                              {retryAfterRating && <span className="text-xs">🔄</span>}
+                              {retryAfterRating && <span className="text-xs" aria-hidden="true">↻</span>}
                               <span className="capitalize">{g}</span>
                               <span className="text-xs opacity-50">{GRADE_BAND[g]}</span>
                               <span className="text-xs opacity-50">{i + 1}</span>
                               {suggested && <span className="text-xs opacity-70">· suggested</span>}
                               {persistActive && (
                                 <span
-                                  className={`text-[10px] ml-1 px-1.5 py-0.5 rounded font-semibold ${
+                                  className={`text-[0.625rem] ml-1 px-1.5 py-0.5 rounded font-semibold ${
                                     g === 'easy'
                                       ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-500/50'
                                       : 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
@@ -4894,7 +4952,7 @@ export default function Review() {
                       className="btn btn-primary text-xs px-4 py-2 font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer"
                       title="Bring the separate IDE window to the front"
                     >
-                      <span>🔍 Bring to Front</span>
+                     <span> Bring to Front</span>
                     </button>
                     <button
                       type="button"
@@ -4903,7 +4961,7 @@ export default function Review() {
                       title="Dock IDE back into this window (Esc / Alt+P)"
                     >
                       <span>⤓ Dock Back Here</span>
-                      <kbd className="text-[10px] bg-slate-900 px-1.5 py-0.5 rounded text-slate-400">Esc</kbd>
+                      <kbd className="text-[0.625rem] bg-slate-900 px-1.5 py-0.5 rounded text-slate-400">Esc</kbd>
                     </button>
                   </div>
                 </div>
@@ -4938,9 +4996,7 @@ export default function Review() {
                   collapsedRailOnDesktop={true}
                   onCollapseChange={setWorkbenchMarginCollapsed}
                   codeLanguage={codeLanguage}
-                  onGlossesUpdated={(updatedGlosses) => {
-                    item.lexicon_glosses = updatedGlosses
-                  }}
+                  onGlossesUpdated={(updatedGlosses) => applyGlossesToCard(item.id, updatedGlosses)}
                 />
               </aside>
             )}
@@ -5048,7 +5104,6 @@ export default function Review() {
                     }`}
                     title={currentFailureReminder}
                   >
-                    <span>⚠️</span>
                     <span>{failureReminderEnabled && dismissedReminderCardId !== item.id ? 'Prior Mistake' : 'Show Past Mistake'}</span>
                   </button>
                 ) : item.active_weaknesses && item.active_weaknesses.length > 0 ? (
@@ -5071,7 +5126,7 @@ export default function Review() {
                     className="chip border-amber-500/60 bg-amber-500/15 text-amber-300 font-bold flex items-center gap-1 shadow-sm"
                     title="Neocortical Schema Checkpoint: Foundational Mental Model Anchor"
                   >
-                    🏛️ Schema Checkpoint
+                     Schema Checkpoint
                   </span>
                 )}
                 {item.spatial_locus && (
@@ -5079,7 +5134,7 @@ export default function Review() {
                     className="chip border-emerald-500/40 bg-emerald-950/40 text-emerald-300 font-medium flex items-center gap-1"
                     title="Memory Palace Spatial Locus"
                   >
-                    📍 {item.spatial_locus}
+                     {item.spatial_locus}
                   </span>
                 )}
                 <button
@@ -5092,7 +5147,6 @@ export default function Review() {
                   }`}
                   title="View or generate bizarre Memory Palace visual mnemonic (Dual-Coding / Von Restorff)"
                 >
-                  <span>🧠</span>
                   <span>Mnemonic</span>
                 </button>
                 {!revealed && (
@@ -5107,7 +5161,6 @@ export default function Review() {
                     }`}
                     title="Reconsolidation: Test core invariant from an orthogonal angle"
                   >
-                    <span>🔄</span>
                     <span>{mutationLoading ? 'Mutating…' : mutatedPrompt ? 'Mutated Angle' : 'Mutate Prompt'}</span>
                   </button>
                 )}
@@ -5121,7 +5174,6 @@ export default function Review() {
                   }`}
                   title="Spreading activation: explore primed semantic connections"
                 >
-                  <span>🕸️</span>
                   <span>Associative</span>
                 </button>
                 {!revealed && (
@@ -5135,7 +5187,6 @@ export default function Review() {
                     }`}
                     title="Pre-test hypothesis generation: guess before revealing to prime dopaminergic RPE"
                   >
-                    <span>🔬</span>
                     <span>{showPretest ? 'Hide Hypothesis' : 'Hypothesize'}</span>
                   </button>
                 )}
@@ -5182,10 +5233,10 @@ export default function Review() {
               <div className="mt-3 rounded-xl border border-cyan-500/40 bg-gradient-to-r from-cyan-950/40 via-[#0d1820] to-[#0a1218] p-3 text-xs text-cyan-200 shadow-md animate-in fade-in">
                 <div className="flex items-center justify-between gap-2 border-b border-cyan-500/20 pb-2 mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold uppercase tracking-wider text-[10px] text-cyan-300">
-                      🔄 Reconsolidation Variant ({mutationType})
+                    <span className="font-bold uppercase tracking-wider text-[0.625rem] text-cyan-300">
+                       Reconsolidation Variant ({mutationType})
                     </span>
-                    <span className="text-[10px] text-cyan-400/60 font-mono">
+                    <span className="text-[0.625rem] text-cyan-400/60 font-mono">
                       • testing invariant invariance
                     </span>
                   </div>
@@ -5193,7 +5244,7 @@ export default function Review() {
                     <select
                       value={mutationType}
                       onChange={(e) => void handleMutatePrompt(e.target.value)}
-                      className="text-[11px] bg-slate-900 border border-slate-700 text-slate-200 rounded px-1.5 py-0.5 cursor-pointer"
+                      className="text-[0.6875rem] bg-slate-900 border border-slate-700 text-slate-200 rounded px-1.5 py-0.5 cursor-pointer"
                     >
                       <option value="counterfactual">Counterfactual</option>
                       <option value="scenario">Scenario</option>
@@ -5221,11 +5272,11 @@ export default function Review() {
               <div className="mt-3 rounded-xl border border-purple-500/40 bg-gradient-to-r from-purple-950/40 via-[#150d1e] to-[#0f0915] p-3.5 text-xs text-purple-200 shadow-md animate-in fade-in">
                 <div className="flex items-center justify-between gap-2 border-b border-purple-500/20 pb-2 mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold uppercase tracking-wider text-[10px] text-purple-300">
-                      🧠 Memory Palace Anchor (Bizarre Visual Vignette)
+                    <span className="font-bold uppercase tracking-wider text-[0.625rem] text-purple-300">
+                       Memory Palace Anchor (Bizarre Visual Vignette)
                     </span>
                     {item.spatial_locus && (
-                      <span className="chip text-[10px] border-purple-500/30 text-purple-300 bg-purple-500/10">
+                      <span className="chip text-[0.625rem] border-purple-500/30 text-purple-300 bg-purple-500/10">
                         {item.spatial_locus}
                       </span>
                     )}
@@ -5235,7 +5286,7 @@ export default function Review() {
                       type="button"
                       disabled={mnemonicLoading}
                       onClick={handleRegenerateMnemonic}
-                      className="text-[11px] text-purple-300 hover:text-white flex items-center gap-1 bg-purple-900/40 border border-purple-500/30 px-2 py-0.5 rounded cursor-pointer transition font-medium"
+                      className="text-[0.6875rem] text-purple-300 hover:text-white flex items-center gap-1 bg-purple-900/40 border border-purple-500/30 px-2 py-0.5 rounded cursor-pointer transition font-medium"
                     >
                       <span>{mnemonicLoading ? 'Synthesizing…' : '↻ Re-synthesize'}</span>
                     </button>
@@ -5269,10 +5320,10 @@ export default function Review() {
               <div className="mt-3 rounded-xl border border-indigo-500/40 bg-gradient-to-r from-indigo-950/40 via-[#0e0f1e] to-[#0a0b17] p-3.5 text-xs text-indigo-200 shadow-md animate-in fade-in">
                 <div className="flex items-center justify-between gap-2 border-b border-indigo-500/20 pb-2 mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold uppercase tracking-wider text-[10px] text-indigo-300">
-                      🕸️ Associative Network (Spreading Activation)
+                    <span className="font-bold uppercase tracking-wider text-[0.625rem] text-indigo-300">
+                       Associative Network (Spreading Activation)
                     </span>
-                    <span className="text-[10px] text-indigo-400/60 font-mono">
+                    <span className="text-[0.625rem] text-indigo-400/60 font-mono">
                       • primed semantic representations
                     </span>
                   </div>
@@ -5297,11 +5348,11 @@ export default function Review() {
                       >
                         <div className="flex items-center justify-between gap-1">
                           <span className="font-medium text-slate-200 truncate">{node.title}</span>
-                          <span className="text-[10px] font-mono text-indigo-300 shrink-0">
+                          <span className="text-[0.625rem] font-mono text-indigo-300 shrink-0">
                             {Math.round(node.activation * 100)}%
                           </span>
                         </div>
-                        <div className="flex items-center justify-between text-[10px] text-slate-400">
+                        <div className="flex items-center justify-between text-[0.625rem] text-slate-400">
                           <span>{node.deck_name}</span>
                           <span className="italic text-indigo-300/80">{node.relationship_to_source}</span>
                         </div>
@@ -5321,8 +5372,8 @@ export default function Review() {
               <div className="mt-3 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-950/40 via-[#0d1a12] to-[#09140e] p-3.5 text-xs text-emerald-200 shadow-md animate-in fade-in">
                 <div className="flex items-center justify-between gap-2 border-b border-emerald-500/20 pb-2 mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold uppercase tracking-wider text-[10px] text-emerald-300">
-                      🔬 Pre-Test Hypothesis (Dopaminergic Prediction Error)
+                    <span className="font-bold uppercase tracking-wider text-[0.625rem] text-emerald-300">
+                       Pre-Test Hypothesis (Dopaminergic Prediction Error)
                     </span>
                   </div>
                   <button
@@ -5346,14 +5397,14 @@ export default function Review() {
                   />
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-slate-400">Confidence:</span>
+                      <span className="text-[0.6875rem] text-slate-400">Confidence:</span>
                       <div className="flex items-center gap-1">
                         {[1, 2, 3, 4].map((lvl) => (
                           <button
                             key={lvl}
                             type="button"
                             onClick={() => setPretestConfidence(lvl)}
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold transition ${
+                            className={`px-2 py-0.5 rounded text-[0.625rem] font-bold transition ${
                               pretestConfidence === lvl
                                 ? 'bg-emerald-500 text-slate-950'
                                 : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
@@ -5383,7 +5434,7 @@ export default function Review() {
                       : 'border-amber-500/50 bg-amber-950/50 text-amber-200'
                   }`}>
                     <div className="font-bold flex items-center gap-1.5 mb-1">
-                      <span>{pretestResult.is_accurate ? '✅ Accurate Prediction!' : pretestResult.high_confidence_error ? '⚡ High-Confidence Prediction Error!' : '💡 Divergent Intuition'}</span>
+                     <span>{pretestResult.is_accurate ? ' Accurate Prediction!' : pretestResult.high_confidence_error ? ' High-Confidence Prediction Error!' : ' Divergent Intuition'}</span>
                     </div>
                     <p className="leading-relaxed">{pretestResult.feedback}</p>
                   </div>
@@ -5436,7 +5487,7 @@ export default function Review() {
                         key={lvl}
                         type="button"
                         onClick={() => setConfidence(confidence === lvl ? null : lvl)}
-                        className={`rounded border px-2 py-0.5 text-[11px] transition-all ${
+                        className={`rounded border px-2 py-0.5 text-[0.6875rem] transition-all ${
                           confidence === lvl
                             ? `${color} bg-white/10 font-medium ring-1 ring-inset ring-current`
                             : 'border-ink-line text-slate-400 hover:text-slate-200'
@@ -5475,7 +5526,7 @@ export default function Review() {
                               </div>
 
                               <div className="inline-flex items-center rounded-md bg-[#161616] p-0.5 border border-ink-line shrink-0 overflow-x-auto no-scrollbar">
-                                <span className="text-[10px] text-slate-500 px-1.5 font-medium uppercase tracking-wider shrink-0 select-none">Presets:</span>
+                                <span className="text-[0.625rem] text-slate-500 px-1.5 font-medium uppercase tracking-wider shrink-0 select-none">Presets:</span>
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -5635,7 +5686,7 @@ export default function Review() {
                             onChange={(e) => {
                               const nextLang = e.target.value
                               setCodeLanguage(nextLang)
-                              localStorage.setItem('memorization.reviewCodeLanguage', nextLang)
+                              storage.set('memorization.reviewCodeLanguage', nextLang)
                             }}
                             className="rounded border border-ink-line bg-[#282828] px-2 py-0.5 text-xs font-semibold text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer shrink-0"
                           >
@@ -5659,7 +5710,7 @@ export default function Review() {
                                   : 'Logic Guard is OFF: Click to enable real-time logic flaw detection'
                               }
                             >
-                              <span>{logicGuardEnabled ? '🛡️ Guard: ON' : '🛡️ Guard: OFF'}</span>
+                             <span>{logicGuardEnabled ? ' Guard: ON' : ' Guard: OFF'}</span>
                             </button>
                           )}
 
@@ -5667,7 +5718,7 @@ export default function Review() {
                             <button
                               type="button"
                               onClick={() => setAnswer(item.starter_code || '')}
-                              className="text-slate-400 hover:text-slate-200 text-[11px] underline cursor-pointer"
+                              className="text-slate-400 hover:text-slate-200 text-[0.6875rem] underline cursor-pointer"
                               title="Reset code editor to original starter template"
                             >
                               Reset solution
@@ -5679,7 +5730,7 @@ export default function Review() {
                                 <button
                                   type="button"
                                   onClick={() => setTestCode(cleanRefTestsCode)}
-                                  className="text-purple-300 hover:text-purple-200 text-[11px] underline cursor-pointer"
+                                  className="text-purple-300 hover:text-purple-200 text-[0.6875rem] underline cursor-pointer"
                                   title="Load completed reference tests into unit tests editor"
                                 >
                                   Load reference tests
@@ -5688,7 +5739,7 @@ export default function Review() {
                               <button
                                 type="button"
                                 onClick={() => setTestCode(buildStarterTestCode(item) || cleanRefTestsCode)}
-                                className="text-slate-400 hover:text-slate-200 text-[11px] underline cursor-pointer"
+                                className="text-slate-400 hover:text-slate-200 text-[0.6875rem] underline cursor-pointer"
                                 title="Reset unit tests to starter assertions"
                               >
                                 Reset tests
@@ -5698,12 +5749,12 @@ export default function Review() {
                           {!tiledTabs && activeEditorTab === 'reference' && (
                             <div className="flex items-center gap-2">
                               {Boolean(cleanRefCode) && (revealed || singleRefViewMode === 'hint') && (
-                                <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line text-[11px] shrink-0">
+                                <div className="inline-flex rounded-md bg-[#161616] p-0.5 border border-ink-line text-[0.6875rem] shrink-0">
                                   <button
                                     type="button"
                                     onClick={() => {
                                       setSingleRefViewMode('ide')
-                                      localStorage.setItem('memorization.refViewMode', 'ide')
+                                      storage.set('memorization.refViewMode', 'ide')
                                     }}
                                     className={`px-2 py-0.5 rounded transition cursor-pointer ${
                                       singleRefViewMode === 'ide'
@@ -5719,7 +5770,7 @@ export default function Review() {
                                       type="button"
                                       onClick={() => {
                                         setSingleRefViewMode('diff')
-                                        localStorage.setItem('memorization.refViewMode', 'diff')
+                                        storage.set('memorization.refViewMode', 'diff')
                                       }}
                                       className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
                                         singleRefViewMode === 'diff'
@@ -5738,7 +5789,7 @@ export default function Review() {
                                     type="button"
                                     onClick={() => {
                                       setSingleRefViewMode('hint')
-                                      localStorage.setItem('memorization.refViewMode', 'hint')
+                                      storage.set('memorization.refViewMode', 'hint')
                                     }}
                                     className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
                                       singleRefViewMode === 'hint'
@@ -5747,7 +5798,7 @@ export default function Review() {
                                     }`}
                                     title="Hint-only mode: reveals only the current incomplete line"
                                   >
-                                    <span>💡 Hint</span>
+                                   <span> Hint</span>
                                   </button>
                                 </div>
                               )}
@@ -5767,7 +5818,7 @@ export default function Review() {
                                         : 'Click to focus target code (dims boilerplate starter code)'
                                     }
                                   >
-                                    <span>🎯 Target ({formatTargetLineSummary(singleTargetRefLines)})</span>
+                                   <span> Target ({formatTargetLineSummary(singleTargetRefLines)})</span>
                                   </button>
                                   <HighlightColorPicker
                                     color={targetHighlightColor}
@@ -5779,17 +5830,17 @@ export default function Review() {
                                 <button
                                   type="button"
                                   onClick={() => handleHideSolution('hide')}
-                                  className="px-2 py-0.5 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[11px] font-medium transition cursor-pointer flex items-center gap-1 shrink-0"
+                                  className="px-2 py-0.5 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[0.6875rem] font-medium transition cursor-pointer flex items-center gap-1 shrink-0"
                                   title="Hide solution and return to active practice"
                                 >
-                                  <span>🔒 Hide</span>
+                                 <span> Hide</span>
                                 </button>
                               )}
                               <button
                                 type="button"
                                 onClick={() => void handleCopyReferenceCode(cleanRefCode)}
                                 disabled={!cleanRefCode}
-                                className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
+                                className="text-slate-400 hover:text-slate-200 text-[0.6875rem] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
                                 title="Copy reference code to clipboard"
                               >
                                 <span>{copiedRef ? 'Copied' : 'Copy ref'}</span>
@@ -5805,7 +5856,7 @@ export default function Review() {
                                     setTestCode(cleanRefTestsCode)
                                     setActiveEditorTab('tests')
                                   }}
-                                  className="text-purple-300 hover:text-purple-200 text-[11px] underline cursor-pointer"
+                                  className="text-purple-300 hover:text-purple-200 text-[0.6875rem] underline cursor-pointer"
                                   title="Load reference tests into editable Unit Tests editor"
                                 >
                                   Load to tests
@@ -5815,7 +5866,7 @@ export default function Review() {
                                 type="button"
                                 onClick={() => void handleCopyReferenceTests(cleanRefTestsCode)}
                                 disabled={!cleanRefTestsCode}
-                                className="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
+                                className="text-slate-400 hover:text-slate-200 text-[0.6875rem] flex items-center gap-1 disabled:opacity-30 cursor-pointer"
                                 title="Copy completed reference tests to clipboard"
                               >
                                 <span>{copiedRefTests ? 'Copied' : 'Copy ref tests'}</span>
@@ -5927,7 +5978,7 @@ export default function Review() {
                               {singleRefViewMode === 'hint' && (
                                 <div className="px-3 py-1 bg-amber-950/40 border-b border-amber-500/30 flex items-center justify-between text-xs text-amber-200 shrink-0">
                                   <div className="flex items-center gap-2">
-                                    <span className="font-semibold text-amber-300">💡 Hint Mode:</span>
+                                   <span className="font-semibold text-amber-300"> Hint Mode:</span>
                                     <span>
                                       Only line {findIncompleteLineNumber(answer, cleanRefCode)} is visible
                                     </span>
@@ -5939,7 +5990,7 @@ export default function Review() {
                                       className="px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-semibold cursor-pointer"
                                       title="Hide the solution and continue practicing"
                                     >
-                                      🔒 Unreveal & Practice
+                                       Unreveal & Practice
                                     </button>
                                   )}
                                 </div>
@@ -5979,7 +6030,7 @@ export default function Review() {
                               </div>
                               <div className="space-y-0.5">
                                 <h4 className="text-xs font-semibold text-slate-200">Reference Solution</h4>
-                                <p className="text-[11px] text-slate-400 max-w-xs leading-relaxed">
+                                <p className="text-[0.6875rem] text-slate-400 max-w-xs leading-relaxed">
                                    Hidden until revealed.
                                 </p>
                               </div>
@@ -5995,12 +6046,12 @@ export default function Review() {
                                   type="button"
                                   onClick={() => {
                                     setSingleRefViewMode('hint')
-                                    localStorage.setItem('memorization.refViewMode', 'hint')
+                                    storage.set('memorization.refViewMode', 'hint')
                                   }}
                                   className="px-3 py-1 rounded border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-medium transition cursor-pointer flex items-center gap-1"
                                   title="Peek only the next line of code without revealing full answer"
                                 >
-                                  <span>💡 Line Hint</span>
+                                 <span> Line Hint</span>
                                 </button>
                               </div>
                             </div>
@@ -6033,7 +6084,7 @@ export default function Review() {
                               </div>
                               <div className="space-y-0.5">
                                 <h4 className="text-xs font-semibold text-slate-200">Reference Tests</h4>
-                                <p className="text-[11px] text-slate-400 max-w-xs leading-relaxed">
+                                <p className="text-[0.6875rem] text-slate-400 max-w-xs leading-relaxed">
                                    Hidden until revealed.
                                 </p>
                               </div>
@@ -6095,8 +6146,8 @@ export default function Review() {
                     {skipReviewRecording && (
                       <div className="mb-2 flex items-center justify-between rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 shadow-sm animate-fadeIn">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="font-bold uppercase tracking-wider text-[11px] bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30 shrink-0">
-                            ⚡ Skip Grading Active
+                          <span className="font-bold uppercase tracking-wider text-[0.6875rem] bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30 shrink-0">
+                             Skip Grading Active
                           </span>
                           <span className="truncate">
                             Type your answer and grade it below. Your grade will not be recorded as a card review.
@@ -6104,7 +6155,7 @@ export default function Review() {
                         </div>
                         <button
                           type="button"
-                          className="text-[11px] underline text-amber-400 hover:text-amber-100 ml-2 shrink-0 cursor-pointer"
+                          className="text-[0.6875rem] underline text-amber-400 hover:text-amber-100 ml-2 shrink-0 cursor-pointer"
                           onClick={() => setSkipReviewRecording(false)}
                           title="Return to standard review mode"
                         >
@@ -6194,7 +6245,7 @@ export default function Review() {
                       </span>
                       <button
                         type="button"
-                        className="text-[11px] underline text-amber-400 hover:text-amber-200"
+                        className="text-[0.6875rem] underline text-amber-400 hover:text-amber-200"
                         onClick={() => setShowWeaknessHint(false)}
                       >
                         hide
@@ -6310,9 +6361,9 @@ export default function Review() {
                   <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
-                        ⚡ Unrecorded Practice Mode
+                         Unrecorded Practice Mode
                       </span>
-                      <span className="chip border-amber-500/30 text-amber-300 bg-amber-500/20 text-[10px]">
+                      <span className="chip border-amber-500/30 text-amber-300 bg-amber-500/20 text-[0.625rem]">
                         Review Not Recorded
                       </span>
                     </div>
@@ -6344,7 +6395,7 @@ export default function Review() {
                         onClick={handleRetryWithoutRecording}
                         title="Clear input and retry card from scratch (unrecorded)"
                       >
-                        <span>🔄 Fresh Retry</span>
+                       <span> Fresh Retry</span>
                       </button>
                       <button
                         type="button"
@@ -6359,8 +6410,8 @@ export default function Review() {
                     </div>
                   </div>
                 ) : (
-                  <div>
-                    <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="review-grade-bar">
+                    <div className="mb-2 flex items-center justify-between flex-wrap gap-2">
                       <p className="label mb-0">
                         {result && !result.degraded_to_manual
                           ? result.needs_confirmation
@@ -6374,24 +6425,24 @@ export default function Review() {
                             <button
                               type="button"
                               onClick={() => handleHideSolution('hint')}
-                              className="text-[11px] text-amber-300 hover:text-amber-100 flex items-center gap-1 cursor-pointer bg-amber-500/15 hover:bg-amber-500/25 px-2.5 py-0.5 rounded border border-amber-500/40 transition font-medium shadow-sm"
+                              className="text-[0.6875rem] text-amber-300 hover:text-amber-100 flex items-center gap-1 cursor-pointer bg-amber-500/15 hover:bg-amber-500/25 px-2.5 py-0.5 rounded border border-amber-500/40 transition font-medium shadow-sm"
                               title="Hide full solution, enable line hints, and return to practice mode (Alt+U)"
                             >
-                              <span>💡 Use Line Hints &amp; Keep Practicing</span>
+                             <span> Use Line Hints &amp; Keep Practicing</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => handleHideSolution('hide')}
-                              className="text-[11px] text-slate-300 hover:text-white flex items-center gap-1 cursor-pointer bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded border border-white/15 transition font-medium"
+                              className="text-[0.6875rem] text-slate-300 hover:text-white flex items-center gap-1 cursor-pointer bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded border border-white/15 transition font-medium"
                               title="Lock reference solution and return to practice mode"
                             >
-                              <span>🔒 Hide Solution</span>
+                             <span> Hide Solution</span>
                             </button>
                           </>
                         )}
                         <button
                           type="button"
-                          className="text-[11px] text-slate-500 hover:text-amber-300 underline cursor-pointer"
+                          className="text-[0.6875rem] text-slate-500 hover:text-amber-300 underline cursor-pointer"
                           onClick={() => setSkipReviewRecording(true)}
                           title="Don't record this card review"
                         >
@@ -6413,14 +6464,14 @@ export default function Review() {
                             }`}
                             title={retryAfterRating ? `Record as ${g.toUpperCase()} and retry card immediately` : `Record as ${g.toUpperCase()} and advance to next card`}
                           >
-                            {retryAfterRating && <span className="text-xs">🔄</span>}
+                            {retryAfterRating && <span className="text-xs" aria-hidden="true">↻</span>}
                             <span className="capitalize">{g}</span>
                             <span className="text-xs opacity-50">{GRADE_BAND[g]}</span>
                             <span className="text-xs opacity-50">{i + 1}</span>
                             {suggested && <span className="text-xs opacity-70">· suggested</span>}
                             {persistActive && (
                               <span
-                                className={`text-[10px] ml-1 px-1.5 py-0.5 rounded font-semibold ${
+                                className={`text-[0.625rem] ml-1 px-1.5 py-0.5 rounded font-semibold ${
                                   g === 'easy'
                                     ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-500/50'
                                     : 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
@@ -6453,9 +6504,7 @@ export default function Review() {
                 cardFront={item.front}
                 cardBack={item.back}
                 initialGlosses={item.lexicon_glosses}
-                onGlossesUpdated={(updatedGlosses) => {
-                  item.lexicon_glosses = updatedGlosses
-                }}
+                onGlossesUpdated={(updatedGlosses) => applyGlossesToCard(item.id, updatedGlosses)}
                 codeLanguage={codeLanguage}
               />
             </aside>
@@ -6727,7 +6776,7 @@ function LessonGate({
   const hasTests = Boolean(displayTestsCode.trim() || testCases.length > 0)
 
   const [codeLayout, setCodeLayout] = useState<'stacked' | 'split'>(() => {
-    return (localStorage.getItem('memorization.learnGateCodeLayout') as 'stacked' | 'split') || 'stacked'
+    return (storage.get('memorization.learnGateCodeLayout') as 'stacked' | 'split') || 'stacked'
   })
   const [testsTab, setTestsTab] = useState<'all' | 'code' | 'cases'>('all')
   const [showTestsSection, setShowTestsSection] = useState(true)
@@ -6837,13 +6886,13 @@ function LessonGate({
               <span>Tests &amp; Verification</span>
             </span>
             {testCases.length > 0 && (
-              <span className="rounded-full bg-indigo-500/15 border border-indigo-500/30 px-2 py-0.5 text-[10px] font-mono text-indigo-200">
+              <span className="rounded-full bg-indigo-500/15 border border-indigo-500/30 px-2 py-0.5 text-[0.625rem] font-mono text-indigo-200">
                 {testCases.length} {testCases.length === 1 ? 'case' : 'cases'}
               </span>
             )}
             {/* View Sub-Tabs if both unit test code and test cases exist */}
             {displayTestsCode.trim() && testCases.length > 0 && (
-              <div className="inline-flex rounded-md bg-[#121622] p-0.5 border border-ink-line text-[11px] ml-1">
+              <div className="inline-flex rounded-md bg-[#121622] p-0.5 border border-ink-line text-[0.6875rem] ml-1">
                 <button
                   type="button"
                   onClick={() => setTestsTab('all')}
@@ -6909,7 +6958,7 @@ function LessonGate({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs text-slate-400">
                   <span className="font-semibold text-slate-200">Unit Test Suite</span>
-                  <span className="font-mono text-[11px] text-indigo-300">{detectedLang}</span>
+                  <span className="font-mono text-[0.6875rem] text-indigo-300">{detectedLang}</span>
                 </div>
                 <div className="rounded-lg border border-ink-line overflow-hidden shadow-sm">
                   <CodeEditor
@@ -6937,14 +6986,14 @@ function LessonGate({
                 </div>
                 <div className="overflow-x-auto rounded-lg border border-ink-line/80">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-[#182030] text-slate-300 font-mono text-[11px] border-b border-ink-line/80">
+                    <thead className="bg-[#182030] text-slate-300 font-mono text-[0.6875rem] border-b border-ink-line/80">
                       <tr>
                         <th className="px-3 py-2 w-10 text-slate-400">#</th>
                         <th className="px-3 py-2">Input</th>
                         <th className="px-3 py-2">Expected Output</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-ink-line/40 font-mono text-[11px] bg-[#10141f]">
+                    <tbody className="divide-y divide-ink-line/40 font-mono text-[0.6875rem] bg-[#10141f]">
                       {testCases.map((tc, idx) => (
                         <tr key={idx} className="hover:bg-[#161c2b] transition-colors">
                           <td className="px-3 py-2 text-slate-500 font-bold">{idx + 1}</td>
@@ -6969,10 +7018,10 @@ function LessonGate({
             {/* 3. Edge Cases */}
             {edgeCases.length > 0 && (
               <div className="rounded-lg bg-[#121622] border border-indigo-500/30 p-2.5 text-xs text-slate-300 space-y-1">
-                <span className="font-semibold text-indigo-300 text-[11px] uppercase tracking-wider block">
+                <span className="font-semibold text-indigo-300 text-[0.6875rem] uppercase tracking-wider block">
                   Target Edge Cases &amp; Boundaries:
                 </span>
-                <ul className="list-disc list-inside space-y-0.5 text-slate-300 text-[11px]">
+                <ul className="list-disc list-inside space-y-0.5 text-slate-300 text-[0.6875rem]">
                   {edgeCases.map((ec, i) => (
                     <li key={i}>{ec}</li>
                   ))}
@@ -7023,7 +7072,7 @@ function LessonGate({
           <span className="font-bold text-sky-300">Priming</span>
           <span>Review before answering.</span>
         </div>
-        <kbd className="hidden sm:inline-block px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono border border-slate-700 text-sky-300">
+        <kbd className="hidden sm:inline-block px-2 py-0.5 rounded bg-slate-800 text-[0.6875rem] font-mono border border-slate-700 text-sky-300">
           Enter ↵
         </kbd>
       </div>
@@ -7035,7 +7084,7 @@ function LessonGate({
             Question
           </span>
           {item.category && (
-            <span className="chip text-[10px] text-slate-400">{item.category}</span>
+            <span className="chip text-[0.625rem] text-slate-400">{item.category}</span>
           )}
         </div>
 
@@ -7072,13 +7121,13 @@ function LessonGate({
           {hasTests && (
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs px-1">
               <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Layout:</span>
+                <span className="text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-400">Layout:</span>
                 <div className="inline-flex rounded-lg bg-[#141822] p-0.5 border border-ink-line/60">
                   <button
                     type="button"
                     onClick={() => {
                       setCodeLayout('stacked')
-                      localStorage.setItem('memorization.learnGateCodeLayout', 'stacked')
+                      storage.set('memorization.learnGateCodeLayout', 'stacked')
                     }}
                     className={`px-2.5 py-0.5 rounded text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
                       codeLayout === 'stacked'
@@ -7093,7 +7142,7 @@ function LessonGate({
                     type="button"
                     onClick={() => {
                       setCodeLayout('split')
-                      localStorage.setItem('memorization.learnGateCodeLayout', 'split')
+                      storage.set('memorization.learnGateCodeLayout', 'split')
                     }}
                     className={`hidden sm:flex px-2.5 py-0.5 rounded text-xs font-medium transition cursor-pointer items-center gap-1.5 ${
                       codeLayout === 'split'
@@ -7106,7 +7155,7 @@ function LessonGate({
                   </button>
                 </div>
               </div>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[0.6875rem] text-slate-400">
                 Solution and tests primed before practice phase
               </span>
             </div>
@@ -7165,9 +7214,9 @@ function LessonGate({
             )}
             {hasReferences && (
               <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-slate-400 text-[11px]">Citations:</span>
+                <span className="text-slate-400 text-[0.6875rem]">Citations:</span>
                 {item.references.map((ref, idx) => (
-                  <span key={idx} className="chip text-[10px] text-slate-400" title={ref.quote || undefined}>
+                  <span key={idx} className="chip text-[0.625rem] text-slate-400" title={ref.quote || undefined}>
                     {ref.source_title ?? ref.locator ?? 'source'}
                   </span>
                 ))}
@@ -7329,7 +7378,7 @@ function VramConstraintPrompt({
             <span className="text-slate-400 font-medium">Recommended next biggest model:</span>
             <div className="flex items-center gap-2 font-mono text-emerald-300 font-semibold text-sm">
               <span>{chosenModel}</span>
-              <span className="chip text-[10px] px-1.5 py-0.2 border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
+              <span className="chip text-[0.625rem] px-1.5 py-0.2 border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
                 {getModelInfo(chosenModel).badge || 'Smaller size'}
               </span>
             </div>
@@ -7489,12 +7538,12 @@ function DiscreteModelSelector({
         }`}
         title={`Model: ${activeModel}`}
       >
-        <span className="text-[10px] font-mono text-slate-400 uppercase">
+        <span className="text-[0.625rem] font-mono text-slate-400 uppercase">
           {isAgyActive ? 'AGY' : isFast ? 'Fast' : 'AI'}
         </span>
-        <span className="font-mono text-[11px] font-semibold tracking-tight">{currentInfo.short}</span>
+        <span className="font-mono text-[0.6875rem] font-semibold tracking-tight">{currentInfo.short}</span>
         <span
-          className={`text-[9px] text-slate-400 transition-transform duration-150 ${
+          className={`text-[0.5625rem] text-slate-400 transition-transform duration-150 ${
             open ? 'rotate-180 text-sky-400' : 'group-hover:text-slate-200'
           }`}
         >
@@ -7507,9 +7556,9 @@ function DiscreteModelSelector({
           <div className="flex items-center justify-between pb-2 border-b border-slate-800">
             <div className="flex items-center gap-1.5">
               <span className="font-semibold text-slate-100">AI Grading Engine</span>
-              <span className="text-[10px] text-slate-400 font-mono">AGY &amp; Local</span>
+              <span className="text-[0.625rem] text-slate-400 font-mono">AGY &amp; Local</span>
             </div>
-            <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
+            <span className="flex items-center gap-1 text-[0.625rem] text-emerald-400 font-medium">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
               {isAgyActive ? 'Subscription' : 'Quantized'}
             </span>
@@ -7518,7 +7567,7 @@ function DiscreteModelSelector({
           {/* Live VRAM Telemetry inside Discrete Switcher (Ollama only) */}
           {!isAgyActive && vram && (
             <div className="my-2 rounded-lg border border-slate-800 bg-slate-950/80 p-2 space-y-1.5">
-              <div className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center justify-between text-[0.6875rem]">
                 <span className="text-slate-300 font-semibold flex items-center gap-1">
                   <svg className="w-3 h-3 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
@@ -7527,26 +7576,26 @@ function DiscreteModelSelector({
                   </svg>
                   <span>VRAM Hardware Telemetry</span>
                 </span>
-                <span className="text-[10px] font-mono text-slate-400 truncate max-w-[140px]">{vram.gpu_name}</span>
+                <span className="text-[0.625rem] font-mono text-slate-400 truncate max-w-[140px]">{vram.gpu_name}</span>
               </div>
               <div className="grid grid-cols-3 gap-1.5 text-center font-mono">
                 <div className="rounded bg-slate-900/80 p-1 border border-slate-800/60">
-                  <div className="text-[9px] uppercase text-slate-400">Capacity</div>
-                  <div className="font-bold text-slate-100 text-[11px]">
+                  <div className="text-[0.5625rem] uppercase text-slate-400">Capacity</div>
+                  <div className="font-bold text-slate-100 text-[0.6875rem]">
                     {vram.capacity_gb != null ? `${vram.capacity_gb.toFixed(1)} GB` : 'N/A'}
                   </div>
                 </div>
                 <div className="rounded bg-sky-950/40 p-1 border border-sky-500/30">
-                  <div className="text-[9px] uppercase text-sky-300">Model VRAM</div>
-                  <div className="font-bold text-sky-200 text-[11px]">
+                  <div className="text-[0.5625rem] uppercase text-sky-300">Model VRAM</div>
+                  <div className="font-bold text-sky-200 text-[0.6875rem]">
                     {vram.model_loaded && vram.model_vram_gb
                       ? `${vram.model_vram_gb.toFixed(1)} GB`
                       : `~${vram.model_approx_gb || 0} GB`}
                   </div>
                 </div>
                 <div className="rounded bg-emerald-950/40 p-1 border border-emerald-500/30">
-                  <div className="text-[9px] uppercase text-emerald-300">Available</div>
-                  <div className="font-bold text-emerald-200 text-[11px]">
+                  <div className="text-[0.5625rem] uppercase text-emerald-300">Available</div>
+                  <div className="font-bold text-emerald-200 text-[0.6875rem]">
                     {vram.available_gb != null ? `${vram.available_gb.toFixed(1)} GB` : 'N/A'}
                   </div>
                 </div>
@@ -7596,7 +7645,7 @@ function DiscreteModelSelector({
                       </span>
                       {info.badge && (
                         <span
-                          className={`text-[9px] px-1 py-0.2 rounded font-semibold border ${
+                          className={`text-[0.5625rem] px-1 py-0.2 rounded font-semibold border ${
                             info.provider === 'antigravity'
                               ? 'border-indigo-400/40 text-indigo-200 bg-indigo-500/15'
                               : info.badge.includes('Speed') || info.badge.includes('Fast')
@@ -7610,14 +7659,14 @@ function DiscreteModelSelector({
                         </span>
                       )}
                       {isCurrent && (
-                        <span className="text-[10px] text-sky-400 font-bold ml-auto shrink-0">Active</span>
+                        <span className="text-[0.625rem] text-sky-400 font-bold ml-auto shrink-0">Active</span>
                       )}
                     </div>
-                    <div className="text-[10px] font-medium italic text-sky-300/90 mt-0.5">
+                    <div className="text-[0.625rem] font-medium italic text-sky-300/90 mt-0.5">
                       {info.archetype}
                     </div>
                     {info.desc && (
-                      <p className="text-[10px] text-slate-400 truncate mt-0.5">{info.desc}</p>
+                      <p className="text-[0.625rem] text-slate-400 truncate mt-0.5">{info.desc}</p>
                     )}
                   </div>
 
@@ -7626,7 +7675,7 @@ function DiscreteModelSelector({
                     hasAnswer && (
                       <button
                         type="button"
-                        className="shrink-0 rounded px-2 py-1 text-[11px] font-medium border border-slate-700 bg-slate-800 hover:border-sky-500 hover:bg-sky-600 hover:text-white text-slate-200 transition"
+                        className="shrink-0 rounded px-2 py-1 text-[0.6875rem] font-medium border border-slate-700 bg-slate-800 hover:border-sky-500 hover:bg-sky-600 hover:text-white text-slate-200 transition"
                         title={`Grade answer now using ${info.label}`}
                         onClick={(e) => {
                           e.stopPropagation()
@@ -7640,7 +7689,7 @@ function DiscreteModelSelector({
                   ) : (
                     <button
                       type="button"
-                      className="shrink-0 text-[10px] font-mono text-sky-400 hover:text-sky-200 underline cursor-pointer"
+                      className="shrink-0 text-[0.625rem] font-mono text-sky-400 hover:text-sky-200 underline cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation()
                         void navigator.clipboard.writeText(`ollama pull ${m}`)
@@ -7655,7 +7704,7 @@ function DiscreteModelSelector({
             })}
           </div>
 
-          <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px]">
+          <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[0.6875rem]">
             <span className="text-slate-400">
               {grading ? (
                 <span className="text-amber-300 flex items-center gap-1">
@@ -7735,7 +7784,7 @@ function GradeReasoning({
 
         {onSelectModel && onGradeWithModel && (
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-slate-400">Retry with:</span>
+            <span className="text-[0.6875rem] text-slate-400">Retry with:</span>
             <DiscreteModelSelector
               activeModel={activeModel || result.model_used || 'qwen2.5-coder:3b'}
               installedModels={installedModels}
@@ -7795,7 +7844,7 @@ function ThematicDocumentationCard({ item }: { item: QueueItem }) {
           <button
             type="button"
             onClick={() => setExpanded((prev) => !prev)}
-            className="text-[11px] text-sky-300 hover:text-white underline cursor-pointer"
+            className="text-[0.6875rem] text-sky-300 hover:text-white underline cursor-pointer"
           >
             {expanded ? 'Hide Documentation' : 'View Documentation'}
           </button>
@@ -7804,7 +7853,7 @@ function ThematicDocumentationCard({ item }: { item: QueueItem }) {
 
       {sources.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-          <span className="text-[11px] text-slate-400">Creation Documents:</span>
+          <span className="text-[0.6875rem] text-slate-400">Creation Documents:</span>
           {sources.map((sd: any, idx: number) => {
             let label = ''
             let quoteText = ''
@@ -7830,7 +7879,7 @@ function ThematicDocumentationCard({ item }: { item: QueueItem }) {
             return (
               <span
                 key={idx}
-                className="chip border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-[11px]"
+                className="chip border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-[0.6875rem]"
                 title={quoteText ? `Citation quote: "${quoteText}"` : undefined}
               >
                 {label}
@@ -7868,7 +7917,7 @@ function PrimerDrawer({
       <div className="mb-3 flex items-center justify-between gap-2 border-b border-sky-500/20 pb-2.5">
         <div className="flex items-center gap-2 text-xs font-semibold text-sky-300">
           <span>Primer</span>
-          <span className="chip border-sky-500/30 text-[10px] text-sky-200">Pre-review</span>
+          <span className="chip border-sky-500/30 text-[0.625rem] text-sky-200">Pre-review</span>
         </div>
         <button
           type="button"
@@ -7903,7 +7952,7 @@ function PrimerDrawer({
               <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
                 {item.references!.map((ref, idx) => (
                   <div key={idx} className="rounded border border-sky-500/20 bg-ink/60 p-2.5 text-xs text-slate-300">
-                    <div className="mb-1 flex items-center gap-2 font-mono text-[10px] text-sky-300">
+                    <div className="mb-1 flex items-center gap-2 font-mono text-[0.625rem] text-sky-300">
                       {ref.locator && <span>[{ref.locator}]</span>}
                       {ref.source_title && <span>{ref.source_title}</span>}
                     </div>
@@ -7986,7 +8035,7 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
           )}
           {hasOverlookedPhrases && (
             <div className="mt-3 border-t border-amber-500/20 pt-2.5">
-              <p className="mb-1.5 text-[11px] font-medium text-amber-300/70">
+              <p className="mb-1.5 text-[0.6875rem] font-medium text-amber-300/70">
                 Omitted Phrases:
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -8027,7 +8076,7 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
             
             <span>Resolved Weakness</span>
           </div>
-          <p className="mt-1 text-[11px] text-emerald-300/80">
+          <p className="mt-1 text-[0.6875rem] text-emerald-300/80">
             Resolved from previous reviews:
           </p>
           <ul className="mt-2 space-y-1 text-xs text-emerald-100">
@@ -8048,7 +8097,7 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
             
             <span>Recurring Weakness</span>
           </div>
-          <p className="mt-1 text-[11px] text-rose-300/80">
+          <p className="mt-1 text-[0.6875rem] text-rose-300/80">
             Flagged in prior reviews:
           </p>
           <ul className="mt-2 space-y-1 text-xs text-rose-100">
@@ -8069,7 +8118,7 @@ function OverlookedAnalysisCard({ result }: { result: SubmitAnswerResponse }) {
             
             <span>Saved to Memory:</span>
           </div>
-          <p className="mt-1 text-[11px] text-amber-300/70">
+          <p className="mt-1 text-[0.6875rem] text-amber-300/70">
             Noted for future reviews:
           </p>
           <ul className="mt-1.5 space-y-1 text-xs text-amber-100">
@@ -8163,7 +8212,7 @@ function HighlightedText({
         const img = part.match(/^!\[\]\(([^)]+)\)$/)
         if (img) {
           const src = img[1].startsWith('/')
-            ? `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'}${img[1]}`
+            ? `${API_BASE}${img[1]}`
             : img[1]
           return (
             <img
@@ -8177,7 +8226,7 @@ function HighlightedText({
         const audio = part.match(/^\[audio\]\(([^)]+)\)$/)
         if (audio) {
           const src = audio[1].startsWith('/')
-            ? `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'}${audio[1]}`
+            ? `${API_BASE}${audio[1]}`
             : audio[1]
           return <audio key={i} controls src={src} className="my-2 w-full" />
         }
@@ -8241,7 +8290,7 @@ function ExtractCard({ item, onDone }: { item: QueueItem; onDone: () => void }) 
       </div>
       <RichText
         text={item.extract_content ?? ''}
-        className="max-h-[26rem] overflow-y-auto text-[15px] leading-7 text-slate-200"
+        className="max-h-[26rem] overflow-y-auto text-[0.9375rem] leading-7 text-slate-200"
       />
       <div className="mt-5 flex flex-wrap gap-2">
         <button className="btn btn-primary" onClick={() => navigate(`/read/${item.id}`)}>
@@ -8334,6 +8383,12 @@ function SessionHeader({
   const caps = session?.caps
   const planned = ((counts?.review ?? 0) + (counts?.new ?? 0) + (counts?.ir ?? 0))
 
+  const [modesOpen, setModesOpen] = useState(false)
+  const decksWithCards = (allDecks ?? []).filter((d) => d.card_count > 0).length
+  const hasModeLaunchers =
+    (!persistActive && !allCardsRunActive && decksWithCards > 0 && Boolean(onStartPersist || onStartAllCardsRun)) ||
+    Boolean(onStartBlitz && !blitzActive)
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -8341,14 +8396,14 @@ function SessionHeader({
           <span className="chip border-purple-500/50 bg-purple-500/15 text-purple-200 font-semibold flex items-center gap-1.5 shadow-sm">
             <span>Run: {allCardsRunDeckName || 'Current Deck'}</span>
             {allCardsRunProgress && (
-              <span className="text-[10px] text-purple-300/90 font-mono">
+              <span className="text-[0.625rem] text-purple-300/90 font-mono">
                 ({allCardsRunProgress.current}/{allCardsRunProgress.total} · Easiest → Hardest)
               </span>
             )}
             {onExitAllCardsRun && (
               <button
                 type="button"
-                className="ml-1 text-slate-400 hover:text-white underline text-[11px] cursor-pointer"
+                className="ml-1 text-slate-400 hover:text-white underline text-[0.6875rem] cursor-pointer"
                 onClick={onExitAllCardsRun}
                 title="Exit All Cards Run and return to FSRS queue"
               >
@@ -8362,7 +8417,7 @@ function SessionHeader({
           <span className="chip border-amber-500/50 bg-amber-500/15 text-amber-200 font-semibold flex items-center gap-1.5 shadow-sm">
             <span>Persist{persistUnseenOnly ? ' (Unseen)' : ''}: {persistDeckName || 'Current Deck'}</span>
             {persistProgress && (
-              <span className="text-[10px] text-amber-300/90 font-mono">
+              <span className="text-[0.625rem] text-amber-300/90 font-mono">
                 ({persistProgress.grasped}/{persistProgress.total} Easy · R{persistProgress.round})
               </span>
             )}
@@ -8396,7 +8451,7 @@ function SessionHeader({
             {onClearBranch && (
               <button
                 type="button"
-                className="ml-1 text-slate-400 hover:text-white underline text-[11px]"
+                className="ml-1 text-slate-400 hover:text-white underline text-[0.6875rem]"
                 onClick={onClearBranch}
                 title="Switch to studying all decks in collection"
               >
@@ -8425,108 +8480,135 @@ function SessionHeader({
           </>
         )}
 
-        {/* Quick Persist Deck Selector (when not in persist mode) */}
-        {!persistActive && !allCardsRunActive && allDecks && allDecks.filter((d) => d.card_count > 0).length > 0 && onStartPersist && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-amber-400 font-medium">Persist Deck:</span>
-            <label className="flex items-center gap-1 text-[11px] text-slate-300 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={quickPersistUnseenOnly}
-                onChange={(e) => setQuickPersistUnseenOnly(e.target.checked)}
-                className="rounded border-slate-700 bg-ink-soft text-amber-500 focus:ring-0 w-3 h-3 cursor-pointer"
-              />
-              <span className="text-[10px] text-amber-300/80">Unseen only</span>
-            </label>
-            <select
-              className="rounded border border-amber-500/30 bg-ink-soft/90 px-2 py-0.5 text-[11px] text-amber-200 hover:border-amber-400 focus:outline-none cursor-pointer"
-              defaultValue=""
-              onChange={(e) => {
-                if (e.target.value) {
-                  const d = allDecks.find((deck) => deck.id === e.target.value)
-                  onStartPersist(e.target.value, d?.name, quickPersistUnseenOnly)
-                  e.target.value = ''
-                }
-              }}
-            >
-              <option value="" disabled>
-                Select deck to drill…
-              </option>
-              {allDecks
-                .filter((d) => d.card_count > 0)
-                .map((d) => {
-                  const viewedPct = d.stats && d.stats.total_cards > 0
-                    ? Math.round(d.stats.viewed_ratio * 100)
-                    : null
-                  return (
-                    <option key={d.id} value={d.id}>
-                      {d.name} ({d.card_count} cards{viewedPct !== null ? ` · ${viewedPct}% viewed` : ''}{d.new_count > 0 ? ` · ${d.new_count} unseen` : ''})
-                    </option>
-                  )
-                })}
-            </select>
-          </div>
+        {/* Persist, All Cards Run and Blitz are ways to *start* a different kind
+            of session, not things you need while answering a card. They sit
+            behind one toggle so the row above the card stays a single line. */}
+        {hasModeLaunchers && (
+          <button
+            type="button"
+            className={`chip transition cursor-pointer ${
+              modesOpen ? 'border-sky-500/50 text-sky-200' : 'hover:text-slate-200'
+            }`}
+            aria-expanded={modesOpen}
+            aria-controls="review-study-modes"
+            onClick={() => setModesOpen((open) => !open)}
+            title="Persist drill, All Cards Run and Blitz sprint"
+          >
+            Study modes {modesOpen ? '▴' : '▾'}
+          </button>
         )}
 
-        {/* Quick All Cards Run Selector */}
-        {!allCardsRunActive && !persistActive && allDecks && allDecks.filter((d) => d.card_count > 0).length > 0 && onStartAllCardsRun && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-purple-400 font-medium">All Cards Run:</span>
-            <select
-              className="rounded border border-purple-500/30 bg-ink-soft/90 px-2 py-0.5 text-[11px] text-purple-200 hover:border-purple-400 focus:outline-none cursor-pointer"
-              defaultValue=""
-              onChange={(e) => {
-                if (e.target.value) {
-                  const d = allDecks.find((deck) => deck.id === e.target.value)
-                  onStartAllCardsRun(e.target.value, d?.name)
-                  e.target.value = ''
-                }
-              }}
-            >
-              <option value="" disabled>
-                Select deck to run…
-              </option>
-              {allDecks
-                .filter((d) => d.card_count > 0)
-                .map((d) => {
-                  const viewedPct = d.stats && d.stats.total_cards > 0
-                    ? Math.round(d.stats.viewed_ratio * 100)
-                    : null
-                  return (
-                    <option key={d.id} value={d.id}>
-                      {d.name} ({d.card_count} cards{viewedPct !== null ? ` · ${viewedPct}% viewed` : ''})
-                    </option>
-                  )
-                })}
-            </select>
-          </div>
-        )}
+        {hasModeLaunchers && modesOpen && (
+          <div
+            id="review-study-modes"
+            className="order-last flex basis-full flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-ink-line bg-ink-soft/60 px-3 py-2"
+          >
+            {/* Quick Persist Deck Selector (when not in persist mode) */}
+            {!persistActive && !allCardsRunActive && allDecks && allDecks.filter((d) => d.card_count > 0).length > 0 && onStartPersist && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[0.6875rem] text-amber-400 font-medium">Persist Deck:</span>
+                <label className="flex items-center gap-1 text-[0.6875rem] text-slate-300 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={quickPersistUnseenOnly}
+                    onChange={(e) => setQuickPersistUnseenOnly(e.target.checked)}
+                    className="rounded border-slate-700 bg-ink-soft text-amber-500 focus:ring-0 w-3 h-3 cursor-pointer"
+                  />
+                  <span className="text-[0.625rem] text-amber-300/80">Unseen only</span>
+                </label>
+                <select
+                  aria-label="Deck to drill in persist mode"
+                  className="rounded border border-amber-500/30 bg-ink-soft px-2 py-0.5 text-[0.6875rem] text-amber-200 hover:border-amber-400 cursor-pointer"
+                  defaultValue=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const d = allDecks.find((deck) => deck.id === e.target.value)
+                      onStartPersist(e.target.value, d?.name, quickPersistUnseenOnly)
+                      e.target.value = ''
+                    }
+                  }}
+                >
+                  <option value="" disabled>
+                    Select deck to drill…
+                  </option>
+                  {allDecks
+                    .filter((d) => d.card_count > 0)
+                    .map((d) => {
+                      const viewedPct = d.stats && d.stats.total_cards > 0
+                        ? Math.round(d.stats.viewed_ratio * 100)
+                        : null
+                      return (
+                        <option key={d.id} value={d.id}>
+                          {d.name} ({d.card_count} cards{viewedPct !== null ? ` · ${viewedPct}% viewed` : ''}{d.new_count > 0 ? ` · ${d.new_count} unseen` : ''})
+                        </option>
+                      )
+                    })}
+                </select>
+              </div>
+            )}
 
-        {/* Blitz Mode Sprint Triggers */}
-        {onStartBlitz && !blitzActive && (
-          <div className="flex items-center gap-1">
-            <span className="text-[11px] text-amber-400 font-medium">Blitz Sprint:</span>
-            <button
-              className="chip hover:border-amber-500/40 hover:text-amber-300"
-              onClick={() => onStartBlitz(30)}
-              title="Start high-speed 30 second sprint"
-            >
-              30s
-            </button>
-            <button
-              className="chip hover:border-amber-500/40 hover:text-amber-300"
-              onClick={() => onStartBlitz(60)}
-              title="Start high-speed 60 second sprint"
-            >
-              60s
-            </button>
-            <button
-              className="chip hover:border-amber-500/40 hover:text-amber-300"
-              onClick={() => onStartBlitz(90)}
-              title="Start high-speed 90 second sprint"
-            >
-              90s
-            </button>
+            {/* Quick All Cards Run Selector */}
+            {!allCardsRunActive && !persistActive && allDecks && allDecks.filter((d) => d.card_count > 0).length > 0 && onStartAllCardsRun && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[0.6875rem] text-purple-400 font-medium">All Cards Run:</span>
+                <select
+                  aria-label="Deck for an All Cards Run"
+                  className="rounded border border-purple-500/30 bg-ink-soft px-2 py-0.5 text-[0.6875rem] text-purple-200 hover:border-purple-400 cursor-pointer"
+                  defaultValue=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const d = allDecks.find((deck) => deck.id === e.target.value)
+                      onStartAllCardsRun(e.target.value, d?.name)
+                      e.target.value = ''
+                    }
+                  }}
+                >
+                  <option value="" disabled>
+                    Select deck to run…
+                  </option>
+                  {allDecks
+                    .filter((d) => d.card_count > 0)
+                    .map((d) => {
+                      const viewedPct = d.stats && d.stats.total_cards > 0
+                        ? Math.round(d.stats.viewed_ratio * 100)
+                        : null
+                      return (
+                        <option key={d.id} value={d.id}>
+                          {d.name} ({d.card_count} cards{viewedPct !== null ? ` · ${viewedPct}% viewed` : ''})
+                        </option>
+                      )
+                    })}
+                </select>
+              </div>
+            )}
+
+            {/* Blitz Mode Sprint Triggers */}
+            {onStartBlitz && !blitzActive && (
+              <div className="flex items-center gap-1">
+                <span className="text-[0.6875rem] text-amber-400 font-medium">Blitz Sprint:</span>
+                <button
+                  className="chip hover:border-amber-500/40 hover:text-amber-300"
+                  onClick={() => onStartBlitz(30)}
+                  title="Start high-speed 30 second sprint"
+                >
+                  30s
+                </button>
+                <button
+                  className="chip hover:border-amber-500/40 hover:text-amber-300"
+                  onClick={() => onStartBlitz(60)}
+                  title="Start high-speed 60 second sprint"
+                >
+                  60s
+                </button>
+                <button
+                  className="chip hover:border-amber-500/40 hover:text-amber-300"
+                  onClick={() => onStartBlitz(90)}
+                  title="Start high-speed 90 second sprint"
+                >
+                  90s
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -8553,7 +8635,6 @@ function SessionHeader({
             Learn &amp; Practice {learnMode ? 'on' : 'off'}
           </button>
         )}
-        <FullscreenButton size="sm" className="ml-1" />
       </div>
 
       {outcome && (
@@ -8563,11 +8644,11 @@ function SessionHeader({
             <button
               type="button"
               onClick={onRetryPreviousCard}
-              className="inline-flex items-center gap-1.5 text-[11px] text-amber-400 hover:text-amber-300 hover:underline cursor-pointer font-medium transition"
+              className="inline-flex items-center gap-1.5 text-[0.6875rem] text-amber-400 hover:text-amber-300 hover:underline cursor-pointer font-medium transition"
               title={`Retry previous card: "${previousCard.title || previousCard.front?.slice(0, 40)}..."`}
             >
-              <span>🔄 Retry Previous Card</span>
-              <span className="text-slate-500 text-[10px]">
+             <span> Retry Previous Card</span>
+              <span className="text-slate-500 text-[0.625rem]">
                 ({previousCard.title || (previousCard.front ? previousCard.front.slice(0, 25) + '…' : 'card')})
               </span>
             </button>
@@ -8575,15 +8656,21 @@ function SessionHeader({
         </div>
       )}
 
-      {/* §3.1: guardrails must be visible, or a smoothed backlog looks like a bug. */}
-      {session?.notes?.map((note, i) => (
-        <p
-          key={i}
-          className="rounded-lg border border-sky-500/25 bg-sky-500/5 px-3 py-2 text-xs text-sky-200/90"
-        >
-          {note}
-        </p>
-      ))}
+      {/* §3.1: guardrails must be visible, or a smoothed backlog looks like a bug.
+          One strip for all of them: a separate bordered box per note stacked
+          two or three banners between the header and the card. */}
+      {session?.notes && session.notes.length > 0 && (
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 rounded-lg border border-sky-500/25 bg-sky-500/5 px-3 py-1.5 text-xs text-sky-200/90">
+          {session.notes.map((note, i) => (
+            <li key={i} className="flex items-baseline gap-1.5">
+              <span aria-hidden="true" className="text-sky-400/70">
+                •
+              </span>
+              <span>{note}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
@@ -8623,26 +8710,26 @@ function BlitzScorecardModal({
           <div className="rounded-lg border border-ink-line bg-ink/60 p-3 text-center">
             <p className="text-xs text-slate-400">Cards Answered</p>
             <p className="font-mono text-2xl font-bold text-amber-300">{stats.total}</p>
-            <p className="text-[10px] text-slate-500">{stats.cpm} cards / min</p>
+            <p className="text-[0.625rem] text-slate-500">{stats.cpm} cards / min</p>
           </div>
           <div className="rounded-lg border border-ink-line bg-ink/60 p-3 text-center">
             <p className="text-xs text-slate-400">Accuracy</p>
             <p className={`font-mono text-2xl font-bold ${accuracy >= 85 ? 'text-emerald-400' : 'text-amber-400'}`}>
               {accuracy}%
             </p>
-            <p className="text-[10px] text-slate-500">{stats.correct} correct</p>
+            <p className="text-[0.625rem] text-slate-500">{stats.correct} correct</p>
           </div>
           <div className="rounded-lg border border-ink-line bg-ink/60 p-3 text-center">
             <p className="text-xs text-slate-400">Avg Reaction Time</p>
             <p className="font-mono text-2xl font-bold text-sky-300">
               {Math.floor(stats.avgLatencySec / 60)}m {Math.round(stats.avgLatencySec % 60)}s
             </p>
-            <p className="text-[10px] text-slate-500">per retrieval</p>
+            <p className="text-[0.625rem] text-slate-500">per retrieval</p>
           </div>
           <div className="rounded-lg border border-ink-line bg-ink/60 p-3 text-center">
             <p className="text-xs text-slate-400">Automaticity Rate</p>
             <p className="font-mono text-2xl font-bold text-emerald-300">{stats.automaticityRate}%</p>
-            <p className="text-[10px] text-slate-500">reflexes &lt; 3.0s</p>
+            <p className="text-[0.625rem] text-slate-500">reflexes &lt; 3.0s</p>
           </div>
         </div>
 

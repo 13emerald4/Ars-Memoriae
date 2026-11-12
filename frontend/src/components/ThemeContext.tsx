@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react'
+import { storage } from '../utils/storage'
 
 export type ThemeMode = 'dynamic' | 'fixed'
 
@@ -153,6 +154,19 @@ export const THEME_REGISTRY: Record<CognitiveTheme, ThemeMeta> = {
   },
 }
 
+function isNightNow(): boolean {
+  const hours = new Date().getHours()
+  return hours >= 20 || hours < 6
+}
+
+/** "#0b1320" -> "11 19 32", the form `rgb(var(--x) / <alpha>)` expects. */
+function hexToChannels(hex: string): string {
+  const h = hex.replace('#', '')
+  const full = h.length === 3 ? h.replace(/./g, (c) => c + c) : h
+  const n = Number.parseInt(full, 16)
+  return `${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255}`
+}
+
 interface ThemeContextValue {
   themeMode: ThemeMode
   setThemeMode: (mode: ThemeMode) => void
@@ -179,15 +193,13 @@ const ThemeContext = createContext<ThemeContextValue | null>(null)
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Theme Mode: 'dynamic' (auto context-adaptive) vs 'fixed' (user lock)
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
-    if (typeof localStorage === 'undefined') return 'dynamic'
-    const saved = localStorage.getItem('memorization.themeMode')
+    const saved = storage.get('memorization.themeMode')
     return saved === 'fixed' ? 'fixed' : 'dynamic'
   })
 
   // Fixed palette selection
   const [fixedTheme, setFixedThemeState] = useState<CognitiveTheme>(() => {
-    if (typeof localStorage === 'undefined') return 'acquisition'
-    const saved = localStorage.getItem('memorization.fixedTheme') as CognitiveTheme
+    const saved = storage.get('memorization.fixedTheme') as CognitiveTheme
     return saved && THEME_REGISTRY[saved] ? saved : 'acquisition'
   })
 
@@ -196,74 +208,71 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Auto night shift toggle for dynamic mode
   const [enableNightAutoShift, setEnableNightAutoShiftState] = useState<boolean>(() => {
-    if (typeof localStorage === 'undefined') return true
-    return localStorage.getItem('memorization.nightAutoShift') !== '0'
+    return storage.get('memorization.nightAutoShift') !== '0'
   })
 
   // Pure Black / OLED Dark canvas toggle (applies #000000 background across all themes)
   const [enableOledBlack, setEnableOledBlackState] = useState<boolean>(() => {
-    if (typeof localStorage === 'undefined') return false
-    return localStorage.getItem('memorization.oledDark') === '1'
+    return storage.get('memorization.oledDark') === '1'
   })
 
   // Greyscale & High-Contrast Mode for monochrome displays, OS color filters, and e-ink
   const [enableGreyscaleFriendly, setEnableGreyscaleFriendlyState] = useState<boolean>(() => {
-    if (typeof localStorage === 'undefined') return false
-    return localStorage.getItem('memorization.greyscaleFriendly') === '1'
+    return storage.get('memorization.greyscaleFriendly') === '1'
   })
 
   // In-browser greyscale simulation preview (filter: grayscale(100%))
   const [simulateGreyscale, setSimulateGreyscaleState] = useState<boolean>(() => {
-    if (typeof localStorage === 'undefined') return false
-    return localStorage.getItem('memorization.simulateGreyscale') === '1'
+    return storage.get('memorization.simulateGreyscale') === '1'
   })
 
   // Font Size scale: 10, 12, 14, 16, 18, 20
   const [fontSize, setFontSizeState] = useState<FontSize>(() => {
-    if (typeof localStorage === 'undefined') return 16
-    const saved = Number(localStorage.getItem('memorization.fontSize'))
+    const saved = Number(storage.get('memorization.fontSize'))
     return (FONT_SIZES.includes(saved as FontSize) ? saved : 16) as FontSize
   })
 
   const setThemeMode = useCallback((mode: ThemeMode) => {
     setThemeModeState(mode)
-    localStorage.setItem('memorization.themeMode', mode)
+    storage.set('memorization.themeMode', mode)
   }, [])
 
   const setFixedTheme = useCallback((theme: CognitiveTheme) => {
     setFixedThemeState(theme)
-    localStorage.setItem('memorization.fixedTheme', theme)
+    storage.set('memorization.fixedTheme', theme)
   }, [])
 
   const setEnableNightAutoShift = useCallback((enabled: boolean) => {
     setEnableNightAutoShiftState(enabled)
-    localStorage.setItem('memorization.nightAutoShift', enabled ? '1' : '0')
+    storage.set('memorization.nightAutoShift', enabled ? '1' : '0')
   }, [])
 
   const setEnableOledBlack = useCallback((enabled: boolean) => {
     setEnableOledBlackState(enabled)
-    localStorage.setItem('memorization.oledDark', enabled ? '1' : '0')
+    storage.set('memorization.oledDark', enabled ? '1' : '0')
   }, [])
 
   const setEnableGreyscaleFriendly = useCallback((enabled: boolean) => {
     setEnableGreyscaleFriendlyState(enabled)
-    localStorage.setItem('memorization.greyscaleFriendly', enabled ? '1' : '0')
+    storage.set('memorization.greyscaleFriendly', enabled ? '1' : '0')
   }, [])
 
   const setSimulateGreyscale = useCallback((enabled: boolean) => {
     setSimulateGreyscaleState(enabled)
-    localStorage.setItem('memorization.simulateGreyscale', enabled ? '1' : '0')
+    storage.set('memorization.simulateGreyscale', enabled ? '1' : '0')
   }, [])
 
   const setFontSize = useCallback((size: FontSize) => {
     setFontSizeState(size)
-    localStorage.setItem('memorization.fontSize', String(size))
+    storage.set('memorization.fontSize', String(size))
   }, [])
 
-  // Determine if it's currently night time (after 8 PM / 20:00 or before 6 AM)
-  const isNightTime = useMemo(() => {
-    const hours = new Date().getHours()
-    return hours >= 20 || hours < 6
+  // Night is after 20:00 or before 06:00. Checked every minute: computed once
+  // at load, a session that started in the afternoon never shifted.
+  const [isNightTime, setIsNightTime] = useState(isNightNow)
+  useEffect(() => {
+    const timer = window.setInterval(() => setIsNightTime(isNightNow()), 60_000)
+    return () => window.clearInterval(timer)
   }, [])
 
   // Compute active effective theme
@@ -308,6 +317,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty('--theme-bg-canvas', bgCanvas)
     root.style.setProperty('--theme-bg-card', bgCard)
     root.style.setProperty('--theme-border', border)
+    // Channel form of the same colours, for Tailwind's opacity modifiers.
+    root.style.setProperty('--theme-bg-canvas-rgb', hexToChannels(bgCanvas))
+    root.style.setProperty('--theme-bg-card-rgb', hexToChannels(bgCard))
+    root.style.setProperty('--theme-border-rgb', hexToChannels(border))
     root.style.setProperty('--theme-accent', meta.primaryColor)
     root.style.setProperty('--theme-accent-secondary', meta.secondaryColor)
   }, [activeTheme, enableOledBlack, enableGreyscaleFriendly, simulateGreyscale, fontSize])

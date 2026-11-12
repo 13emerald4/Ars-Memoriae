@@ -224,7 +224,7 @@ export default function Tutorial() {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-bold text-sky-200">Interactive Walkthrough</h2>
-            <span className="chip border-sky-500/40 text-sky-300 text-[10px] font-semibold">Self-Paced</span>
+            <span className="chip border-sky-500/40 text-sky-300 text-[0.625rem] font-semibold">Self-Paced</span>
           </div>
           <p className="mt-1 text-xs text-slate-400 max-w-xl">
             Choose between an interactive simulation or a brief overview.
@@ -336,7 +336,7 @@ export default function Tutorial() {
             <div key={x.title} className="rounded-lg border border-ink-line bg-ink/60 p-4 transition-all hover:border-slate-700">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-medium text-slate-200">{x.title}</h3>
-                {x.tag && <span className="chip text-[10px] text-slate-500">{x.tag}</span>}
+                {x.tag && <span className="chip text-[0.625rem] text-slate-500">{x.tag}</span>}
               </div>
               <p className="mt-1.5 text-xs text-slate-400 leading-relaxed">{x.body}</p>
               <button className="btn mt-3 px-2.5 py-1 text-xs" onClick={() => navigate(x.route)}>
@@ -352,7 +352,7 @@ export default function Tutorial() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="text-sky-400 font-semibold text-sm">Have a feature request or feedback?</span>
-            <span className="chip text-[10px] border-sky-500/40 text-sky-300">Feedback</span>
+            <span className="chip text-[0.625rem] border-sky-500/40 text-sky-300">Feedback</span>
           </div>
           <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
             Ars Memoriae is actively developed! You can submit ideas, suggest adjustments, or request new features anytime directly from <strong className="text-slate-100">Settings → Feature Requests & Feedback</strong>.

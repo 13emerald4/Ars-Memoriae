@@ -4,8 +4,10 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   ReactNode,
 } from 'react'
+import { storage } from '../utils/storage'
 
 interface FullscreenContextValue {
   /** True when HTML5 native document fullscreen is active */
@@ -48,8 +50,7 @@ export function FullscreenProvider({ children }: { children: ReactNode }) {
   })
 
   const [isZenMode, setIsZenMode] = useState<boolean>(() => {
-    if (typeof localStorage === 'undefined') return false
-    return localStorage.getItem(ZEN_MODE_STORAGE_KEY) === '1'
+    return storage.get(ZEN_MODE_STORAGE_KEY) === '1'
   })
 
   // Synchronize state with browser fullscreenchange events
@@ -92,7 +93,7 @@ export function FullscreenProvider({ children }: { children: ReactNode }) {
       // Fallback: toggle Zen distraction-free mode
       setIsZenMode((prev) => {
         const next = !prev
-        localStorage.setItem(ZEN_MODE_STORAGE_KEY, next ? '1' : '0')
+        storage.set(ZEN_MODE_STORAGE_KEY, next ? '1' : '0')
         return next
       })
     }
@@ -101,7 +102,7 @@ export function FullscreenProvider({ children }: { children: ReactNode }) {
   const toggleZenMode = useCallback(() => {
     setIsZenMode((prev) => {
       const next = !prev
-      localStorage.setItem(ZEN_MODE_STORAGE_KEY, next ? '1' : '0')
+      storage.set(ZEN_MODE_STORAGE_KEY, next ? '1' : '0')
       return next
     })
   }, [])
@@ -120,7 +121,7 @@ export function FullscreenProvider({ children }: { children: ReactNode }) {
     }
     setIsFullscreen(false)
     setIsZenMode(false)
-    localStorage.setItem(ZEN_MODE_STORAGE_KEY, '0')
+    storage.set(ZEN_MODE_STORAGE_KEY, '0')
   }, [])
 
   // Global keyboard shortcuts:
@@ -129,6 +130,8 @@ export function FullscreenProvider({ children }: { children: ReactNode }) {
   // - Escape: Exit Zen mode if active
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // Browser autofill dispatches keydown events with no `key` at all.
+      if (typeof e.key !== 'string') return
       const isCmdOrCtrl = e.ctrlKey || e.metaKey
 
       // Ctrl+Shift+F or Cmd+Shift+F
@@ -150,7 +153,7 @@ export function FullscreenProvider({ children }: { children: ReactNode }) {
       // Escape key exits Zen mode
       if (e.key === 'Escape' && isZenMode && !document.fullscreenElement) {
         setIsZenMode(false)
-        localStorage.setItem(ZEN_MODE_STORAGE_KEY, '0')
+        storage.set(ZEN_MODE_STORAGE_KEY, '0')
       }
     }
 
@@ -158,19 +161,12 @@ export function FullscreenProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [toggleFullscreen, isZenMode])
 
-  return (
-    <FullscreenContext.Provider
-      value={{
-        isFullscreen,
-        isZenMode,
-        toggleFullscreen,
-        toggleZenMode,
-        exitFullscreen,
-      }}
-    >
-      {children}
-    </FullscreenContext.Provider>
+  const value = useMemo(
+    () => ({ isFullscreen, isZenMode, toggleFullscreen, toggleZenMode, exitFullscreen }),
+    [isFullscreen, isZenMode, toggleFullscreen, toggleZenMode, exitFullscreen],
   )
+
+  return <FullscreenContext.Provider value={value}>{children}</FullscreenContext.Provider>
 }
 
 /** Header toggle button for navbar and toolbars */
@@ -186,7 +182,7 @@ export function FullscreenButton({
   const { isFullscreen, isZenMode, toggleFullscreen } = useFullscreen()
   const active = isFullscreen || isZenMode
 
-  const paddingClass = size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs'
+  const paddingClass = size === 'sm' ? 'px-2 py-0.5 text-[0.6875rem]' : 'px-2.5 py-1 text-xs'
 
   return (
     <button
@@ -197,13 +193,15 @@ export function FullscreenButton({
           ? 'Exit Fullscreen Mode (Esc or F)'
           : 'Enter Fullscreen Mode (F or Ctrl+Shift+F)'
       }
+      aria-label={active ? 'Exit fullscreen' : 'Enter fullscreen'}
+      aria-pressed={active}
       className={`flex items-center gap-1.5 rounded-lg border font-semibold transition-all ${
         active
           ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25 ring-1 ring-emerald-500/30'
           : 'border-slate-700/80 bg-slate-800/50 text-slate-300 hover:border-slate-600 hover:bg-slate-700/60 hover:text-white'
       } ${paddingClass} ${className}`}
     >
-      <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg aria-hidden="true" className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         {active ? (
           <>
             <path d="M8 3v3a2 2 0 0 1-2 2H3" />
@@ -245,7 +243,7 @@ export function FullscreenHud() {
       }`}
     >
       <span className="text-xs text-sky-300 font-semibold flex items-center gap-1">
-        <span className="text-[11px] font-mono uppercase tracking-wider text-slate-300">
+        <span className="text-[0.6875rem] font-mono uppercase tracking-wider text-slate-300">
           {isFullscreen ? 'Fullscreen' : 'Zen Focus'}
         </span>
       </span>
@@ -254,7 +252,7 @@ export function FullscreenHud() {
         type="button"
         onClick={toggleZenMode}
         title={isZenMode ? 'Show Navigation Header' : 'Hide Navigation Header (Zen Mode)'}
-        className="rounded px-1.5 py-0.5 text-[11px] font-medium text-slate-400 hover:text-sky-200 hover:bg-slate-800 transition"
+        className="rounded px-1.5 py-0.5 text-[0.6875rem] font-medium text-slate-400 hover:text-sky-200 hover:bg-slate-800 transition"
       >
         {isZenMode ? 'Show Nav' : 'Hide Nav'}
       </button>
@@ -263,10 +261,10 @@ export function FullscreenHud() {
         type="button"
         onClick={() => void exitFullscreen()}
         title="Exit Fullscreen (Esc)"
-        className="rounded px-2 py-0.5 text-[11px] font-bold text-rose-300 hover:bg-rose-950/60 transition flex items-center gap-1"
+        className="rounded px-2 py-0.5 text-[0.6875rem] font-bold text-rose-300 hover:bg-rose-950/60 transition flex items-center gap-1"
       >
         <span>Exit</span>
-        <kbd className="text-[9px] text-slate-500 font-mono ml-0.5">Esc</kbd>
+        <kbd className="text-[0.5625rem] text-slate-500 font-mono ml-0.5">Esc</kbd>
       </button>
     </div>
   )

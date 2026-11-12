@@ -1,6 +1,7 @@
+import { dialogs } from '../components/dialogs'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api, ApiError } from '../api/client'
+import { api, ApiError, API_BASE } from '../api/client'
 import { KnowledgeTree, type KnowledgeTreeNode } from '../components/KnowledgeTree'
 import {
   ALL_GENERATION_MODEL_OPTIONS,
@@ -23,7 +24,8 @@ import { useAuth } from '../hooks/useAuth'
 import { CardAnalyticsModal } from '../components/CardAnalyticsModal'
 import { DeckReviewStatsBar, CompactDeckDistributionBars } from '../components/DeckReviewStatsBar'
 import { OcclusionEditor } from '../components/Occlusion'
-import { Empty, ErrorNote, PriorityBar, RichText, Section, Spinner } from '../components/ui'
+import { RichText } from '../components/RichText'
+import { Empty, ErrorNote, PriorityBar, Section, Spinner } from '../components/ui'
 import DeckCardsViewer from '../components/DeckCardsViewer'
 import { isCodeCard } from '../utils/codeUtils'
 
@@ -263,13 +265,18 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
   }
 
   const handleDeleteDocument = async (docId: string) => {
-    if (!confirm('Remove this document from the deck?')) return
+    const ok = await dialogs.confirm({
+      title: 'Remove this document from the deck?',
+      danger: true,
+      confirmLabel: 'Remove',
+    })
+    if (!ok) return
     setDeletingDocId(docId)
     try {
       await api.deleteDeckDocument(deck.id, docId)
       setDeckDocs((prev) => prev.filter((d) => d.id !== docId && d.source_id !== docId))
     } catch (err: any) {
-      alert(err?.message || 'Failed to delete document.')
+      dialogs.error(err, 'Failed to delete document.')
     } finally {
       setDeletingDocId(null)
     }
@@ -336,7 +343,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
               value={thematicNature}
               onChange={(e) => setThematicNature(e.target.value)}
             />
-            <p className="mt-1 text-[11px] text-slate-500">
+            <p className="mt-1 text-[0.6875rem] text-slate-500">
               High-level domain or subject.
             </p>
           </div>
@@ -351,7 +358,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
               value={documentation}
               onChange={(e) => setDocumentation(e.target.value)}
             />
-            <p className="mt-1 text-[11px] text-slate-500">
+            <p className="mt-1 text-[0.6875rem] text-slate-500">
               Markdown supported. Inherited by each card unless overridden.
             </p>
           </div>
@@ -366,7 +373,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
               value={sourceDocsText}
               onChange={(e) => setSourceDocsText(e.target.value)}
             />
-            <p className="mt-1 text-[11px] text-slate-500">
+            <p className="mt-1 text-[0.6875rem] text-slate-500">
               Document titles, textbook chapters, or URLs.
             </p>
           </div>
@@ -451,17 +458,16 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-xs font-semibold text-emerald-300 flex items-center gap-1.5">
-                  <span>📄</span>
                   <span>Attached Reference Documents ({deckDocs.length})</span>
                 </span>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+                <p className="text-[0.6875rem] text-slate-400 mt-0.5">
                   Files attached here are searched and cited by local LLMs when highlighting code in Review (Alt+D).
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => void loadDeckDocs(deck.id)}
-                className="btn text-[11px] px-2 py-0.5"
+                className="btn text-[0.6875rem] px-2 py-0.5"
                 title="Refresh attached documents"
               >
                 ↻ Refresh
@@ -481,12 +487,11 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
                     className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-emerald-500/30 bg-[#11242c]/50 text-xs"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-base shrink-0">📄</span>
                       <div className="min-w-0">
                         <p className="font-semibold text-emerald-200 truncate">
                           {doc.title || doc.filename}
                         </p>
-                        <p className="text-[10px] text-slate-400 font-mono">
+                        <p className="text-[0.625rem] text-slate-400 font-mono">
                           {doc.filename} · {doc.segment_count} passages indexed
                           {doc.uploaded_at ? ` · ${new Date(doc.uploaded_at).toLocaleDateString()}` : ''}
                         </p>
@@ -496,7 +501,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
                       type="button"
                       disabled={deletingDocId === (doc.id || doc.source_id)}
                       onClick={() => void handleDeleteDocument(doc.id || doc.source_id)}
-                      className="px-2 py-1 rounded text-[11px] text-rose-400 hover:text-rose-200 hover:bg-rose-950/40 border border-rose-500/30 transition shrink-0 cursor-pointer"
+                      className="px-2 py-1 rounded text-[0.6875rem] text-rose-400 hover:text-rose-200 hover:bg-rose-950/40 border border-rose-500/30 transition shrink-0 cursor-pointer"
                       title="Delete attached document"
                     >
                       {deletingDocId === (doc.id || doc.source_id) ? '…' : 'Delete'}
@@ -515,7 +520,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
               <span className="text-xs font-semibold text-emerald-300 block">
                 ＋ Upload Reference Document (PDF, Markdown, Source Code)
               </span>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[0.6875rem] text-slate-400">
                 Supported formats: PDF, Markdown (.md), Plain Text (.txt), HTML, TypeScript (.ts, .tsx), Python (.py), Java (.java), JSON.
               </p>
               {docUploadError && (
@@ -525,7 +530,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-300 mb-1">Choose File *</label>
+                  <label className="block text-[0.6875rem] font-medium text-slate-300 mb-1">Choose File *</label>
                   <input
                     type="file"
                     accept=".pdf,.txt,.md,.markdown,.html,.htm,.rst,.ts,.tsx,.js,.jsx,.py,.java,.json"
@@ -535,7 +540,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-300 mb-1">Document Title (optional)</label>
+                  <label className="block text-[0.6875rem] font-medium text-slate-300 mb-1">Document Title (optional)</label>
                   <input
                     type="text"
                     value={docTitle}
@@ -1057,13 +1062,21 @@ function DeckList({
   }
 
   async function handleDeleteAll() {
-    if (!confirm('Are you sure you want to delete ALL decks? All cards, notes, and progress in them will be permanently deleted.')) {
-      return
-    }
+    const ok = await dialogs.confirm({
+      title: 'Delete ALL decks?',
+      message:
+        'Every deck, note and card is permanently deleted, together with all review history and scheduling. It cannot be undone. Export a backup from Settings first if you might want any of it back.',
+      danger: true,
+      requireText: 'DELETE',
+      confirmLabel: 'Delete all decks',
+    })
+    if (!ok) return
     setBusy(true)
     try {
       await api.deleteAllDecks()
       onChange()
+    } catch (err) {
+      dialogs.error(err, 'Failed to delete decks.')
     } finally {
       setBusy(false)
     }
@@ -1071,9 +1084,12 @@ function DeckList({
 
   async function handleDeleteDeck(deck: Deck) {
     const cardCount = deck.total_card_count ?? deck.card_count ?? 0
-    if (!confirm(`Delete deck "${deck.name}" and all its ${cardCount} cards?`)) {
-      return
-    }
+    const ok = await dialogs.confirm({
+      title: `Delete deck “${deck.name}”?`,
+      message: `Its ${cardCount} ${cardCount === 1 ? 'card' : 'cards'} (including any subdecks) and their review history are deleted with it.`,
+      danger: true,
+    })
+    if (!ok) return
     setBusy(true)
     try {
       await api.deleteDeck(deck.id, true)
@@ -1082,7 +1098,7 @@ function DeckList({
       }
       onChange()
     } catch (err: any) {
-      alert(err?.message || 'Failed to delete deck.')
+      dialogs.error(err, 'Failed to delete deck.')
     } finally {
       setBusy(false)
     }
@@ -1247,7 +1263,7 @@ function DeckList({
                 value={detailedTheme}
                 onChange={(e) => setDetailedTheme(e.target.value)}
               />
-              <p className="mt-1 text-[11px] text-slate-400">
+              <p className="mt-1 text-[0.6875rem] text-slate-400">
                 Domain or subject for this deck.
               </p>
             </div>
@@ -1274,7 +1290,7 @@ function DeckList({
                 value={detailedSources}
                 onChange={(e) => setDetailedSources(e.target.value)}
               />
-              <p className="mt-1 text-[11px] text-slate-400">
+              <p className="mt-1 text-[0.6875rem] text-slate-400">
                 Textbooks, papers, or URLs used.
               </p>
             </div>
@@ -1378,42 +1394,60 @@ function DeckList({
               const pDeckId = parent?.deckId || parent?.id
               if (pDeckId && pDeckId !== '__root__') {
                 setParentId(pDeckId)
-                const subName = prompt(`Enter subdeck name under "${parent?.title}":`)
-                if (subName && subName.trim()) {
-                  void (async () => {
-                    setBusy(true)
-                    try {
-                      await api.createDeck({ name: subName.trim(), parent_id: pDeckId })
-                      onChange()
-                    } finally {
-                      setBusy(false)
-                    }
-                  })()
-                }
+                void (async () => {
+                  const subName = await dialogs.prompt({
+                    title: 'New subdeck',
+                    label: `Name of the subdeck under “${parent?.title}”`,
+                    confirmLabel: 'Add subdeck',
+                  })
+                  if (!subName) return
+                  setBusy(true)
+                  try {
+                    await api.createDeck({ name: subName, parent_id: pDeckId })
+                    onChange()
+                  } catch (err) {
+                    dialogs.error(err, 'Failed to create subdeck.')
+                  } finally {
+                    setBusy(false)
+                  }
+                })()
               } else {
-                const newName = prompt('Enter top-level deck name:')
-                if (newName && newName.trim()) {
-                  void (async () => {
-                    setBusy(true)
-                    try {
-                      await api.createDeck({ name: newName.trim() })
-                      onChange()
-                    } finally {
-                      setBusy(false)
-                    }
-                  })()
-                }
+                void (async () => {
+                  const newName = await dialogs.prompt({
+                    title: 'New deck',
+                    label: 'Name of the top-level deck',
+                    confirmLabel: 'Add deck',
+                  })
+                  if (!newName) return
+                  setBusy(true)
+                  try {
+                    await api.createDeck({ name: newName })
+                    onChange()
+                  } catch (err) {
+                    dialogs.error(err, 'Failed to create deck.')
+                  } finally {
+                    setBusy(false)
+                  }
+                })()
               }
             }}
             onRename={(node) => {
               if (!node.deckId) return
-              const newName = prompt(`Rename deck "${node.title}" to:`, node.title)
-              if (newName && newName.trim() && newName.trim() !== node.title) {
+              {
                 void (async () => {
+                  const newName = await dialogs.prompt({
+                    title: 'Rename deck',
+                    label: `New name for “${node.title}”`,
+                    defaultValue: node.title,
+                    confirmLabel: 'Rename',
+                  })
+                  if (!newName || newName === node.title) return
                   setBusy(true)
                   try {
-                    await api.updateDeck(node.deckId!, { name: newName.trim() })
+                    await api.updateDeck(node.deckId!, { name: newName })
                     onChange()
+                  } catch (err) {
+                    dialogs.error(err, 'Failed to rename deck.')
                   } finally {
                     setBusy(false)
                   }
@@ -1466,7 +1500,7 @@ function DeckList({
                   }
                   onChange()
                 } catch (err) {
-                  alert(`Failed to move branch: ${err instanceof Error ? err.message : String(err)}`)
+                  dialogs.error(err, 'Failed to move branch.')
                 } finally {
                   setBusy(false)
                 }
@@ -1485,7 +1519,7 @@ function DeckList({
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-slate-200">{d.name}</p>
                   {d.parent_id && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                    <span className="text-[0.625rem] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
                       subdeck
                     </span>
                   )}
@@ -1848,7 +1882,7 @@ function AddNote({
               <img
                 src={
                   image.trim().startsWith('/')
-                    ? `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'}${image.trim()}`
+                    ? `${API_BASE}${image.trim()}`
                     : image.trim()
                 }
                 alt="Preview"
@@ -1860,7 +1894,7 @@ function AddNote({
                   ;(e.target as HTMLElement).style.display = 'block'
                 }}
               />
-              <span className="text-[11px] text-slate-400">Attached to card front</span>
+              <span className="text-[0.6875rem] text-slate-400">Attached to card front</span>
             </div>
           )}
         </div>
@@ -2118,9 +2152,9 @@ function SequentialClozePanel({
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
               {previewCards.map((c, i) => (
                 <div key={i} className="rounded border border-ink-line bg-ink/70 p-3 text-xs space-y-1.5">
-                  <div className="flex items-center justify-between text-slate-500 text-[10px]">
+                  <div className="flex items-center justify-between text-slate-500 text-[0.625rem]">
                     <span>Step {c.step_index} of {c.total_steps}</span>
-                    <span className="chip text-[10px]">Chain Cloze</span>
+                    <span className="chip text-[0.625rem]">Chain Cloze</span>
                   </div>
                   <p className="text-slate-200 whitespace-pre-line leading-relaxed">{c.front}</p>
                   <p className="text-emerald-300 border-t border-ink-line/50 pt-1">
@@ -2357,19 +2391,23 @@ function Browser({
           <button
             type="button"
             onClick={async () => {
-              if (!confirm('Auto-organize cards in this deck into virtual Memory Palace rooms and loci?')) return
+              const ok = await dialogs.confirm({
+                title: 'Auto-organize this deck into a Memory Palace?',
+                message: 'Each card is assigned a room and locus. Existing loci on these cards are replaced.',
+                confirmLabel: 'Organize',
+              })
+              if (!ok) return
               try {
                 await api.autoPalace(deckId)
                 await load()
                 onChange()
               } catch (err: any) {
-                alert(err?.message || 'Failed to auto-palace deck.')
+                dialogs.error(err, 'Failed to auto-palace deck.')
               }
             }}
             className="btn text-xs px-2.5 py-1.5 border border-purple-500/40 text-purple-200 bg-purple-500/10 hover:bg-purple-500/20 flex items-center gap-1.5 font-medium transition cursor-pointer"
             title="Auto-organize deck cards into virtual memory palace rooms and loci"
           >
-            <span>🏛️</span>
             <span>Auto-Palace</span>
           </button>
           <input
@@ -2397,7 +2435,7 @@ function Browser({
                 >
                   <div className="flex items-start gap-2 group-hover:text-sky-300 transition">
                     <span
-                      className={`px-1.5 py-0.2 rounded text-[10px] font-medium shrink-0 mt-0.5 ${
+                      className={`px-1.5 py-0.2 rounded text-[0.625rem] font-medium shrink-0 mt-0.5 ${
                         isCodeCard(c)
                           ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30'
                           : 'bg-slate-700/30 text-slate-300 border border-slate-600/30'
@@ -2416,7 +2454,6 @@ function Browser({
                     onClick={() => setSelectedCardForAnalytics(c.id)}
                     title="View card analytics, memory dynamics, and weak points"
                   >
-                    <span>📊</span>
                     <span>Analytics</span>
                   </button>
                   <button
@@ -2432,10 +2469,19 @@ function Browser({
                   <button
                     className="btn btn-danger px-2 py-1 text-xs"
                     onClick={async () => {
-                      if (!confirm('Delete this note and all its cards?')) return
-                      await api.deleteNote(c.note_id)
-                      await load()
-                      onChange()
+                      const ok = await dialogs.confirm({
+                        title: 'Delete this note?',
+                        message: 'Every card made from it is deleted too.',
+                        danger: true,
+                      })
+                      if (!ok) return
+                      try {
+                        await api.deleteNote(c.note_id)
+                        await load()
+                        onChange()
+                      } catch (err) {
+                        dialogs.error(err, 'Failed to delete note.')
+                      }
                     }}
                   >
                     Delete
@@ -2471,14 +2517,14 @@ function Browser({
                   }`}
                   title="Click to toggle Schema Checkpoint (mPFC foundational scaffold)"
                 >
-                  🏛️ {c.is_schema_checkpoint ? 'Checkpoint' : '+ Checkpoint'}
+                   {c.is_schema_checkpoint ? 'Checkpoint' : '+ Checkpoint'}
                 </button>
                 {c.spatial_locus && (
                   <span
-                    className="chip border-purple-500/40 bg-purple-500/10 text-purple-200 font-mono text-[11px]"
+                    className="chip border-purple-500/40 bg-purple-500/10 text-purple-200 font-mono text-[0.6875rem]"
                     title={`Memory Palace Locus: ${c.spatial_locus}`}
                   >
-                    📍 {c.spatial_locus}
+                     {c.spatial_locus}
                   </span>
                 )}
                 {c.tags.map((t) => (
@@ -2498,9 +2544,9 @@ function Browser({
 
               {((c.source_documents && c.source_documents.length > 0) || (deck?.source_documents && deck.source_documents.length > 0)) && (
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
-                  <span className="text-[11px] text-slate-500">Sources:</span>
+                  <span className="text-[0.6875rem] text-slate-500">Sources:</span>
                   {(c.source_documents && c.source_documents.length > 0 ? c.source_documents : deck?.source_documents || []).map((sd: any, idx: number) => (
-                    <span key={idx} className="chip text-[10px] border-emerald-500/30 text-emerald-300 bg-emerald-500/5">
+                    <span key={idx} className="chip text-[0.625rem] border-emerald-500/30 text-emerald-300 bg-emerald-500/5">
                       {typeof sd === 'string' ? sd : sd.title || JSON.stringify(sd)}
                     </span>
                   ))}
@@ -2906,7 +2952,7 @@ function LlmPromptPanel() {
         {expanded && (
           <div className="relative rounded-lg border border-ink-line/80 bg-[#0d1117] p-3 text-xs font-mono text-slate-300">
             <div className="flex justify-between items-center mb-2 pb-2 border-b border-ink-line/40">
-              <span className="text-[11px] text-slate-400 font-sans">
+              <span className="text-[0.6875rem] text-slate-400 font-sans">
                 {promptCategory === 'code'
                   ? 'Coding Problems (LeetCode & IDE sandbox problems):'
                   : promptCategory === 'qa'
@@ -2915,7 +2961,7 @@ function LlmPromptPanel() {
               </span>
               <button
                 onClick={handleCopy}
-                className="btn btn-secondary px-2.5 py-0.5 text-[11px]"
+                className="btn btn-secondary px-2.5 py-0.5 text-[0.6875rem]"
               >
                 {copied ? 'Copied' : 'Copy'}
               </button>

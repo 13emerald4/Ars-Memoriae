@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { api } from '../api/client'
 import type { DeckStats, QueueItem } from '../api/types'
 import { getAllCardsRunProgress } from '../utils/allCardsRunStorage'
+import { storage } from '../utils/storage'
 
 interface DeckReviewStatsBarProps {
   deckId: string | null
@@ -176,7 +177,7 @@ export function CompactDeckDistributionBars({
       )}
 
       {/* Viewed percentage text */}
-      <span className="text-[10px] font-mono font-semibold text-sky-300 tabular-nums">
+      <span className="text-[0.625rem] font-mono font-semibold text-sky-300 tabular-nums">
         {viewedPct}%
       </span>
     </div>
@@ -298,7 +299,7 @@ export function CompactCardProgressionBar({
       </div>
 
       {/* Percentage text */}
-      <span className="text-[10px] font-mono font-semibold text-sky-300 tabular-nums">
+      <span className="text-[0.625rem] font-mono font-semibold text-sky-300 tabular-nums">
         {retrievabilityPct}%
       </span>
     </div>
@@ -325,8 +326,9 @@ export function DeckReviewStatsBar({
   const [savedRunProgress, setSavedRunProgress] = useState(() => (deckId ? getAllCardsRunProgress(deckId) : null))
   const [isExpanded, setIsExpanded] = useState<boolean>(() => {
     if (hideToggle) return true
-    if (typeof localStorage === 'undefined') return true
-    return localStorage.getItem('memorization.deckStatsExpanded') !== '0'
+    // Collapsed unless the user has opened it: expanded, this panel is ~290px
+    // tall and pushed the card being studied below the fold.
+    return storage.get('memorization.deckStatsExpanded') === '1'
   })
 
   useEffect(() => {
@@ -369,7 +371,7 @@ export function DeckReviewStatsBar({
   const toggleExpanded = () => {
     setIsExpanded((prev) => {
       const next = !prev
-      localStorage.setItem('memorization.deckStatsExpanded', next ? '1' : '0')
+      storage.set('memorization.deckStatsExpanded', next ? '1' : '0')
       return next
     })
   }
@@ -388,14 +390,14 @@ export function DeckReviewStatsBar({
             <button
               type="button"
               onClick={onOpenDeckViewer}
-              className="flex items-center gap-1.5 rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/25 transition shadow-sm cursor-pointer"
+              className="flex items-center gap-1.5 rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[0.6875rem] font-semibold text-sky-200 hover:bg-sky-500/25 transition shadow-sm cursor-pointer"
               title="All cards (Alt+D)"
             >
               <span>All Cards</span>
-              <kbd className="rounded bg-sky-950/80 px-1 py-0.2 text-[9px] font-mono text-sky-300 border border-sky-500/30">Alt+D</kbd>
+              <kbd className="rounded bg-sky-950/80 px-1 py-0.2 text-[0.5625rem] font-mono text-sky-300 border border-sky-500/30">Alt+D</kbd>
             </button>
           )}
-          {loading && <span className="text-[11px] text-slate-500 animate-pulse">Loading…</span>}
+          {loading && <span className="text-[0.6875rem] text-slate-500 animate-pulse">Loading…</span>}
         </div>
       </div>
     )
@@ -441,14 +443,14 @@ export function DeckReviewStatsBar({
               <span className="font-bold text-slate-100 text-xs">
                 {stats.name || deckName || 'Current Deck'}
               </span>
-              <span className="rounded-full bg-sky-950/80 border border-sky-500/30 px-2 py-0.5 text-[10px] font-mono text-sky-200">
+              <span className="rounded-full bg-sky-950/80 border border-sky-500/30 px-2 py-0.5 text-[0.625rem] font-mono text-sky-200">
                 {stats.total_cards} {stats.total_cards === 1 ? 'card' : 'cards'}
               </span>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-[11px]">
+        <div className="flex flex-wrap items-center gap-2 text-[0.6875rem]">
           {/* Quick Metrics Chips */}
           <span
             className="chip border-emerald-500/40 bg-emerald-950/30 text-emerald-300 font-semibold shrink-0"
@@ -477,11 +479,11 @@ export function DeckReviewStatsBar({
             <button
               type="button"
               onClick={onOpenDeckViewer}
-              className="flex items-center gap-1.5 rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/25 transition shadow-sm cursor-pointer shrink-0"
+              className="flex items-center gap-1.5 rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[0.6875rem] font-semibold text-sky-200 hover:bg-sky-500/25 transition shadow-sm cursor-pointer shrink-0"
               title="All cards (Alt+D)"
             >
               <span>All Cards</span>
-              <kbd className="rounded bg-sky-950/80 px-1 py-0.2 text-[9px] font-mono text-sky-300 border border-sky-500/30">Alt+D</kbd>
+              <kbd className="rounded bg-sky-950/80 px-1 py-0.2 text-[0.5625rem] font-mono text-sky-300 border border-sky-500/30">Alt+D</kbd>
             </button>
           )}
 
@@ -490,7 +492,7 @@ export function DeckReviewStatsBar({
               <button
                 type="button"
                 onClick={() => onStartPersist(deckId, false)}
-                className="flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/25 transition shadow-sm"
+                className="flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-[0.6875rem] font-semibold text-amber-200 hover:bg-amber-500/25 transition shadow-sm"
                 title="Persist until all cards in the deck are Easy"
               >
                 <span>{stats.new_cards > 0 && stats.new_cards < stats.total_cards ? 'Persist All' : 'Persist'}</span>
@@ -499,7 +501,7 @@ export function DeckReviewStatsBar({
                 <button
                   type="button"
                   onClick={() => onStartPersist(deckId, true)}
-                  className="flex items-center gap-1 rounded-md border border-amber-500/50 bg-amber-500/20 px-2 py-0.5 text-[11px] font-semibold text-amber-100 hover:bg-amber-500/30 transition shadow-sm"
+                  className="flex items-center gap-1 rounded-md border border-amber-500/50 bg-amber-500/20 px-2 py-0.5 text-[0.6875rem] font-semibold text-amber-100 hover:bg-amber-500/30 transition shadow-sm"
                   title={`Persist review only the ${stats.new_cards} unseen cards until Easy`}
                 >
                   <span>Persist Unseen ({stats.new_cards})</span>
@@ -525,7 +527,7 @@ export function DeckReviewStatsBar({
                     onStartAllCardsRun(deckId)
                   }
                 }}
-                className={`flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 text-[11px] font-semibold transition shadow-sm shrink-0 cursor-pointer ${
+                className={`flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 text-[0.6875rem] font-semibold transition shadow-sm shrink-0 cursor-pointer ${
                   isAllCardsRunActive
                     ? 'border-purple-500/60 bg-purple-500/20 text-purple-200 ring-1 ring-purple-500/40 hover:bg-purple-500/30'
                     : hasSavedRun
@@ -555,7 +557,7 @@ export function DeckReviewStatsBar({
             <button
               type="button"
               onClick={() => onStudyDeck(deckId || stats.id)}
-              className="flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-500/30 transition shadow-sm cursor-pointer shrink-0"
+              className="flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/20 px-2.5 py-0.5 text-[0.6875rem] font-semibold text-emerald-200 hover:bg-emerald-500/30 transition shadow-sm cursor-pointer shrink-0"
               title={`Study ${stats.name || deckName || 'deck'}`}
             >
               <span>Study Deck</span>
@@ -566,7 +568,7 @@ export function DeckReviewStatsBar({
             <button
               type="button"
               onClick={toggleExpanded}
-              className="rounded px-2 py-0.5 text-[11px] font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition shrink-0"
+              className="rounded px-2 py-0.5 text-[0.6875rem] font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition shrink-0"
               title={isExpanded ? 'Collapse' : 'Expand'}
             >
               {isExpanded ? 'Hide ▲' : 'Stats ▼'}
@@ -580,7 +582,7 @@ export function DeckReviewStatsBar({
         <div className="pt-3 space-y-3 animate-in fade-in duration-150">
           {/* 1. CARDS VIEWED PROGRESS BAR */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-[11px]">
+            <div className="flex items-center justify-between text-[0.6875rem]">
               <span className="text-slate-300 font-medium flex items-center gap-1.5">
                 <span>Viewed:</span>
                 <strong className="text-white font-mono">
@@ -598,7 +600,7 @@ export function DeckReviewStatsBar({
                 title={`${stats.viewed_cards}/${stats.total_cards} (${viewedPct}%)`}
               />
             </div>
-            <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+            <div className="flex justify-between text-[0.625rem] text-slate-500 font-mono">
               <span>{stats.viewed_cards} studied</span>
               <span>{unviewedCount > 0 ? `${unviewedCount} remaining` : '100% viewed'}</span>
             </div>
@@ -606,11 +608,11 @@ export function DeckReviewStatsBar({
 
           {/* 2. DIFFICULTY RATINGS DISTRIBUTION BAR */}
           <div className="space-y-1.5 pt-1 border-t border-ink-line/40">
-            <div className="flex items-center justify-between text-[11px]">
+            <div className="flex items-center justify-between text-[0.6875rem]">
               <span className="text-slate-300 font-medium flex items-center gap-1.5">
                 <span>Difficulty:</span>
               </span>
-              <span className="text-[10px] text-slate-500">
+              <span className="text-[0.625rem] text-slate-500">
                 {stats.total_cards} cards
               </span>
             </div>
@@ -656,13 +658,13 @@ export function DeckReviewStatsBar({
                 return (
                   <div
                     key={diffKey}
-                    className={`flex items-center gap-1.5 rounded-lg border ${cfg.border} ${cfg.bg} px-2 py-0.5 text-[11px] font-medium transition hover:scale-105 shrink-0 whitespace-nowrap`}
+                    className={`flex items-center gap-1.5 rounded-lg border ${cfg.border} ${cfg.bg} px-2 py-0.5 text-[0.6875rem] font-medium transition hover:scale-105 shrink-0 whitespace-nowrap`}
                     title={`${count} of ${stats.total_cards} cards have ${diffKey} difficulty`}
                   >
                     <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
                     <span className="text-slate-300">{cfg.label}:</span>
                     <span className={`font-bold font-mono ${cfg.text}`}>{count}</span>
-                    <span className="text-[10px] text-slate-500 font-mono">({pct}%)</span>
+                    <span className="text-[0.625rem] text-slate-500 font-mono">({pct}%)</span>
                   </div>
                 )
               })}
@@ -672,11 +674,11 @@ export function DeckReviewStatsBar({
           {/* 3. USER RECALL RATINGS DISTRIBUTION BAR */}
           {stats.rating_counts && Object.keys(stats.rating_counts).length > 0 && (
             <div className="space-y-1.5 pt-2 border-t border-ink-line/40">
-              <div className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center justify-between text-[0.6875rem]">
                 <span className="text-slate-300 font-medium flex items-center gap-1.5">
                   <span>Ratings:</span>
                 </span>
-                <span className="text-[10px] text-slate-500 font-mono">
+                <span className="text-[0.625rem] text-slate-500 font-mono">
                   {stats.total_reviews ? `${stats.total_reviews} reviews` : 'Ratings'}
                 </span>
               </div>
@@ -722,13 +724,13 @@ export function DeckReviewStatsBar({
                   return (
                     <div
                       key={ratingKey}
-                      className={`flex items-center gap-1.5 rounded-lg border ${cfg.border} ${cfg.bg} px-2 py-0.5 text-[11px] font-medium transition hover:scale-105 shrink-0 whitespace-nowrap`}
+                      className={`flex items-center gap-1.5 rounded-lg border ${cfg.border} ${cfg.bg} px-2 py-0.5 text-[0.6875rem] font-medium transition hover:scale-105 shrink-0 whitespace-nowrap`}
                       title={`${count} of ${stats.total_cards} cards rated ${ratingKey}`}
                     >
                       <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
                       <span className="text-slate-300">{cfg.label}:</span>
                       <span className={`font-bold font-mono ${cfg.text}`}>{count}</span>
-                      <span className="text-[10px] text-slate-500 font-mono">({pct}%)</span>
+                      <span className="text-[0.625rem] text-slate-500 font-mono">({pct}%)</span>
                     </div>
                   )
                 })}

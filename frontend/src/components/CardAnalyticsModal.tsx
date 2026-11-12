@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import type { CardAnalytics } from '../api/types'
-import { RichText, Spinner, ErrorNote } from './ui'
+import { RichText } from './RichText'
+import { Spinner, ErrorNote } from './ui'
 
 export interface CardAnalyticsModalProps {
   cardId: string | null
@@ -157,16 +158,16 @@ export function CardAnalyticsModal({
               </span>
               {data?.card && (
                 <>
-                  <span className="chip text-[11px] uppercase tracking-wider font-mono">
+                  <span className="chip text-[0.6875rem] uppercase tracking-wider font-mono">
                     {data.card.state}
                   </span>
                   {data.card.leech_flag && (
-                    <span className="chip border-rose-500/40 bg-rose-500/20 text-rose-300 text-[11px] font-bold">
-                      ⚠ Leech
+                    <span className="chip border-rose-500/40 bg-rose-500/20 text-rose-300 text-[0.6875rem] font-bold">
+                       Leech
                     </span>
                   )}
                   {data.card.suspended && (
-                    <span className="chip border-amber-500/40 bg-amber-500/20 text-amber-300 text-[11px]">
+                    <span className="chip border-amber-500/40 bg-amber-500/20 text-amber-300 text-[0.6875rem]">
                       Suspended
                     </span>
                   )}
@@ -251,7 +252,7 @@ export function CardAnalyticsModal({
                 {data.card.tags && data.card.tags.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
                     {data.card.tags.map((tag) => (
-                      <span key={tag} className="chip text-[10px]">
+                      <span key={tag} className="chip text-[0.625rem]">
                         #{tag}
                       </span>
                     ))}
@@ -259,18 +260,18 @@ export function CardAnalyticsModal({
                 )}
               </div>
 
-              {/* ── ⭐ PRIMARY FOCUS: WEAK POINTS & MEMORY COMPONENT ── */}
+              {/* ──  PRIMARY FOCUS: WEAK POINTS & MEMORY COMPONENT ── */}
               <div className="rounded-xl border border-amber-500/40 bg-gradient-to-br from-amber-500/10 via-[#131927] to-[#121825] p-5 space-y-4 shadow-lg">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/20 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="flex items-center justify-center w-6 h-6 rounded-md bg-amber-500/20 text-amber-300 text-sm font-bold">
-                      ⚡
+                      
                     </span>
                     <div>
                       <h3 className="text-sm font-bold text-amber-200">
                         Memory Component &amp; Weak Points Focus
                       </h3>
-                      <p className="text-[11px] text-amber-300/80">
+                      <p className="text-[0.6875rem] text-amber-300/80">
                         Targeted diagnosis of misunderstandings, memory interference, and personal recall anchors.
                       </p>
                     </div>
@@ -286,7 +287,7 @@ export function CardAnalyticsModal({
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
                       Active Stumbling Blocks Identified by AI
                     </span>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[0.6875rem] text-slate-400">
                       {data.active_weaknesses.length}{' '}
                       {data.active_weaknesses.length === 1 ? 'active flaw' : 'active flaws'}
                     </span>
@@ -299,7 +300,6 @@ export function CardAnalyticsModal({
                           key={i}
                           className="flex items-start gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/15 p-3 text-xs text-amber-100"
                         >
-                          <span className="text-amber-400 font-bold mt-0.5">⚠</span>
                           <div className="flex-1">
                             <span className="font-semibold text-amber-200">Stumbling Block: </span>
                             <span>{weakness}</span>
@@ -324,7 +324,7 @@ export function CardAnalyticsModal({
                       <label htmlFor="memory-anchor" className="text-xs font-bold uppercase tracking-wider text-slate-300">
                         Personal Memory Anchor &amp; Mnemonic
                       </label>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-[0.6875rem] text-slate-400">
                         Write an intuitive mnemonic, mental hook, or core principle to recalibrate your recall when you stumble.
                       </p>
                     </div>
@@ -344,7 +344,7 @@ export function CardAnalyticsModal({
                   />
 
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-[11px] text-slate-500">
+                    <span className="text-[0.6875rem] text-slate-500">
                       Stored in card documentation and surfaced during reviews.
                     </span>
                     <button
@@ -370,13 +370,13 @@ export function CardAnalyticsModal({
                           key={idx}
                           className="flex items-center justify-between rounded bg-[#0b0f19]/80 border border-ink-line px-3 py-1.5 text-xs text-slate-300"
                         >
-                          <span className="font-mono text-[11px] text-slate-400">
+                          <span className="font-mono text-[0.6875rem] text-slate-400">
                             {item.timestamp ? new Date(item.timestamp).toLocaleDateString() : `Step #${idx + 1}`}
                           </span>
                           <span className="truncate max-w-md text-amber-200">
                             {typeof item === 'string' ? item : item.weakness || JSON.stringify(item)}
                           </span>
-                          <span className="chip text-[10px] text-slate-400">
+                          <span className="chip text-[0.625rem] text-slate-400">
                             {item.status || 'Resolved'}
                           </span>
                         </div>
@@ -392,7 +392,7 @@ export function CardAnalyticsModal({
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
                     FSRS Memory Dynamics &amp; Interval Projections
                   </h3>
-                  <span className="text-[11px] text-slate-500">
+                  <span className="text-[0.6875rem] text-slate-500">
                     Calculated via py-fsrs Spaced Repetition Engine
                   </span>
                 </div>
@@ -421,7 +421,7 @@ export function CardAnalyticsModal({
                           : 'New'}
                       </span>
                       {data.retrievability != null && (
-                        <span className="text-[11px] text-slate-400">
+                        <span className="text-[0.6875rem] text-slate-400">
                           {data.retrievability >= 0.9 ? 'Optimal' : data.retrievability >= 0.7 ? 'Decaying' : 'Overdue'}
                         </span>
                       )}
@@ -441,7 +441,7 @@ export function CardAnalyticsModal({
                         style={{ width: `${Math.min(100, Math.max(0, (data.retrievability ?? 0) * 100))}%` }}
                       />
                     </div>
-                    <p className="text-[10px] text-slate-500 leading-snug">
+                    <p className="text-[0.625rem] text-slate-500 leading-snug">
                       Probability of successful recall at this moment in time.
                     </p>
                   </div>
@@ -455,7 +455,7 @@ export function CardAnalyticsModal({
                     <div className="text-2xl font-black text-sky-400">
                       {data.card.stability != null ? `${data.card.stability.toFixed(1)}d` : '0.0d'}
                     </div>
-                    <p className="text-[10px] text-slate-500 leading-snug">
+                    <p className="text-[0.625rem] text-slate-500 leading-snug">
                       Expected days until recall probability drops down to 90%.
                     </p>
                   </div>
@@ -470,7 +470,7 @@ export function CardAnalyticsModal({
                       <span className="text-2xl font-black text-amber-300">
                         {data.card.difficulty != null ? data.card.difficulty.toFixed(1) : '--'}
                       </span>
-                      <span className="text-[11px] text-slate-400">/ 10</span>
+                      <span className="text-[0.6875rem] text-slate-400">/ 10</span>
                     </div>
                     <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
                       <div
@@ -478,7 +478,7 @@ export function CardAnalyticsModal({
                         style={{ width: `${Math.min(100, ((data.card.difficulty ?? 0) / 10) * 100)}%` }}
                       />
                     </div>
-                    <p className="text-[10px] text-slate-500 leading-snug">
+                    <p className="text-[0.625rem] text-slate-500 leading-snug">
                       Inherent cognitive complexity calibrated by review grades.
                     </p>
                   </div>
@@ -493,11 +493,11 @@ export function CardAnalyticsModal({
                       <div className="text-lg font-bold text-slate-200">
                         {data.card.lapse_count} {data.card.lapse_count === 1 ? 'lapse' : 'lapses'}
                       </div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-[0.6875rem] text-slate-400">
                         {data.card.due ? `Due ${new Date(data.card.due).toLocaleDateString()}` : 'Due now'}
                       </div>
                     </div>
-                    <p className="text-[10px] text-slate-500 leading-snug">
+                    <p className="text-[0.625rem] text-slate-500 leading-snug">
                       Priority: {data.card.priority}/100
                     </p>
                   </div>
@@ -510,13 +510,13 @@ export function CardAnalyticsModal({
                       <span className="text-xs font-semibold text-slate-300">
                         Simulated Next Intervals (If Reviewed Now)
                       </span>
-                      <span className="text-[11px] text-slate-500">
+                      <span className="text-[0.6875rem] text-slate-500">
                         Determines next due date
                       </span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                       <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-2.5 text-center">
-                        <span className="block text-[11px] font-bold uppercase tracking-wider text-rose-300">
+                        <span className="block text-[0.6875rem] font-bold uppercase tracking-wider text-rose-300">
                           Again
                         </span>
                         <span className="text-base font-bold text-rose-200 font-mono">
@@ -524,7 +524,7 @@ export function CardAnalyticsModal({
                         </span>
                       </div>
                       <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-center">
-                        <span className="block text-[11px] font-bold uppercase tracking-wider text-amber-300">
+                        <span className="block text-[0.6875rem] font-bold uppercase tracking-wider text-amber-300">
                           Hard
                         </span>
                         <span className="text-base font-bold text-amber-200 font-mono">
@@ -532,7 +532,7 @@ export function CardAnalyticsModal({
                         </span>
                       </div>
                       <div className="rounded-lg border border-sky-500/30 bg-sky-500/10 p-2.5 text-center">
-                        <span className="block text-[11px] font-bold uppercase tracking-wider text-sky-300">
+                        <span className="block text-[0.6875rem] font-bold uppercase tracking-wider text-sky-300">
                           Good
                         </span>
                         <span className="text-base font-bold text-sky-200 font-mono">
@@ -540,7 +540,7 @@ export function CardAnalyticsModal({
                         </span>
                       </div>
                       <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-center">
-                        <span className="block text-[11px] font-bold uppercase tracking-wider text-emerald-300">
+                        <span className="block text-[0.6875rem] font-bold uppercase tracking-wider text-emerald-300">
                           Easy
                         </span>
                         <span className="text-base font-bold text-emerald-200 font-mono">
@@ -580,7 +580,7 @@ export function CardAnalyticsModal({
                         ({data.total_reviews} {data.total_reviews === 1 ? 'review' : 'reviews'})
                       </span>
                     </div>
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-[0.625rem] text-slate-500">
                       {data.total_overridden > 0
                         ? `${data.total_overridden} review(s) manually overridden`
                         : 'Graded via AI and FSRS rubrics'}
@@ -622,7 +622,7 @@ export function CardAnalyticsModal({
                             />
                           )}
                         </div>
-                        <div className="grid grid-cols-4 gap-1 text-[10px] text-center">
+                        <div className="grid grid-cols-4 gap-1 text-[0.625rem] text-center">
                           <span className="text-rose-400">Again: {data.rating_counts.again || 0}</span>
                           <span className="text-amber-400">Hard: {data.rating_counts.hard || 0}</span>
                           <span className="text-sky-400">Good: {data.rating_counts.good || 0}</span>
@@ -639,11 +639,11 @@ export function CardAnalyticsModal({
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium text-slate-400">Latency &amp; Speed</span>
                       {data.automaticity_achieved ? (
-                        <span className="chip border-emerald-500/40 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                        <span className="chip border-emerald-500/40 bg-emerald-500/20 text-emerald-300 text-[0.625rem] font-bold">
                           ★ Automaticity
                         </span>
                       ) : (
-                        <span className="chip text-[10px] text-slate-400">
+                        <span className="chip text-[0.625rem] text-slate-400">
                           Deliberative
                         </span>
                       )}
@@ -652,7 +652,7 @@ export function CardAnalyticsModal({
                       {formatLatencyMinSec(data.avg_latency_ms)}
                       <span className="text-xs font-normal text-slate-400 ml-1">avg</span>
                     </div>
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                    <div className="flex items-center justify-between text-[0.625rem] text-slate-400 font-mono">
                       <span>Fastest: {formatLatencyMinSec(data.fastest_latency_ms)}</span>
                       <span>Slowest: {formatLatencyMinSec(data.slowest_latency_ms)}</span>
                     </div>
@@ -666,7 +666,7 @@ export function CardAnalyticsModal({
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
                     Review History &amp; Attempt Transcripts ({data.review_logs.length})
                   </h3>
-                  <span className="text-[11px] text-slate-500">
+                  <span className="text-[0.6875rem] text-slate-500">
                     Chronological study logs
                   </span>
                 </div>
@@ -692,13 +692,13 @@ export function CardAnalyticsModal({
                                   {log.final_grade}
                                 </span>
                                 {log.overridden && (
-                                  <span className="chip text-[10px] text-amber-300 border-amber-500/30">
+                                  <span className="chip text-[0.625rem] text-amber-300 border-amber-500/30">
                                     Overridden
                                   </span>
                                 )}
                                 {log.is_blitz && (
-                                  <span className="chip text-[10px] text-sky-300 border-sky-500/30">
-                                    ⚡ Blitz
+                                  <span className="chip text-[0.625rem] text-sky-300 border-sky-500/30">
+                                     Blitz
                                   </span>
                                 )}
                               </div>
@@ -729,9 +729,9 @@ export function CardAnalyticsModal({
                             {/* Weaknesses / Improvements Chips */}
                             {log.weaknesses && log.weaknesses.length > 0 && (
                               <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                                <span className="text-[10px] font-semibold text-rose-300">Flagged Flaws:</span>
+                                <span className="text-[0.625rem] font-semibold text-rose-300">Flagged Flaws:</span>
                                 {log.weaknesses.map((w, idx) => (
-                                  <span key={idx} className="chip text-[10px] border-rose-500/30 bg-rose-500/10 text-rose-200">
+                                  <span key={idx} className="chip text-[0.625rem] border-rose-500/30 bg-rose-500/10 text-rose-200">
                                     {w}
                                   </span>
                                 ))}

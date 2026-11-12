@@ -94,7 +94,7 @@ export function HighlightColorPicker({
           className="inline-block w-3 h-3 rounded-full border border-white/40 shadow-xs"
           style={{ backgroundColor: color }}
         />
-        <span className="text-[11px] font-mono text-slate-400 hover:text-slate-200">Color</span>
+        <span className="text-[0.6875rem] font-mono text-slate-400 hover:text-slate-200">Color</span>
       </button>
 
       {/* Popover Dropdown */}
@@ -102,7 +102,7 @@ export function HighlightColorPicker({
         <div className="absolute right-0 top-full mt-1.5 z-50 w-64 rounded-xl bg-[#1e1e1e] border border-ink-line/90 p-3 shadow-2xl text-xs space-y-3 animate-in fade-in zoom-in-95">
           <div className="flex items-center justify-between border-b border-ink-line/50 pb-2">
             <span className="font-semibold text-slate-200 text-xs flex items-center gap-1.5">
-              <span>🎨</span> Highlight Color (RGB)
+              Highlight Color (RGB)
             </span>
             <button
               type="button"
@@ -115,7 +115,7 @@ export function HighlightColorPicker({
                 setHexInput(def)
                 onChange(def)
               }}
-              className="text-[10px] text-slate-400 hover:text-sky-300 underline cursor-pointer"
+              className="text-[0.625rem] text-slate-400 hover:text-sky-300 underline cursor-pointer"
               title="Reset to default Emerald"
             >
               Reset
@@ -124,7 +124,7 @@ export function HighlightColorPicker({
 
           {/* Quick Presets */}
           <div>
-            <div className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1.5">
+            <div className="text-[0.625rem] font-medium text-slate-400 uppercase tracking-wider mb-1.5">
               Presets
             </div>
             <div className="flex items-center gap-1.5 justify-between">
@@ -150,7 +150,7 @@ export function HighlightColorPicker({
                     style={{ backgroundColor: preset.hex }}
                     title={`${preset.name} (${preset.hex})`}
                   >
-                    {isSelected && <span className="text-[10px] text-white drop-shadow">✓</span>}
+                    {isSelected && <span className="text-[0.625rem] text-white drop-shadow">✓</span>}
                   </button>
                 )
               })}
@@ -159,9 +159,9 @@ export function HighlightColorPicker({
 
           {/* RGB Sliders & Native Picker */}
           <div className="space-y-2 pt-1 border-t border-ink-line/50">
-            <div className="flex items-center justify-between text-[11px]">
+            <div className="flex items-center justify-between text-[0.6875rem]">
               <span className="text-slate-400 font-medium">RGB Sliders</span>
-              <label className="flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 cursor-pointer">
+              <label className="flex items-center gap-1 text-[0.6875rem] text-sky-400 hover:text-sky-300 cursor-pointer">
                 <span>Color Picker</span>
                 <input
                   type="color"
@@ -182,7 +182,7 @@ export function HighlightColorPicker({
 
             {/* Red */}
             <div className="flex items-center gap-2">
-              <span className="w-3 text-[10px] font-bold text-rose-400 font-mono">R</span>
+              <span className="w-3 text-[0.625rem] font-bold text-rose-400 font-mono">R</span>
               <input
                 type="range"
                 min="0"
@@ -191,12 +191,12 @@ export function HighlightColorPicker({
                 onChange={(e) => handleRgbChange(Number(e.target.value), green, blue)}
                 className="flex-1 accent-rose-500 h-1.5 bg-slate-700 rounded-lg cursor-pointer"
               />
-              <span className="w-7 text-right font-mono text-[11px] text-slate-300">{red}</span>
+              <span className="w-7 text-right font-mono text-[0.6875rem] text-slate-300">{red}</span>
             </div>
 
             {/* Green */}
             <div className="flex items-center gap-2">
-              <span className="w-3 text-[10px] font-bold text-emerald-400 font-mono">G</span>
+              <span className="w-3 text-[0.625rem] font-bold text-emerald-400 font-mono">G</span>
               <input
                 type="range"
                 min="0"
@@ -205,12 +205,12 @@ export function HighlightColorPicker({
                 onChange={(e) => handleRgbChange(red, Number(e.target.value), blue)}
                 className="flex-1 accent-emerald-500 h-1.5 bg-slate-700 rounded-lg cursor-pointer"
               />
-              <span className="w-7 text-right font-mono text-[11px] text-slate-300">{green}</span>
+              <span className="w-7 text-right font-mono text-[0.6875rem] text-slate-300">{green}</span>
             </div>
 
             {/* Blue */}
             <div className="flex items-center gap-2">
-              <span className="w-3 text-[10px] font-bold text-sky-400 font-mono">B</span>
+              <span className="w-3 text-[0.625rem] font-bold text-sky-400 font-mono">B</span>
               <input
                 type="range"
                 min="0"
@@ -219,13 +219,13 @@ export function HighlightColorPicker({
                 onChange={(e) => handleRgbChange(red, green, Number(e.target.value))}
                 className="flex-1 accent-sky-500 h-1.5 bg-slate-700 rounded-lg cursor-pointer"
               />
-              <span className="w-7 text-right font-mono text-[11px] text-slate-300">{blue}</span>
+              <span className="w-7 text-right font-mono text-[0.6875rem] text-slate-300">{blue}</span>
             </div>
           </div>
 
           {/* Hex Input & Live Preview */}
           <div className="pt-2 border-t border-ink-line/50 flex items-center gap-2">
-            <span className="text-[10px] font-mono text-slate-400">Hex:</span>
+            <span className="text-[0.625rem] font-mono text-slate-400">Hex:</span>
             <input
               type="text"
               value={hexInput}
@@ -236,12 +236,12 @@ export function HighlightColorPicker({
                   handleHexSubmit()
                 }
               }}
-              className="w-20 px-1.5 py-0.5 rounded bg-[#121212] border border-ink-line text-[11px] font-mono text-slate-200 focus:outline-none focus:border-sky-500"
+              className="w-20 px-1.5 py-0.5 rounded bg-[#121212] border border-ink-line text-[0.6875rem] font-mono text-slate-200 focus:outline-none focus:border-sky-500"
               placeholder="#10b981"
             />
             {/* Live swatch preview */}
             <div
-              className="flex-1 px-2 py-0.5 rounded font-mono text-[10px] text-center border truncate font-medium"
+              className="flex-1 px-2 py-0.5 rounded font-mono text-[0.625rem] text-center border truncate font-medium"
               style={{
                 backgroundColor: `rgba(${red}, ${green}, ${blue}, 0.18)`,
                 borderColor: `rgb(${red}, ${green}, ${blue})`,

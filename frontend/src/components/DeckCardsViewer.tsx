@@ -1,11 +1,13 @@
+import { dialogs } from './dialogs'
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { api } from '../api/client'
 import type { Deck, DeckDocumentOut, DeckStats, QueueItem } from '../api/types'
 import { CodeEditor } from './CodeEditor'
-import { RichText } from './ui'
+import { RichText } from './RichText'
 import { isCodeCard, extractCleanCode, detectCodeLanguage } from '../utils/codeUtils'
 import { CardAnalyticsModal } from './CardAnalyticsModal'
 import { CompactDeckDistributionBars, CompactCardProgressionBar } from './DeckReviewStatsBar'
+import { storage } from '../utils/storage'
 
 export interface CardCommentItem {
   id: string
@@ -15,7 +17,7 @@ export interface CardCommentItem {
 
 export function loadCardComments(cardId: string): CardCommentItem[] {
   try {
-    const raw = localStorage.getItem(`ars_card_comments_${cardId}`)
+    const raw = storage.get(`ars_card_comments_${cardId}`)
     return raw ? JSON.parse(raw) : []
   } catch {
     return []
@@ -24,7 +26,7 @@ export function loadCardComments(cardId: string): CardCommentItem[] {
 
 export function persistCardComments(cardId: string, list: CardCommentItem[]) {
   try {
-    localStorage.setItem(`ars_card_comments_${cardId}`, JSON.stringify(list))
+    storage.set(`ars_card_comments_${cardId}`, JSON.stringify(list))
   } catch {
     // ignore
   }
@@ -147,7 +149,7 @@ export function DeckCardsViewer({
   // High-level short comments for cards (displayed where "Active" badge sits)
   const [shortComments, setShortComments] = useState<Record<string, string>>(() => {
     try {
-      const raw = localStorage.getItem('ars_card_short_comments')
+      const raw = storage.get('ars_card_short_comments')
       return raw ? JSON.parse(raw) : {}
     } catch {
       return {}
@@ -166,7 +168,7 @@ export function DeckCardsViewer({
         delete next[cardId]
       }
       try {
-        localStorage.setItem('ars_card_short_comments', JSON.stringify(next))
+        storage.set('ars_card_short_comments', JSON.stringify(next))
       } catch {
         // ignore
       }
@@ -301,7 +303,7 @@ export function DeckCardsViewer({
       await api.deleteDeckDocument(activeDeckId, docId)
       setDeckDocs((prev) => prev.filter((d) => d.id !== docId && d.source_id !== docId))
     } catch (err: any) {
-      alert(err?.message || 'Failed to delete document.')
+      dialogs.error(err, 'Failed to delete document.')
     } finally {
       setDeletingDocId(null)
     }
@@ -413,7 +415,7 @@ export function DeckCardsViewer({
         prev.map((c) => (c.id === selectedCard.id ? { ...c, is_schema_checkpoint: nextVal } : c)),
       )
     } catch (err: any) {
-      alert(err?.message || 'Failed to update schema checkpoint status.')
+      dialogs.error(err, 'Failed to update schema checkpoint status.')
     } finally {
       setSavingNeuroProps(false)
     }
@@ -429,7 +431,7 @@ export function DeckCardsViewer({
         prev.map((c) => (c.id === selectedCard.id ? { ...c, spatial_locus: val || undefined } : c)),
       )
     } catch (err: any) {
-      alert(err?.message || 'Failed to update spatial locus.')
+      dialogs.error(err, 'Failed to update spatial locus.')
     } finally {
       setSavingNeuroProps(false)
     }
@@ -445,7 +447,7 @@ export function DeckCardsViewer({
         prev.map((c) => (c.id === selectedCard.id ? { ...c, mnemonic_vignette: val || undefined } : c)),
       )
     } catch (err: any) {
-      alert(err?.message || 'Failed to update mnemonic vignette.')
+      dialogs.error(err, 'Failed to update mnemonic vignette.')
     } finally {
       setSavingNeuroProps(false)
     }
@@ -463,7 +465,7 @@ export function DeckCardsViewer({
         ),
       )
     } catch (err: any) {
-      alert(err?.message || 'Failed to generate mnemonic vignette.')
+      dialogs.error(err, 'Failed to generate mnemonic vignette.')
     } finally {
       setGeneratingMnemonic(false)
     }
@@ -476,7 +478,7 @@ export function DeckCardsViewer({
       await api.autoPalace(activeDeckId)
       await loadCards(activeDeckId)
     } catch (err: any) {
-      alert(err?.message || 'Failed to auto-generate memory palace layout.')
+      dialogs.error(err, 'Failed to auto-generate memory palace layout.')
     } finally {
       setAutoPalacing(false)
     }
@@ -524,14 +526,14 @@ export function DeckCardsViewer({
                 className="w-4 h-4 flex items-center justify-center rounded hover:bg-slate-700/50 text-slate-400 hover:text-sky-300 transition shrink-0"
                 title={isExpanded ? 'Collapse subdecks' : 'Expand subdecks'}
               >
-                <span className="text-[10px] select-none">{isExpanded ? '▼' : '▶'}</span>
+                <span className="text-[0.625rem] select-none">{isExpanded ? '▼' : '▶'}</span>
               </button>
             ) : (
               <span className="w-4 shrink-0" />
             )}
 
             {/* Deck Icon [T] styled like Image 1 */}
-            <span className="w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border border-amber-500/50 bg-amber-500/20 text-amber-300 shrink-0 select-none">
+            <span className="w-4 h-4 rounded flex items-center justify-center text-[0.625rem] font-bold border border-amber-500/50 bg-amber-500/20 text-amber-300 shrink-0 select-none">
               T
             </span>
 
@@ -539,7 +541,7 @@ export function DeckCardsViewer({
               {node.title}
             </span>
 
-            <span className="text-[11px] font-mono text-slate-400 shrink-0">
+            <span className="text-[0.6875rem] font-mono text-slate-400 shrink-0">
               ({node.elementCount})
             </span>
           </div>
@@ -591,13 +593,13 @@ export function DeckCardsViewer({
                   title="Click to switch deck in viewer"
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border border-amber-500/50 bg-amber-500/20 text-amber-300 shrink-0 select-none">
+                    <span className="w-4 h-4 rounded flex items-center justify-center text-[0.625rem] font-bold border border-amber-500/50 bg-amber-500/20 text-amber-300 shrink-0 select-none">
                       T
                     </span>
                     <h3 className="font-bold text-white text-sm sm:text-base group-hover:text-sky-200 transition truncate max-w-[240px] sm:max-w-md">
                       {currentDeck?.name || activeDeckName || deckName || selectedCard?.deck_name || 'Cards'}
                     </h3>
-                    <span className="text-[10px] text-sky-400 transition ml-0.5 select-none shrink-0">
+                    <span className="text-[0.625rem] text-sky-400 transition ml-0.5 select-none shrink-0">
                       {showDeckDropdown ? '▲' : '▼'}
                     </span>
                   </div>
@@ -617,8 +619,8 @@ export function DeckCardsViewer({
                 )}
               </div>
 
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Browse cards in this deck. Click title to switch deck. <kbd className="px-1 rounded bg-[#252f42] text-[10px] font-mono border border-ink-line">Esc</kbd> to close.
+              <p className="text-[0.6875rem] text-slate-400 mt-0.5">
+                Browse cards in this deck. Click title to switch deck. <kbd className="px-1 rounded bg-[#252f42] text-[0.625rem] font-mono border border-ink-line">Esc</kbd> to close.
               </p>
 
               {/* ── Dropdown Menu with Decks & Progression Bars ── */}
@@ -630,7 +632,7 @@ export function DeckCardsViewer({
                   <div className="p-3 border-b border-ink-line/80 bg-[#161c2b] flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-sky-300">
                       <span>Decks & Progression</span>
-                      <span className="rounded-full bg-sky-500/20 px-2 py-0.2 text-[10px] font-mono text-sky-300">
+                      <span className="rounded-full bg-sky-500/20 px-2 py-0.2 text-[0.625rem] font-mono text-sky-300">
                         {allDecks.length}
                       </span>
                     </div>
@@ -681,7 +683,6 @@ export function DeckCardsViewer({
                   className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-purple-500/40 bg-purple-950/40 hover:bg-purple-900/50 text-purple-200 transition cursor-pointer shadow-sm disabled:opacity-40"
                   title="Auto-organize deck cards into virtual memory palace rooms and loci"
                 >
-                  <span>🏛️</span>
                   <span>{autoPalacing ? 'Palacing…' : 'Auto-Palace'}</span>
                 </button>
                 <button
@@ -690,9 +691,8 @@ export function DeckCardsViewer({
                   className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-emerald-500/40 bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-200 transition cursor-pointer shadow-sm"
                   title="Manage attached reference documents for this deck"
                 >
-                  <span>📄</span>
                   <span>Deck Docs</span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-[10px] font-mono text-emerald-300">
+                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-[0.625rem] font-mono text-emerald-300">
                     {deckDocs.length}
                   </span>
                 </button>
@@ -750,7 +750,7 @@ export function DeckCardsViewer({
               <button
                 type="button"
                 onClick={() => setFilterType('both')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
+                className={`px-2 py-0.5 rounded text-[0.6875rem] font-medium transition cursor-pointer ${
                   filterType === 'both'
                     ? 'bg-sky-600/40 text-sky-100 border border-sky-500/50 shadow-sm font-semibold'
                     : 'text-slate-400 hover:text-slate-200'
@@ -762,7 +762,7 @@ export function DeckCardsViewer({
               <button
                 type="button"
                 onClick={() => setFilterType('code')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
+                className={`px-2 py-0.5 rounded text-[0.6875rem] font-medium transition cursor-pointer ${
                   filterType === 'code'
                     ? 'bg-indigo-600/40 text-indigo-100 border border-indigo-500/50 shadow-sm font-semibold'
                     : 'text-slate-400 hover:text-slate-200'
@@ -774,7 +774,7 @@ export function DeckCardsViewer({
               <button
                 type="button"
                 onClick={() => setFilterType('qa')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
+                className={`px-2 py-0.5 rounded text-[0.6875rem] font-medium transition cursor-pointer ${
                   filterType === 'qa'
                     ? 'bg-emerald-600/40 text-emerald-100 border border-emerald-500/50 shadow-sm font-semibold'
                     : 'text-slate-400 hover:text-slate-200'
@@ -790,7 +790,7 @@ export function DeckCardsViewer({
               <button
                 type="button"
                 onClick={() => setFilterDifficulty('all')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
+                className={`px-2 py-0.5 rounded text-[0.6875rem] font-medium transition cursor-pointer ${
                   filterDifficulty === 'all'
                     ? 'bg-slate-700/60 text-slate-100 border border-slate-500/50 font-semibold'
                     : 'text-slate-400 hover:text-slate-200'
@@ -801,7 +801,7 @@ export function DeckCardsViewer({
               <button
                 type="button"
                 onClick={() => setFilterDifficulty('easy')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
+                className={`px-2 py-0.5 rounded text-[0.6875rem] font-medium transition cursor-pointer ${
                   filterDifficulty === 'easy'
                     ? 'bg-emerald-600/40 text-emerald-100 border border-emerald-500/50 font-semibold'
                     : 'text-emerald-400/80 hover:text-emerald-300'
@@ -812,7 +812,7 @@ export function DeckCardsViewer({
               <button
                 type="button"
                 onClick={() => setFilterDifficulty('medium')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
+                className={`px-2 py-0.5 rounded text-[0.6875rem] font-medium transition cursor-pointer ${
                   filterDifficulty === 'medium'
                     ? 'bg-amber-600/40 text-amber-100 border border-amber-500/50 font-semibold'
                     : 'text-amber-400/80 hover:text-amber-300'
@@ -823,7 +823,7 @@ export function DeckCardsViewer({
               <button
                 type="button"
                 onClick={() => setFilterDifficulty('hard')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
+                className={`px-2 py-0.5 rounded text-[0.6875rem] font-medium transition cursor-pointer ${
                   filterDifficulty === 'hard'
                     ? 'bg-rose-600/40 text-rose-100 border border-rose-500/50 font-semibold'
                     : 'text-rose-400/80 hover:text-rose-300'
@@ -839,10 +839,10 @@ export function DeckCardsViewer({
         <div className="flex-1 grid grid-cols-1 md:grid-cols-12 min-h-0 divide-y md:divide-y-0 md:divide-x divide-ink-line/60">
           {/* ── Left Column: Cards List ── */}
           <div className="md:col-span-5 lg:col-span-4 flex flex-col h-full bg-[#10141d] min-h-0">
-            <div className="p-2 border-b border-ink-line/50 text-[11px] font-medium text-slate-400 flex items-center justify-between bg-[#151a26]/70">
+            <div className="p-2 border-b border-ink-line/50 text-[0.6875rem] font-medium text-slate-400 flex items-center justify-between bg-[#151a26]/70">
               <span>{filteredCards.length} of {cards.length} cards</span>
               {searchQuery && (
-                <span className="text-sky-400 text-[10px]">Filtered</span>
+                <span className="text-sky-400 text-[0.625rem]">Filtered</span>
               )}
             </div>
 
@@ -879,14 +879,14 @@ export function DeckCardsViewer({
                   >
                     <div className="flex items-center justify-between gap-1.5 min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span className="font-mono text-[10px] text-slate-500 shrink-0">#{idx + 1}</span>
+                        <span className="font-mono text-[0.625rem] text-slate-500 shrink-0">#{idx + 1}</span>
                         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                           {idx > 0 && (
                             <span
                               role="button"
                               tabIndex={0}
                               onClick={(e) => handleMoveCard(e, card.id, 'up')}
-                              className="text-slate-400 hover:text-sky-300 px-0.5 py-0.2 text-[8px] hover:bg-slate-700/60 rounded cursor-pointer leading-none select-none"
+                              className="text-slate-400 hover:text-sky-300 px-0.5 py-0.2 text-[0.5rem] hover:bg-slate-700/60 rounded cursor-pointer leading-none select-none"
                               title="Move card up"
                             >
                               ▲
@@ -897,7 +897,7 @@ export function DeckCardsViewer({
                               role="button"
                               tabIndex={0}
                               onClick={(e) => handleMoveCard(e, card.id, 'down')}
-                              className="text-slate-400 hover:text-sky-300 px-0.5 py-0.2 text-[8px] hover:bg-slate-700/60 rounded cursor-pointer leading-none select-none"
+                              className="text-slate-400 hover:text-sky-300 px-0.5 py-0.2 text-[0.5rem] hover:bg-slate-700/60 rounded cursor-pointer leading-none select-none"
                               title="Move card down"
                             >
                               ▼
@@ -909,10 +909,9 @@ export function DeckCardsViewer({
                         </span>
                         {cardComments.length > 0 && (
                           <span
-                            className="shrink-0 flex items-center gap-0.5 px-1 py-0.2 rounded-full bg-sky-950/70 text-sky-300 border border-sky-500/40 text-[9px] font-mono"
+                            className="shrink-0 flex items-center gap-0.5 px-1 py-0.2 rounded-full bg-sky-950/70 text-sky-300 border border-sky-500/40 text-[0.5625rem] font-mono"
                             title={`${cardComments.length} note(s)`}
                           >
-                            <span>📝</span>
                             <span>{cardComments.length}</span>
                           </span>
                         )}
@@ -941,7 +940,7 @@ export function DeckCardsViewer({
                               }}
                               placeholder="Short comment..."
                               maxLength={45}
-                              className="w-24 sm:w-32 text-[10px] px-1.5 py-0.5 rounded bg-[#0d131d] border border-amber-500/60 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500 font-sans"
+                              className="w-24 sm:w-32 text-[0.625rem] px-1.5 py-0.5 rounded bg-[#0d131d] border border-amber-500/60 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500 font-sans"
                             />
                             <button
                               type="button"
@@ -949,7 +948,7 @@ export function DeckCardsViewer({
                                 e.stopPropagation()
                                 handleSaveShortComment(card.id, editingShortCommentText)
                               }}
-                              className="px-1 py-0.5 rounded bg-amber-600/80 hover:bg-amber-600 text-[9px] text-white font-medium cursor-pointer"
+                              className="px-1 py-0.5 rounded bg-amber-600/80 hover:bg-amber-600 text-[0.5625rem] text-white font-medium cursor-pointer"
                               title="Save comment (Enter)"
                             >
                               ✓
@@ -961,7 +960,7 @@ export function DeckCardsViewer({
                                   e.stopPropagation()
                                   handleSaveShortComment(card.id, '')
                                 }}
-                                className="px-1 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900 border border-rose-500/30 text-[9px] text-rose-300 cursor-pointer"
+                                className="px-1 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900 border border-rose-500/30 text-[0.5625rem] text-rose-300 cursor-pointer"
                                 title="Clear comment"
                               >
                                 ✕
@@ -975,10 +974,9 @@ export function DeckCardsViewer({
                               setEditingShortCommentCardId(card.id)
                               setEditingShortCommentText(shortComments[card.id] || '')
                             }}
-                            className="px-1.5 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 border border-amber-500/40 text-[10px] font-medium max-w-[130px] truncate cursor-pointer transition flex items-center gap-1 shadow-sm"
+                            className="px-1.5 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 border border-amber-500/40 text-[0.625rem] font-medium max-w-[130px] truncate cursor-pointer transition flex items-center gap-1 shadow-sm"
                             title={`Click to edit comment: "${shortComments[card.id]}"`}
                           >
-                            <span className="text-[9px]">💬</span>
                             <span className="truncate">{shortComments[card.id]}</span>
                           </span>
                         ) : (
@@ -989,22 +987,22 @@ export function DeckCardsViewer({
                               setEditingShortCommentCardId(card.id)
                               setEditingShortCommentText('')
                             }}
-                            className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-amber-300 text-[10px] px-1.5 py-0.5 rounded hover:bg-[#1f293d] border border-ink-line/60 transition cursor-pointer flex items-center gap-0.5"
+                            className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-amber-300 text-[0.625rem] px-1.5 py-0.5 rounded hover:bg-[#1f293d] border border-ink-line/60 transition cursor-pointer flex items-center gap-0.5"
                             title="Add short comment to card"
                           >
-                            <span>+💬</span>
+                           <span>+</span>
                           </button>
                         )}
 
                         {isCurrent && (
-                          <span className="shrink-0 px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-bold border border-sky-500/40 text-[9px]">
+                          <span className="shrink-0 px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-bold border border-sky-500/40 text-[0.5625rem]">
                             Active
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-1.5 text-[10px]">
+                    <div className="flex items-center justify-between gap-1.5 text-[0.625rem]">
                       <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                         {isCode ? (
                           <span className="px-1.5 py-0.2 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-medium">
@@ -1031,32 +1029,32 @@ export function DeckCardsViewer({
                         )}
 
                         {card.time_complexity && (
-                          <span className="px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-300 border border-sky-500/30 font-mono text-[9px]">
+                          <span className="px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-300 border border-sky-500/30 font-mono text-[0.5625rem]">
                             {card.time_complexity}
                           </span>
                         )}
 
                         {card.state && (
-                          <span className="text-slate-500 capitalize text-[10px]">
+                          <span className="text-slate-500 capitalize text-[0.625rem]">
                             • {card.state}
                           </span>
                         )}
 
                         {card.is_schema_checkpoint && (
                           <span
-                            className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-200 border border-amber-500/40 font-medium text-[9px]"
+                            className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-200 border border-amber-500/40 font-medium text-[0.5625rem]"
                             title="Schema Checkpoint (mPFC Anchor)"
                           >
-                            🏛️ Checkpoint
+                             Checkpoint
                           </span>
                         )}
 
                         {card.spatial_locus && (
                           <span
-                            className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-200 border border-purple-500/40 font-mono text-[9px] truncate max-w-[110px]"
+                            className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-200 border border-purple-500/40 font-mono text-[0.5625rem] truncate max-w-[110px]"
                             title={`Memory Palace Locus: ${card.spatial_locus}`}
                           >
-                            📍 {card.spatial_locus}
+                             {card.spatial_locus}
                           </span>
                         )}
                       </div>
@@ -1124,7 +1122,6 @@ export function DeckCardsViewer({
                           className="px-2 py-0.5 rounded-full bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 border border-amber-500/40 text-xs font-medium cursor-pointer transition flex items-center gap-1 shadow-sm"
                           title="Click to edit short comment"
                         >
-                          <span className="text-[10px]">💬</span>
                           <span>{shortComments[selectedCard.id]}</span>
                         </span>
                       )}
@@ -1141,8 +1138,7 @@ export function DeckCardsViewer({
                           }`}
                           title={currentCardComments.length > 0 ? `${currentCardComments.length} comment(s) - Click to view or add` : 'Add comment to this card'}
                         >
-                          <span className="text-[12px]">💬</span>
-                          <span className="text-[11px]">
+                          <span className="text-[0.6875rem]">
                             {currentCardComments.length > 0
                               ? `${currentCardComments.length} ${currentCardComments.length === 1 ? 'comment' : 'comments'}`
                               : '+ Comment'}
@@ -1154,9 +1150,8 @@ export function DeckCardsViewer({
                           <div className="absolute left-0 top-full mt-2 w-80 sm:w-96 rounded-xl bg-[#141b27] border border-sky-500/40 shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md">
                             <div className="flex items-center justify-between pb-2 mb-2 border-b border-ink-line/80">
                               <div className="flex items-center gap-1.5 text-xs font-bold text-sky-300">
-                                <span>💬</span>
                                 <span>Card Comments</span>
-                                <span className="rounded-full bg-sky-500/20 px-1.5 py-0.2 text-[10px] text-sky-300 font-mono">
+                                <span className="rounded-full bg-sky-500/20 px-1.5 py-0.2 text-[0.625rem] text-sky-300 font-mono">
                                   {currentCardComments.length}
                                 </span>
                               </div>
@@ -1185,7 +1180,7 @@ export function DeckCardsViewer({
                                 }}
                               />
                               <div className="flex items-center justify-between">
-                                <span className="text-[10px] text-slate-500">Ctrl+Enter to post</span>
+                                <span className="text-[0.625rem] text-slate-500">Ctrl+Enter to post</span>
                                 <button
                                   type="submit"
                                   disabled={!newCommentText.trim()}
@@ -1208,18 +1203,18 @@ export function DeckCardsViewer({
                                     key={comment.id}
                                     className="group p-2 rounded-lg bg-[#0d131d]/90 border border-ink-line/60 flex flex-col gap-1 text-xs"
                                   >
-                                    <div className="flex items-center justify-between text-[10px] text-slate-400">
+                                    <div className="flex items-center justify-between text-[0.625rem] text-slate-400">
                                       <span>{new Date(comment.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                       <button
                                         type="button"
                                         onClick={() => handleDeleteComment(comment.id)}
-                                        className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-300 transition text-[11px] cursor-pointer"
+                                        className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-300 transition text-[0.6875rem] cursor-pointer"
                                         title="Delete comment"
                                       >
-                                        🗑️
+                                        
                                       </button>
                                     </div>
-                                    <div className="text-slate-200 whitespace-pre-wrap text-[11px] leading-relaxed break-words">
+                                    <div className="text-slate-200 whitespace-pre-wrap text-[0.6875rem] leading-relaxed break-words">
                                       {comment.text}
                                     </div>
                                   </div>
@@ -1240,7 +1235,6 @@ export function DeckCardsViewer({
                       className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-sky-500/40 bg-sky-500/15 hover:bg-sky-500/25 text-sky-200 text-xs font-semibold transition cursor-pointer"
                       title="View card analytics, memory retention dynamics, and weak points"
                     >
-                      <span>📊</span>
                       <span>Analytics</span>
                     </button>
 
@@ -1288,7 +1282,7 @@ export function DeckCardsViewer({
                       {selectedCard.edge_cases.map((ec, i) => (
                         <span
                           key={i}
-                          className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-200 border border-amber-500/30 text-[11px]"
+                          className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-200 border border-amber-500/30 text-[0.6875rem]"
                         >
                           {ec}
                         </span>
@@ -1301,12 +1295,11 @@ export function DeckCardsViewer({
                 <div className="rounded-xl border border-purple-500/30 bg-[#141224] p-4 space-y-3.5 shadow-md">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-purple-500/20 pb-2.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-base">🧠</span>
                       <div>
                         <h3 className="text-xs font-bold text-purple-200">
                           Neuroscience &amp; Memory Palace Scaffolding
                         </h3>
-                        <p className="text-[10px] text-slate-400">
+                        <p className="text-[0.625rem] text-slate-400">
                           Hippocampal cognitive mapping, mPFC schema assimilation &amp; dual coding
                         </p>
                       </div>
@@ -1324,7 +1317,6 @@ export function DeckCardsViewer({
                       }`}
                       title="Schema Checkpoints represent foundational structural concepts scheduled before leaf nodes"
                     >
-                      <span>🏛️</span>
                       <span>{selectedCard.is_schema_checkpoint ? 'Schema Checkpoint (Active)' : 'Mark as Schema Checkpoint'}</span>
                     </button>
                   </div>
@@ -1332,8 +1324,8 @@ export function DeckCardsViewer({
                   {/* Memory Palace Locus Input */}
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 items-end">
                     <div className="sm:col-span-3 space-y-1">
-                      <label className="text-[11px] font-semibold text-slate-300 flex items-center gap-1">
-                        <span>📍 Memory Palace Locus (Place Cell Anchor)</span>
+                      <label className="text-[0.6875rem] font-semibold text-slate-300 flex items-center gap-1">
+                       <span> Memory Palace Locus (Place Cell Anchor)</span>
                       </label>
                       <input
                         type="text"
@@ -1358,17 +1350,16 @@ export function DeckCardsViewer({
                   {/* Mnemonic Vignette (Dual Coding & Von Restorff Bizarreness) */}
                   <div className="space-y-1.5 pt-2 border-t border-purple-500/20">
                     <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-semibold text-slate-300 flex items-center gap-1">
-                        <span>🎨 Bizarre Mnemonic Vignette (Dual Coding)</span>
+                      <label className="text-[0.6875rem] font-semibold text-slate-300 flex items-center gap-1">
+                       <span> Bizarre Mnemonic Vignette (Dual Coding)</span>
                       </label>
                       <button
                         type="button"
                         disabled={generatingMnemonic}
                         onClick={handleGenerateMnemonic}
-                        className="text-[11px] text-amber-300 hover:text-amber-200 flex items-center gap-1 transition cursor-pointer disabled:opacity-40"
+                        className="text-[0.6875rem] text-amber-300 hover:text-amber-200 flex items-center gap-1 transition cursor-pointer disabled:opacity-40"
                         title="Synthesize high-vividness multi-sensory mental vignette"
                       >
-                        <span>✨</span>
                         <span>{generatingMnemonic ? 'Synthesizing…' : 'Synthesize Vignette'}</span>
                       </button>
                     </div>
@@ -1385,7 +1376,7 @@ export function DeckCardsViewer({
                           type="button"
                           disabled={savingNeuroProps}
                           onClick={handleSaveMnemonic}
-                          className="px-3 py-1 rounded bg-amber-600/80 hover:bg-amber-600 text-white text-[11px] font-medium transition cursor-pointer disabled:opacity-40"
+                          className="px-3 py-1 rounded bg-amber-600/80 hover:bg-amber-600 text-white text-[0.6875rem] font-medium transition cursor-pointer disabled:opacity-40"
                         >
                           {savingNeuroProps ? 'Saving…' : 'Save Vignette'}
                         </button>
@@ -1401,7 +1392,7 @@ export function DeckCardsViewer({
                       <span>Reference</span>
                     </span>
                     {selectedCard.time_complexity && (
-                      <span className="font-mono text-[10px] text-sky-300">
+                      <span className="font-mono text-[0.625rem] text-sky-300">
                         Target: {selectedCard.time_complexity}
                       </span>
                     )}
@@ -1438,7 +1429,7 @@ export function DeckCardsViewer({
                       <span className="flex items-center gap-1.5">
                         <span>Unit Tests</span>
                         {selectedCard.test_cases && selectedCard.test_cases.length > 0 && (
-                          <span className="rounded-full bg-indigo-950/80 px-2 py-0.2 text-[10px] font-mono text-indigo-300 border border-indigo-500/30">
+                          <span className="rounded-full bg-indigo-950/80 px-2 py-0.2 text-[0.625rem] font-mono text-indigo-300 border border-indigo-500/30">
                             {selectedCard.test_cases.length} cases
                           </span>
                         )}
@@ -1453,19 +1444,19 @@ export function DeckCardsViewer({
                         {/* Test Cases Table */}
                         {selectedCard.test_cases && selectedCard.test_cases.length > 0 && (
                           <div className="space-y-1.5">
-                            <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                            <h4 className="text-[0.6875rem] font-semibold text-slate-400 uppercase tracking-wider">
                               Test Cases
                             </h4>
                             <div className="overflow-x-auto rounded-lg border border-ink-line/60">
                               <table className="w-full text-left text-xs">
-                                <thead className="bg-[#1f2637] text-slate-400 font-mono text-[11px] border-b border-ink-line/60">
+                                <thead className="bg-[#1f2637] text-slate-400 font-mono text-[0.6875rem] border-b border-ink-line/60">
                                   <tr>
                                     <th className="px-3 py-1.5">#</th>
                                     <th className="px-3 py-1.5">Input</th>
                                     <th className="px-3 py-1.5">Expected</th>
                                   </tr>
                                 </thead>
-                                <tbody className="divide-y divide-ink-line/40 font-mono text-[11px] bg-[#141924]">
+                                <tbody className="divide-y divide-ink-line/40 font-mono text-[0.6875rem] bg-[#141924]">
                                   {selectedCard.test_cases.map((tc, idx) => (
                                     <tr key={idx} className="hover:bg-[#1a2130]">
                                       <td className="px-3 py-1.5 text-slate-500 font-bold">{idx + 1}</td>
@@ -1488,7 +1479,7 @@ export function DeckCardsViewer({
                         {/* Starter Code */}
                         {selectedCard.starter_code && (
                           <div className="space-y-1.5">
-                            <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                            <h4 className="text-[0.6875rem] font-semibold text-slate-400 uppercase tracking-wider">
                               Starter Code
                             </h4>
                             <CodeEditor
@@ -1508,7 +1499,7 @@ export function DeckCardsViewer({
                         {/* Starter Tests */}
                         {selectedCard.starter_tests && (
                           <div className="space-y-1.5">
-                            <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                            <h4 className="text-[0.6875rem] font-semibold text-slate-400 uppercase tracking-wider">
                               Starter Tests
                             </h4>
                             <CodeEditor
@@ -1545,12 +1536,11 @@ export function DeckCardsViewer({
             {/* Header */}
             <div className="flex items-center justify-between border-b border-ink-line/80 bg-[#142034] px-5 py-3.5">
               <div className="flex items-center gap-2">
-                <span className="text-xl">📄</span>
                 <div>
                   <h3 className="text-sm font-bold text-emerald-200">
                     Deck Documentation · {deckName || 'Current Deck'}
                   </h3>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[0.6875rem] text-slate-400">
                     Attached documents are searched and cited by local LLMs when explaining highlighted code.
                   </p>
                 </div>
@@ -1577,13 +1567,13 @@ export function DeckCardsViewer({
                   <span>＋</span>
                   <span>Upload Reference Documentation</span>
                 </h4>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[0.6875rem] text-slate-400">
                   Supported formats: PDF, Markdown (.md), Plain Text (.txt), HTML, TypeScript (.ts, .tsx), JavaScript (.js), Python (.py), Java (.java), JSON.
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-medium text-slate-300 mb-1">
+                    <label className="block text-[0.6875rem] font-medium text-slate-300 mb-1">
                       Select File *
                     </label>
                     <input
@@ -1591,11 +1581,11 @@ export function DeckCardsViewer({
                       accept=".pdf,.txt,.md,.markdown,.html,.htm,.rst,.ts,.tsx,.js,.jsx,.py,.java,.json"
                       onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                       required
-                      className="w-full text-[11px] text-slate-300 file:mr-2.5 file:py-1 file:px-3 file:rounded-lg file:border file:border-emerald-500/40 file:text-[11px] file:font-semibold file:bg-emerald-950/60 file:text-emerald-200 hover:file:bg-emerald-900/80 cursor-pointer"
+                      className="w-full text-[0.6875rem] text-slate-300 file:mr-2.5 file:py-1 file:px-3 file:rounded-lg file:border file:border-emerald-500/40 file:text-[0.6875rem] file:font-semibold file:bg-emerald-950/60 file:text-emerald-200 hover:file:bg-emerald-900/80 cursor-pointer"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-medium text-slate-300 mb-1">
+                    <label className="block text-[0.6875rem] font-medium text-slate-300 mb-1">
                       Document Title (optional)
                     </label>
                     <input
@@ -1609,7 +1599,7 @@ export function DeckCardsViewer({
                 </div>
 
                 {docUploadError && (
-                  <div className="p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300 text-[11px]">
+                  <div className="p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300 text-[0.6875rem]">
                     {docUploadError}
                   </div>
                 )}
@@ -1638,7 +1628,7 @@ export function DeckCardsViewer({
               <div className="space-y-2.5">
                 <h4 className="text-xs font-semibold text-slate-300 flex items-center justify-between">
                   <span>Attached Documents ({deckDocs.length})</span>
-                  <span className="text-[11px] text-slate-400 font-normal">
+                  <span className="text-[0.6875rem] text-slate-400 font-normal">
                     {deckDocs.reduce((acc, d) => acc + (d.segment_count || 0), 0)} total citable segments
                   </span>
                 </h4>
@@ -1646,7 +1636,7 @@ export function DeckCardsViewer({
                 {deckDocs.length === 0 ? (
                   <div className="p-6 rounded-xl border border-dashed border-ink-line/60 bg-[#131b2c]/30 text-center text-slate-400 space-y-1">
                     <p className="font-medium text-slate-300">No documents attached yet</p>
-                    <p className="text-[11px]">
+                    <p className="text-[0.6875rem]">
                       Upload course notes, specification PDFs, or source code above. You can then highlight any code block and press Alt+D to search these documents.
                     </p>
                   </div>
@@ -1659,15 +1649,14 @@ export function DeckCardsViewer({
                       >
                         <div className="min-w-0 flex-1 space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-emerald-400 font-bold">📄</span>
                             <span className="font-semibold text-slate-100 truncate text-xs">
                               {doc.title}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-mono truncate">
+                            <span className="text-[0.625rem] text-slate-400 font-mono truncate">
                               ({doc.filename})
                             </span>
                           </div>
-                          <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                          <div className="flex items-center gap-2 text-[0.625rem] text-slate-400">
                             <span className="text-emerald-300/90 font-medium">
                               {doc.segment_count} citable segment{doc.segment_count === 1 ? '' : 's'}
                             </span>
@@ -1680,13 +1669,13 @@ export function DeckCardsViewer({
                               {doc.locators.slice(0, 8).map((loc, lIdx) => (
                                 <span
                                   key={lIdx}
-                                  className="px-1.5 py-0.2 rounded bg-black/40 text-slate-300 font-mono text-[9px] border border-white/5"
+                                  className="px-1.5 py-0.2 rounded bg-black/40 text-slate-300 font-mono text-[0.5625rem] border border-white/5"
                                 >
                                   {loc}
                                 </span>
                               ))}
                               {doc.locators.length > 8 && (
-                                <span className="text-[9px] text-slate-500">
+                                <span className="text-[0.5625rem] text-slate-500">
                                   +{doc.locators.length - 8} more
                                 </span>
                               )}
@@ -1697,7 +1686,7 @@ export function DeckCardsViewer({
                           type="button"
                           onClick={() => void handleDeleteDocument(doc.id)}
                           disabled={deletingDocId === doc.id}
-                          className="px-2 py-1 rounded text-[11px] text-rose-400 hover:text-rose-200 hover:bg-rose-950/40 border border-transparent hover:border-rose-500/30 transition cursor-pointer"
+                          className="px-2 py-1 rounded text-[0.6875rem] text-rose-400 hover:text-rose-200 hover:bg-rose-950/40 border border-transparent hover:border-rose-500/30 transition cursor-pointer"
                           title="Remove document from deck"
                         >
                           {deletingDocId === doc.id ? 'Removing…' : 'Remove'}

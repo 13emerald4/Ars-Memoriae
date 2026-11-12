@@ -1,4 +1,5 @@
 import type { QueueItem } from '../api/types'
+import { storage } from './storage'
 
 const STORAGE_KEY = 'memorization.savedCardDrafts'
 
@@ -18,7 +19,7 @@ export interface SavedCardDraft {
 
 export function getSavedDrafts(): Record<string, SavedCardDraft> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = storage.get(STORAGE_KEY)
     if (!raw) return {}
     return JSON.parse(raw) as Record<string, SavedCardDraft>
   } catch (err) {
@@ -31,7 +32,7 @@ export function saveDraft(draft: SavedCardDraft): void {
   try {
     const drafts = getSavedDrafts()
     drafts[draft.cardId] = draft
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts))
+    storage.set(STORAGE_KEY, JSON.stringify(drafts))
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('savedCardDraftsChanged'))
     }
@@ -45,7 +46,7 @@ export function removeDraft(cardId: string): void {
     const drafts = getSavedDrafts()
     if (drafts[cardId]) {
       delete drafts[cardId]
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts))
+      storage.set(STORAGE_KEY, JSON.stringify(drafts))
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('savedCardDraftsChanged'))
       }
@@ -57,7 +58,7 @@ export function removeDraft(cardId: string): void {
 
 export function clearAllDrafts(): void {
   try {
-    localStorage.removeItem(STORAGE_KEY)
+    storage.remove(STORAGE_KEY)
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('savedCardDraftsChanged'))
     }

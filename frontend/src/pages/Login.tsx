@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ErrorNote } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
+import { storage } from '../utils/storage'
 
 export default function Login() {
   const { signIn, signUp } = useAuth()
@@ -18,7 +19,7 @@ export default function Login() {
       if (mode === 'in') {
         await signIn(email, password)
       } else {
-        localStorage.setItem('prompt_new_user_tutorial', 'true')
+        storage.set('prompt_new_user_tutorial', 'true')
         await signUp(email, password)
       }
     } catch (err) {
