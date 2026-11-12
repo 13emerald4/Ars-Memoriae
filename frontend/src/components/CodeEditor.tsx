@@ -190,7 +190,13 @@ const BUILTIN_FUNCS = new Set([
 ])
 
 function escapeHtml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  // Quotes too: the result is also interpolated into title="…" attributes.
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 function highlightLeetCode(code: string): string {
@@ -1133,7 +1139,7 @@ export function CodeEditor({
       if (e.key === 'Escape') {
         e.preventDefault()
         handleDockBack()
-      } else if (e.altKey && (e.key === 'w' || e.key === 'W')) {
+      } else if (e.altKey && e.code === 'KeyW') {
         e.preventDefault()
         handleDockBack()
       }
@@ -1320,7 +1326,7 @@ export function CodeEditor({
     }
 
     // Alt + D or Alt + E: Search Deck Documentation for selection
-    if (e.altKey && (e.key === 'd' || e.key === 'D' || e.key === 'e' || e.key === 'E')) {
+    if (e.altKey && (e.code === 'KeyD' || e.code === 'KeyE')) {
       e.preventDefault()
       e.stopPropagation()
       void triggerDocSearch()
@@ -1328,7 +1334,7 @@ export function CodeEditor({
     }
 
     // Alt + Q: Directly Ask Local LLM about selection (using docs + pre-training)
-    if (e.altKey && (e.key === 'q' || e.key === 'Q')) {
+    if (e.altKey && e.code === 'KeyQ') {
       e.preventDefault()
       e.stopPropagation()
       handleTriggerAskLlm()
@@ -1336,7 +1342,7 @@ export function CodeEditor({
     }
 
     // Alt + L: Define highlighted token/snippet via Concordance & AI Lexicon
-    if (e.altKey && (e.key === 'l' || e.key === 'L') && lexiconCtx) {
+    if (e.altKey && e.code === 'KeyL' && lexiconCtx) {
       e.preventDefault()
       e.stopPropagation()
       handleDefineSelection()
@@ -1344,7 +1350,7 @@ export function CodeEditor({
     }
 
     // Alt + W: Toggle separate window / pop-out for second monitor
-    if (e.altKey && (e.key === 'w' || e.key === 'W')) {
+    if (e.altKey && e.code === 'KeyW') {
       e.preventDefault()
       e.stopPropagation()
       if (isPoppedOut) {
@@ -1356,7 +1362,7 @@ export function CodeEditor({
     }
 
     // Alt + H Line Hint Shortcut
-    if (e.altKey && (e.key === 'h' || e.key === 'H')) {
+    if (e.altKey && e.code === 'KeyH') {
       e.preventDefault()
       e.stopPropagation()
       triggerLineHint()
@@ -1364,7 +1370,7 @@ export function CodeEditor({
     }
 
     // Alt + G Grade My Solution Shortcut
-    if (e.altKey && (e.key === 'g' || e.key === 'G')) {
+    if (e.altKey && e.code === 'KeyG') {
       e.preventDefault()
       e.stopPropagation()
       if (onGradeSolution) {
