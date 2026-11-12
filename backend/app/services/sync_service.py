@@ -26,11 +26,15 @@ class SyncManager:
 
     async def connect(self, user_id: uuid.UUID, websocket: WebSocket) -> None:
         await websocket.accept()
+        await self.register(user_id, websocket)
+
+    async def register(self, user_id: uuid.UUID, websocket: WebSocket) -> None:
+        """Tracks an already-accepted socket (one that authenticated in-band)."""
         async with self._lock:
-            if user_id not in self._connections:
-                self._connections[user_id] = set()
-            self._connections[user_id].add(websocket)
-        log.info("WebSocket connected for user %s (total: %d)", user_id, len(self._connections[user_id]))
+            sockets = self._connections.setdefault(user_id, set())
+            sockets.add(websocket)
+            total = len(sockets)
+        log.info("WebSocket connected for user %s (total: %d)", user_id, total)
 
     async def disconnect(self, user_id: uuid.UUID, websocket: WebSocket) -> None:
         async with self._lock:

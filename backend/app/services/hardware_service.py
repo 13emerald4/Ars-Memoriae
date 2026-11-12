@@ -333,6 +333,12 @@ def get_vram_metrics(
     - model_approx_gb: Approximate VRAM footprint when loaded
     - model_loaded: Whether the model is currently resident in VRAM
     - gpu_name: Name of detected GPU device
+    - memory_source: where the capacity figure came from ("nvidia-smi",
+      "apple-unified", "gpu-adapter", "system-ram", "cloud")
+    - usage_measured: False when used/available are not real readings. Only
+      nvidia-smi and macOS page counts are measured; elsewhere the split is a
+      placeholder (half and half) kept so fit checks have a number, and the UI
+      must present it as unknown rather than as telemetry.
     """
     from app.services.grading_service import is_antigravity_model
 
@@ -351,6 +357,8 @@ def get_vram_metrics(
             "model_name": model_name,
             "gpu_name": "Antigravity Subscription (Cloud)",
             "is_unified_memory": False,
+            "memory_source": "cloud",
+            "usage_measured": False,
         }
 
     total_mb: float | None = None
@@ -358,6 +366,8 @@ def get_vram_metrics(
     free_mb: float | None = None
     gpu_name: str | None = None
     is_unified = False
+    memory_source = "system-ram"
+    usage_measured = False
 
     # 1. Query NVIDIA SMI if available
     if shutil.which("nvidia-smi"):
@@ -374,6 +384,8 @@ def get_vram_metrics(
                 total_mb = float(parts[1])
                 used_mb = float(parts[2])
                 free_mb = float(parts[3])
+                memory_source = "nvidia-smi"
+                usage_measured = True
         except Exception as exc:
             log.debug("nvidia-smi live query failed: %s", exc)
 
@@ -383,11 +395,17 @@ def get_vram_metrics(
         gpu_name = "Apple Silicon Integrated GPU (Metal)"
         ram_gb = _get_ram_gb()
         total_mb = ram_gb * 1024.0
+        memory_source = "apple-unified"
         try:
-            out = subprocess.check_output(["sysctl", "-n", "vm.page_free_count", "vm.page_speculative_count"], text=True)
+            out = subprocess.check_output(
+                ["sysctl", "-n", "vm.page_free_count", "vm.page_speculative_count"],
+                text=True,
+                timeout=1.5,
+            )
             free_pages = sum(int(p.strip()) for p in out.strip().split() if p.strip().isdigit())
             free_mb = round((free_pages * 4096) / (1024 * 1024), 1)
             used_mb = max(0.0, total_mb - free_mb)
+            usage_measured = True
         except Exception:
             free_mb = round(total_mb * 0.5, 1)
             used_mb = round(total_mb * 0.5, 1)
@@ -399,6 +417,7 @@ def get_vram_metrics(
             if detected_vram_gb:
                 gpu_name = detected_gpu
                 total_mb = detected_vram_gb * 1024.0
+                memory_source = "gpu-adapter"
                 free_mb = round(total_mb * 0.5, 1)
                 used_mb = round(total_mb * 0.5, 1)
         except Exception:
@@ -468,4 +487,6 @@ def get_vram_metrics(
         "model_name": model_name,
         "gpu_name": gpu_name or "Graphics Processor",
         "is_unified_memory": is_unified,
+        "memory_source": memory_source,
+        "usage_measured": usage_measured,
     }

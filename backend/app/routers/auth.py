@@ -9,15 +9,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import login_throttle
 from app.core.config import settings
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import (
+    SCOPE_MOBILE,
+    create_access_token,
+    hash_password,
+    verify_password,
+)
 from app.db import get_db
 from app.models import Deck, NoteType, QueueConfig, User
-from app.routers.deps import current_user
+from app.routers.deps import current_user, full_session_user
 from app.schemas.core import (
+    ChangePasswordRequest,
     LoginRequest,
+    PairingTokenResponse,
     QueueConfigOut,
     QueueConfigUpdate,
     RegisterRequest,
+    RegistrationStatus,
     TokenResponse,
     UserOut,
     UserUpdate,
@@ -78,44 +86,64 @@ async def registration_open(db: AsyncSession) -> bool:
     return await db.scalar(select(User.id).limit(1)) is None
 
 
+def _session_token(user: User) -> str:
+    return create_access_token(str(user.id), version=user.token_version)
+
+
+# Serialises sign-ups. "Is this the first account?" and "create it" are two
+# statements; without this, two simultaneous requests on a fresh install both
+# see an empty table and both get in past a closed registration.
+_register_lock = asyncio.Lock()
+
+
+@router.get("/auth/registration-status", response_model=RegistrationStatus)
+async def registration_status(db: AsyncSession = Depends(get_db)) -> RegistrationStatus:
+    """Lets the sign-in screen offer "Create an account" only when it would work."""
+    return RegistrationStatus(open=await registration_open(db))
+
+
 @router.post("/auth/register", response_model=TokenResponse, status_code=201)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
-    if not await registration_open(db):
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN,
-            "Sign-up is closed: this instance already has an account. "
-            "The operator can set ALLOW_REGISTRATION=1 to allow more.",
-        )
-    email = body.email.lower()
-    existing = await db.scalar(select(User).where(User.email == email))
-    if existing:
-        raise HTTPException(status.HTTP_409_CONFLICT, "email already registered")
-
     from app.services.hardware_service import detect_hardware
 
-    hw_profile = detect_hardware()
-    user = User(
-        email=email,
-        password_hash=hash_password(body.password),
-        grading_model=hw_profile.recommended_model,
-    )
-    db.add(user)
-    await db.flush()
+    email = body.email.lower()
+    # Both are CPU / subprocess work; keep them off the event loop.
+    password_hash = await asyncio.to_thread(hash_password, body.password)
+    hw_profile = await asyncio.to_thread(detect_hardware)
 
-    db.add(QueueConfig(user_id=user.id))
-    db.add(Deck(user_id=user.id, name="Default"))
-    for name, kind, fields, profile in STARTER_NOTE_TYPES:
-        db.add(
-            NoteType(
-                user_id=user.id,
-                name=name,
-                template_kind=kind,
-                fields=fields,
-                grading_profile=profile,
+    async with _register_lock:
+        if not await registration_open(db):
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Sign-up is closed: this instance already has an account. "
+                "The operator can set ALLOW_REGISTRATION=1 to allow more.",
             )
+        existing = await db.scalar(select(User).where(User.email == email))
+        if existing:
+            raise HTTPException(status.HTTP_409_CONFLICT, "email already registered")
+
+        user = User(
+            email=email,
+            password_hash=password_hash,
+            grading_model=hw_profile.recommended_model,
         )
-    await db.commit()
-    return TokenResponse(access_token=create_access_token(str(user.id)))
+        db.add(user)
+        await db.flush()
+
+        db.add(QueueConfig(user_id=user.id))
+        db.add(Deck(user_id=user.id, name="Default"))
+        for name, kind, fields, profile in STARTER_NOTE_TYPES:
+            db.add(
+                NoteType(
+                    user_id=user.id,
+                    name=name,
+                    template_kind=kind,
+                    fields=fields,
+                    grading_profile=profile,
+                )
+            )
+        await db.commit()
+    return TokenResponse(access_token=_session_token(user))
 
 
 @cache
@@ -149,7 +177,63 @@ async def login(
         login_throttle.record_failure(ip, email)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid credentials")
     login_throttle.record_success(ip, email)
-    return TokenResponse(access_token=create_access_token(str(user.id)))
+    return TokenResponse(access_token=_session_token(user))
+
+
+@router.post("/auth/change-password", response_model=TokenResponse)
+async def change_password(
+    body: ChangePasswordRequest,
+    request: Request,
+    user: User = Depends(full_session_user),
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """Sets a new password and revokes every token issued before it, including
+    paired devices. The caller gets a fresh token so this session carries on."""
+    ip = login_throttle.client_ip(request)
+    wait = login_throttle.retry_after(ip, user.email)
+    if wait:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            f"too many failed attempts; try again in {wait}s",
+            headers={"Retry-After": str(wait)},
+        )
+    ok = await asyncio.to_thread(verify_password, body.current_password, user.password_hash)
+    if not ok:
+        login_throttle.record_failure(ip, user.email)
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "current password is incorrect")
+    login_throttle.record_success(ip, user.email)
+    user.password_hash = await asyncio.to_thread(hash_password, body.new_password)
+    user.token_version += 1
+    await db.commit()
+    await db.refresh(user)
+    return TokenResponse(access_token=_session_token(user))
+
+
+@router.post("/auth/logout-all", response_model=TokenResponse)
+async def logout_everywhere(
+    user: User = Depends(full_session_user), db: AsyncSession = Depends(get_db)
+) -> TokenResponse:
+    """Revokes every token for this account (other browsers, paired phones) and
+    returns a new one for the session that asked."""
+    user.token_version += 1
+    await db.commit()
+    await db.refresh(user)
+    return TokenResponse(access_token=_session_token(user))
+
+
+@router.post("/auth/pairing-token", response_model=PairingTokenResponse)
+async def pairing_token(user: User = Depends(full_session_user)) -> PairingTokenResponse:
+    """A token for the mobile companion's pairing QR.
+
+    Deliberately not the browser's own session token: this one is scoped to
+    "mobile" (it can review, but not run code on the host, change the password
+    or mint tokens) and is revoked by "sign out everywhere".
+    """
+    ttl = settings.pairing_token_ttl_seconds
+    token = create_access_token(
+        str(user.id), version=user.token_version, scope=SCOPE_MOBILE, ttl_seconds=ttl
+    )
+    return PairingTokenResponse(access_token=token, scope=SCOPE_MOBILE, expires_in=ttl)
 
 
 @router.get("/me", response_model=UserOut)

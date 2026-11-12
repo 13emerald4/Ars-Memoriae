@@ -53,6 +53,10 @@ class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=_uuid)
     email: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    # Bumped to revoke every token issued so far (see core.security.TokenClaims).
+    token_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     desired_retention: Mapped[float] = mapped_column(Float, nullable=False, default=0.90)
     grading_model: Mapped[str] = mapped_column(Text, nullable=False, default="qwen2.5-coder:7b")
     queue_time_budget_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
@@ -713,7 +717,7 @@ class LexiconCache(Base):
     __tablename__ = "lexicon_cache"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=_uuid)
-    term_normalized: Mapped[str] = mapped_column(Text, index=True, nullable=False)
+    term_normalized: Mapped[str] = mapped_column(Text, nullable=False)
     term_display: Mapped[str] = mapped_column(Text, nullable=False)
     definition: Mapped[str] = mapped_column(Text, nullable=False)
     context_explanation: Mapped[str | None] = mapped_column(Text, nullable=True)

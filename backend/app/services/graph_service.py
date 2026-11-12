@@ -8,12 +8,11 @@ from __future__ import annotations
 
 import uuid
 from collections import defaultdict, deque
-from datetime import UTC, datetime
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Card, ConceptEdge, Deck, Note, SisterPair, User
+from app.models import Card, ConceptEdge, Deck, SisterPair, User
 from app.services.rendering import render
 
 
@@ -201,9 +200,17 @@ async def spreading_activation(
 
     # Fetch card and deck titles
     target_ids = list(activations.keys())
+    # Scoped to the caller's decks: an edge row is only a pair of ids, so a
+    # stale or hostile one must not be able to pull in another account's card.
     cards = (
         await db.scalars(
-            select(Card).where(Card.id.in_(target_ids), Card.suspended.is_(False))
+            select(Card)
+            .join(Deck, Card.deck_id == Deck.id)
+            .where(
+                Card.id.in_(target_ids),
+                Card.suspended.is_(False),
+                Deck.user_id == user.id,
+            )
         )
     ).all()
 
@@ -291,7 +298,7 @@ async def auto_discover_edges(db: AsyncSession, user: User) -> list[ConceptEdge]
             if term and len(term) > 3:
                 term_to_cards[term].append(c.id)
 
-    for term, c_ids in term_to_cards.items():
+    for c_ids in term_to_cards.values():
         if 2 <= len(c_ids) <= 10:  # meaningful specific term overlap
             for i in range(len(c_ids)):
                 for j in range(i + 1, min(len(c_ids), i + 3)):

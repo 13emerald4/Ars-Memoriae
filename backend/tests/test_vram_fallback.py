@@ -1,3 +1,4 @@
+import httpx
 import pytest
 
 from app.schemas.core import UserUpdate
@@ -9,6 +10,38 @@ from app.services.grading_service import (
     is_allowed_qwen_coder_model,
     is_memory_or_vram_error,
 )
+
+# What a machine with the usual models pulled reports from `GET /api/tags`,
+# plus the kinds of model that must never be offered as a grading fallback.
+INSTALLED_MODELS = [
+    {"name": "qwen2.5-coder:7b", "size": 4_700_000_000},
+    {"name": "qwen2.5-coder:3b", "size": 1_900_000_000},
+    {"name": "qwen2.5-coder:1.5b", "size": 986_000_000},
+    {"name": "qwen3-embedding:8b-q4_K_M", "size": 4_600_000_000},
+    {"name": "dengcao/Qwen3-Reranker-8B:Q4_K_M", "size": 4_600_000_000},
+    {"name": "llama3.2:3b", "size": 2_000_000_000},
+]
+
+
+@pytest.fixture
+def fake_ollama(monkeypatch):
+    """Stands in for the Ollama daemon. These tests are about how the grading
+    service picks a fallback, not about whether a daemon happens to be running
+    on the machine (it is not, on CI)."""
+    from app.services import grading_service
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/tags":
+            return httpx.Response(200, json={"models": INSTALLED_MODELS})
+        return httpx.Response(404)
+
+    real_client = httpx.AsyncClient
+
+    def client_factory(*args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return real_client(*args, **kwargs)
+
+    monkeypatch.setattr(grading_service.httpx, "AsyncClient", client_factory)
 
 
 def test_is_allowed_qwen_coder_model():
@@ -63,18 +96,19 @@ def test_is_memory_or_vram_error():
 
 
 @pytest.mark.asyncio
-async def test_find_local_fallback_models():
+async def test_find_local_fallback_models(fake_ollama):
     # Tests that discovery returns models installed in Ollama, strictly restricted to Qwen 2.5 Coder
     fallback, smaller = await find_local_fallback_models("http://127.0.0.1:11434", "qwen2.5-coder:7b")
-    assert fallback is not None
-    assert "3b" in fallback or "1.5b" in fallback
+    # The next size down from the model that ran out of memory.
+    assert fallback == "qwen2.5-coder:3b"
+    assert smaller == ["qwen2.5-coder:3b", "qwen2.5-coder:1.5b"]
     assert all("qwen2.5-coder" in m for m in smaller)
     assert not any("gemma" in m for m in smaller)
     assert not any("rerank" in m or "embed" in m for m in smaller)
 
 
 @pytest.mark.asyncio
-async def test_vram_exhausted_error_handling():
+async def test_vram_exhausted_error_handling(fake_ollama):
     svc = GradingService(model="qwen2.5-coder:7b")
 
     # Simulate an Ollama OOM error
@@ -93,7 +127,7 @@ async def test_vram_exhausted_error_handling():
 
 
 @pytest.mark.asyncio
-async def test_auto_fallback_when_allowed():
+async def test_auto_fallback_when_allowed(fake_ollama):
     svc = GradingService(model="qwen2.5-coder:7b")
 
     async def mock_generate_ollama(prompt, model, schema=None, **kwargs):

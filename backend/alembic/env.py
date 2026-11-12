@@ -11,8 +11,12 @@ from app.core.config import settings
 from app.db import Base
 
 config = context.config
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+# The app runs migrations in-process at startup and passes
+# configure_logger=False: alembic.ini's logging section would otherwise replace
+# the server's logging (root level WARN, and by default every existing logger
+# switched off), which silenced uvicorn and the app for the rest of the run.
+if config.config_file_name is not None and config.attributes.get("configure_logger", True):
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 

@@ -7,8 +7,18 @@ import uuid
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile, status
-from sqlalchemy import delete, func, select
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
+from sqlalchemy import ColumnElement, and_, case, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -25,6 +35,12 @@ from app.models import (
     User,
 )
 from app.routers.deps import current_user, parse_uuid
+from app.schemas.code_practice import (
+    DeckDocumentOut,
+    DeckDocumentsListResponse,
+    QueryDeckDocsRequest,
+    QueryDeckDocsResponse,
+)
 from app.schemas.core import (
     CardAnalyticsOut,
     CardLexiconGlossAdd,
@@ -33,7 +49,6 @@ from app.schemas.core import (
     CardNeuroPropsUpdate,
     CardNextIntervalsOut,
     CardOut,
-    CardReorderItem,
     CardReorderRequest,
     CardReviewLogItemOut,
     DeckCreate,
@@ -47,12 +62,6 @@ from app.schemas.core import (
     NoteTypeOut,
     NoteUpdate,
     PriorityUpdate,
-)
-from app.schemas.code_practice import (
-    DeckDocumentOut,
-    DeckDocumentsListResponse,
-    QueryDeckDocsRequest,
-    QueryDeckDocsResponse,
 )
 from app.schemas.review import QueueItem
 from app.services import document_service, ir_service, tree_service
@@ -232,82 +241,125 @@ async def list_decks(
         )
     ).all()
 
-    # Query all active non-suspended cards and their notes for the user
-    cards_stmt = (
-        select(Card.id, Card.deck_id, Card.state, Card.difficulty, Card.due, Note.field_values)
+    # Everything below is aggregated in the database and comes back as a few
+    # rows per deck. This endpoint is called on most page loads; reading every
+    # card, its note body and every review log into Python to count them does
+    # not survive a real collection.
+    owned = (Deck.user_id == user.id, Card.suspended.is_(False))
+
+    def tally(condition) -> ColumnElement[int]:
+        return func.coalesce(func.sum(case((condition, 1), else_=0)), 0)
+
+    direct_stats: dict[uuid.UUID, DeckStatsAccumulator] = defaultdict(DeckStatsAccumulator)
+
+    state_rows = await db.execute(
+        select(
+            Card.deck_id,
+            func.count(Card.id),
+            tally(Card.state == "new"),
+            tally(Card.state.in_(("learning", "relearning"))),
+            tally(Card.state == "review"),
+            tally(and_(Card.due.is_not(None), Card.due <= now, Card.state != "new")),
+        )
+        .join(Deck, Card.deck_id == Deck.id)
+        .where(*owned)
+        .group_by(Card.deck_id)
+    )
+    for deck_id, total, new_n, learning_n, review_n, due_n in state_rows:
+        acc = direct_stats[deck_id]
+        acc.total_cards = int(total)
+        acc.new_cards = int(new_n)
+        acc.viewed_cards = int(total) - int(new_n)
+        acc.learning_cards = int(learning_n)
+        acc.review_cards = int(review_n)
+        acc.due_cards = int(due_n)
+
+    # Difficulty: an explicit label on the note wins; otherwise the card's FSRS
+    # difficulty picks a bucket. Grouped per distinct (label, bucket), so the
+    # label rule itself stays in Python below, unchanged.
+    fsrs_bucket = case(
+        (Card.difficulty.is_(None), "Unrated"),
+        (Card.difficulty <= 4.0, "Easy"),
+        (Card.difficulty <= 7.0, "Medium"),
+        else_="Hard",
+    )
+    per_card = (
+        select(
+            Card.deck_id.label("deck_id"),
+            Note.field_values["difficulty"].label("label_a"),
+            Note.field_values["Difficulty"].label("label_b"),
+            Note.field_values["diff"].label("label_c"),
+            fsrs_bucket.label("bucket"),
+        )
         .join(Note, Card.note_id == Note.id)
         .join(Deck, Card.deck_id == Deck.id)
-        .where(Deck.user_id == user.id, Card.suspended.is_(False))
+        .where(*owned)
+        .subquery()
     )
-    cards_rows = (await db.execute(cards_stmt)).all()
-
-    # Query latest review grades per card for user's decks
-    logs_stmt = (
-        select(ReviewLog.card_id, ReviewLog.final_grade)
-        .join(Card, ReviewLog.card_id == Card.id)
-        .join(Deck, Card.deck_id == Deck.id)
-        .where(Deck.user_id == user.id)
-        .order_by(ReviewLog.reviewed_at.asc())
+    difficulty_rows = await db.execute(
+        select(
+            per_card.c.deck_id,
+            per_card.c.label_a,
+            per_card.c.label_b,
+            per_card.c.label_c,
+            per_card.c.bucket,
+            func.count(),
+        ).group_by(
+            per_card.c.deck_id,
+            per_card.c.label_a,
+            per_card.c.label_b,
+            per_card.c.label_c,
+            per_card.c.bucket,
+        )
     )
-    logs_rows = (await db.execute(logs_stmt)).all()
-
-    latest_rating_by_card: dict[uuid.UUID, str] = dict(logs_rows)
-
-    # Count total reviews per deck
-    card_deck_map: dict[uuid.UUID, uuid.UUID] = {row[0]: row[1] for row in cards_rows}
-    deck_review_counts: dict[uuid.UUID, int] = defaultdict(int)
-    for c_id, _ in logs_rows:
-        d_id = card_deck_map.get(c_id)
-        if d_id:
-            deck_review_counts[d_id] += 1
-
-    # Accumulate direct stats for each deck
-    direct_stats: dict[uuid.UUID, DeckStatsAccumulator] = defaultdict(DeckStatsAccumulator)
-    for c_id, deck_id, c_state, c_difficulty, c_due, note_field_values in cards_rows:
+    for deck_id, label_a, label_b, label_c, bucket, n in difficulty_rows:
         acc = direct_stats[deck_id]
-        acc.total_cards += 1
-        if c_state == "new":
-            acc.new_cards += 1
-        else:
-            acc.viewed_cards += 1
-
-        if c_state in ("learning", "relearning"):
-            acc.learning_cards += 1
-        elif c_state == "review":
-            acc.review_cards += 1
-
-        if c_due and (c_due if c_due.tzinfo else c_due.replace(tzinfo=UTC)) <= now and c_state != "new":
-            acc.due_cards += 1
-
-        fv = note_field_values or {}
-        raw_diff = fv.get("difficulty") or fv.get("Difficulty") or fv.get("diff")
+        raw_diff = label_a or label_b or label_c
         if raw_diff and isinstance(raw_diff, str) and raw_diff.strip():
             label = raw_diff.strip().capitalize()
-            acc.diff_counts[label] = acc.diff_counts.get(label, 0) + 1
-        elif c_difficulty is not None:
-            if c_difficulty <= 4.0:
-                acc.diff_counts["Easy"] += 1
-            elif c_difficulty <= 7.0:
-                acc.diff_counts["Medium"] += 1
-            else:
-                acc.diff_counts["Hard"] += 1
         else:
-            acc.diff_counts["Unrated"] += 1
+            label = bucket
+        acc.diff_counts[label] = acc.diff_counts.get(label, 0) + int(n)
 
-        grade = latest_rating_by_card.get(c_id)
-        if grade == "again":
-            acc.rating_counts["Again"] += 1
-        elif grade == "hard":
-            acc.rating_counts["Hard"] += 1
-        elif grade == "good":
-            acc.rating_counts["Good"] += 1
-        elif grade == "easy":
-            acc.rating_counts["Easy"] += 1
-        else:
-            acc.rating_counts["Unrated"] += 1
+    # Each card's most recent grade, then counted per deck. Cards never
+    # reviewed fall out of the outer join as NULL and count as Unrated.
+    ranked = (
+        select(
+            ReviewLog.card_id.label("card_id"),
+            ReviewLog.final_grade.label("grade"),
+            func.row_number()
+            .over(
+                partition_by=ReviewLog.card_id,
+                order_by=(ReviewLog.reviewed_at.desc(), ReviewLog.id.desc()),
+            )
+            .label("rn"),
+        )
+        .join(Card, ReviewLog.card_id == Card.id)
+        .join(Deck, Card.deck_id == Deck.id)
+        .where(*owned)
+        .subquery()
+    )
+    latest = select(ranked.c.card_id, ranked.c.grade).where(ranked.c.rn == 1).subquery()
+    rating_rows = await db.execute(
+        select(Card.deck_id, latest.c.grade, func.count(Card.id))
+        .join(Deck, Card.deck_id == Deck.id)
+        .outerjoin(latest, latest.c.card_id == Card.id)
+        .where(*owned)
+        .group_by(Card.deck_id, latest.c.grade)
+    )
+    rating_labels = {"again": "Again", "hard": "Hard", "good": "Good", "easy": "Easy"}
+    for deck_id, grade, n in rating_rows:
+        direct_stats[deck_id].rating_counts[rating_labels.get(grade, "Unrated")] += int(n)
 
-    for deck_id, rev_count in deck_review_counts.items():
-        direct_stats[deck_id].total_reviews = rev_count
+    review_rows = await db.execute(
+        select(Card.deck_id, func.count(ReviewLog.id))
+        .join(Card, ReviewLog.card_id == Card.id)
+        .join(Deck, Card.deck_id == Deck.id)
+        .where(*owned)
+        .group_by(Card.deck_id)
+    )
+    for deck_id, rev_count in review_rows:
+        direct_stats[deck_id].total_reviews = int(rev_count)
 
     children_map: dict[uuid.UUID | None, list[uuid.UUID]] = defaultdict(list)
     for d in decks:
@@ -1447,9 +1499,9 @@ async def query_deck_documents(
             if isinstance(d, dict) and d.get("source_id"):
                 try:
                     sid = parse_uuid(d["source_id"])
-                    if not body.doc_id or str(sid) == body.doc_id or str(d.get("id")) == body.doc_id:
-                        if sid not in source_ids:
-                            source_ids.append(sid)
+                    wanted = not body.doc_id or body.doc_id in (str(sid), str(d.get("id")))
+                    if wanted and sid not in source_ids:
+                        source_ids.append(sid)
                 except Exception:
                     pass
         if curr_deck.parent_id:

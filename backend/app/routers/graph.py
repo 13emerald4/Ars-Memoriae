@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import Card, User
+from app.models import Card, Deck, User
 from app.routers.deps import current_user, parse_uuid
 from app.schemas.graph import (
     AutoLinkResult,
@@ -22,6 +22,19 @@ from app.services import graph_service
 from app.services.rendering import render
 
 router = APIRouter(prefix="/api/graph", tags=["associative-graph"])
+
+
+async def _owned_card(db: AsyncSession, user: User, card_id: uuid.UUID) -> Card:
+    """A card the caller owns, or 404. Edges and activation walks only ever
+    touch the caller's own cards: a foreign id answers exactly like a missing
+    one, so the endpoint can't be used to probe or read another account."""
+    card = await db.get(Card, card_id)
+    if card is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "card not found")
+    deck = await db.get(Deck, card.deck_id)
+    if deck is None or deck.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "card not found")
+    return card
 
 
 @router.get("", response_model=ConceptGraphOut)
@@ -46,10 +59,8 @@ async def create_concept_edge(
     src = parse_uuid(body.source_card_id, "source_card_id")
     tgt = parse_uuid(body.target_card_id, "target_card_id")
 
-    card_a = await db.get(Card, src)
-    card_b = await db.get(Card, tgt)
-    if not card_a or not card_b:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "source or target card not found")
+    await _owned_card(db, user, src)
+    await _owned_card(db, user, tgt)
 
     try:
         edge = await graph_service.create_edge(
@@ -61,7 +72,7 @@ async def create_concept_edge(
             weight=body.weight,
         )
     except ValueError as exc:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
 
     return ConceptEdgeOut(
         id=str(edge.id),
@@ -94,9 +105,7 @@ async def get_related_cards_via_spreading_activation(
 ) -> SpreadingActivationResponse:
     """Computes spreading activation energy traversing outward across associative edges."""
     c_uuid = parse_uuid(card_id, "card_id")
-    card = await db.get(Card, c_uuid)
-    if not card:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "card not found")
+    card = await _owned_card(db, user, c_uuid)
 
     front, _ = render(
         card.note.note_type.template_kind,

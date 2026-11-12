@@ -46,7 +46,6 @@ from scripts.build_mt3_decks import (  # noqa: E402
     PART3,
     ROOT_NAME,
     USER_EMAIL,
-    bare,
     find_deck,
     snapshot,
     subtree_ids,

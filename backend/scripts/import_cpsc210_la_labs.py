@@ -12,9 +12,10 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from sqlalchemy import func, select
+from sqlalchemy import select
+
 from app.db import SessionLocal
-from app.models import Card, CardReference, Deck, Import, Note, NoteType, User
+from app.models import Card, CardReference, Deck, Import, Note, User
 from app.services.note_service import default_note_type, sync_cards
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -45,15 +46,15 @@ def wrap_lab_files():
     """Wrap each lab array as { "deck": ..., "priority": ..., "notes": [...] } next to original."""
     for rel_path, child_deck_name, priority, _ in LAB_FILES:
         orig_path = SOURCE_ROOT / rel_path
-        with open(orig_path, "r", encoding="utf-8") as f:
+        with open(orig_path, encoding="utf-8") as f:
             cards = json.load(f)
-        
+
         wrapped_data = {
             "deck": child_deck_name,
             "priority": priority,
             "notes": cards,
         }
-        
+
         wrapped_filename = orig_path.stem + "_wrapped.json"
         wrapped_path = orig_path.parent / wrapped_filename
         with open(wrapped_path, "w", encoding="utf-8") as f:
@@ -70,7 +71,7 @@ async def ensure_deck(db, user_id, name: str, parent_id, default_priority: int, 
         query = query.where(Deck.parent_id.is_(None))
     else:
         query = query.where(Deck.parent_id == parent_id)
-        
+
     deck = await db.scalar(query)
     if deck is None:
         deck = Deck(
@@ -135,7 +136,6 @@ async def run_import():
         import_report = []
         total_notes_created = 0
         total_cards_created = 0
-        total_citations_created = 0
 
         # Ingest LA Decks
         for rel_path, child_name, prio, pos in LA_FILES:
@@ -148,10 +148,10 @@ async def run_import():
                 position=pos,
             )
             file_path = SOURCE_ROOT / rel_path
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
             cards_list = data["notes"]
-            
+
             created, skipped = await ingest_cards_to_deck(
                 db, user, child_deck, cards_list, default_prio=prio
             )
@@ -178,10 +178,10 @@ async def run_import():
             )
             orig_path = SOURCE_ROOT / rel_path
             wrapped_path = orig_path.parent / (orig_path.stem + "_wrapped.json")
-            with open(wrapped_path, "r", encoding="utf-8") as f:
+            with open(wrapped_path, encoding="utf-8") as f:
                 data = json.load(f)
             cards_list = data["notes"]
-            
+
             created, skipped = await ingest_cards_to_deck(
                 db, user, child_deck, cards_list, default_prio=prio
             )

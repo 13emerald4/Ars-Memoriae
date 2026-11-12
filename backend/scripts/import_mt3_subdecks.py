@@ -7,7 +7,7 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -23,8 +23,9 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
 from sqlalchemy import delete, select
+
 from app.db import SessionLocal
-from app.models import Card, CardReference, Deck, Import, Note, NoteType, ReviewLog, User
+from app.models import Card, CardReference, Deck, Import, Note, ReviewLog, User
 from app.services.note_service import default_note_type, sync_cards
 from app.services.tree_service import ensure_tree
 
@@ -36,7 +37,7 @@ PRIMARY_DECK_PATH = Path(r"C:\Users\micha\OneDrive\Documents\UBC BCS ICS\CPSC 21
 BACKUP_DECK_PATH = Path(r"C:\Users\micha\OneDrive\Documents\UBC BCS ICS\CPSC 210\06 Flashcards\5 - MT3\cpsc210_mt3_practice_midterm_wrapped.json")
 PLAIN_DECK_PATH = Path(r"C:\Users\micha\OneDrive\Documents\UBC BCS ICS\CPSC 210\Midterm 3\cpsc210_mt3_practice_midterm.json")
 
-MT3_DATE = datetime(2026, 11, 13, 14, 0, 0, tzinfo=timezone.utc)
+MT3_DATE = datetime(2026, 11, 13, 14, 0, 0, tzinfo=UTC)
 
 SUBDECKS_DEF = [
     {
@@ -237,7 +238,7 @@ async def run_import():
         json_path = PLAIN_DECK_PATH
 
     log.info(f"Loading deck data from: {json_path}")
-    with open(json_path, "r", encoding="utf-8") as f:
+    with open(json_path, encoding="utf-8") as f:
         raw_data = json.load(f)
 
     if isinstance(raw_data, dict):

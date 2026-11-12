@@ -6,8 +6,8 @@ import asyncio
 import json
 import logging
 import os
-from datetime import datetime
 import sys
+from datetime import datetime
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent

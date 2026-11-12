@@ -177,7 +177,8 @@ async def test_event_horizon_can_be_cleared(auth_client):
 async def test_only_an_upcoming_event_ramps_retention(
     auth_client, monkeypatch, offset_days, expected
 ):
-    import app.routers.review as review_router
+    # Scheduling lives in review_service, shared by confirm and offline sync.
+    import app.services.review_service as review_router
 
     seen: list[float] = []
     real_init = review_router.FSRSService.__init__

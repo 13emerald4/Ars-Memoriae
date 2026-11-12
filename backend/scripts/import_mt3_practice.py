@@ -6,7 +6,7 @@ import asyncio
 import json
 import logging
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -14,6 +14,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 import os
+
 db_path = (BACKEND_DIR / "dev.db").resolve()
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{db_path}"
 
@@ -23,8 +24,9 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
 from sqlalchemy import delete, select
+
 from app.db import SessionLocal
-from app.models import Card, CardReference, Deck, Import, Note, NoteType, ReviewLog, User
+from app.models import Card, CardReference, Deck, Import, Note, ReviewLog, User
 from app.services.note_service import default_note_type, sync_cards
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -34,7 +36,7 @@ USER_EMAIL = "michael.r.polley@outlook.com"
 PRIMARY_DECK_PATH = Path(r"C:\Users\micha\OneDrive\Documents\UBC BCS ICS\CPSC 210\Midterm 3\cpsc210_mt3_practice_midterm_wrapped.json")
 BACKUP_DECK_PATH = Path(r"C:\Users\micha\OneDrive\Documents\UBC BCS ICS\CPSC 210\06 Flashcards\5 - MT3\cpsc210_mt3_practice_midterm_wrapped.json")
 
-MT3_DATE = datetime(2026, 11, 13, 14, 0, 0, tzinfo=timezone.utc)
+MT3_DATE = datetime(2026, 11, 13, 14, 0, 0, tzinfo=UTC)
 
 
 async def ensure_deck(
@@ -218,7 +220,7 @@ async def run_import():
         raise FileNotFoundError(f"Deck file not found at {PRIMARY_DECK_PATH} or {BACKUP_DECK_PATH}")
 
     log.info(f"Loading deck data from: {json_path}")
-    with open(json_path, "r", encoding="utf-8") as f:
+    with open(json_path, encoding="utf-8") as f:
         deck_data = json.load(f)
 
     deck_name = deck_data.get("deck", "MT3 - Practice Midterm (Music Organization)")

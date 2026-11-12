@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.models import User
@@ -76,7 +78,9 @@ async def llm_status(user: User = Depends(current_user)) -> dict:
         )
         base_url = service.base_url
         error = ollama_info["error"] if not connected else None
-        vram_data = get_vram_metrics(effective_model, service.base_url)
+        # nvidia-smi plus a synchronous HTTP probe: seconds of blocking if run
+        # on the event loop, during which no other request is served.
+        vram_data = await asyncio.to_thread(get_vram_metrics, effective_model, service.base_url)
 
     return {
         "connected": connected,
@@ -103,7 +107,7 @@ async def get_vram(model: str | None = None, user: User = Depends(current_user))
             "Antigravity subscription models are only available for authorized owner accounts.",
         )
     target_model = model or GradingService.for_user(user).model
-    return get_vram_metrics(target_model, settings.ollama_base_url)
+    return await asyncio.to_thread(get_vram_metrics, target_model, settings.ollama_base_url)
 
 
 @router.get("/llm/hardware")
@@ -111,5 +115,5 @@ async def hardware_specs(_user: User = Depends(current_user)) -> dict:
     """Returns detected host hardware specifications and recommended model options."""
     from app.services.hardware_service import detect_hardware
 
-    return detect_hardware().to_dict()
+    return (await asyncio.to_thread(detect_hardware)).to_dict()
 

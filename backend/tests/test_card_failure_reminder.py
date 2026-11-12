@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import uuid
-import pytest
 from datetime import UTC, datetime
+
+import pytest
 
 from app.models import Card, Deck, Note, NoteType, ReviewLog, User
 from app.services.queue_service import ComposedItem, attach_failure_memories
@@ -46,7 +47,7 @@ async def test_attach_failure_memories_multiple_active_weaknesses():
 
     await attach_failure_memories(None, [item])
     assert item.failure_reminder is not None
-    assert "Where you stumbled: Off-by-one boundary (+1 other flaw)" == item.failure_reminder
+    assert item.failure_reminder == "Where you stumbled: Off-by-one boundary (+1 other flaw)"
 
 
 @pytest.mark.asyncio

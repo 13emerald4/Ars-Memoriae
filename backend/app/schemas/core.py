@@ -9,14 +9,35 @@ from pydantic import BaseModel, EmailStr, Field, field_validator, model_validato
 # ── auth & settings ─────────────────────────────────────────────────────────
 
 
+# scrypt's cost grows with input length; an unbounded password is a cheap way
+# to make the server burn CPU.
+MAX_PASSWORD_LENGTH = 1024
+
+
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8)
+    password: str = Field(min_length=8, max_length=MAX_PASSWORD_LENGTH)
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(max_length=MAX_PASSWORD_LENGTH)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(max_length=MAX_PASSWORD_LENGTH)
+    new_password: str = Field(min_length=8, max_length=MAX_PASSWORD_LENGTH)
+
+
+class RegistrationStatus(BaseModel):
+    open: bool
+
+
+class PairingTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    scope: str
+    expires_in: int
 
 
 class TokenResponse(BaseModel):

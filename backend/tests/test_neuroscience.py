@@ -215,6 +215,7 @@ async def test_concept_graph_and_spreading_activation(auth_client):
 
 def _fake_neuro_llm(fail: bool = False):
     import json
+
     from app.services.grading_service import GradingUnavailable
 
     async def _mock_call(self, *args, **kwargs):

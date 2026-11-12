@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-import json
-import os
 import re
 import sqlite3
 import sys
@@ -46,7 +44,7 @@ def verify():
     )
     subdecks = cursor.fetchall()
     assert len(subdecks) == 7, f"Expected 7 subdecks, found {len(subdecks)}"
-    print(f"PASS: Exactly 7 subdecks found under root.")
+    print("PASS: Exactly 7 subdecks found under root.")
 
     subdeck_counts = {}
     for s_id, s_name, pos in subdecks:
@@ -85,7 +83,7 @@ def verify():
             citation_failures.append((pos, front[:50]))
 
         # Check tree in back
-        has_tree = ('├──' in back or '└──' in back) and '│' in back or ('├──' in back and '└──' in back)
+        has_tree = (('├──' in back or '└──' in back) and '│' in back) or ('├──' in back and '└──' in back)
         if not has_tree:
             tree_failures.append((pos, front[:50]))
 

@@ -623,7 +623,7 @@ async def attach_card_progression(
             latest_grade_by_id[log.card_id] = log.final_grade
 
     now = datetime.now(UTC)
-    for item, c in zip(items, cards):
+    for item, c in zip(items, cards, strict=False):
         item.review_count = counts_by_id.get(c.id, 0)
         item.last_grade = latest_grade_by_id.get(c.id)
         if c.stability is not None and c.last_review is not None and c.state == "review":

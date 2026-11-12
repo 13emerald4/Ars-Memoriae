@@ -15,8 +15,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.timeutil import day_key
 from app.db import get_db
-from app.models import Card, CodeProblem, CodeSubmission, Deck, Extract, Note, NoteType, Source, StudySession, User
-from app.routers.deps import current_user, parse_uuid
+from app.models import (
+    Card,
+    CodeProblem,
+    CodeSubmission,
+    Deck,
+    Extract,
+    Note,
+    NoteType,
+    Source,
+    StudySession,
+    User,
+)
+from app.routers.deps import code_runner_user, current_user, parse_uuid
 from app.schemas.code_practice import (
     AskDeckQuestionRequest,
     AskDeckQuestionResponse,
@@ -38,7 +49,11 @@ from app.schemas.code_practice import (
     SubmitCodeRequest,
     SubmitCodeResponse,
 )
-from app.services.code_ai_service import CodeAiService, merge_lexicon_glosses, rank_extracts_for_query
+from app.services.code_ai_service import (
+    CodeAiService,
+    merge_lexicon_glosses,
+    rank_extracts_for_query,
+)
 from app.services.code_runner_service import run_code as execute_code
 from app.services.fundamentals_catalog import FUNDAMENTALS_CATALOG
 from app.services.note_service import sync_cards
@@ -103,9 +118,9 @@ async def _collect_deck_source_ids(
                     if isinstance(d, dict) and d.get("source_id"):
                         try:
                             sid = parse_uuid(d["source_id"])
-                            if not doc_id or str(sid) == doc_id or str(d.get("id")) == doc_id:
-                                if sid not in source_ids:
-                                    source_ids.append(sid)
+                            wanted = not doc_id or doc_id in (str(sid), str(d.get("id")))
+                            if wanted and sid not in source_ids:
+                                source_ids.append(sid)
                         except Exception:
                             pass
                 if curr_deck.parent_id:
@@ -359,7 +374,7 @@ async def get_problem(
 async def run_code(
     id_or_slug: str,
     body: RunCodeRequest,
-    user: User = Depends(current_user),
+    user: User = Depends(code_runner_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Executes code against sample or custom testcases in an isolated sandbox."""
@@ -387,7 +402,7 @@ async def run_code(
 async def submit_code(
     id_or_slug: str,
     body: SubmitCodeRequest,
-    user: User = Depends(current_user),
+    user: User = Depends(code_runner_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Submits code against all testcases and records submission log."""

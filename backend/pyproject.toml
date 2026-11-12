@@ -66,4 +66,24 @@ ignore = [
 "app/services/problems_catalog.py" = ["W291", "W293"]
 # Course-content strings legitimately contain typographic dashes.
 "scripts/populate_cpsc210.py" = ["RUF001", "RUF003"]
+# Prompt and rubric text shown to the model and the user ("0–39%").
+"app/services/code_ai_service.py" = ["RUF001"]
+"app/services/grading_profiles.py" = ["RUF001"]
+# One-off import, audit and data-prep scripts: run by hand, not imported by the
+# app. They are still checked for real mistakes (pyflakes "F", undefined names,
+# unused variables); only layout and style rules are relaxed, since each sets
+# sys.path before importing the app and carries course text verbatim.
+"scripts/*" = [
+    "RUF001", "RUF002", "RUF003", "RUF005", "RUF015", "E402", "E701", "E741",
+    "C408", "B007", "B905", "UP031", "SIM102", "SIM108", "SIM115",
+    # Some already carry `# noqa: E402`, which the line above makes redundant.
+    "RUF100",
+]
+"audit_script.py" = ["RUF001", "RUF002", "RUF015", "E402", "E701", "E741", "C408", "B007", "UP031", "SIM102", "SIM108", "SIM115"]
+"detailed_audit.py" = ["RUF001", "RUF002", "RUF015", "E402", "E701", "E741", "C408", "B007", "UP031", "SIM102", "SIM108", "SIM115"]
+"extract_49.py" = ["RUF001", "RUF002", "RUF015", "E402", "E701", "E741", "C408", "B007", "UP031", "SIM102", "SIM108", "SIM115"]
+"parse_by_section.py" = ["RUF001", "RUF002", "RUF015", "E402", "E701", "E741", "C408", "B007", "UP031", "SIM102", "SIM108", "SIM115"]
+"parse_sections.py" = ["RUF001", "RUF002", "RUF015", "E402", "E701", "E741", "C408", "B007", "UP031", "SIM102", "SIM108", "SIM115"]
+"print_samples.py" = ["RUF001", "RUF002", "RUF015", "E402", "E701", "E741", "C408", "B007", "UP031", "SIM102", "SIM108", "SIM115"]
+"test_qa_split.py" = ["RUF001", "RUF002", "RUF015", "E402", "E701", "E741", "C408", "B007", "UP031", "SIM102", "SIM108", "SIM115"]
 

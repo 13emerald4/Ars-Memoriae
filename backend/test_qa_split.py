@@ -1,4 +1,3 @@
-import json
 import re
 import sys
 
@@ -26,12 +25,12 @@ for sec_name, sec_start_str, sec_end_str, q_range in sections_def:
     sec_text = text[p1 + len(sec_start_str):p2]
     sec_text = re.sub(r'=== PAGE \d+ ===\s*SPAN 321[^\n]+\n', '', sec_text)
     sec_text = re.sub(r'\n\s*\d+\s*\n', '\n', sec_text)
-    
+
     for q_num in q_range:
         m = re.search(rf'(?:^|\n){q_num}\.\s*(⋆\s*)?(.*?)(?=(?:\n{q_num+1}\.|$))', sec_text, re.DOTALL)
         star = bool(m.group(1))
         raw = m.group(2).strip()
-        
+
         # In the raw text, let's see how question vs answer is split.
         # Most questions end with '?' followed by a newline, or citation in brackets
         # Let's find first '?' or if it's Q4 ("Da las fechas..."): ends with '.'
@@ -41,7 +40,7 @@ for sec_name, sec_start_str, sec_end_str, q_range in sections_def:
         q_lines = []
         a_lines = []
         found_q = False
-        
+
         for idx, line in enumerate(lines):
             l = line.strip()
             if not found_q:
@@ -50,15 +49,15 @@ for sec_name, sec_start_str, sec_end_str, q_range in sections_def:
                     found_q = True
             else:
                 a_lines.append(l)
-        
+
         q_text = ' '.join(q_lines).strip()
         a_text = '\n'.join(a_lines).strip()
-        
+
         # Check for citation at the end of answer or question
         # Many answers end with e.g. [Guía 1; T2 4]
         cit_match = re.search(r'\[(Guía\s*\d+[^\]]*)\]', a_text)
         citation = cit_match.group(0) if cit_match else ""
-        
+
         parsed_items.append({
             "num": q_num,
             "star": star,

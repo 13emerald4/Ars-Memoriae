@@ -244,6 +244,10 @@ class ConfirmReviewRequest(BaseModel):
     latency_ms: int | None = None
     confidence: int | None = Field(default=None, ge=1, le=4)
     is_blitz: bool = False
+    # One id per attempt at a card, chosen by the client. A confirm resent
+    # with the same id (double click, retry after a dropped reply) gets the
+    # first outcome back instead of recording a second review.
+    client_review_id: str | None = Field(default=None, min_length=8, max_length=64)
 
 
 class StuckAlertOut(BaseModel):

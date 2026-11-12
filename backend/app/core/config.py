@@ -66,6 +66,22 @@ class Settings(BaseSettings):
     # finds the URL a way to run programs here. Set to 1 for a shared server.
     allow_registration: bool = False
 
+    # Code practice runs the user's program as the backend's OS user; it is not
+    # a sandbox. So by default only a browser on this machine may run code:
+    # a session arriving over the LAN, the mobile app or a tunnel can study
+    # but not execute. Set to 1 to accept that risk for remote sessions too.
+    allow_remote_code_execution: bool = False
+    # How long a mobile pairing token lasts. It can review cards only.
+    pairing_token_ttl_seconds: int = 60 * 60 * 24 * 90
+
+    # Apply pending migrations at startup. A failure stops the app: running on
+    # a half-migrated schema corrupts data quietly. Turn off only if you run
+    # `alembic upgrade head` yourself.
+    auto_migrate: bool = True
+
+    # Per-account ceiling for uploaded media, in megabytes. 0 = unlimited.
+    media_quota_mb: int = 2048
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
