@@ -226,6 +226,10 @@ async def test_code_runs_locally_but_not_through_a_proxy(client, monkeypatch):
         # A client-supplied first hop must not vouch for the real one behind it.
         {"X-Forwarded-For": "127.0.0.1, 203.0.113.7"},
         {"Forwarded": "for=203.0.113.7"},
+        # A tunnel that adds no forwarding header still passes on the public
+        # name the browser used.
+        {"Host": "quiet-river.trycloudflare.com"},
+        {"X-Forwarded-Host": "192.168.1.20:5173"},
     ):
         remote = await client.post(url, headers={**headers, **forwarded}, json=RUN_BODY)
         assert remote.status_code == 403, forwarded

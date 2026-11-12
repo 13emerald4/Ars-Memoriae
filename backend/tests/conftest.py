@@ -38,7 +38,10 @@ async def _schema():
 async def client():
     async with LifespanManager(app):
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+        # Addressed as localhost: the app treats a request as local (and so
+        # allowed to run code) only when it arrives from loopback under a
+        # loopback name, which is what a browser on the host machine sends.
+        async with httpx.AsyncClient(transport=transport, base_url="http://localhost") as c:
             yield c
 
 
