@@ -233,6 +233,10 @@ export function HighlightColorPicker({
               onBlur={handleHexSubmit}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
+                  if (e.nativeEvent.isComposing || e.keyCode === 229) {
+                    return
+                  }
+                  e.preventDefault()
                   handleHexSubmit()
                 }
               }}

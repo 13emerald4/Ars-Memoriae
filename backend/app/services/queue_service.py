@@ -333,7 +333,11 @@ async def fetch_new_candidates(
         select(Card)
         .join(Deck, Deck.id == Card.deck_id)
         .where(*_eligible_filter(user, scope, locked_deck_ids), Card.state == "new")
-        .order_by(_effective_priority_sql().desc(), Card.id)
+        .order_by(
+            _effective_priority_sql().desc(),
+            Card.position.asc().nulls_last(),
+            Card.id,
+        )
         .limit(limit)
     )
     return list(rows.scalars())
@@ -820,7 +824,11 @@ async def compose_session(
             )
             for c in new_cards
         ),
-        key=lambda t: -t[1],
+        key=lambda t: (
+            -t[1],
+            t[0].position if t[0].position is not None else 999999,
+            str(t[0].id),
+        ),
     )
     ranked_ir = sorted(
         (

@@ -304,6 +304,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.setAttribute('data-simulate-greyscale', simulateGreyscale ? 'true' : 'false')
     root.setAttribute('data-font-size', String(fontSize))
 
+    // Update <meta name="color-scheme"> to keep browser UI in sync with active theme
+    const metaColorScheme = document.querySelector('meta[name="color-scheme"]')
+    if (metaColorScheme) {
+      metaColorScheme.setAttribute('content', 'dark')
+    } else {
+      const newMeta = document.createElement('meta')
+      newMeta.name = 'color-scheme'
+      newMeta.content = 'dark'
+      document.head.appendChild(newMeta)
+    }
+
     // Set root rem base and font-size CSS variable
     root.style.fontSize = `${fontSize}px`
     root.style.setProperty('--app-font-size', `${fontSize}px`)

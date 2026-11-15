@@ -237,6 +237,26 @@ def strip_antigravity_prefix(model_name: str) -> str:
     return m
 
 
+def split_antigravity_model_and_effort(cli_slug: str) -> tuple[str, str | None]:
+    """Splits compound CLI slug (e.g. gemini-3.8-flash-low) into (model, effort).
+
+    `agy` CLI accepts `--model <base>` and `--effort <low|medium|high|xhigh|max>`.
+    Passing a compound slug with empty effort (`--model gemini-3.8-flash-low --effort ""`)
+    triggers `invalid model selection: model gemini-3.8-flash-low is not recognized as a known model`
+    if agy hasn't resolved dynamic compound aliases. Decomposing into
+    `--model gemini-3.8-flash --effort low` ensures reliable CLI execution.
+    """
+    cleaned = cli_slug.strip().lower()
+    for effort in ("low", "medium", "high", "xhigh", "max"):
+        suffix = f"-{effort}"
+        if cleaned.endswith(suffix):
+            base = cleaned[: -len(suffix)]
+            if base in ("gemini-3.8-flash", "gpt-oss-120b", "gemini-3.8-pro", "gemini-2.5-flash"):
+                return base, effort
+    return cleaned, None
+
+
+
 def is_allowed_grading_model(model_name: str | None) -> bool:
     """Returns True for approved local Ollama models and Antigravity subscription models."""
     return is_allowed_qwen_coder_model(model_name) or is_antigravity_model(model_name)
@@ -628,18 +648,23 @@ class GradingService:
         if len(full_prompt) > 28000:
             full_prompt = full_prompt[:28000]
 
+        cli_model, cli_effort = split_antigravity_model_and_effort(cli_slug)
         cmd: list[str] = [
             exe,
             "-p",
             full_prompt,
             "--model",
-            cli_slug,
+            cli_model,
+        ]
+        if cli_effort:
+            cmd.extend(["--effort", cli_effort])
+        cmd.extend([
             "--output-format",
             "json",
             "--disable-slash-commands",
             "--print-timeout",
             f"{int(timeout_sec)}s",
-        ]
+        ])
         if norm_schema is not None:
             cmd.extend(["--json-schema", json.dumps(norm_schema, separators=(",", ":"))])
 

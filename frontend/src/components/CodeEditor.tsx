@@ -1430,6 +1430,9 @@ export function CodeEditor({
 
     // 2. Auto-Indent on Enter
     if (e.key === 'Enter') {
+      if (e.nativeEvent.isComposing || e.keyCode === 229) {
+        return
+      }
       e.preventDefault()
       const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1
       const currentLine = value.slice(lineStart, selectionStart)

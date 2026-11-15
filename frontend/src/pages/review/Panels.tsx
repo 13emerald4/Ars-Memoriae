@@ -148,6 +148,9 @@ export function SocraticGuide({
               onChange={(e) => onInputChange(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey && input.trim()) {
+                  if (e.nativeEvent.isComposing || e.keyCode === 229) {
+                    return
+                  }
                   e.preventDefault()
                   onSend()
                 }

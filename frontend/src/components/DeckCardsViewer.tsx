@@ -931,6 +931,9 @@ export function DeckCardsViewer({
                               onChange={(e) => setEditingShortCommentText(e.target.value)}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
+                                  if (e.nativeEvent.isComposing || e.keyCode === 229) {
+                                    return
+                                  }
                                   e.preventDefault()
                                   handleSaveShortComment(card.id, editingShortCommentText)
                                 } else if (e.key === 'Escape') {

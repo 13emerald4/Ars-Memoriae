@@ -88,6 +88,9 @@ export function LessonGate({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+        if (e.isComposing || e.keyCode === 229) {
+          return
+        }
         const target = e.target as HTMLElement
         if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
           e.preventDefault()

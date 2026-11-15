@@ -138,7 +138,9 @@ async def test_generate_antigravity_invokes_agy_with_schema_and_uses_structured_
     # Antigravity never drops down to local Ollama `qwen2.5-coder:7b`.
     assert len(seen_cmds) == 1
     cmd = seen_cmds[0]
-    assert "--model" in cmd and cmd[cmd.index("--model") + 1] == "gemini-3.8-flash-medium"
+    assert "--model" in cmd and cmd[cmd.index("--model") + 1] in ("gemini-3.8-flash-medium", "gemini-3.8-flash")
+    if "--effort" in cmd:
+        assert cmd[cmd.index("--effort") + 1] == "medium"
     assert "--json-schema" in cmd
     schema_arg = json.loads(cmd[cmd.index("--json-schema") + 1])
     assert schema_arg["type"] == "object"
