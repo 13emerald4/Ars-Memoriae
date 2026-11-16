@@ -1,0 +1,766 @@
+\documentclass[10pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[letterpaper, left=0.65in, textwidth=4.7in, marginparsep=0.3in, marginparwidth=2.45in, top=0.75in, bottom=0.75in]{geometry}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage[most]{tcolorbox}
+\usepackage{multicol}
+\usepackage[titles]{tocloft}
+\usepackage{marginnote}
+\usepackage{marginfix}
+\usepackage{ragged2e}
+\usepackage{hyperref}
+
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black}
+\setlist{nosep,leftmargin=1.3em,topsep=2pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\setcounter{secnumdepth}{0}
+\setcounter{tocdepth}{1}
+
+% Heading Formats
+\titleformat{\part}[block]{\LARGE\bfseries\color{blue!40!black}}{}{0pt}{}
+\titlespacing*{\part}{0pt}{10pt}{2pt}
+\titleformat{\section}{\Large\bfseries\color{blue!50!black}}{}{0pt}{}
+\titlespacing*{\section}{0pt}{14pt}{4pt}
+\titleformat{\subsection}{\normalsize\bfseries\itshape\color{black!80}}{}{0pt}{}
+\titlespacing*{\subsection}{0pt}{7pt}{1pt}
+
+% Editorial Table of Contents (Book Style)
+\renewcommand{\contentsname}{Contents}
+\renewcommand{\cfttoctitlefont}{\hfill\Large\bfseries\color{blue!50!black}}
+\renewcommand{\cftaftertoctitle}{\hfill}
+\setlength{\cftbeforetoctitleskip}{4pt}
+\setlength{\cftaftertoctitleskip}{12pt}
+
+% Parts: Structural rubrics without page numbers or dot leaders
+\renewcommand{\cftpartfont}{\large\bfseries\color{blue!40!black}}
+\setlength{\cftbeforepartskip}{11pt}
+\setlength{\cftpartindent}{0pt}
+\cftpagenumbersoff{part}
+\renewcommand{\cftpartleader}{\hfill}
+
+% Sections/Chapters: Indented, clean whitespace, flush-right page numbers
+\renewcommand{\cftsecfont}{\normalsize\normalfont}
+\renewcommand{\cftsecpagefont}{\normalsize\normalfont\color{black!75}}
+\setlength{\cftsecindent}{1.4em}
+\setlength{\cftsecnumwidth}{1.8em}
+\setlength{\cftbeforesecskip}{4pt}
+\renewcommand{\cftsecleader}{\hfill}
+\cftsetpnumwidth{1.6em}
+\cftsetrmarg{2.0em}
+
+% Code Listing Settings (adapt language as needed)
+\lstset{basicstyle=\ttfamily\footnotesize,columns=fullflexible,keepspaces=true,
+  frame=l,framerule=1.5pt,rulecolor=\color{gray!50},xleftmargin=8pt,
+  aboveskip=4pt,belowskip=4pt,showstringspaces=false,upquote=true,breaklines=true}
+\newcommand{\code}[1]{{\ttfamily\small #1}}
+
+% Collision-Free Sidenote Engine
+\setlength{\marginparpush}{7pt}
+\newcommand{\marginnotestyle}{\scriptsize\sffamily\color{black!80}\RaggedRight}
+
+\makeatletter
+\newcommand{\safemargin}[1]{%
+  \ifinner%
+    % Suppressed inside tables/boxes to avoid collisions and "Float(s) lost" crashes
+  \else%
+    \marginpar{\marginnotestyle #1}%
+  \fi%
+}
+\makeatother
+
+\newcommand{\term}[3][]{%
+  \hypertarget{t:#2}{\textbf{#3}}%
+  \if\relax\detokenize{#1}\relax\else%
+    \safemargin{#1}%
+  \fi%
+}
+\renewcommand{\footnote}[1]{\safemargin{#1}}
+\newcommand{\ix}[3]{\hyperlink{t:#1}{#2}\dotfill #3\par}
+
+% Socratic Callout Boxes
+\newtcolorbox{corebox}{colback=blue!4,colframe=blue!45!black,boxrule=0.6pt,arc=2pt,
+  left=6pt,right=6pt,top=3pt,bottom=3pt,fontupper=\small}
+\newtcolorbox{ponder}{colback=green!3,colframe=green!35!black,boxrule=0.5pt,arc=2pt,
+  left=6pt,right=6pt,top=2pt,bottom=2pt,fontupper=\small,
+  title={\small\bfseries Think it through},coltitle=white,colbacktitle=green!35!black,
+  toptitle=1pt,bottomtitle=1pt}
+
+\newcommand{\chap}[2]{\section*{#1}\addcontentsline{toc}{section}{#1}\vspace{-2pt}\begin{corebox}\textbf{Core idea.} #2\end{corebox}}
+\newcommand{\partq}[2]{\part*{#1}{\small\itshape #2}}
+
+% ---------------------------------------------------------------------------
+% Document-specific additions
+\usepackage{lmodern}     % scalable fonts: avoids "Font ecsx0800 not found" on some TeX installs
+\usepackage{needspace}   % \Needspace before short listings
+\newcommand{\ch}[1]{{\small\color{black!55}[#1]}}   % source tag, e.g. \ch{Ch 13, p269}
+\newcommand{\mantra}[1]{\par\smallskip{\color{blue!45!black}\textbf{Rule:}~\emph{#1}}\par}
+\newcommand{\partline}[2]{\phantomsection\partq{#1}{#2}}  % titlesec adds the TOC entry
+\usepackage{amssymb}
+\setlength{\emergencystretch}{3em}  % let lines with unbreakable inline code stretch instead of overflowing
+% JavaScript and TypeScript for listings, plus the non-ASCII characters the code uses.
+\lstdefinelanguage{JavaScript}{
+  morekeywords={async,await,break,case,catch,class,const,continue,default,delete,do,else,export,extends,
+    false,finally,for,from,function,get,if,import,in,instanceof,let,new,null,of,return,set,static,super,
+    switch,this,throw,true,try,typeof,undefined,var,void,while,yield},
+  sensitive=true,morecomment=[l]{//},morecomment=[s]{/*}{*/},
+  morestring=[b]",morestring=[b]',morestring=[b]`}
+\lstdefinelanguage{TypeScript}[]{JavaScript}{
+  morekeywords={type,interface,enum,namespace,implements,private,protected,public,readonly,keyof,
+    unknown,never,any,number,string,boolean,satisfies,as,is,declare,abstract}}
+\lstset{keywordstyle=\color{blue!55!black}\bfseries,commentstyle=\color{green!35!black}\itshape,
+  stringstyle=\color{red!45!black},extendedchars=true,
+  literate={°}{{\textdegree}}1 {π}{{$\pi$}}1 {²}{{$^2$}}1 {×}{{$\times$}}1 {–}{{--}}1 {—}{{---}}1
+    {…}{{\ldots}}1 {→}{{$\rightarrow$}}1 {≥}{{$\geq$}}1}
+% Card-by-card solution guide
+\newcommand{\trap}{\par\raggedright\textbf{\color{red!70!black}Trap:}~}
+\newcommand{\core}[1]{\textit{#1}\par}
+\newcommand{\practice}{\textbf{\color{blue!50!black}Practice:}~}
+\newcommand{\deckhead}[2]{\par\ifdim\dimexpr\pagegoal-\pagetotal\relax<0.3\textheight\newpage\fi\bigskip\phantomsection\addcontentsline{toc}{section}{#1}{\Large\bfseries\color{blue!50!black}#1}\hfill{\small #2 cards}\par\nopagebreak\vspace{3pt}}
+\newcommand{\cardhead}[2]{\par\ifdim\dimexpr\pagegoal-\pagetotal\relax<0.28\textheight\newpage\fi\bigskip\noindent{\color{blue!50!black}\rule{\linewidth}{0.8pt}}\par\nopagebreak\noindent{\large\bfseries\color{blue!50!black}#1:}\enspace{\ttfamily #2}\par\nopagebreak}
+\newcommand{\cardsub}[1]{\par\medskip\noindent{\small\bfseries\scshape\color{black!70}#1}\par\nopagebreak\vspace{1pt}}
+\newcommand{\readchap}[2]{\par\medskip\noindent{\bfseries\color{blue!40!black}#1}\par\nopagebreak\noindent{\small\textit{Core idea:} #2}\par\nopagebreak}
+\newcommand{\readq}[1]{\par\smallskip\noindent{\bfseries\itshape\small #1}\par\nopagebreak}
+\newcommand{\cardend}{\par\medskip}
+\newtcolorbox{sumbox}[1]{breakable,colback=orange!3,colframe=orange!45!black,boxrule=0.5pt,arc=2pt,
+  left=6pt,right=6pt,top=3pt,bottom=3pt,fontupper=\small,title={\small\bfseries #1},coltitle=white,
+  colbacktitle=orange!45!black,toptitle=1pt,bottomtitle=1pt}
+\newlist{cardrows}{itemize}{1}
+\setlist[cardrows]{label={},leftmargin=5.3em,labelwidth=4.9em,labelsep=0.4em,labelindent=0pt,align=left,font=\small\bfseries,before={\small\raggedright},itemsep=0.5pt,topsep=2pt}
+% ---------------------------------------------------------------------------
+\begin{document}
+{\noindent\raggedright\LARGE\bfseries\color{blue!40!black} Part 4 · Hands-On Labs\par}
+\vspace{2pt}{\large A Socratic study guide to the 5 cards of Part 4 of “JavaScript \& TypeScript: Zero to Mastery”}\par\vspace{6pt}
+\begin{corebox}\textbf{The question this guide answers.} How do you combine the pieces from Parts 1–3 into a small program that is correct on every input?\par\smallskip
+Part A asks how plain JavaScript programs are built (cleaning input, guarding data, building results in a loop); B, how TypeScript's types carry a program (checking unknown input, typed results, reducers). Every section heading is a question, answered in its first sentence; every code sample was run or compiled. The Card-by-Card Solution Guide then works every card in the deck.\end{corebox}
+\vspace{6pt}\tableofcontents\vspace{6pt}
+\newpage
+\partline{A. How do the JavaScript pieces combine?}{Cleaning input, guarding data and building results.}
+\phantomsection\label{ch:c26}
+\chap{26. How do you build a small JavaScript program from the pieces?}{Clean the input first, check before you change any data, and build the result step by step in a variable; the edge cases (empty input, zero, an exact fit) decide whether the program is correct.}
+
+\subsection{How do you start a program that reads messy text?}% sec:c26-plan
+By cleaning the input before the main logic sees it: split the text into lines, trim each line, and drop the blank ones. Then look for the \term[\textbf{Edge case:} an input at the boundary of what a task allows: empty, zero, exactly full, one too many. Like the last step of a staircase, where people trip.]{edge}{edge cases}. \code{Number("")} is \code{0}, not \code{NaN}, so an empty cell turns silently into a zero unless you test for it before converting.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=JavaScript]
+const text = "a,b\n\n   \n1,2\n";
+const lines = text
+  .split("\n")
+  .map((line) => line.trim())
+  .filter(Boolean);
+console.log(lines.length, lines[0]);
+console.log(Number(""), Number.isNaN(Number("x")));
+\end{lstlisting}
+{\small\textit{Prints:}~\code{2 a,b}\enspace\textcolor{black!45}{|}\enspace \code{0 true}}\par
+
+\subsection{How do you keep an object's data correct?}% sec:c26-state
+By checking every argument before changing anything. Each class keeps an \term[\textbf{Invariant:} a fact about the data that must hold after every operation, such as ``no quantity is below zero''. Like a bank's rule that a balance never goes negative.]{invariant}{invariant}. A method that changes its data and then throws leaves it half-changed; a method that validates first leaves it exactly as it was when it rejects a call.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=JavaScript]
+class Stock {
+  #n = 0;
+  add(k) { this.#n += k; return this.#n; }
+  take(k) {
+    if (k > this.#n) throw new RangeError("not enough");
+    this.#n -= k;
+  }
+}
+const s = new Stock();
+s.add(2);
+try { s.take(5); } catch (e) { console.log(e.name); }
+console.log(s.add(0));
+\end{lstlisting}
+{\small\textit{Prints:}~\code{RangeError}\enspace\textcolor{black!45}{|}\enspace \code{2}}\par
+
+\subsection{How do you build a result one piece at a time?}% sec:c26-accumulate
+With an \term[\textbf{Accumulator:} a variable outside a loop that each step adds to, so the loop builds its result piece by piece. Like a basket you fill aisle by aisle.]{accumulator}{accumulator}: each step of the loop decides whether the next piece joins the current one or starts a new one. When the loop ends, the last piece is still in the variable and must be added by hand.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=JavaScript]
+const words = ["ab", "cd", "ef"];
+const lines = [];
+let line = "";
+for (const w of words) {
+  if (line && line.length + 1 + w.length > 5) {
+    lines.push(line);
+    line = w;
+  } else line = line ? line + " " + w : w;
+}
+if (line) lines.push(line);
+console.log(lines.join("|"));
+\end{lstlisting}
+{\small\textit{Prints:}~\code{ab cd|ef}}\par
+
+\mantra{Clean the input, guard the data, flush the last piece.}
+\begin{ponder}The word-wrap loop above gets a width of 0. What should the result be, and what does the loop actually return? Which edge case would you add to the tests?\end{ponder}
+
+\partline{B. How do types carry a program?}{unknown input, typed results and reducers.}
+\phantomsection\label{ch:c27}
+\chap{27. How do types carry a TypeScript program?}{Untrusted input is typed \code{unknown} and narrowed by checks; a result typed as a discriminated union makes callers check success before using the value; a reducer takes \code{readonly} state and returns new state, so the compiler rejects changes in place.}
+
+\subsection{How do you check data you know nothing about?}% sec:c27-unknown
+Type it \term[\textbf{unknown:} the type of a value whose shape has not been checked; the compiler allows almost nothing with it until a check narrows it. Like a parcel from a stranger: you inspect it before you use what is inside.]{unknown}{unknown} and narrow it. \code{typeof x === "object" \&\& x !== null} proves an object; \code{"length" in x} then proves that the property exists, though its value is still \code{unknown} until it is checked too.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function size(input: unknown): number {
+  if (typeof input === "object" && input !== null && "length" in input) {
+    return typeof input.length === "number" ? input.length : 0;
+  }
+  return 0;
+}
+console.log(size([1, 2]), size(null), size("hi"));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{2 0 0}}\par
+
+\subsection{How do you report success or failure through types?}% sec:c27-result
+With a discriminated union (Part~3, Ch.~21): variants that share an \code{ok} property, \code{true} on success and \code{false} on failure. Only the success variant has \code{value}, and only the failure variant has \code{error}, so a caller must test \code{r.ok} before reading either. A single type with optional fields lets a caller read a value that isn't there.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Result = { ok: true; value: number } | { ok: false; error: string };
+function check(n: number): Result {
+  return n >= 0 ? { ok: true, value: n } : { ok: false, error: "negative" };
+}
+const r = check(-1);
+console.log(r.ok ? r.value : r.error);
+console.log(r.value);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 7: Property 'value' does not exist on type 'Result'.   Property 'value' does not exist on type '\{ ok: false; error: string; \}'.}\par
+{\small\textit{Prints:}~\code{negative}\enspace\textcolor{black!45}{|}\enspace \code{undefined}}\par
+
+\subsection{How do you update state without changing it?}% sec:c27-reducer
+With a \term[\textbf{Reducer:} a function that takes the current state and an action and returns the next state, never changing the old one. Like a ledger: you write a new line instead of erasing an old one.]{reducer}{reducer} whose state parameter is \code{readonly}. The compiler then rejects \code{push}, \code{splice} and assignment to elements; \code{map}, \code{filter} and spread build new arrays instead, and the old state stays valid.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Todo = { id: number; done: boolean };
+function toggle(state: readonly Todo[], id: number): Todo[] {
+  return state.map((t) => (t.id === id ? { ...t, done: !t.done } : t));
+}
+const before: readonly Todo[] = [{ id: 1, done: false }];
+const after = toggle(before, 1);
+console.log(after[0].done, before[0].done);
+before.push({ id: 2, done: false });
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 8: Property 'push' does not exist on type 'readonly Todo[]'.}\par
+{\small\textit{Prints:}~\code{true false}}\par
+
+\mantra{Check what comes in; make callers check what goes out.}
+\begin{ponder}Suppose \code{Result} were one type, \code{\{ ok: boolean; value?: number; error?: string \}}. After \code{if (r.ok)}, what type does \code{r.value} have, and what bug can now compile?\end{ponder}
+
+\phantomsection\label{synthesis}
+\section*{How the Parts Answer the Question}\addcontentsline{toc}{section}{How the Parts Answer the Question}
+
+A program is correct when it is right on every input it may receive, not just on the example in the task. Each Part is one way of making sure.
+
+\textbf{The JavaScript habits (A).} Cleaning the input first shrinks the set of inputs the main logic must handle. Validating before changing data keeps each invariant true even when a call is rejected. An accumulator plus a final flush turns ``process each piece'' into a complete result. The edge cases---empty text, a zero, an exact fit---are where each habit is tested.
+
+\textbf{What the types add (B).} \code{unknown} makes the program prove the shape of outside data before using it. A discriminated result makes every caller handle failure, because the value cannot be read otherwise. A \code{readonly} state makes the compiler reject changes in place, so a reducer can only build new state. Each turns a habit from Part A into a rule the compiler checks.
+
+\textbf{The strongest objection} is that tests already catch these bugs. They catch the cases someone thought to write; the habits and types guard the cases nobody wrote down---which is why every lab's tests include the edge cases as well.
+
+\section*{Test Yourself}\addcontentsline{toc}{section}{Test Yourself}
+Answer without looking; the link after each question points to the chapter that holds the answer.
+\begin{enumerate}[leftmargin=1.6em,itemsep=3pt]
+\item Why must an empty cell be tested before \code{Number(cell)}? \hfill{\small\hyperref[ch:c26]{$\rightarrow$ Ch.~ 26}}
+\item What is an invariant, and why validate before changing any data? \hfill{\small\hyperref[ch:c26]{$\rightarrow$ Ch.~ 26}}
+\item In a word-wrap loop, what is still left to do when the loop ends? \hfill{\small\hyperref[ch:c26]{$\rightarrow$ Ch.~ 26}}
+\item What can you do with an \code{unknown} value before narrowing it, and how do you narrow it to an object? \hfill{\small\hyperref[ch:c27]{$\rightarrow$ Ch.~ 27}}
+\item Why does \code{\{ ok: true; value \} | \{ ok: false; error \}} force a caller to check \code{ok}? \hfill{\small\hyperref[ch:c27]{$\rightarrow$ Ch.~ 27}}
+\item Which array methods does \code{readonly} reject, and which build new arrays instead? \hfill{\small\hyperref[ch:c27]{$\rightarrow$ Ch.~ 27}}
+\end{enumerate}
+\newpage\phantomsection\partline{Card-by-Card Solution Guide}{One entry for every card in this Part's decks.}
+\begin{corebox}\textbf{How this part works.} Each entry is self-contained: it repeats the card, the terms it needs and the chapter sections it drills, so you can study a card without turning back. That repetition is deliberate (the one exception to saying each thing once). For each card: the card as it appears in your deck; how to solve it (approach, what must stay true, what lives in memory, the types involved, how it fails, how to test it) and the trap that most often costs it; the solution, checked by actually running it; and the readings from the chapters.\end{corebox}
+\subsection*{Which card drills which chapters?}
+{\footnotesize\begin{tabularx}{\linewidth}{@{}rXl@{}}\toprule
+\textbf{\#} & \textbf{Card} & \textbf{Chapters it drills}\\\midrule
+1 & \code{parseCsv(text)} & Ch.~\hyperref[ch:c26]{26}\\
+2 & \code{class Inventory} & Ch.~\hyperref[ch:c26]{26}\\
+3 & \code{wordWrap(text, width)} & Ch.~\hyperref[ch:c26]{26}\\
+4 & \code{validateSignup(input: unknown)} & Ch.~\hyperref[ch:c27]{27}\\
+5 & \code{todos(state, action)} & Ch.~\hyperref[ch:c27]{27}\\
+\bottomrule\end{tabularx}}\par
+\deckhead{26 · JavaScript Labs}{3}
+\begin{corebox}\textbf{Core idea.} Clean the input first, check before you change any data, and build the result step by step in a variable; the edge cases (empty input, zero, an exact fit) decide whether the program is correct.\end{corebox}
+\begin{sumbox}{Deck summary sheet --- 26 · JavaScript Labs}
+Small programs that combine strings, arrays, objects, Maps, classes and errors. Read the whole task first, then build it a step at a time; the tests cover the edge cases.\par
+\smallskip{\footnotesize Read more: \href{https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide}{MDN — JavaScript Guide}; \href{https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Keyed_collections}{MDN — Keyed collections}}\end{sumbox}
+\cardhead{Card 1 --- parseCsv(text)}{write · javascript · Medium}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Edge case:} an input at the boundary of what a task allows: empty, zero, exactly full, one too many. Like the last step of a staircase, where people trip.\par\smallskip \textbf{Accumulator:} a variable outside a loop that each step adds to, so the loop builds its result piece by piece. Like a basket you fill aisle by aisle.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c26]{Ch.~26} of this guide; documentation: \href{https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/trim}{MDN — String.prototype.trim()}.}\par
+\cardsub{The card}
+\textbf{parseCsv(text)}\par
+Write \code{parseCsv(text)}: the first line holds the column names; turn every other line into an object keyed by them. Trim spaces around cells, skip blank lines, and turn cells that are numbers into numbers (\code{\textquotedbl{}36\textquotedbl{}} $\rightarrow$ 36). No lines at all $\rightarrow$ \code{[]}.\par
+\begin{lstlisting}[language=JavaScript]
+function parseCsv(text) {
+  // TODO
+  return [];
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Split into lines, trim and drop blank ones; take the headers from the first line; map every other line to an object, converting a cell to a number only if it is non-empty and not NaN.
+\item[Invariants] Every row object has every header as a key; a missing cell is "".
+\item[Memory] One array of lines, one object per row.
+\item[Types] string in; array of objects out.
+\item[Failure] \code{Number(cells[i]) || cells[i]} turns "0" into the string "0"; not filtering blank lines adds empty rows.
+\item[Tests] Plain CSV, spaces and blank lines, an empty cell, a 0, headers only, empty text.
+\end{cardrows}
+\trap \code{Number(\textquotedbl{}\textquotedbl{})} is 0: check for the empty cell first.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=JavaScript]
+function parseCsv(text) {
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return [];
+  const headers = lines[0].split(",").map((h) => h.trim());
+  return lines.slice(1).map((line) => {
+    const cells = line.split(",").map((cell) => cell.trim());
+    const row = {};
+    headers.forEach((header, i) => {
+      const cell = cells[i] ?? "";
+      row[header] = cell !== "" && !Number.isNaN(Number(cell)) ? Number(cell) : cell;
+    });
+    return row;
+  });
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 6 test cases on the card in the app's code runner; the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} Number("") is 0, so test for empty cells before converting. Splitting, trimming and filtering the lines first keeps the row logic simple.}\par
+\cardsub{From the readings}
+\readchap{26. How do you build a small JavaScript program from the pieces?}{Clean the input first, check before you change any data, and build the result step by step in a variable; the edge cases (empty input, zero, an exact fit) decide whether the program is correct.}
+\readq{How do you start a program that reads messy text?}
+By cleaning the input before the main logic sees it: split the text into lines, trim each line, and drop the blank ones. Then look for the \textbf{edge cases}. \code{Number("")} is \code{0}, not \code{NaN}, so an empty cell turns silently into a zero unless you test for it before converting.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=JavaScript]
+const text = "a,b\n\n   \n1,2\n";
+const lines = text
+  .split("\n")
+  .map((line) => line.trim())
+  .filter(Boolean);
+console.log(lines.length, lines[0]);
+console.log(Number(""), Number.isNaN(Number("x")));
+\end{lstlisting}
+{\small\textit{Prints:}~\code{2 a,b}\enspace\textcolor{black!45}{|}\enspace \code{0 true}}\par
+
+\readq{How do you build a result one piece at a time?}
+With an \textbf{accumulator}: each step of the loop decides whether the next piece joins the current one or starts a new one. When the loop ends, the last piece is still in the variable and must be added by hand.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=JavaScript]
+const words = ["ab", "cd", "ef"];
+const lines = [];
+let line = "";
+for (const w of words) {
+  if (line && line.length + 1 + w.length > 5) {
+    lines.push(line);
+    line = w;
+  } else line = line ? line + " " + w : w;
+}
+if (line) lines.push(line);
+console.log(lines.join("|"));
+\end{lstlisting}
+{\small\textit{Prints:}~\code{ab cd|ef}}\par
+
+\cardend
+\cardhead{Card 2 --- class Inventory}{write · javascript · Medium}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Invariant:} a fact about the data that must hold after every operation, such as ``no quantity is below zero''. Like a bank's rule that a balance never goes negative.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c26]{Ch.~26} of this guide; documentation: \href{https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RangeError}{MDN — RangeError}.}\par
+\cardsub{The card}
+\textbf{class Inventory}\par
+Finish \code{Inventory}, storing quantities in a private \code{Map}. \code{add(item, qty)} and \code{remove(item, qty)} return the new quantity; \code{count(item)} is 0 for unknown items; \code{items()} lists items in stock, sorted. Throw \code{RangeError(\textquotedbl{}quantity must be positive\textquotedbl{})} for a quantity of 0 or less and \code{RangeError(\textquotedbl{}not enough \textless{}item\textgreater{}\textquotedbl{})} when removing more than you have. An item that reaches 0 is no longer in stock. Don't change \code{run}.\par
+\begin{lstlisting}[language=JavaScript]
+// Test driver: don't change. Runs each [method, ...args] and records the result.
+function run(actions) {
+  const inventory = new Inventory();
+  return actions.map(([method, ...args]) => {
+    try {
+      return inventory[method](...args);
+    } catch (error) {
+      return `${error.name}: ${error.message}`;
+    }
+  });
+}
+class Inventory {
+  // TODO: #stock = new Map(); add, remove, count, items
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Keep a private \code{\#stock} Map; validate the quantity (and, for remove, what you have) before changing anything; delete an item that reaches 0.
+\item[Invariants] No quantity is 0 or below, and a rejected call changes nothing.
+\item[Memory] One Map from item to quantity.
+\item[Types] string and number in; number or string array out.
+\item[Failure] Setting 0 instead of deleting leaves empty items in \code{items()}; skipping the checks lets stock go negative.
+\item[Tests] Add then remove, removing too much, quantity 0, unknown item, items sorted after a removal.
+\end{cardrows}
+\trap Validate before you change anything.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=JavaScript]
+// Test driver: don't change. Runs each [method, ...args] and records the result.
+function run(actions) {
+  const inventory = new Inventory();
+  return actions.map(([method, ...args]) => {
+    try {
+      return inventory[method](...args);
+    } catch (error) {
+      return `${error.name}: ${error.message}`;
+    }
+  });
+}
+class Inventory {
+  #stock = new Map();
+
+  add(item, quantity) {
+    if (quantity <= 0) throw new RangeError("quantity must be positive");
+    const total = this.count(item) + quantity;
+    this.#stock.set(item, total);
+    return total;
+  }
+
+  remove(item, quantity) {
+    if (quantity <= 0) throw new RangeError("quantity must be positive");
+    const have = this.count(item);
+    if (quantity > have) throw new RangeError(`not enough ${item}`);
+    const left = have - quantity;
+    if (left === 0) this.#stock.delete(item);
+    else this.#stock.set(item, left);
+    return left;
+  }
+
+  count(item) {
+    return this.#stock.get(item) ?? 0;
+  }
+
+  items() {
+    return [...this.#stock.keys()].sort();
+  }
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 7 test cases on the card in the app's code runner; the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} Validate before changing anything, so a rejected call leaves the stock as it was. Deleting empty items keeps items() honest.}\par
+\cardsub{From the readings}
+\readchap{26. How do you build a small JavaScript program from the pieces?}{Clean the input first, check before you change any data, and build the result step by step in a variable; the edge cases (empty input, zero, an exact fit) decide whether the program is correct.}
+\readq{How do you keep an object's data correct?}
+By checking every argument before changing anything. Each class keeps an \textbf{invariant}. A method that changes its data and then throws leaves it half-changed; a method that validates first leaves it exactly as it was when it rejects a call.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=JavaScript]
+class Stock {
+  #n = 0;
+  add(k) { this.#n += k; return this.#n; }
+  take(k) {
+    if (k > this.#n) throw new RangeError("not enough");
+    this.#n -= k;
+  }
+}
+const s = new Stock();
+s.add(2);
+try { s.take(5); } catch (e) { console.log(e.name); }
+console.log(s.add(0));
+\end{lstlisting}
+{\small\textit{Prints:}~\code{RangeError}\enspace\textcolor{black!45}{|}\enspace \code{2}}\par
+
+\cardend
+\cardhead{Card 3 --- wordWrap(text, width)}{write · javascript · Medium}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Accumulator:} a variable outside a loop that each step adds to, so the loop builds its result piece by piece. Like a basket you fill aisle by aisle.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c26]{Ch.~26} of this guide; documentation: \href{https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/split}{MDN — String.prototype.split()}.}\par
+\cardsub{The card}
+\textbf{wordWrap(text, width)}\par
+Write \code{wordWrap(text, width)}: split \code{text} into lines of at most \code{width} characters, breaking only at spaces. A word longer than \code{width} gets a line of its own. Return the lines as an array (\code{[]} for empty text).\par
+\begin{lstlisting}[language=JavaScript]
+function wordWrap(text, width) {
+  // TODO
+  return [text];
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Keep the current line; per word, append it (with one space) if the result is at most \code{width}, otherwise push the line and start a new one; push the last line after the loop.
+\item[Invariants] No pushed line is longer than \code{width} unless it is a single long word.
+\item[Memory] One current line, one array of lines.
+\item[Types] string and number in; string array out.
+\item[Failure] \code{\textless{}} instead of \code{\textless{}=} breaks lines that fit exactly; forgetting the final push drops the last line.
+\item[Tests] Normal text, an exact fit, one over, a word longer than width, width 1, empty text.
+\end{cardrows}
+\trap Push the last line after the loop.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=JavaScript]
+function wordWrap(text, width) {
+  const lines = [];
+  let line = "";
+  for (const word of text.split(" ").filter(Boolean)) {
+    if (line === "") {
+      line = word;
+    } else if (line.length + 1 + word.length <= width) {
+      line += " " + word;
+    } else {
+      lines.push(line);
+      line = word;
+    }
+  }
+  if (line !== "") lines.push(line);
+  return lines;
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 6 test cases on the card in the app's code runner; the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} Keep a current line and decide per word whether it fits (+1 for the space). Don't forget to push the last line after the loop.}\par
+\cardsub{From the readings}
+\readchap{26. How do you build a small JavaScript program from the pieces?}{Clean the input first, check before you change any data, and build the result step by step in a variable; the edge cases (empty input, zero, an exact fit) decide whether the program is correct.}
+\readq{How do you build a result one piece at a time?}
+With an \textbf{accumulator}: each step of the loop decides whether the next piece joins the current one or starts a new one. When the loop ends, the last piece is still in the variable and must be added by hand.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=JavaScript]
+const words = ["ab", "cd", "ef"];
+const lines = [];
+let line = "";
+for (const w of words) {
+  if (line && line.length + 1 + w.length > 5) {
+    lines.push(line);
+    line = w;
+  } else line = line ? line + " " + w : w;
+}
+if (line) lines.push(line);
+console.log(lines.join("|"));
+\end{lstlisting}
+{\small\textit{Prints:}~\code{ab cd|ef}}\par
+
+\cardend
+\deckhead{27 · TypeScript Labs}{2}
+\begin{corebox}\textbf{Core idea.} Untrusted input is typed \code{unknown} and narrowed by checks; a result typed as a discriminated union makes callers check success before using the value; a reducer takes \code{readonly} state and returns new state, so the compiler rejects changes in place.\end{corebox}
+\begin{sumbox}{Deck summary sheet --- 27 · TypeScript Labs}
+Programs where the types do real work: validating untrusted input into a discriminated result, and a reducer over immutable state.\par
+\smallskip{\footnotesize Read more: \href{https://www.typescriptlang.org/docs/handbook/2/narrowing.html}{TypeScript Handbook — Narrowing}; \href{https://www.typescriptlang.org/docs/handbook/2/objects.html}{TypeScript Handbook — Object Types}}\end{sumbox}
+\cardhead{Card 4 --- validateSignup(input: unknown)}{write · typescript · Hard}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{unknown:} the type of a value whose shape has not been checked; the compiler allows almost nothing with it until a check narrows it. Like a parcel from a stranger: you inspect it before you use what is inside.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c27]{Ch.~27} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/narrowing.html}{TypeScript Handbook — Narrowing}.}\par
+\cardsub{The card}
+\textbf{validateSignup(input: unknown)}\par
+Change \code{Result} to a discriminated union — \code{\{ ok: true; value: Signup \}} or \code{\{ ok: false; errors: string[] \}} — and write \code{validateSignup}. Not an object $\rightarrow$ \code{[\textquotedbl{}input must be an object\textquotedbl{}]}. Otherwise collect, in this order, \code{\textquotedbl{}email is invalid\textquotedbl{}} (email must be a string containing "@") and \code{\textquotedbl{}age must be 13 or older\textquotedbl{}} (a whole number $\geq$ 13). A valid signup returns only its email and age.\par
+\begin{lstlisting}[language=TypeScript]
+type Signup = { email: string; age: number };
+type Result = { ok: boolean; value?: Signup; errors?: string[] };
+
+function validateSignup(input: unknown): Result {
+  // TODO
+  return { ok: true };
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Rule out non-objects and null; read \code{email} and \code{age} with \code{in}; collect each error in order; return \code{\{ ok: true, value: \{ email, age \} \}} only when both checks pass.
+\item[Invariants] ok is true exactly when errors would be empty; value holds only email and age.
+\item[Memory] One array of error messages.
+\item[Types] unknown in; Result (a discriminated union on ok) out.
+\item[Failure] Returning at the first error reports only one problem; returning \code{input} itself keeps extra fields.
+\item[Tests] Valid, extra field, bad email, too young, not whole, exactly 13, empty object, null, a string.
+\end{cardrows}
+\trap Collect every error before returning.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+type Signup = { email: string; age: number };
+type Result = { ok: true; value: Signup } | { ok: false; errors: string[] };
+
+function validateSignup(input: unknown): Result {
+  if (typeof input !== "object" || input === null) {
+    return { ok: false, errors: ["input must be an object"] };
+  }
+  const email = "email" in input ? input.email : undefined;
+  const age = "age" in input ? input.age : undefined;
+  const errors: string[] = [];
+  if (typeof email !== "string" || !email.includes("@")) errors.push("email is invalid");
+  if (typeof age !== "number" || !Number.isInteger(age) || age < 13) {
+    errors.push("age must be 13 or older");
+  }
+  if (typeof email === "string" && typeof age === "number" && errors.length === 0) {
+    return { ok: true, value: { email, age } };
+  }
+  return { ok: false, errors };
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 9 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} With \code{ok} as the discriminant, code that checks r.ok gets r.value; code that doesn't can't touch either field. Collect every error before returning, so the user can fix them all at once.}\par
+\cardsub{From the readings}
+\readchap{27. How do types carry a TypeScript program?}{Untrusted input is typed \code{unknown} and narrowed by checks; a result typed as a discriminated union makes callers check success before using the value; a reducer takes \code{readonly} state and returns new state, so the compiler rejects changes in place.}
+\readq{How do you check data you know nothing about?}
+Type it \textbf{unknown} and narrow it. \code{typeof x === "object" \&\& x !== null} proves an object; \code{"length" in x} then proves that the property exists, though its value is still \code{unknown} until it is checked too.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function size(input: unknown): number {
+  if (typeof input === "object" && input !== null && "length" in input) {
+    return typeof input.length === "number" ? input.length : 0;
+  }
+  return 0;
+}
+console.log(size([1, 2]), size(null), size("hi"));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{2 0 0}}\par
+
+\readq{How do you report success or failure through types?}
+With a discriminated union (Part~3, Ch.~21): variants that share an \code{ok} property, \code{true} on success and \code{false} on failure. Only the success variant has \code{value}, and only the failure variant has \code{error}, so a caller must test \code{r.ok} before reading either. A single type with optional fields lets a caller read a value that isn't there.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Result = { ok: true; value: number } | { ok: false; error: string };
+function check(n: number): Result {
+  return n >= 0 ? { ok: true, value: n } : { ok: false, error: "negative" };
+}
+const r = check(-1);
+console.log(r.ok ? r.value : r.error);
+console.log(r.value);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 7: Property 'value' does not exist on type 'Result'.   Property 'value' does not exist on type '\{ ok: false; error: string; \}'.}\par
+{\small\textit{Prints:}~\code{negative}\enspace\textcolor{black!45}{|}\enspace \code{undefined}}\par
+
+\cardend
+\cardhead{Card 5 --- todos(state, action)}{write · typescript · Hard}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Reducer:} a function that takes the current state and an action and returns the next state, never changing the old one. Like a ledger: you write a new line instead of erasing an old one.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c27]{Ch.~27} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/objects.html}{TypeScript Handbook — Object Types}.}\par
+\cardsub{The card}
+\textbf{todos(state, action)}\par
+Write the reducer \code{todos(state, action)}. It must never change \code{state} (typed \code{readonly}) and always return a new array. \code{add} appends \code{\{ id, title, done: false \}} with id one more than the largest id (1 for an empty list); \code{toggle} flips \code{done} on the matching id; \code{remove} drops it.\par
+\begin{lstlisting}[language=TypeScript]
+type Todo = { id: number; title: string; done: boolean };
+type Action =
+  | { type: "add"; title: string }
+  | { type: "toggle"; id: number }
+  | { type: "remove"; id: number };
+
+function todos(state: readonly Todo[], action: Action): Todo[] {
+  // TODO: return a new array; never change state
+  return [...state];
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Switch on \code{action.type}: add appends a new todo with id = largest id + 1; toggle maps the matching id to a copy with \code{done} flipped; remove filters it out.
+\item[Invariants] state is never changed; ids stay unique after removals.
+\item[Memory] One new array per call; unchanged todos are shared.
+\item[Types] readonly Todo[] and Action in; Todo[] out.
+\item[Failure] \code{state.length + 1} reuses an id after a removal; \code{state.push} doesn't compile on a readonly array.
+\item[Tests] Add to empty, add after id 3, toggle, toggle a missing id, remove; type tests reject a bad action.
+\end{cardrows}
+\trap Take the next id from the largest id, not the length.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+type Todo = { id: number; title: string; done: boolean };
+type Action =
+  | { type: "add"; title: string }
+  | { type: "toggle"; id: number }
+  | { type: "remove"; id: number };
+
+function todos(state: readonly Todo[], action: Action): Todo[] {
+  switch (action.type) {
+    case "add": {
+      const id = state.reduce((max, todo) => Math.max(max, todo.id), 0) + 1;
+      return [...state, { id, title: action.title, done: false }];
+    }
+    case "toggle":
+      return state.map((todo) => (todo.id === action.id ? { ...todo, done: !todo.done } : todo));
+    case "remove":
+      return state.filter((todo) => todo.id !== action.id);
+  }
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 5 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} \code{readonly Todo[]} makes the compiler reject push, splice and friends on state. map, filter and spread build new arrays. Ids come from the largest id, not the length, or removing an item would reuse an id.}\par
+\cardsub{From the readings}
+\readchap{27. How do types carry a TypeScript program?}{Untrusted input is typed \code{unknown} and narrowed by checks; a result typed as a discriminated union makes callers check success before using the value; a reducer takes \code{readonly} state and returns new state, so the compiler rejects changes in place.}
+\readq{How do you update state without changing it?}
+With a \textbf{reducer} whose state parameter is \code{readonly}. The compiler then rejects \code{push}, \code{splice} and assignment to elements; \code{map}, \code{filter} and spread build new arrays instead, and the old state stays valid.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Todo = { id: number; done: boolean };
+function toggle(state: readonly Todo[], id: number): Todo[] {
+  return state.map((t) => (t.id === id ? { ...t, done: !t.done } : t));
+}
+const before: readonly Todo[] = [{ id: 1, done: false }];
+const after = toggle(before, 1);
+console.log(after[0].done, before[0].done);
+before.push({ id: 2, done: false });
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 8: Property 'push' does not exist on type 'readonly Todo[]'.}\par
+{\small\textit{Prints:}~\code{true false}}\par
+
+\readq{How do you report success or failure through types?}
+With a discriminated union (Part~3, Ch.~21): variants that share an \code{ok} property, \code{true} on success and \code{false} on failure. Only the success variant has \code{value}, and only the failure variant has \code{error}, so a caller must test \code{r.ok} before reading either. A single type with optional fields lets a caller read a value that isn't there.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Result = { ok: true; value: number } | { ok: false; error: string };
+function check(n: number): Result {
+  return n >= 0 ? { ok: true, value: n } : { ok: false, error: "negative" };
+}
+const r = check(-1);
+console.log(r.ok ? r.value : r.error);
+console.log(r.value);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 7: Property 'value' does not exist on type 'Result'.   Property 'value' does not exist on type '\{ ok: false; error: string; \}'.}\par
+{\small\textit{Prints:}~\code{negative}\enspace\textcolor{black!45}{|}\enspace \code{undefined}}\par
+
+\cardend
+\addtocontents{toc}{\vspace{6pt}}
+\Needspace{14\baselineskip}\phantomsection\section*{Appendix: Audit Trail}\addcontentsline{toc}{section}{Appendix: Audit Trail}
+\subsection*{Sources}
+{\footnotesize\begin{tabularx}{\linewidth}{@{}p{1.6in}p{0.9in}X@{}}\toprule
+\textbf{Source} & \textbf{How much read} & \textbf{Used for}\\\midrule
+Course deck: \path{backend/app/content/js_ts_course/part4.py}, \path{quotes.py} & In full & Cards, tests, type tests, solutions, quotes, deck summaries\\
+MDN reference (source text): String.prototype.trim(), String.prototype.split(), RangeError & The cited pages' opening sections & Card quotes\\
+TypeScript Handbook (source text): Narrowing (the in operator); Object Types (ReadonlyArray) & Relevant sections & Ch.~27; card quotes\\
+\bottomrule\end{tabularx}}
+
+{\footnotesize\textbf{Not read:} The MDN JavaScript Guide and Keyed collections pages listed in the deck summaries were not re-read for this guide beyond the cited quotes; nothing else from Parts 1–3 was re-read.}
+\subsection*{Claim ledger}
+{\footnotesize Each card's explanation rests on the documentation excerpt shown with it; the table lists, per source page, the cards whose claim it backs. Code behaviour claimed in the chapters and solutions was established by running it (see Checks run).}
+{\footnotesize\begin{tabularx}{\linewidth}{@{}p{2.2in}X@{}}\toprule
+\textbf{Source (all quoted, checked word for word)} & \textbf{Cards whose claim it backs}\\\midrule
+MDN — RangeError (\href{https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RangeError}{page}) & lab-inventory\\
+MDN — String.prototype.split() (\href{https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/split}{page}) & lab-word-wrap\\
+MDN — String.prototype.trim() (\href{https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/trim}{page}) & lab-parse-csv\\
+TypeScript Handbook — Narrowing (\href{https://www.typescriptlang.org/docs/handbook/2/narrowing.html}{page}) & lab-validate-signup\\
+TypeScript Handbook — Object Types (\href{https://www.typescriptlang.org/docs/handbook/2/objects.html}{page}) & lab-todo-reducer\\
+\bottomrule\end{tabularx}}
+{\footnotesize\textbf{Authored, not sourced:} every analogy in a term definition (5 terms), every rule of thumb, every Think-it-through box, the chapter prose that connects the sourced facts, the How-to-solve rows and traps, and all chapter code snippets (their behaviour was run, see below). The cards themselves (tasks, tests, solutions) were written for this course earlier in this session and are verified, not sourced.}
+\subsection*{Flags}
+{\footnotesize\begin{itemize}
+\item Outside the material: Ch.~26's claims (Number("") is 0, validating first, flushing the last piece) were established by running code in Node, not from a quoted page.
+\item Ch.~27 relies on Part~3, Ch.~21 for discriminated unions; that chapter is in the Part~3 guide, not this one, so the term is restated briefly instead of linked.
+\item Conflicts: none found between the deck and the documentation.
+\end{itemize}}
+\subsection*{Checks run}
+{\footnotesize\begin{itemize}
+\item Code cards: 5 reference answers run in the app's own code runner against the cards' 33 test cases: all pass. Every starter fails. 2 TypeScript answers also type-checked (strict) with their type tests: all pass.
+\item Chapter snippets: 6 run in Node v22.23.4; every \textit{Prints} line is the captured output. 3 checked with tsc 5.9.3.
+\item Quotes: every card's quote found word for word (ignoring markdown) in the documentation source text (MDN content and TypeScript-Website repositories, fetched on 2026-11-16).
+\item The course's own test suite (\code{tests/test\_js\_ts\_course.py}) passes, including planted wrong answers that each card must reject.
+\item Deck files: \path{study-guides/js-ts/decks/part-4-hands-on-labs/} holds the 2 decks of this Part as JSON (a plain array and a wrapped copy each): 5 code cards and 0 qa cards, each with its verified quote. They are written by \path{export\_decks.py} from the same course data the checks above ran on. All 27 deck files of the course were imported through the app's \code{POST /api/import/json} into a fresh test database: no warnings, every quote became a citation, and every code card's answer passed all its test cases (and its type check) through the imported card's run-code endpoint.
+\item Not run: the cards in your own app with the local 3B grading model (grading of typed answers is not verified here).
+\item Not run: Node 24 on Windows; checks used Node v22.23.4 on Linux.
+\item Not checked: the live web pages (the quotes were checked against the pages' source files, which can lag or lead the site).
+\end{itemize}}
+\subsection*{Deviations}
+{\footnotesize\begin{itemize}
+\item Summary sheets: the course has no separate summary sheets, so each deck's own documentation (the summary stored with the deck in the app) is copied in its box instead.
+\item \emph{From the readings} copies only the chapter sections each card drills (listed per card), not every section of its chapters, to keep the guide usable.
+\item The card decks were not generated anew: the guide uses the 105-card deck built earlier in this session (the same material), exported as JSON deck files alongside this guide.
+\item The skill requires a quote on every card; 68 cards had none, so verified quotes were added to the course itself (\code{quotes.py}), where the app shows them too.
+\item Read-only cards (what does this print? / does it compile?) are typed-answer cards in the app; their \emph{Solution} shows the verified output or compiler verdict, and their How-to-solve rows read: Solve = how to trace it, Tests = how to check it by running.
+\item Chapters follow the deck's subdeck order rather than a strict stasis order, so card and chapter numbers match the app.
+\item Ch.~27's Result snippet deliberately includes one line that fails to compile (reading value without checking ok); the run shows what that line would print if the error were ignored.
+\end{itemize}}
+\subsection*{Revision log}
+{\footnotesize\begin{itemize}
+\item 2026-11-16: first version.
+\end{itemize}}
+\addtocontents{toc}{\vspace{6pt}}
+\phantomsection\section*{Index of Terms}\addcontentsline{toc}{section}{Index of Terms}
+{\small\begin{multicols}{2}
+\ix{accumulator}{accumulator}{Ch.~26}
+\ix{edge}{edge cases}{Ch.~26}
+\ix{invariant}{invariant}{Ch.~26}
+\ix{reducer}{reducer}{Ch.~27}
+\ix{unknown}{unknown}{Ch.~27}
+\end{multicols}}
+\end{document}

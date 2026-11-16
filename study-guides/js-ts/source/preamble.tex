@@ -1,0 +1,135 @@
+\documentclass[10pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[letterpaper, left=0.65in, textwidth=4.7in, marginparsep=0.3in, marginparwidth=2.45in, top=0.75in, bottom=0.75in]{geometry}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage[most]{tcolorbox}
+\usepackage{multicol}
+\usepackage[titles]{tocloft}
+\usepackage{marginnote}
+\usepackage{marginfix}
+\usepackage{ragged2e}
+\usepackage{hyperref}
+
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black}
+\setlist{nosep,leftmargin=1.3em,topsep=2pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\setcounter{secnumdepth}{0}
+\setcounter{tocdepth}{1}
+
+% Heading Formats
+\titleformat{\part}[block]{\LARGE\bfseries\color{blue!40!black}}{}{0pt}{}
+\titlespacing*{\part}{0pt}{10pt}{2pt}
+\titleformat{\section}{\Large\bfseries\color{blue!50!black}}{}{0pt}{}
+\titlespacing*{\section}{0pt}{14pt}{4pt}
+\titleformat{\subsection}{\normalsize\bfseries\itshape\color{black!80}}{}{0pt}{}
+\titlespacing*{\subsection}{0pt}{7pt}{1pt}
+
+% Editorial Table of Contents (Book Style)
+\renewcommand{\contentsname}{Contents}
+\renewcommand{\cfttoctitlefont}{\hfill\Large\bfseries\color{blue!50!black}}
+\renewcommand{\cftaftertoctitle}{\hfill}
+\setlength{\cftbeforetoctitleskip}{4pt}
+\setlength{\cftaftertoctitleskip}{12pt}
+
+% Parts: Structural rubrics without page numbers or dot leaders
+\renewcommand{\cftpartfont}{\large\bfseries\color{blue!40!black}}
+\setlength{\cftbeforepartskip}{11pt}
+\setlength{\cftpartindent}{0pt}
+\cftpagenumbersoff{part}
+\renewcommand{\cftpartleader}{\hfill}
+
+% Sections/Chapters: Indented, clean whitespace, flush-right page numbers
+\renewcommand{\cftsecfont}{\normalsize\normalfont}
+\renewcommand{\cftsecpagefont}{\normalsize\normalfont\color{black!75}}
+\setlength{\cftsecindent}{1.4em}
+\setlength{\cftsecnumwidth}{1.8em}
+\setlength{\cftbeforesecskip}{4pt}
+\renewcommand{\cftsecleader}{\hfill}
+\cftsetpnumwidth{1.6em}
+\cftsetrmarg{2.0em}
+
+% Code Listing Settings (adapt language as needed)
+\lstset{basicstyle=\ttfamily\footnotesize,columns=fullflexible,keepspaces=true,
+  frame=l,framerule=1.5pt,rulecolor=\color{gray!50},xleftmargin=8pt,
+  aboveskip=4pt,belowskip=4pt,showstringspaces=false,upquote=true,breaklines=true}
+\newcommand{\code}[1]{{\ttfamily\small #1}}
+
+% Collision-Free Sidenote Engine
+\setlength{\marginparpush}{7pt}
+\newcommand{\marginnotestyle}{\scriptsize\sffamily\color{black!80}\RaggedRight}
+
+\makeatletter
+\newcommand{\safemargin}[1]{%
+  \ifinner%
+    % Suppressed inside tables/boxes to avoid collisions and "Float(s) lost" crashes
+  \else%
+    \marginpar{\marginnotestyle #1}%
+  \fi%
+}
+\makeatother
+
+\newcommand{\term}[3][]{%
+  \hypertarget{t:#2}{\textbf{#3}}%
+  \if\relax\detokenize{#1}\relax\else%
+    \safemargin{#1}%
+  \fi%
+}
+\renewcommand{\footnote}[1]{\safemargin{#1}}
+\newcommand{\ix}[3]{\hyperlink{t:#1}{#2}\dotfill #3\par}
+
+% Socratic Callout Boxes
+\newtcolorbox{corebox}{colback=blue!4,colframe=blue!45!black,boxrule=0.6pt,arc=2pt,
+  left=6pt,right=6pt,top=3pt,bottom=3pt,fontupper=\small}
+\newtcolorbox{ponder}{colback=green!3,colframe=green!35!black,boxrule=0.5pt,arc=2pt,
+  left=6pt,right=6pt,top=2pt,bottom=2pt,fontupper=\small,
+  title={\small\bfseries Think it through},coltitle=white,colbacktitle=green!35!black,
+  toptitle=1pt,bottomtitle=1pt}
+
+\newcommand{\chap}[2]{\section*{#1}\addcontentsline{toc}{section}{#1}\vspace{-2pt}\begin{corebox}\textbf{Core idea.} #2\end{corebox}}
+\newcommand{\partq}[2]{\part*{#1}{\small\itshape #2}}
+
+% ---------------------------------------------------------------------------
+% Document-specific additions
+\usepackage{lmodern}     % scalable fonts: avoids "Font ecsx0800 not found" on some TeX installs
+\usepackage{needspace}   % \Needspace before short listings
+\newcommand{\ch}[1]{{\small\color{black!55}[#1]}}   % source tag, e.g. \ch{Ch 13, p269}
+\newcommand{\mantra}[1]{\par\smallskip{\color{blue!45!black}\textbf{Rule:}~\emph{#1}}\par}
+\newcommand{\partline}[2]{\phantomsection\partq{#1}{#2}}  % titlesec adds the TOC entry
+\usepackage{amssymb}
+\setlength{\emergencystretch}{3em}  % let lines with unbreakable inline code stretch instead of overflowing
+% JavaScript and TypeScript for listings, plus the non-ASCII characters the code uses.
+\lstdefinelanguage{JavaScript}{
+  morekeywords={async,await,break,case,catch,class,const,continue,default,delete,do,else,export,extends,
+    false,finally,for,from,function,get,if,import,in,instanceof,let,new,null,of,return,set,static,super,
+    switch,this,throw,true,try,typeof,undefined,var,void,while,yield},
+  sensitive=true,morecomment=[l]{//},morecomment=[s]{/*}{*/},
+  morestring=[b]",morestring=[b]',morestring=[b]`}
+\lstdefinelanguage{TypeScript}[]{JavaScript}{
+  morekeywords={type,interface,enum,namespace,implements,private,protected,public,readonly,keyof,
+    unknown,never,any,number,string,boolean,satisfies,as,is,declare,abstract}}
+\lstset{keywordstyle=\color{blue!55!black}\bfseries,commentstyle=\color{green!35!black}\itshape,
+  stringstyle=\color{red!45!black},extendedchars=true,
+  literate={°}{{\textdegree}}1 {π}{{$\pi$}}1 {²}{{$^2$}}1 {×}{{$\times$}}1 {–}{{--}}1 {—}{{---}}1
+    {…}{{\ldots}}1 {→}{{$\rightarrow$}}1 {≥}{{$\geq$}}1}
+% Card-by-card solution guide
+\newcommand{\trap}{\par\raggedright\textbf{\color{red!70!black}Trap:}~}
+\newcommand{\core}[1]{\textit{#1}\par}
+\newcommand{\practice}{\textbf{\color{blue!50!black}Practice:}~}
+\newcommand{\deckhead}[2]{\par\ifdim\dimexpr\pagegoal-\pagetotal\relax<0.3\textheight\newpage\fi\bigskip\phantomsection\addcontentsline{toc}{section}{#1}{\Large\bfseries\color{blue!50!black}#1}\hfill{\small #2 cards}\par\nopagebreak\vspace{3pt}}
+\newcommand{\cardhead}[2]{\par\ifdim\dimexpr\pagegoal-\pagetotal\relax<0.28\textheight\newpage\fi\bigskip\noindent{\color{blue!50!black}\rule{\linewidth}{0.8pt}}\par\nopagebreak\noindent{\large\bfseries\color{blue!50!black}#1:}\enspace{\ttfamily #2}\par\nopagebreak}
+\newcommand{\cardsub}[1]{\par\medskip\noindent{\small\bfseries\scshape\color{black!70}#1}\par\nopagebreak\vspace{1pt}}
+\newcommand{\readchap}[2]{\par\medskip\noindent{\bfseries\color{blue!40!black}#1}\par\nopagebreak\noindent{\small\textit{Core idea:} #2}\par\nopagebreak}
+\newcommand{\readq}[1]{\par\smallskip\noindent{\bfseries\itshape\small #1}\par\nopagebreak}
+\newcommand{\cardend}{\par\medskip}
+\newtcolorbox{sumbox}[1]{breakable,colback=orange!3,colframe=orange!45!black,boxrule=0.5pt,arc=2pt,
+  left=6pt,right=6pt,top=3pt,bottom=3pt,fontupper=\small,title={\small\bfseries #1},coltitle=white,
+  colbacktitle=orange!45!black,toptitle=1pt,bottomtitle=1pt}
+\newlist{cardrows}{itemize}{1}
+\setlist[cardrows]{label={},leftmargin=5.3em,labelwidth=4.9em,labelsep=0.4em,labelindent=0pt,align=left,font=\small\bfseries,before={\small\raggedright},itemsep=0.5pt,topsep=2pt}
+% ---------------------------------------------------------------------------

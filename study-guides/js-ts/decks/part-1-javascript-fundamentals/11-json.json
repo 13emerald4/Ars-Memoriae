@@ -1,0 +1,124 @@
+[
+  {
+    "card_type": "qa",
+    "front": "What does this print?\n\n```js\nconst data = {\n  name: \"Ada\",\n  nickname: undefined,\n  greet() {\n    return \"hi\";\n  },\n  tags: [undefined, \"math\"],\n  born: new Date(Date.UTC(1815, 11, 10)),\n};\nconsole.log(JSON.stringify(data));\n```",
+    "back": "{\"name\":\"Ada\",\"tags\":[null,\"math\"],\"born\":\"1815-12-10T00:00:00.000Z\"}\n\nWhy: undefined and functions are not JSON: they are left out of objects and become null in arrays. A Date is written as its ISO string (and comes back as a string, not a Date).\n\nDocs: MDN — JSON.stringify() — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify",
+    "quote": "undefined, Function, and Symbol values are not valid JSON values. If any such values are encountered during conversion, they are either omitted (when found in an object) or changed to null (when found in an array).",
+    "locator": "MDN — JSON.stringify()",
+    "source_title": "MDN — JSON.stringify()",
+    "tags": [
+      "js-ts-course",
+      "predict",
+      "js11-stringify-drops"
+    ]
+  },
+  {
+    "card_type": "code",
+    "title": "loadSettings(json)",
+    "category": "11 · JSON",
+    "difficulty": "Easy",
+    "front": "**loadSettings(json)**\n\nWrite `loadSettings(json)`: parse the JSON text and return `{ volume, muted }`, with `volume` 50 and `muted` false when missing. A saved 0 or false must be kept. Ignore any other fields.\n\n```js\nfunction loadSettings(json) {\n  const data = JSON.parse(json);\n  // TODO\n  return data;\n}\n```",
+    "back": "// Why: Build the result from just the fields you want, with `??` so real 0 and false\n// values survive.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse\nfunction loadSettings(json) {\n  const data = JSON.parse(json);\n  return { volume: data.volume ?? 50, muted: data.muted ?? false };\n}\n",
+    "quote": "The JSON.parse() static method parses a JSON string, constructing the JavaScript value or object described by the string.",
+    "locator": "MDN — JSON.parse()",
+    "source_title": "MDN — JSON.parse()",
+    "tags": [
+      "js-ts-course",
+      "write",
+      "js11-load-settings",
+      "code"
+    ],
+    "language": "javascript",
+    "starter_code": "function loadSettings(json) {\n  const data = JSON.parse(json);\n  // TODO\n  return data;\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          "{\"volume\": 80, \"muted\": true}"
+        ],
+        "expected": {
+          "volume": 80,
+          "muted": true
+        }
+      },
+      {
+        "input": [
+          "{}"
+        ],
+        "expected": {
+          "volume": 50,
+          "muted": false
+        }
+      },
+      {
+        "input": [
+          "{\"volume\": 0}"
+        ],
+        "expected": {
+          "volume": 0,
+          "muted": false
+        }
+      },
+      {
+        "input": [
+          "{\"muted\": false, \"extra\": 1}"
+        ],
+        "expected": {
+          "volume": 50,
+          "muted": false
+        }
+      }
+    ]
+  },
+  {
+    "card_type": "code",
+    "title": "prettyJson(text)",
+    "category": "11 · JSON",
+    "difficulty": "Easy",
+    "front": "**prettyJson(text)**\n\nWrite `prettyJson(text)`: reformat compact JSON text with 2-space indentation.\n\n```js\nfunction prettyJson(text) {\n  // TODO: parse, then stringify with indentation\n  return text;\n}\n```",
+    "back": "// Why: The third argument of JSON.stringify is the indentation. Stringifying the text\n// itself (without parsing) just wraps it in quotes.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify\nfunction prettyJson(text) {\n  return JSON.stringify(JSON.parse(text), null, 2);\n}\n",
+    "quote": "The space parameter may be used to control spacing in the final string.",
+    "locator": "MDN — JSON.stringify()",
+    "source_title": "MDN — JSON.stringify()",
+    "tags": [
+      "js-ts-course",
+      "write",
+      "js11-pretty",
+      "code"
+    ],
+    "language": "javascript",
+    "starter_code": "function prettyJson(text) {\n  // TODO: parse, then stringify with indentation\n  return text;\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          "{\"a\":1,\"b\":[1,2]}"
+        ],
+        "expected": "{\n  \"a\": 1,\n  \"b\": [\n    1,\n    2\n  ]\n}"
+      },
+      {
+        "input": [
+          "[]"
+        ],
+        "expected": "[]"
+      },
+      {
+        "input": [
+          "\"hi\""
+        ],
+        "expected": "\"hi\""
+      }
+    ]
+  },
+  {
+    "card_type": "qa",
+    "front": "What does this print?\n\n```js\nconst scores = new Map([[\"ada\", 3]]);\nconsole.log(JSON.stringify(scores));\nconsole.log(JSON.stringify(Object.fromEntries(scores)));\n```",
+    "back": "{}\n{\"ada\":3}\n\nWhy: JSON.stringify only writes an object's own enumerable properties, and a Map has none. Convert it first.\n\nDocs: MDN — JSON.stringify() — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify",
+    "quote": "Only enumerable own properties are visited. This means Map, Set, etc. will become \"{}\".",
+    "locator": "MDN — JSON.stringify()",
+    "source_title": "MDN — JSON.stringify()",
+    "tags": [
+      "js-ts-course",
+      "predict",
+      "js11-map-to-json"
+    ]
+  }
+]

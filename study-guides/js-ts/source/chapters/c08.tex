@@ -1,0 +1,17 @@
+\phantomsection\label{ch:c08}
+\chap{8. Which collection fits: object, Map or Set?}{A \code{Set} keeps one of each value; a \code{Map} pairs any key with a value in insertion order; a plain object turns keys into strings and inherits keys you never added.}
+
+\subsection{How do you remove duplicates?}% sec:c08-set
+Put the values in a \term[\textbf{Set:} a collection in which each value appears at most once, kept in the order first added. Like a guest list where writing a name twice changes nothing.]{set}{Set}. A value can occur in a Set only once, compared with \code{===}, and the Set remembers the order values were first added. Spread it back into an array with \code{[...set]}.
+%%SNIPPET:c08-set%%
+
+\subsection{When is a Map better than an object?}% sec:c08-map
+When you count or group by key. A \term[\textbf{Map:} a collection of key--value pairs where the key can be any value and pairs stay in insertion order. Like a coat check: any ticket can claim exactly one coat.]{map}{Map} stores key--value pairs: \code{set(key, value)}, \code{get(key)}, \code{has(key)}, \code{size}. Keys keep their type, so the number \code{1} and the string \code{"1"} are different keys; an object would turn both into \code{"1"}. A Map also iterates in insertion order, which settles ties ``first come, first served''. \code{counts.get(word) ?? 0} starts a new key at zero.
+%%SNIPPET:c08-map%%
+
+\subsection{Why can a plain object already contain "constructor"?}% sec:c08-inherited
+Because every plain object inherits properties through its \term[\textbf{Prototype chain:} the series of objects an object borrows properties from when it lacks its own. Like a family recipe book you can read from even though it isn't yours.]{prototype}{prototype chain}. \code{\{\}["constructor"]} is a function, not \code{undefined}, so ``create the group if it doesn't exist yet'' skips it and the code then calls \code{push} on a function. A Map starts truly empty; \code{Object.fromEntries(map)} turns it into a plain object at the end.
+%%SNIPPET:c08-inherited%%
+
+\mantra{Counting or grouping by key? Reach for a Map.}
+\begin{ponder}\code{mostFrequentWord} keeps the first word on a tie because it uses \code{>}. What changes with \code{>=}? What would change if the counts were kept in a plain object whose keys were numbers?\end{ponder}

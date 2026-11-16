@@ -1,0 +1,17 @@
+\phantomsection\label{ch:c27}
+\chap{27. How do types carry a TypeScript program?}{Untrusted input is typed \code{unknown} and narrowed by checks; a result typed as a discriminated union makes callers check success before using the value; a reducer takes \code{readonly} state and returns new state, so the compiler rejects changes in place.}
+
+\subsection{How do you check data you know nothing about?}% sec:c27-unknown
+Type it \term[\textbf{unknown:} the type of a value whose shape has not been checked; the compiler allows almost nothing with it until a check narrows it. Like a parcel from a stranger: you inspect it before you use what is inside.]{unknown}{unknown} and narrow it. \code{typeof x === "object" \&\& x !== null} proves an object; \code{"length" in x} then proves that the property exists, though its value is still \code{unknown} until it is checked too.
+%%SNIPPET:c27-unknown%%
+
+\subsection{How do you report success or failure through types?}% sec:c27-result
+With a discriminated union (Part~3, Ch.~21): variants that share an \code{ok} property, \code{true} on success and \code{false} on failure. Only the success variant has \code{value}, and only the failure variant has \code{error}, so a caller must test \code{r.ok} before reading either. A single type with optional fields lets a caller read a value that isn't there.
+%%SNIPPET:c27-result%%
+
+\subsection{How do you update state without changing it?}% sec:c27-reducer
+With a \term[\textbf{Reducer:} a function that takes the current state and an action and returns the next state, never changing the old one. Like a ledger: you write a new line instead of erasing an old one.]{reducer}{reducer} whose state parameter is \code{readonly}. The compiler then rejects \code{push}, \code{splice} and assignment to elements; \code{map}, \code{filter} and spread build new arrays instead, and the old state stays valid.
+%%SNIPPET:c27-reducer%%
+
+\mantra{Check what comes in; make callers check what goes out.}
+\begin{ponder}Suppose \code{Result} were one type, \code{\{ ok: boolean; value?: number; error?: string \}}. After \code{if (r.ok)}, what type does \code{r.value} have, and what bug can now compile?\end{ponder}

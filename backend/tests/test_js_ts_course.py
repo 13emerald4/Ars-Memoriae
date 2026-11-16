@@ -94,6 +94,12 @@ def test_sources_point_at_mdn_or_the_typescript_docs():
                 assert len(source.quote) <= 4000
 
 
+def test_every_card_quotes_its_documentation():
+    # The quote is "the reading" shown with the card; quotes.py fills the gaps.
+    missing = [c.key for c in CARDS if not (c.source and c.source.quote.strip())]
+    assert not missing, missing
+
+
 def _looks_like_code(text: str) -> bool:
     """Python port of frontend/src/utils/codeUtils.ts:looksLikeCode."""
     t = text.strip()

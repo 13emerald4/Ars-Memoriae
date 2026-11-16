@@ -1,0 +1,294 @@
+[
+  {
+    "card_type": "code",
+    "title": "validateSignup(input: unknown)",
+    "category": "27 · TypeScript Labs",
+    "difficulty": "Hard",
+    "front": "**validateSignup(input: unknown)**\n\nChange `Result` to a discriminated union — `{ ok: true; value: Signup }` or `{ ok: false; errors: string[] }` — and write `validateSignup`. Not an object → `[\"input must be an object\"]`. Otherwise collect, in this order, `\"email is invalid\"` (email must be a string containing \"@\") and `\"age must be 13 or older\"` (a whole number ≥ 13). A valid signup returns only its email and age.\n\n```ts\ntype Signup = { email: string; age: number };\ntype Result = { ok: boolean; value?: Signup; errors?: string[] };\n\nfunction validateSignup(input: unknown): Result {\n  // TODO\n  return { ok: true };\n}\n```",
+    "back": "// Why: With `ok` as the discriminant, code that checks r.ok gets r.value; code that\n// doesn't can't touch either field. Collect every error before returning, so the user can\n// fix them all at once.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/narrowing.html\ntype Signup = { email: string; age: number };\ntype Result = { ok: true; value: Signup } | { ok: false; errors: string[] };\n\nfunction validateSignup(input: unknown): Result {\n  if (typeof input !== \"object\" || input === null) {\n    return { ok: false, errors: [\"input must be an object\"] };\n  }\n  const email = \"email\" in input ? input.email : undefined;\n  const age = \"age\" in input ? input.age : undefined;\n  const errors: string[] = [];\n  if (typeof email !== \"string\" || !email.includes(\"@\")) errors.push(\"email is invalid\");\n  if (typeof age !== \"number\" || !Number.isInteger(age) || age < 13) {\n    errors.push(\"age must be 13 or older\");\n  }\n  if (typeof email === \"string\" && typeof age === \"number\" && errors.length === 0) {\n    return { ok: true, value: { email, age } };\n  }\n  return { ok: false, errors };\n}\n",
+    "quote": "JavaScript has an operator for determining if an object or its prototype chain has a property with a name: the in operator. TypeScript takes this into account as a way to narrow down potential types.",
+    "locator": "TypeScript Handbook — Narrowing",
+    "source_title": "TypeScript Handbook — Narrowing",
+    "tags": [
+      "js-ts-course",
+      "write",
+      "lab-validate-signup",
+      "code"
+    ],
+    "language": "typescript",
+    "starter_code": "type Signup = { email: string; age: number };\ntype Result = { ok: boolean; value?: Signup; errors?: string[] };\n\nfunction validateSignup(input: unknown): Result {\n  // TODO\n  return { ok: true };\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          {
+            "email": "ada@example.com",
+            "age": 36
+          }
+        ],
+        "expected": {
+          "ok": true,
+          "value": {
+            "email": "ada@example.com",
+            "age": 36
+          }
+        }
+      },
+      {
+        "input": [
+          {
+            "email": "ada@example.com",
+            "age": 36,
+            "admin": true
+          }
+        ],
+        "expected": {
+          "ok": true,
+          "value": {
+            "email": "ada@example.com",
+            "age": 36
+          }
+        }
+      },
+      {
+        "input": [
+          {
+            "email": "ada.example.com",
+            "age": 36
+          }
+        ],
+        "expected": {
+          "ok": false,
+          "errors": [
+            "email is invalid"
+          ]
+        }
+      },
+      {
+        "input": [
+          {
+            "email": "ada@example.com",
+            "age": 12
+          }
+        ],
+        "expected": {
+          "ok": false,
+          "errors": [
+            "age must be 13 or older"
+          ]
+        }
+      },
+      {
+        "input": [
+          {
+            "email": "a@b.c",
+            "age": 13.5
+          }
+        ],
+        "expected": {
+          "ok": false,
+          "errors": [
+            "age must be 13 or older"
+          ]
+        }
+      },
+      {
+        "input": [
+          {
+            "email": "a@b.c",
+            "age": 13
+          }
+        ],
+        "expected": {
+          "ok": true,
+          "value": {
+            "email": "a@b.c",
+            "age": 13
+          }
+        }
+      },
+      {
+        "input": [
+          {}
+        ],
+        "expected": {
+          "ok": false,
+          "errors": [
+            "email is invalid",
+            "age must be 13 or older"
+          ]
+        }
+      },
+      {
+        "input": [
+          null
+        ],
+        "expected": {
+          "ok": false,
+          "errors": [
+            "input must be an object"
+          ]
+        }
+      },
+      {
+        "input": [
+          "hello"
+        ],
+        "expected": {
+          "ok": false,
+          "errors": [
+            "input must be an object"
+          ]
+        }
+      }
+    ],
+    "type_check": true,
+    "type_tests": "const r = validateSignup({});\nif (r.ok) {\n  const email: string = r.value.email;\n} else {\n  const first: string | undefined = r.errors[0];\n}\n// @ts-expect-error: errors only exist when ok is false\nr.errors;\n"
+  },
+  {
+    "card_type": "code",
+    "title": "todos(state, action)",
+    "category": "27 · TypeScript Labs",
+    "difficulty": "Hard",
+    "front": "**todos(state, action)**\n\nWrite the reducer `todos(state, action)`. It must never change `state` (typed `readonly`) and always return a new array. `add` appends `{ id, title, done: false }` with id one more than the largest id (1 for an empty list); `toggle` flips `done` on the matching id; `remove` drops it.\n\n```ts\ntype Todo = { id: number; title: string; done: boolean };\ntype Action =\n  | { type: \"add\"; title: string }\n  | { type: \"toggle\"; id: number }\n  | { type: \"remove\"; id: number };\n\nfunction todos(state: readonly Todo[], action: Action): Todo[] {\n  // TODO: return a new array; never change state\n  return [...state];\n}\n```",
+    "back": "// Why: `readonly Todo[]` makes the compiler reject push, splice and friends on state. map,\n// filter and spread build new arrays. Ids come from the largest id, not the length, or\n// removing an item would reuse an id.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/objects.html\ntype Todo = { id: number; title: string; done: boolean };\ntype Action =\n  | { type: \"add\"; title: string }\n  | { type: \"toggle\"; id: number }\n  | { type: \"remove\"; id: number };\n\nfunction todos(state: readonly Todo[], action: Action): Todo[] {\n  switch (action.type) {\n    case \"add\": {\n      const id = state.reduce((max, todo) => Math.max(max, todo.id), 0) + 1;\n      return [...state, { id, title: action.title, done: false }];\n    }\n    case \"toggle\":\n      return state.map((todo) => (todo.id === action.id ? { ...todo, done: !todo.done } : todo));\n    case \"remove\":\n      return state.filter((todo) => todo.id !== action.id);\n  }\n}\n",
+    "quote": "When we see a function that returns ReadonlyArrays, it tells us we're not meant to change the contents at all, and when we see a function that consumes ReadonlyArrays, it tells us that we can pass any array into that function without worrying that it will change its contents.",
+    "locator": "TypeScript Handbook — Object Types",
+    "source_title": "TypeScript Handbook — Object Types",
+    "tags": [
+      "js-ts-course",
+      "write",
+      "lab-todo-reducer",
+      "code"
+    ],
+    "language": "typescript",
+    "starter_code": "type Todo = { id: number; title: string; done: boolean };\ntype Action =\n  | { type: \"add\"; title: string }\n  | { type: \"toggle\"; id: number }\n  | { type: \"remove\"; id: number };\n\nfunction todos(state: readonly Todo[], action: Action): Todo[] {\n  // TODO: return a new array; never change state\n  return [...state];\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          [],
+          {
+            "type": "add",
+            "title": "Write"
+          }
+        ],
+        "expected": [
+          {
+            "id": 1,
+            "title": "Write",
+            "done": false
+          }
+        ]
+      },
+      {
+        "input": [
+          [
+            {
+              "id": 3,
+              "title": "a",
+              "done": false
+            }
+          ],
+          {
+            "type": "add",
+            "title": "b"
+          }
+        ],
+        "expected": [
+          {
+            "id": 3,
+            "title": "a",
+            "done": false
+          },
+          {
+            "id": 4,
+            "title": "b",
+            "done": false
+          }
+        ]
+      },
+      {
+        "input": [
+          [
+            {
+              "id": 1,
+              "title": "a",
+              "done": false
+            },
+            {
+              "id": 2,
+              "title": "b",
+              "done": true
+            }
+          ],
+          {
+            "type": "toggle",
+            "id": 2
+          }
+        ],
+        "expected": [
+          {
+            "id": 1,
+            "title": "a",
+            "done": false
+          },
+          {
+            "id": 2,
+            "title": "b",
+            "done": false
+          }
+        ]
+      },
+      {
+        "input": [
+          [
+            {
+              "id": 1,
+              "title": "a",
+              "done": false
+            }
+          ],
+          {
+            "type": "toggle",
+            "id": 9
+          }
+        ],
+        "expected": [
+          {
+            "id": 1,
+            "title": "a",
+            "done": false
+          }
+        ]
+      },
+      {
+        "input": [
+          [
+            {
+              "id": 1,
+              "title": "a",
+              "done": false
+            },
+            {
+              "id": 2,
+              "title": "b",
+              "done": false
+            }
+          ],
+          {
+            "type": "remove",
+            "id": 1
+          }
+        ],
+        "expected": [
+          {
+            "id": 2,
+            "title": "b",
+            "done": false
+          }
+        ]
+      }
+    ],
+    "type_check": true,
+    "type_tests": "const empty: readonly Todo[] = [];\nconst next: Todo[] = todos(empty, { type: \"add\", title: \"x\" });\n// @ts-expect-error: toggle needs an id\ntodos(empty, { type: \"toggle\" });\n// @ts-expect-error: there is no \"clear\" action\ntodos(empty, { type: \"clear\" });\n"
+  }
+]

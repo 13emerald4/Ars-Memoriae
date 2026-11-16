@@ -1,0 +1,133 @@
+{
+  "deck": "JavaScript & TypeScript: Zero to Mastery · 17 · Object Types & Interfaces",
+  "priority": 50,
+  "notes": [
+    {
+      "card_type": "code",
+      "title": "interface Product",
+      "category": "17 · Object Types & Interfaces",
+      "difficulty": "Easy",
+      "front": "**interface Product**\n\nWrite an interface `Product` with `id` and `name` (strings), `price` (number) and an optional numeric `discount`, then type `finalPrice` with it.\n\n```ts\n// TODO: interface Product { ... }\n\nfunction finalPrice(product) {\n  const discount = product.discount ?? 0;\n  return product.price * (1 - discount);\n}\n```",
+      "back": "// Why: `discount?: number` means the property may be missing, so its type inside the\n// function is number | undefined — which is why `?? 0` is needed.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/objects.html\ninterface Product {\n  id: string;\n  name: string;\n  price: number;\n  discount?: number;\n}\n\nfunction finalPrice(product: Product): number {\n  const discount = product.discount ?? 0;\n  return product.price * (1 - discount);\n}\n",
+      "quote": "In those cases, we can mark those properties as optional by adding a question mark (?) to the end of their names.",
+      "locator": "TypeScript Handbook — Object Types",
+      "source_title": "TypeScript Handbook — Object Types",
+      "tags": [
+        "js-ts-course",
+        "types",
+        "ts17-product",
+        "code"
+      ],
+      "language": "typescript",
+      "starter_code": "// TODO: interface Product { ... }\n\nfunction finalPrice(product) {\n  const discount = product.discount ?? 0;\n  return product.price * (1 - discount);\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            {
+              "id": "a",
+              "name": "Pen",
+              "price": 10
+            }
+          ],
+          "expected": 10
+        },
+        {
+          "input": [
+            {
+              "id": "b",
+              "name": "Pad",
+              "price": 20,
+              "discount": 0.25
+            }
+          ],
+          "expected": 15
+        }
+      ],
+      "type_check": true,
+      "type_tests": "finalPrice({ id: \"a\", name: \"Pen\", price: 10 });\n// @ts-expect-error: price is required\nfinalPrice({ id: \"a\", name: \"Pen\" });\n// @ts-expect-error: discount is a number\nfinalPrice({ id: \"a\", name: \"Pen\", price: 10, discount: \"10%\" });\n"
+    },
+    {
+      "card_type": "qa",
+      "front": "Does this compile with `tsc --strict`? If not, which statement fails, and why?\n\n```ts\ninterface Point {\n  x: number;\n  y: number;\n}\nfunction draw(p: Point): void {}\ndraw({ x: 1, y: 2, color: \"red\" });\nconst p = { x: 1, y: 2, color: \"red\" };\ndraw(p);\n```",
+      "back": "No. `draw({ x: 1, y: 2, color: \"red\" })` fails: 'color' does not exist in type 'Point'. Passing the variable p compiles.\n\nWhy: An object literal written straight into a call gets an excess property check, since an unknown property there is probably a typo. A variable is just checked for having x and y.\n\nDocs: TypeScript Handbook — Object Types — https://www.typescriptlang.org/docs/handbook/2/objects.html",
+      "quote": "Object literals get special treatment and undergo excess property checking when assigning them to other variables, or passing them as arguments.",
+      "locator": "TypeScript Handbook — Object Types",
+      "source_title": "TypeScript Handbook — Object Types",
+      "tags": [
+        "js-ts-course",
+        "compile",
+        "ts17-excess-property"
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "Fix sortedCopy(nums)",
+      "category": "17 · Object Types & Interfaces",
+      "difficulty": "Easy",
+      "front": "**Fix sortedCopy(nums)**\n\n`sortedCopy` must not change its input, so its parameter is `readonly number[]` — and now it doesn't compile, because `sort` sorts in place. Fix it.\n\n```ts\nfunction sortedCopy(nums: readonly number[]): number[] {\n  return nums.sort((a, b) => a - b);\n}\n```",
+      "back": "// Why: A readonly array type has no mutating methods (push, sort, splice…), so the\n// compiler catches the accidental mutation. Copy first, or use toSorted().\n// Docs: https://www.typescriptlang.org/docs/handbook/2/objects.html\nfunction sortedCopy(nums: readonly number[]): number[] {\n  return [...nums].sort((a, b) => a - b);\n}\n",
+      "quote": "The ReadonlyArray is a special type that describes arrays that shouldn't be changed.",
+      "locator": "TypeScript Handbook — Object Types",
+      "source_title": "TypeScript Handbook — Object Types",
+      "tags": [
+        "js-ts-course",
+        "fix",
+        "ts17-readonly-sort",
+        "code"
+      ],
+      "language": "typescript",
+      "starter_code": "function sortedCopy(nums: readonly number[]): number[] {\n  return nums.sort((a, b) => a - b);\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            [
+              3,
+              1,
+              2
+            ]
+          ],
+          "expected": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "input": [
+            [
+              10,
+              9,
+              100
+            ]
+          ],
+          "expected": [
+            9,
+            10,
+            100
+          ]
+        },
+        {
+          "input": [
+            []
+          ],
+          "expected": []
+        }
+      ],
+      "type_check": true,
+      "type_tests": "const frozen: readonly number[] = [2, 1];\nconst out: number[] = sortedCopy(frozen);\n"
+    },
+    {
+      "card_type": "qa",
+      "front": "Does this compile with `tsc --strict`? If not, which statement fails, and why?\n\n```ts\ninterface Named {\n  name: string;\n}\nclass Dog {\n  constructor(public name: string, public breed: string) {}\n}\nconst pet: Named = new Dog(\"Rex\", \"lab\");\nconst thing: Named = { title: \"Rex\" };\n```",
+      "back": "No. `const thing: Named = { title: \"Rex\" }` fails ('title' does not exist in type 'Named'). The Dog line compiles.\n\nWhy: TypeScript compares shapes, not class names: a Dog has a string name, so it is a Named. The literal has no name (and an unknown title).\n\nDocs: TypeScript for JavaScript Programmers — https://www.typescriptlang.org/docs/handbook/typescript-in-5-minutes.html",
+      "quote": "One of TypeScript's core principles is that type checking focuses on the shape that values have. This is sometimes called \"duck typing\" or \"structural typing\".",
+      "locator": "TypeScript for JavaScript Programmers",
+      "source_title": "TypeScript for JavaScript Programmers",
+      "tags": [
+        "js-ts-course",
+        "compile",
+        "ts17-structural"
+      ]
+    }
+  ]
+}

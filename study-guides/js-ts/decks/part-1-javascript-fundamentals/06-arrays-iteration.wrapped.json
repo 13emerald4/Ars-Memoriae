@@ -1,0 +1,269 @@
+{
+  "deck": "JavaScript & TypeScript: Zero to Mastery · 06 · Arrays & Iteration",
+  "priority": 50,
+  "notes": [
+    {
+      "card_type": "qa",
+      "front": "What does this print?\n\n```js\nconst nums = [10, 9, 1, 100];\nnums.sort();\nconsole.log(nums.join(\" \"));\nnums.sort((a, b) => a - b);\nconsole.log(nums.join(\" \"));\n```",
+      "back": "1 10 100 9\n1 9 10 100\n\nWhy: Without a compare function, sort compares the items as strings, and \"100\" comes before \"9\". (a, b) => a - b sorts numbers ascending. sort also changes the array in place.\n\nDocs: MDN — Array.prototype.sort() — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort",
+      "quote": "The default sort order is ascending, built upon converting the elements into strings, then comparing their sequences of UTF-16 code unit values.",
+      "locator": "MDN — Array.prototype.sort()",
+      "source_title": "MDN — Array.prototype.sort()",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js06-sort-default"
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "squaresOfEvens(nums)",
+      "category": "06 · Arrays & Iteration",
+      "difficulty": "Easy",
+      "front": "**squaresOfEvens(nums)**\n\nWrite `squaresOfEvens(nums)` with `filter` and `map`: the squares of the even numbers, in order.\n\n```js\nfunction squaresOfEvens(nums) {\n  // TODO: filter, then map\n  return nums;\n}\n```",
+      "back": "// Why: filter keeps the items whose callback returns true; map returns a new array of the\n// same length.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/map\nfunction squaresOfEvens(nums) {\n  return nums.filter((n) => n % 2 === 0).map((n) => n * n);\n}\n",
+      "quote": "The map() method of Array instances creates a new array populated with the results of calling a provided function on every element in the calling array.",
+      "locator": "MDN — Array.prototype.map()",
+      "source_title": "MDN — Array.prototype.map()",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js06-squares-of-evens",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function squaresOfEvens(nums) {\n  // TODO: filter, then map\n  return nums;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            [
+              1,
+              2,
+              3,
+              4
+            ]
+          ],
+          "expected": [
+            4,
+            16
+          ]
+        },
+        {
+          "input": [
+            []
+          ],
+          "expected": []
+        },
+        {
+          "input": [
+            [
+              -2,
+              3,
+              0
+            ]
+          ],
+          "expected": [
+            4,
+            0
+          ]
+        },
+        {
+          "input": [
+            [
+              1,
+              3
+            ]
+          ],
+          "expected": []
+        }
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "average(nums)",
+      "category": "06 · Arrays & Iteration",
+      "difficulty": "Easy",
+      "front": "**average(nums)**\n\nWrite `average(nums)` using `reduce`: the mean of the numbers, or 0 for an empty array.\n\n```js\nfunction average(nums) {\n  // TODO\n  return 0;\n}\n```",
+      "back": "// Why: reduce without a starting value throws on an empty array, and 0 / 0 is NaN, so an\n// empty array needs its own answer.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce\nfunction average(nums) {\n  if (nums.length === 0) return 0;\n  const total = nums.reduce((sum, n) => sum + n, 0);\n  return total / nums.length;\n}\n",
+      "quote": "Thrown if the array contains no elements and initialValue is not provided.",
+      "locator": "MDN — Array.prototype.reduce(), exceptions: TypeError",
+      "source_title": "MDN — Array.prototype.reduce(), exceptions: TypeError",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js06-average",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function average(nums) {\n  // TODO\n  return 0;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            [
+              2,
+              4,
+              6
+            ]
+          ],
+          "expected": 4
+        },
+        {
+          "input": [
+            []
+          ],
+          "expected": 0
+        },
+        {
+          "input": [
+            [
+              5
+            ]
+          ],
+          "expected": 5
+        },
+        {
+          "input": [
+            [
+              1,
+              2
+            ]
+          ],
+          "expected": 1.5
+        }
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "Fix doubled(nums)",
+      "category": "06 · Arrays & Iteration",
+      "difficulty": "Easy",
+      "front": "**Fix doubled(nums)**\n\n`doubled(nums)` should return a new array with every number doubled, but it returns `undefined`. Fix it.\n\n```js\nfunction doubled(nums) {\n  return nums.forEach((n) => n * 2);\n}\n```",
+      "back": "// Why: forEach runs the callback for its side effects and always returns undefined. To\n// build a new array from the results, use map.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach\nfunction doubled(nums) {\n  return nums.map((n) => n * 2);\n}\n",
+      "quote": "Unlike map(), forEach() always returns undefined and is not chainable.",
+      "locator": "MDN — Array.prototype.forEach()",
+      "source_title": "MDN — Array.prototype.forEach()",
+      "tags": [
+        "js-ts-course",
+        "fix",
+        "js06-foreach-returns-undefined",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function doubled(nums) {\n  return nums.forEach((n) => n * 2);\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            [
+              1,
+              2,
+              3
+            ]
+          ],
+          "expected": [
+            2,
+            4,
+            6
+          ]
+        },
+        {
+          "input": [
+            []
+          ],
+          "expected": []
+        },
+        {
+          "input": [
+            [
+              -1
+            ]
+          ],
+          "expected": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "groupByCategory(items)",
+      "category": "06 · Arrays & Iteration",
+      "difficulty": "Medium",
+      "front": "**groupByCategory(items)**\n\nWrite `groupByCategory(items)` with `reduce`: given `{ name, category }` objects, return an object mapping each category to the names in it, in order.\n\n```js\nfunction groupByCategory(items) {\n  // TODO: items.reduce((groups, item) => ..., {})\n  return {};\n}\n```",
+      "back": "// Why: The accumulator starts as {} and must be returned from every callback. Create the\n// category's array the first time you see it, then push.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce\nfunction groupByCategory(items) {\n  return items.reduce((groups, item) => {\n    if (!groups[item.category]) groups[item.category] = [];\n    groups[item.category].push(item.name);\n    return groups;\n  }, {});\n}\n",
+      "quote": "If the array only has one element (regardless of position) and no initialValue is provided, or if initialValue is provided but the array is empty, the solo value will be returned without calling callbackFn.",
+      "locator": "MDN — Array.prototype.reduce()",
+      "source_title": "MDN — Array.prototype.reduce()",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js06-group-by-category",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function groupByCategory(items) {\n  // TODO: items.reduce((groups, item) => ..., {})\n  return {};\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            [
+              {
+                "name": "Apple",
+                "category": "Fruit"
+              },
+              {
+                "name": "Carrot",
+                "category": "Vegetable"
+              },
+              {
+                "name": "Banana",
+                "category": "Fruit"
+              }
+            ]
+          ],
+          "expected": {
+            "Fruit": [
+              "Apple",
+              "Banana"
+            ],
+            "Vegetable": [
+              "Carrot"
+            ]
+          }
+        },
+        {
+          "input": [
+            []
+          ],
+          "expected": {}
+        },
+        {
+          "input": [
+            [
+              {
+                "name": "Kale",
+                "category": "Leafy"
+              }
+            ]
+          ],
+          "expected": {
+            "Leafy": [
+              "Kale"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "card_type": "qa",
+      "front": "What does this print?\n\n```js\nconst original = [1, 2, 3];\nconst alias = original;\nconst copy = [...original];\nalias.push(4);\ncopy.push(5, 6);\nconsole.log(original.length, alias.length, copy.length);\nconsole.log(original === alias, original === copy);\n```",
+      "back": "4 4 5\ntrue false\n\nWhy: alias = original copies the reference, so both names point at one array. [...original] builds a new array with the same items.\n\nDocs: MDN — Spread syntax — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax",
+      "quote": "You can use spread syntax to make a shallow copy of an array. Each array element retains its identity without getting copied.",
+      "locator": "MDN — Spread syntax",
+      "source_title": "MDN — Spread syntax",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js06-shared-reference"
+      ]
+    }
+  ]
+}

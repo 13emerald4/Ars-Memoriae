@@ -1,0 +1,116 @@
+{
+  "deck": "JavaScript & TypeScript: Zero to Mastery · 19 · Function Types: Optional, Default & Overloads",
+  "priority": 50,
+  "notes": [
+    {
+      "card_type": "code",
+      "title": "greet(name, greeting?, punctuation?)",
+      "category": "19 · Function Types: Optional, Default & Overloads",
+      "difficulty": "Easy",
+      "front": "**greet(name, greeting?, punctuation?)**\n\nWrite `greet`: `greeting` defaults to `\"Hello\"` and `punctuation` is optional (`\"!\"` when missing). `greet(\"Ada\")` → `\"Hello, Ada!\"`.\n\n```ts\nfunction greet(name: string, greeting: string, punctuation: string): string {\n  return `${greeting}, ${name}${punctuation}`;\n}\n```",
+      "back": "// Why: A default value also gives the parameter its type (string) and makes it optional;\n// passing undefined uses the default.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/functions.html\nfunction greet(name: string, greeting = \"Hello\", punctuation?: string): string {\n  return `${greeting}, ${name}${punctuation ?? \"!\"}`;\n}\n",
+      "quote": "We can model this in TypeScript by marking the parameter as optional with ?:",
+      "locator": "TypeScript Handbook — More on Functions",
+      "source_title": "TypeScript Handbook — More on Functions",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "ts19-greet",
+        "code"
+      ],
+      "language": "typescript",
+      "starter_code": "function greet(name: string, greeting: string, punctuation: string): string {\n  return `${greeting}, ${name}${punctuation}`;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            "Ada"
+          ],
+          "expected": "Hello, Ada!"
+        },
+        {
+          "input": [
+            "Ada",
+            "Hi"
+          ],
+          "expected": "Hi, Ada!"
+        },
+        {
+          "input": [
+            "Ada",
+            "Hi",
+            "."
+          ],
+          "expected": "Hi, Ada."
+        },
+        {
+          "input": [
+            "Ada",
+            "Hi",
+            ""
+          ],
+          "expected": "Hi, Ada"
+        },
+        {
+          "input": [
+            "Ada",
+            {
+              "$undefined": true
+            },
+            "?"
+          ],
+          "expected": "Hello, Ada?"
+        }
+      ],
+      "type_check": true,
+      "type_tests": "greet(\"Ada\");\ngreet(\"Ada\", \"Hi\");\n// @ts-expect-error: name is required\ngreet();\n// @ts-expect-error: greeting is a string\ngreet(\"Ada\", 5);\n"
+    },
+    {
+      "card_type": "qa",
+      "front": "Does this compile with `tsc --strict`? If not, which statement fails, and why?\n\n```ts\nfunction logValue(value: string): undefined {\n  console.log(value);\n}\nfunction getValue(): string {\n  console.log(\"no return\");\n}\n```",
+      "back": "No. getValue fails: a function whose declared type is neither undefined, void nor any must return a value. logValue compiles (TypeScript 5.1+).\n\nWhy: Since TypeScript 5.1, a function that returns undefined needs no return statement, just like JavaScript. A function promising a string must return one.\n\nDocs: TypeScript 5.1 release notes — https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-1.html",
+      "quote": "In JavaScript, if a function finishes running without hitting a return, it returns the value undefined.",
+      "locator": "TypeScript 5.1 release notes",
+      "source_title": "TypeScript 5.1 release notes",
+      "tags": [
+        "js-ts-course",
+        "compile",
+        "ts19-undefined-return"
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "Overloads for parse(value)",
+      "category": "19 · Function Types: Optional, Default & Overloads",
+      "difficulty": "Medium",
+      "front": "**Overloads for parse(value)**\n\n`parse` turns a string into a number and a number into a 2-decimal string, but callers always get `string | number`. Add overload signatures so `parse(\"42\")` is a number and `parse(3)` a string.\n\n```ts\nfunction parse(value: string | number): string | number {\n  return typeof value === \"string\" ? Number(value) : value.toFixed(2);\n}\n```",
+      "back": "// Why: Callers see only the overload signatures; the last signature is the\n// implementation's and must be compatible with all of them.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/functions.html\nfunction parse(value: string): number;\nfunction parse(value: number): string;\nfunction parse(value: string | number): string | number {\n  return typeof value === \"string\" ? Number(value) : value.toFixed(2);\n}\n",
+      "quote": "In TypeScript, we can specify a function that can be called in different ways by writing overload signatures.",
+      "locator": "TypeScript Handbook — More on Functions",
+      "source_title": "TypeScript Handbook — More on Functions",
+      "tags": [
+        "js-ts-course",
+        "types",
+        "ts19-overloads",
+        "code"
+      ],
+      "language": "typescript",
+      "starter_code": "function parse(value: string | number): string | number {\n  return typeof value === \"string\" ? Number(value) : value.toFixed(2);\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            "42"
+          ],
+          "expected": 42
+        },
+        {
+          "input": [
+            3.14159
+          ],
+          "expected": "3.14"
+        }
+      ],
+      "type_check": true,
+      "type_tests": "const n: number = parse(\"42\");\nconst s: string = parse(3);\n"
+    }
+  ]
+}

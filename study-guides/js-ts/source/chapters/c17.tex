@@ -1,0 +1,21 @@
+\phantomsection\label{ch:c17}
+\chap{17. How do you describe the shape of an object?}{An interface or type alias names an object's shape; \code{?} marks optional properties and \code{readonly} blocks reassignment. TypeScript compares shapes, not names, and checks object literals for extra properties.}
+
+\subsection{How do you write an object type?}% sec:c17-interface
+With an \term[\textbf{Interface:} a named description of an object's properties and their types. Like a form with labelled blanks.]{interface}{interface} (or a \code{type} alias) listing each property and its type. Mark a property optional with \code{?} after its name. Inside a function, an optional \code{discount?: number} has the type \code{number | undefined}, so it needs a fallback such as \code{?? 0}.
+%%SNIPPET:c17-interface%%
+
+\subsection{Does a value need to be declared as the type?}% sec:c17-structural
+No. TypeScript uses \term[\textbf{Structural typing:} types match when their shapes match, whatever they are named. Like a key that opens a lock because it fits, not because of its brand.]{structural}{structural typing}: type checking focuses on the shape a value has. Any value with a string \code{name} is a \code{Named}, whatever class made it.
+%%SNIPPET:c17-structural%%
+
+\subsection{Why is an extra property sometimes an error?}% sec:c17-excess
+Because an object literal written straight into a typed place gets an excess property check: a property the target type doesn't have is probably a typo. The same object stored in a variable first is just checked for having the required properties.
+%%SNIPPET:c17-excess%%
+
+\subsection{How do you stop an array or property being changed?}% sec:c17-readonly
+Mark it \code{readonly}. A \code{readonly number[]} has no mutating methods (\code{push}, \code{sort}, \code{splice}\ldots), so code that would change it does not compile. \code{readonly} on a property blocks reassigning that property, not changes inside the value it holds.
+%%SNIPPET:c17-readonly%%
+
+\mantra{Describe the shape; TypeScript checks the fit.}
+\begin{ponder}A \code{readonly number[]} parameter accepts a plain \code{number[]} argument, but a \code{number[]} parameter rejects a \code{readonly} array. Why does that direction make sense?\end{ponder}

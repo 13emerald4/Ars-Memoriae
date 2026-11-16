@@ -1,0 +1,17 @@
+\phantomsection\label{ch:c22}
+\chap{22. How do you write code that works for many types without losing them?}{A type parameter links the types going in to the types coming out; \code{extends} demands a minimum shape; \code{keyof T} lists the keys of \code{T}, and \code{T[K]} is the type stored under key \code{K}.}
+
+\subsection{What is a type parameter?}% sec:c22-generic
+A variable that holds a type. In \code{function first<T>(arr: T[]): T | undefined}, \code{T} is a type variable: TypeScript fills it in from the argument, so \code{first(["a"])} returns \code{string | undefined}. A function written this way is \term[\textbf{Generic:} written with type parameters, so it works for many types while keeping each one. Like a mould that takes the shape of whatever you pour in.]{generic}{generic}. With \code{any} instead, the result would lose its type.
+%%SNIPPET:c22-generic%%
+
+\subsection{How do you require a minimum shape?}% sec:c22-constraint
+With a \term[\textbf{Constraint:} \code{T extends Shape}, requiring every type used for \code{T} to have at least that shape. Like a height bar at a ride: anything that clears it may go on.]{constraint}{constraint}: \code{T extends \{ length: number \}} lets the body use \code{.length} and makes the compiler reject arguments without it, while \code{T} still remembers the exact type passed in.
+%%SNIPPET:c22-constraint%%
+
+\subsection{How do you type a property name?}% sec:c22-keyof
+With \code{keyof}. The \term[\textbf{keyof:} the operator that turns an object type into the union of its keys, e.g. \code{"id" | "name"}. Like the list of labels on a cabinet's drawers.]{keyof}{keyof} operator turns an object type into the union of its keys, and the indexed access type \code{T[K]} looks up the type stored under key \code{K}. Together, \code{K extends keyof T} allows only real keys, and \code{T[K]} gives the result the right type.
+%%SNIPPET:c22-keyof%%
+
+\mantra{Name the type you don't know yet; constrain only what you use.}
+\begin{ponder}\code{function first<T>(arr: T[]): T} (without \code{| undefined}) compiles. Why is it still a lie, and which compiler option in \hyperref[ch:c25]{Ch.~25} exposes it?\end{ponder}

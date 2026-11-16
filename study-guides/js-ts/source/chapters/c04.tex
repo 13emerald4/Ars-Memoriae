@@ -1,0 +1,17 @@
+\phantomsection\label{ch:c04}
+\chap{4. How do you work with text?}{Strings never change: every string method returns a new string, and \code{+} joins text as soon as one side is a string.}
+
+\subsection{Can you change a string in place?}% sec:c04-immutable
+No. Strings are \term[\textbf{Immutable:} cannot be changed after it is made; you make a new one instead. Like words printed in ink: to fix a typo you print a new copy.]{immutable}{immutable}. A \term[\textbf{Method:} a function attached to a value and called with a dot, as in \code{word.toUpperCase()}. Like a button on an appliance.]{method}{method} such as \code{toUpperCase} or \code{slice} returns a new string; the original stays as it was. \code{slice(1)} gives everything after the first character. Reading \code{word[0]} on an empty string gives \code{undefined}, and calling a method on \code{undefined} throws.
+%%SNIPPET:c04-immutable%%
+
+\subsection{How do you break text apart and put it back?}% sec:c04-split
+\code{split} cuts a string into an array of pieces at a pattern; \code{join} glues an array back into a string. \code{trim} removes spaces from both ends. Splitting on a single space leaves empty pieces between repeated spaces; the pattern \code{/\textbackslash s+/} (one or more whitespace characters) does not. Strings have no \code{reverse}: spread the string into an array, reverse that, and join.
+%%SNIPPET:c04-split%%
+
+\subsection{Why does "5" + 3 give "53"?}% sec:c04-plus
+Because \code{+} both adds numbers and joins strings: as soon as either side is a string, it joins. The other arithmetic operators (\code{-}, \code{*}, \code{/}) convert their operands to numbers. Evaluation runs left to right, so \code{1 + 2 + "3"} adds first and joins second.
+%%SNIPPET:c04-plus%%
+
+\mantra{Strings are read-only: build a new one.}
+\begin{ponder}\code{capitalize} must return \code{""} for \code{""}. Would \code{word.charAt(0)} instead of \code{word[0]} remove the need for the empty-string check? What does \code{"".charAt(0)} give?\end{ponder}

@@ -1,0 +1,13 @@
+\phantomsection\label{ch:c20}
+\chap{20. What is the difference between any and unknown?}{\code{any} switches checking off; \code{unknown} accepts any value but makes you narrow it before use---the safe type for data you haven't checked.}
+
+\subsection{What does any do?}% sec:c20-any
+It turns type checking off for that value. Anything can be assigned to it and anything can be done with it, so mistakes compile and fail only at run time. Using \code{any} often defeats the purpose of using TypeScript.
+%%SNIPPET:c20-any%%
+
+\subsection{Why is unknown safer?}% sec:c20-unknown
+Because it keeps checking on. \term[\textbf{unknown:} the type of a value that could be anything, which must be narrowed before use. Like a sealed parcel: you may hold it, but must open and check it before using what's inside.]{unknown}{unknown} accepts any value, like \code{any}, but you may do nothing with it until a check narrows it (\hyperref[ch:c18]{Ch.~18}). That makes it the right type for data from \code{JSON.parse}, users or other programs.
+%%SNIPPET:c20-unknown%%
+
+\mantra{Reach for unknown; earn the type with a check.}
+\begin{ponder}A library function returns \code{any}. You assign its result to a \code{string} variable. Does TypeScript complain? What would change if the function returned \code{unknown}?\end{ponder}

@@ -1,0 +1,216 @@
+{
+  "deck": "JavaScript & TypeScript: Zero to Mastery · 02 · Operators, Equality & Conditionals",
+  "priority": 50,
+  "notes": [
+    {
+      "card_type": "qa",
+      "front": "What does this print?\n\n```js\nconsole.log(0 == \"\");\nconsole.log(0 === \"\");\nconsole.log(null == undefined);\nconsole.log(null == 0);\nconsole.log(NaN === NaN);\n```",
+      "back": "true\nfalse\ntrue\nfalse\nfalse\n\nWhy: == converts \"\" to 0 before comparing; === does not convert. null == undefined is true, but null is not == 0. NaN is not equal to anything, itself included: use Number.isNaN.\n\nDocs: MDN — Strict equality (===) — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Strict_equality",
+      "quote": "Unlike the equality operator, the strict equality operator always considers operands of different types to be different.",
+      "locator": "MDN — Strict equality (===)",
+      "source_title": "MDN — Strict equality (===)",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js02-equality"
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "Fix getPort(config)",
+      "category": "02 · Operators, Equality & Conditionals",
+      "difficulty": "Easy",
+      "front": "**Fix getPort(config)**\n\n`getPort(config)` should return `config.port`, or `3000` when the port is missing (`undefined` or `null`). Port `0` is valid and must be kept. Fix the bug.\n\n```js\nfunction getPort(config) {\n  return config.port || 3000;\n}\n```",
+      "back": "// Why: `||` replaces every falsy value, 0 included; `??` replaces only null and undefined.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Nullish_coalescing\nfunction getPort(config) {\n  return config.port ?? 3000;\n}\n",
+      "quote": "The nullish coalescing (??) operator is a logical operator that returns its right-hand side operand when its left-hand side operand is null or undefined, and otherwise returns its left-hand side operand.",
+      "locator": "MDN — Nullish coalescing operator (??)",
+      "source_title": "MDN — Nullish coalescing operator (??)",
+      "tags": [
+        "js-ts-course",
+        "fix",
+        "js02-port-default",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function getPort(config) {\n  return config.port || 3000;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            {
+              "port": 8080
+            }
+          ],
+          "expected": 8080
+        },
+        {
+          "input": [
+            {
+              "port": 0
+            }
+          ],
+          "expected": 0
+        },
+        {
+          "input": [
+            {}
+          ],
+          "expected": 3000
+        },
+        {
+          "input": [
+            {
+              "port": null
+            }
+          ],
+          "expected": 3000
+        }
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "letterGrade(score)",
+      "category": "02 · Operators, Equality & Conditionals",
+      "difficulty": "Easy",
+      "front": "**letterGrade(score)**\n\nWrite `letterGrade(score)`: `\"A\"` for 90 and up, `\"B\"` for 80–89, `\"C\"` for 70–79, `\"F\"` below 70.\n\n```js\nfunction letterGrade(score) {\n  // TODO\n  return \"\";\n}\n```",
+      "back": "// Why: Check the highest band first and return early: each later `if` then only sees\n// scores below the previous threshold. Test every boundary (90, 89, 80, …).\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/if...else\nfunction letterGrade(score) {\n  if (score >= 90) return \"A\";\n  if (score >= 80) return \"B\";\n  if (score >= 70) return \"C\";\n  return \"F\";\n}\n",
+      "quote": "The if...else statement executes a statement if a specified condition is truthy. If the condition is falsy, another statement in the optional else clause will be executed.",
+      "locator": "MDN — if...else",
+      "source_title": "MDN — if...else",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js02-letter-grade",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function letterGrade(score) {\n  // TODO\n  return \"\";\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            95
+          ],
+          "expected": "A"
+        },
+        {
+          "input": [
+            90
+          ],
+          "expected": "A"
+        },
+        {
+          "input": [
+            89
+          ],
+          "expected": "B"
+        },
+        {
+          "input": [
+            80
+          ],
+          "expected": "B"
+        },
+        {
+          "input": [
+            79
+          ],
+          "expected": "C"
+        },
+        {
+          "input": [
+            70
+          ],
+          "expected": "C"
+        },
+        {
+          "input": [
+            69
+          ],
+          "expected": "F"
+        },
+        {
+          "input": [
+            0
+          ],
+          "expected": "F"
+        }
+      ]
+    },
+    {
+      "card_type": "qa",
+      "front": "What does this print?\n\n```js\nconsole.log(\"\" || \"fallback\");\nconsole.log(\"value\" && 42);\nconsole.log(0 ?? \"zero\");\nconsole.log(null ?? \"none\");\nconsole.log(0 || null);\n```",
+      "back": "fallback\n42\n0\nnone\nnull\n\nWhy: a || b returns a if it is truthy, else b. a && b returns a if it is falsy, else b. a ?? b returns b only when a is null or undefined, so 0 ?? \"zero\" is 0.\n\nDocs: MDN — Logical OR (||) — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_OR",
+      "quote": "However, the || operator actually returns the value of one of the specified operands, so if this operator is used with non-Boolean values, it will return a non-Boolean value.",
+      "locator": "MDN — Logical OR (||)",
+      "source_title": "MDN — Logical OR (||)",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js02-logical-operands"
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "countTruthy(values)",
+      "category": "02 · Operators, Equality & Conditionals",
+      "difficulty": "Easy",
+      "front": "**countTruthy(values)**\n\nWrite `countTruthy(values)`: how many items in the array are truthy?\n\n```js\nfunction countTruthy(values) {\n  let count = 0;\n  // TODO\n  return count;\n}\n```",
+      "back": "// Why: The falsy values are false, 0, -0, 0n, \"\", null, undefined and NaN. Everything else\n// is truthy, including [], {} and the strings \"0\" and \"false\".\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/filter\nfunction countTruthy(values) {\n  return values.filter(Boolean).length;\n}\n",
+      "quote": "The filter() method of Array instances creates a shallow copy of a portion of a given array, filtered down to just the elements from the given array that pass the test implemented by the provided function.",
+      "locator": "MDN — Array.prototype.filter()",
+      "source_title": "MDN — Array.prototype.filter()",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js02-count-truthy",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function countTruthy(values) {\n  let count = 0;\n  // TODO\n  return count;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            [
+              0,
+              1,
+              "",
+              "hi",
+              null,
+              [],
+              {},
+              false,
+              true
+            ]
+          ],
+          "expected": 5
+        },
+        {
+          "input": [
+            []
+          ],
+          "expected": 0
+        },
+        {
+          "input": [
+            [
+              {
+                "$undefined": true
+              },
+              "0",
+              "false"
+            ]
+          ],
+          "expected": 2
+        },
+        {
+          "input": [
+            [
+              [],
+              "0"
+            ]
+          ],
+          "expected": 2
+        }
+      ]
+    }
+  ]
+}

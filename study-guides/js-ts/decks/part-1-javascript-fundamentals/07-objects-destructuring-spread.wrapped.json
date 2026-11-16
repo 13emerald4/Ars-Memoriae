@@ -1,0 +1,224 @@
+{
+  "deck": "JavaScript & TypeScript: Zero to Mastery · 07 · Objects, Destructuring & Spread",
+  "priority": 50,
+  "notes": [
+    {
+      "card_type": "code",
+      "title": "formatUser(user)",
+      "category": "07 · Objects, Destructuring & Spread",
+      "difficulty": "Easy",
+      "front": "**formatUser(user)**\n\nWrite `formatUser(user)`: given `{ firstName, lastName, role }`, return `\"LastName, FirstName (ROLE)\"` with the role in upper case. A missing role means `\"GUEST\"`. Use destructuring with a default.\n\n```js\nfunction formatUser(user) {\n  // TODO: const { firstName, lastName, role = ... } = user;\n  return \"\";\n}\n```",
+      "back": "// Why: A destructuring default applies when the property is missing or undefined (not for\n// null or \"\").\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring\nfunction formatUser(user) {\n  const { firstName, lastName, role = \"GUEST\" } = user;\n  return `${lastName}, ${firstName} (${role.toUpperCase()})`;\n}\n",
+      "quote": "Each destructured property can have a default value. The default value is used when the property is not present, or has value undefined. It is not used if the property has value null.",
+      "locator": "MDN — Destructuring",
+      "source_title": "MDN — Destructuring",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js07-format-user",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function formatUser(user) {\n  // TODO: const { firstName, lastName, role = ... } = user;\n  return \"\";\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            {
+              "firstName": "Ada",
+              "lastName": "Lovelace",
+              "role": "admin"
+            }
+          ],
+          "expected": "Lovelace, Ada (ADMIN)"
+        },
+        {
+          "input": [
+            {
+              "firstName": "Alan",
+              "lastName": "Turing"
+            }
+          ],
+          "expected": "Turing, Alan (GUEST)"
+        },
+        {
+          "input": [
+            {
+              "firstName": "Grace",
+              "lastName": "Hopper",
+              "role": {
+                "$undefined": true
+              }
+            }
+          ],
+          "expected": "Hopper, Grace (GUEST)"
+        },
+        {
+          "input": [
+            {
+              "firstName": "Linus",
+              "lastName": "Torvalds",
+              "role": "eDiToR"
+            }
+          ],
+          "expected": "Torvalds, Linus (EDITOR)"
+        }
+      ]
+    },
+    {
+      "card_type": "qa",
+      "front": "What does this print?\n\n```js\nconst original = { name: \"Ada\", skills: [\"math\"] };\nconst copy = { ...original };\ncopy.name = \"Grace\";\ncopy.skills.push(\"code\");\nconsole.log(original.name);\nconsole.log(original.skills.join(\",\"));\n```",
+      "back": "Ada\nmath,code\n\nWhy: Spread copies the top-level properties. copy.name is its own string, but copy.skills is the same array as original.skills. For a deep copy use structuredClone.\n\nDocs: MDN — Spread syntax — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax",
+      "quote": "Spread syntax effectively goes one level deep while copying an array.",
+      "locator": "MDN — Spread syntax",
+      "source_title": "MDN — Spread syntax",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js07-shallow-spread"
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "withDefaults(options)",
+      "category": "07 · Objects, Destructuring & Spread",
+      "difficulty": "Easy",
+      "front": "**withDefaults(options)**\n\nWrite `withDefaults(options)`: return a new object starting from `{ theme: \"light\", fontSize: 14, autosave: true }`, overridden by whatever `options` sets. Use spread.\n\n```js\nfunction withDefaults(options) {\n  const defaults = { theme: \"light\", fontSize: 14, autosave: true };\n  // TODO\n  return defaults;\n}\n```",
+      "back": "// Why: Later properties win, so spread the defaults first and the overrides second.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax\nfunction withDefaults(options) {\n  const defaults = { theme: \"light\", fontSize: 14, autosave: true };\n  return { ...defaults, ...options };\n}\n",
+      "quote": "When one object is spread into another object, or when multiple objects are spread into one object, and properties with identical names are encountered, the property takes the last value assigned while remaining in the position it was originally set.",
+      "locator": "MDN — Spread syntax",
+      "source_title": "MDN — Spread syntax",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js07-with-defaults",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function withDefaults(options) {\n  const defaults = { theme: \"light\", fontSize: 14, autosave: true };\n  // TODO\n  return defaults;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            {}
+          ],
+          "expected": {
+            "theme": "light",
+            "fontSize": 14,
+            "autosave": true
+          }
+        },
+        {
+          "input": [
+            {
+              "theme": "dark"
+            }
+          ],
+          "expected": {
+            "theme": "dark",
+            "fontSize": 14,
+            "autosave": true
+          }
+        },
+        {
+          "input": [
+            {
+              "autosave": false,
+              "fontSize": 18
+            }
+          ],
+          "expected": {
+            "theme": "light",
+            "fontSize": 18,
+            "autosave": false
+          }
+        }
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "pick(obj, keys)",
+      "category": "07 · Objects, Destructuring & Spread",
+      "difficulty": "Easy",
+      "front": "**pick(obj, keys)**\n\nWrite `pick(obj, keys)`: a new object with only the listed keys that `obj` actually has. Keep keys whose value is `null`.\n\n```js\nfunction pick(obj, keys) {\n  const result = {};\n  // TODO\n  return result;\n}\n```",
+      "back": "// Why: `key in obj` asks whether the property exists. Testing its value instead drops real\n// properties that hold null, 0 or \"\", and copying blindly adds undefined keys.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/in\nfunction pick(obj, keys) {\n  const result = {};\n  for (const key of keys) {\n    if (key in obj) result[key] = obj[key];\n  }\n  return result;\n}\n",
+      "quote": "The in operator returns true if the specified property is in the specified object or its prototype chain.",
+      "locator": "MDN — in",
+      "source_title": "MDN — in",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js07-pick",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function pick(obj, keys) {\n  const result = {};\n  // TODO\n  return result;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            {
+              "a": 1,
+              "b": 2,
+              "c": 3
+            },
+            [
+              "a",
+              "c"
+            ]
+          ],
+          "expected": {
+            "a": 1,
+            "c": 3
+          }
+        },
+        {
+          "input": [
+            {
+              "a": 1
+            },
+            [
+              "a",
+              "z"
+            ]
+          ],
+          "expected": {
+            "a": 1
+          }
+        },
+        {
+          "input": [
+            {
+              "a": 1
+            },
+            []
+          ],
+          "expected": {}
+        },
+        {
+          "input": [
+            {
+              "a": null
+            },
+            [
+              "a"
+            ]
+          ],
+          "expected": {
+            "a": null
+          }
+        }
+      ]
+    },
+    {
+      "card_type": "qa",
+      "front": "What does this print?\n\n```js\nconst user = { profile: null };\nconsole.log(user.profile?.email);\nconsole.log(user.settings?.theme ?? \"default\");\ntry {\n  console.log(user.profile.email);\n} catch (error) {\n  console.log(error.name);\n}\n```",
+      "back": "undefined\ndefault\nTypeError\n\nWhy: ?. returns undefined as soon as the value on its left is null or undefined. Plain . on null throws a TypeError.\n\nDocs: MDN — Optional chaining (?.) — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Optional_chaining",
+      "quote": "If the object accessed or function called using this operator is undefined or null, the expression short circuits and evaluates to undefined instead of throwing an error.",
+      "locator": "MDN — Optional chaining (?.)",
+      "source_title": "MDN — Optional chaining (?.)",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js07-optional-chaining"
+      ]
+    }
+  ]
+}

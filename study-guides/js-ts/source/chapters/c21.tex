@@ -1,0 +1,17 @@
+\phantomsection\label{ch:c21}
+\chap{21. How do you model data that comes in several shapes?}{A discriminated union gives each variant a literal tag; checking the tag narrows to that variant, and assigning the leftover value to \code{never} makes the compiler catch a forgotten case.}
+
+\subsection{What is a discriminated union?}% sec:c21-tag
+A union of object types that share one property whose value is a fixed string for each variant: the \term[\textbf{Discriminant:} the shared property (such as \code{kind}) whose literal value tells the variants of a union apart. Like a coloured tag on each parcel saying what is inside.]{discriminant}{discriminant}. Checking it, as in \code{s.kind === "circle"}, narrows the value to that one variant, so its own properties become available.
+%%SNIPPET:c21-tag%%
+
+\subsection{How does the compiler catch a forgotten case?}% sec:c21-never
+Through \term[\textbf{never:} the type with no possible values. Like an empty set: nothing can be put in it.]{never}{never}. In a \code{switch}, each \code{case} removes one variant; in \code{default} nothing should be left, so the value has type \code{never}. Assigning it to a \code{never} variable compiles only if every variant was handled. Add a variant without a case and that line fails.
+%%SNIPPET:c21-never%%
+
+\subsection{Why model actions as a union instead of one loose type?}% sec:c21-actions
+Because then each action carries exactly its own data, and the compiler rejects impossible actions where they are written. With one loose type such as \code{\{ type: string; amount?: number \}}, an ``add'' with no amount, or an action that doesn't exist, compiles and fails later.
+%%SNIPPET:c21-actions%%
+
+\mantra{Tag every variant; let never check you handled them all.}
+\begin{ponder}You add a \code{triangle} variant to \code{Shape}, but \code{area} uses \code{if}/\code{else} with a final \code{else} for squares instead of a \code{switch} with \code{never}. Does the compiler still warn you? Where?\end{ponder}

@@ -1,0 +1,160 @@
+{
+  "deck": "JavaScript & TypeScript: Zero to Mastery · 05 · Functions, Scope & Closures",
+  "priority": 50,
+  "notes": [
+    {
+      "card_type": "qa",
+      "front": "What does this print?\n\n```js\nconsole.log(declared());\ntry {\n  console.log(expressed());\n} catch (error) {\n  console.log(error.name);\n}\nfunction declared() {\n  return \"declared works\";\n}\nconst expressed = function () {\n  return \"expressed works\";\n};\n```",
+      "back": "declared works\nReferenceError\n\nWhy: A function declaration is created before any code runs. A const is not usable until its line runs, so calling it earlier throws a ReferenceError.\n\nDocs: MDN — Hoisting — https://developer.mozilla.org/en-US/docs/Glossary/Hoisting",
+      "quote": "JavaScript Hoisting refers to the process whereby the interpreter appears to move the declaration of functions, variables, classes, or imports to the top of their scope, prior to execution of the code.",
+      "locator": "MDN — Hoisting",
+      "source_title": "MDN — Hoisting",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js05-hoisting"
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "makeCounter(start)",
+      "category": "05 · Functions, Scope & Closures",
+      "difficulty": "Medium",
+      "front": "**makeCounter(start)**\n\nWrite `makeCounter(start)`: return an object with `increment()` (adds 1, returns the new count) and `current()`. Each counter must keep its own private count. Don't change `check`.\n\n```js\n// Test driver: don't change.\nfunction check(start) {\n  const a = makeCounter(start);\n  const b = makeCounter(100);\n  return [a.increment(), a.increment(), b.increment(), a.current(), b.current()];\n}\n\nfunction makeCounter(start) {\n  // TODO: keep the count in a variable the returned functions close over\n  return { increment() {}, current() {} };\n}\n```",
+      "back": "// Why: Each call to makeCounter creates a new `count`, and the returned methods close over\n// that one. A variable outside the function would be shared by every counter.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Closures\n// Test driver: don't change.\nfunction check(start) {\n  const a = makeCounter(start);\n  const b = makeCounter(100);\n  return [a.increment(), a.increment(), b.increment(), a.current(), b.current()];\n}\n\nfunction makeCounter(start) {\n  let count = start;\n  return {\n    increment() {\n      count += 1;\n      return count;\n    },\n    current() {\n      return count;\n    },\n  };\n}\n",
+      "quote": "A closure is the combination of a function bundled together (enclosed) with references to its surrounding state (the lexical environment).",
+      "locator": "MDN — Closures",
+      "source_title": "MDN — Closures",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js05-make-counter",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "// Test driver: don't change.\nfunction check(start) {\n  const a = makeCounter(start);\n  const b = makeCounter(100);\n  return [a.increment(), a.increment(), b.increment(), a.current(), b.current()];\n}\n\nfunction makeCounter(start) {\n  // TODO: keep the count in a variable the returned functions close over\n  return { increment() {}, current() {} };\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            0
+          ],
+          "expected": [
+            1,
+            2,
+            101,
+            2,
+            101
+          ]
+        },
+        {
+          "input": [
+            10
+          ],
+          "expected": [
+            11,
+            12,
+            101,
+            12,
+            101
+          ]
+        }
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "once(fn)",
+      "category": "05 · Functions, Scope & Closures",
+      "difficulty": "Medium",
+      "front": "**once(fn)**\n\nWrite `once(fn)`: return a function that calls `fn` the first time only and returns that first result on every later call — even when the result is `undefined`. Don't change `check`.\n\n```js\n// Test driver: don't change.\nfunction check(values) {\n  let calls = 0;\n  const double = once((x) => {\n    calls++;\n    return x * 2;\n  });\n  const results = values.map((v) => double(v));\n  let logs = 0;\n  const log = once(() => {\n    logs++;\n  });\n  log();\n  log();\n  return { results, calls, logs };\n}\n\nfunction once(fn) {\n  // TODO\n  return fn;\n}\n```",
+      "back": "// Why: Track \"already called\" in its own flag. Using the result itself as the flag breaks\n// for a function that returns undefined: it gets called again.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Closures\n// Test driver: don't change.\nfunction check(values) {\n  let calls = 0;\n  const double = once((x) => {\n    calls++;\n    return x * 2;\n  });\n  const results = values.map((v) => double(v));\n  let logs = 0;\n  const log = once(() => {\n    logs++;\n  });\n  log();\n  log();\n  return { results, calls, logs };\n}\n\nfunction once(fn) {\n  let done = false;\n  let result;\n  return (...args) => {\n    if (!done) {\n      done = true;\n      result = fn(...args);\n    }\n    return result;\n  };\n}\n",
+      "quote": "In other words, a closure gives a function access to its outer scope. In JavaScript, closures are created every time a function is created, at function creation time.",
+      "locator": "MDN — Closures",
+      "source_title": "MDN — Closures",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js05-once",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "// Test driver: don't change.\nfunction check(values) {\n  let calls = 0;\n  const double = once((x) => {\n    calls++;\n    return x * 2;\n  });\n  const results = values.map((v) => double(v));\n  let logs = 0;\n  const log = once(() => {\n    logs++;\n  });\n  log();\n  log();\n  return { results, calls, logs };\n}\n\nfunction once(fn) {\n  // TODO\n  return fn;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            [
+              3,
+              5,
+              7
+            ]
+          ],
+          "expected": {
+            "results": [
+              6,
+              6,
+              6
+            ],
+            "calls": 1,
+            "logs": 1
+          }
+        },
+        {
+          "input": [
+            []
+          ],
+          "expected": {
+            "results": [],
+            "calls": 0,
+            "logs": 1
+          }
+        }
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "sum(...numbers)",
+      "category": "05 · Functions, Scope & Closures",
+      "difficulty": "Easy",
+      "front": "**sum(...numbers)**\n\nWrite `sum(...numbers)`: add up any number of arguments. `sum()` is 0.\n\n```js\nfunction sum(numbers) {\n  // TODO\n  return 0;\n}\n```",
+      "back": "// Why: `...numbers` gathers all arguments into a real array. reduce needs the initial\n// value 0, or an empty array throws a TypeError.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/rest_parameters\nfunction sum(...numbers) {\n  return numbers.reduce((total, n) => total + n, 0);\n}\n",
+      "quote": "The rest parameter syntax allows a function to accept an indefinite number of arguments as an array, providing a way to represent variadic functions in JavaScript.",
+      "locator": "MDN — Rest parameters",
+      "source_title": "MDN — Rest parameters",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js05-sum-rest",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function sum(numbers) {\n  // TODO\n  return 0;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            1,
+            2,
+            3
+          ],
+          "expected": 6
+        },
+        {
+          "input": [],
+          "expected": 0
+        },
+        {
+          "input": [
+            5
+          ],
+          "expected": 5
+        },
+        {
+          "input": [
+            -1,
+            1,
+            10
+          ],
+          "expected": 10
+        }
+      ]
+    }
+  ]
+}

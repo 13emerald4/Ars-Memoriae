@@ -1,0 +1,21 @@
+\phantomsection\label{ch:c13}
+\chap{13. How does JavaScript wait without stopping?}{A promise stands for a result that isn't ready yet; \code{await} pauses only its own async function; promise callbacks run before timers; \code{Promise.all} waits for every promise and fails on the first rejection.}
+
+\subsection{What is a promise, and what does await do?}% sec:c13-promise
+A \term[\textbf{Promise:} an object standing for a result that will arrive later, or a failure. Like a claim ticket for a coat that isn't ready yet.]{promise}{promise} is either still pending, fulfilled with a value, or rejected with an error. Inside an \term[\textbf{Async function:} a function declared with \code{async}; it always returns a promise and may use \code{await}. Like a cook who can step away from one dish while it simmers.]{async}{async function}, \code{await p} pauses that function until \code{p} settles, then gives its value (or throws its error). The rest of the program keeps running meanwhile.
+%%SNIPPET:c13-await%%
+
+\subsection{In what order do callbacks run?}% sec:c13-order
+Synchronous code first. Promise callbacks are queued as \term[\textbf{Microtask:} a small job (such as a promise callback) run as soon as the current code finishes, before timers. Like the express lane at a checkout.]{microtask}{microtasks} and run as soon as the current code finishes; timer callbacks (\code{setTimeout}) wait in a separate queue and run after that, even with a 0 ms delay.
+%%SNIPPET:c13-order%%
+
+\subsection{How do you run several requests at once?}% sec:c13-all
+Start them all, then wait for all. A promise's work starts when the promise is created; \code{Promise.all} only waits. It fulfills with an array of the values in input order, or rejects with the first rejection. \code{await} inside a loop waits for each request before starting the next, so the requests run one at a time. \code{Promise.allSettled} always fulfills, with a status for each promise.
+%%SNIPPET:c13-all%%
+
+\subsection{Why must you check response.ok?}% sec:c13-fetch
+Because \code{fetch} rejects only when the request itself fails (a bad URL, no network). A 404 or 500 answer still \emph{fulfills} with a response. \code{response.ok} is true only for status codes 200--299, so check it and throw yourself.
+%%SNIPPET:c13-fetch%%
+
+\mantra{Start everything, then await all of it.}
+\begin{ponder}With \code{Promise.all}, \code{loadNames} returns names in the order of \code{ids}, even if user~3's answer arrives first. What guarantees that order?\end{ponder}

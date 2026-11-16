@@ -1,0 +1,101 @@
+[
+  {
+    "card_type": "code",
+    "title": "Add types to totalPrice",
+    "category": "16 · Annotations & Inference",
+    "difficulty": "Easy",
+    "front": "**Add types to totalPrice**\n\nThis JavaScript doesn't compile under `strict`: its parameters are implicitly `any`. Add types — items are `{ price: number; quantity: number }` — so it compiles and rejects bad calls.\n\n```ts\nfunction totalPrice(items, taxRate) {\n  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n  return Math.round(subtotal * (1 + taxRate) * 100) / 100;\n}\n```",
+    "back": "// Why: Parameters are where types matter most: inside the function TypeScript infers the\n// rest (`sum`, `item`, `subtotal`). Typing them `any` compiles but checks nothing.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/basic-types.html\ntype LineItem = { price: number; quantity: number };\n\nfunction totalPrice(items: LineItem[], taxRate: number): number {\n  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n  return Math.round(subtotal * (1 + taxRate) * 100) / 100;\n}\n",
+    "quote": "Turning on the noImplicitAny flag will issue an error on any variables whose type is implicitly inferred as any.",
+    "locator": "TypeScript Handbook — The Basics",
+    "source_title": "TypeScript Handbook — The Basics",
+    "tags": [
+      "js-ts-course",
+      "types",
+      "ts16-total-price",
+      "code"
+    ],
+    "language": "typescript",
+    "starter_code": "function totalPrice(items, taxRate) {\n  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n  return Math.round(subtotal * (1 + taxRate) * 100) / 100;\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          [
+            {
+              "price": 10,
+              "quantity": 2
+            },
+            {
+              "price": 5,
+              "quantity": 1
+            }
+          ],
+          0.1
+        ],
+        "expected": 27.5
+      },
+      {
+        "input": [
+          [],
+          0.2
+        ],
+        "expected": 0
+      }
+    ],
+    "type_check": true,
+    "type_tests": "const total: number = totalPrice([{ price: 1, quantity: 1 }], 0);\n// @ts-expect-error: the tax rate is a number, not a string\ntotalPrice([], \"0.1\");\n// @ts-expect-error: every item needs a quantity\ntotalPrice([{ price: 1 }], 0);\n"
+  },
+  {
+    "card_type": "qa",
+    "front": "Does this compile with `tsc --strict`? If not, which statement fails, and why?\n\n```ts\nlet count = 5;\ncount = \"five\";\nlet label;\nlabel = \"five\";\nlabel = 5;\n```",
+    "back": "No. `count = \"five\"` fails: Type 'string' is not assignable to type 'number'. The label lines compile.\n\nWhy: count was inferred as number from its initial value, and that type sticks. label had no initial value, so its type follows each assignment.\n\nDocs: TypeScript Handbook — The Basics — https://www.typescriptlang.org/docs/handbook/2/basic-types.html",
+    "quote": "In many cases, TypeScript can even just infer (or \"figure out\") the types for us even if we omit them.",
+    "locator": "TypeScript Handbook — The Basics",
+    "source_title": "TypeScript Handbook — The Basics",
+    "tags": [
+      "js-ts-course",
+      "compile",
+      "ts16-inferred-type"
+    ]
+  },
+  {
+    "card_type": "code",
+    "title": "Fix formatPrice(cents)",
+    "category": "16 · Annotations & Inference",
+    "difficulty": "Easy",
+    "front": "**Fix formatPrice(cents)**\n\nThis doesn't compile: the return type says `string` but the body returns a number. Return the price as dollars with two decimals, e.g. 1250 → `\"$12.50\"`.\n\n```ts\nfunction formatPrice(cents: number): string {\n  return cents / 100;\n}\n```",
+    "back": "// Why: A return type annotation turns \"returns the wrong kind of value\" into a compile\n// error at the function, instead of a bug wherever it is used. toFixed(2) keeps \"12.50\".\n// Docs: https://www.typescriptlang.org/docs/handbook/2/everyday-types.html\nfunction formatPrice(cents: number): string {\n  return `$${(cents / 100).toFixed(2)}`;\n}\n",
+    "quote": "Some codebases will explicitly specify a return type for documentation purposes, to prevent accidental changes, or just for personal preference.",
+    "locator": "TypeScript Handbook — Everyday Types",
+    "source_title": "TypeScript Handbook — Everyday Types",
+    "tags": [
+      "js-ts-course",
+      "fix",
+      "ts16-format-price",
+      "code"
+    ],
+    "language": "typescript",
+    "starter_code": "function formatPrice(cents: number): string {\n  return cents / 100;\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          1250
+        ],
+        "expected": "$12.50"
+      },
+      {
+        "input": [
+          5
+        ],
+        "expected": "$0.05"
+      },
+      {
+        "input": [
+          0
+        ],
+        "expected": "$0.00"
+      }
+    ],
+    "type_check": true
+  }
+]

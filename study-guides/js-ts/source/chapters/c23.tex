@@ -1,0 +1,21 @@
+\phantomsection\label{ch:c23}
+\chap{23. How do you build new types from existing ones?}{Utility types derive new types from old ones: \code{Partial} (all optional), \code{Readonly} (no reassignment, one level deep, compile time only), \code{Pick} and \code{Omit} (keep or drop keys), \code{Record} (an object with exactly these keys).}
+
+\subsection{How do you type a patch?}% sec:c23-partial
+With \code{Partial<T>}, a \term[\textbf{Utility type:} a built-in generic type that derives a new type from an existing one, such as \code{Partial<T>}. Like a stencil that turns one shape into a related one.]{utility}{utility type} that makes every property of \code{T} optional. A patch to a todo may contain any subset of its fields---and, being a fresh literal, nothing else.
+%%SNIPPET:c23-partial%%
+
+\subsection{How do you remove a field from a type?}% sec:c23-omit
+With \code{Omit<T, Keys>} (or keep only some with \code{Pick<T, Keys>}). Removing the field from the type does not remove it from the object: do that at run time too, for example with rest destructuring. Each alone leaves a gap.
+%%SNIPPET:c23-omit%%
+
+\subsection{How do you type an object with a fixed set of keys?}% sec:c23-record
+With \code{Record<Keys, Type>}: an object whose keys are exactly \code{Keys} and whose values are \code{Type}. Every key is required, so the compiler makes you fill in each one (for example, start every count at 0).
+%%SNIPPET:c23-record%%
+
+\subsection{Does Readonly make an object immutable?}% sec:c23-readonly
+No. \code{Readonly<T>} stops reassigning \code{T}'s own properties, and only while compiling. An array or object inside can still be changed, and nothing is enforced at run time.
+%%SNIPPET:c23-readonly%%
+
+\mantra{Derive types from the source of truth instead of copying them.}
+\begin{ponder}\code{User} gains a \code{phone} field. Which keeps the public type up to date: \code{Omit<User, "hash">}, or a hand-written \code{\{ id: number; name: string \}}? Which would you rather maintain?\end{ponder}

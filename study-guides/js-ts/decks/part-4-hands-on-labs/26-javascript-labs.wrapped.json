@@ -1,0 +1,329 @@
+{
+  "deck": "JavaScript & TypeScript: Zero to Mastery · 26 · JavaScript Labs",
+  "priority": 50,
+  "notes": [
+    {
+      "card_type": "code",
+      "title": "parseCsv(text)",
+      "category": "26 · JavaScript Labs",
+      "difficulty": "Medium",
+      "front": "**parseCsv(text)**\n\nWrite `parseCsv(text)`: the first line holds the column names; turn every other line into an object keyed by them. Trim spaces around cells, skip blank lines, and turn cells that are numbers into numbers (`\"36\"` → 36). No lines at all → `[]`.\n\n```js\nfunction parseCsv(text) {\n  // TODO\n  return [];\n}\n```",
+      "back": "// Why: Number(\"\") is 0, so test for empty cells before converting. Splitting, trimming and\n// filtering the lines first keeps the row logic simple.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/trim\nfunction parseCsv(text) {\n  const lines = text\n    .split(\"\\n\")\n    .map((line) => line.trim())\n    .filter(Boolean);\n  if (lines.length === 0) return [];\n  const headers = lines[0].split(\",\").map((h) => h.trim());\n  return lines.slice(1).map((line) => {\n    const cells = line.split(\",\").map((cell) => cell.trim());\n    const row = {};\n    headers.forEach((header, i) => {\n      const cell = cells[i] ?? \"\";\n      row[header] = cell !== \"\" && !Number.isNaN(Number(cell)) ? Number(cell) : cell;\n    });\n    return row;\n  });\n}\n",
+      "quote": "The trim() method of String values removes whitespace from both ends of this string and returns a new string, without modifying the original string.",
+      "locator": "MDN — String.prototype.trim()",
+      "source_title": "MDN — String.prototype.trim()",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "lab-parse-csv",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function parseCsv(text) {\n  // TODO\n  return [];\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            "name,age\nAda,36\nGrace,85"
+          ],
+          "expected": [
+            {
+              "name": "Ada",
+              "age": 36
+            },
+            {
+              "name": "Grace",
+              "age": 85
+            }
+          ]
+        },
+        {
+          "input": [
+            " name , city \n\n   \n Linus , Helsinki \n"
+          ],
+          "expected": [
+            {
+              "name": "Linus",
+              "city": "Helsinki"
+            }
+          ]
+        },
+        {
+          "input": [
+            "id,label\n7,"
+          ],
+          "expected": [
+            {
+              "id": 7,
+              "label": ""
+            }
+          ]
+        },
+        {
+          "input": [
+            "item,qty\npens,0"
+          ],
+          "expected": [
+            {
+              "item": "pens",
+              "qty": 0
+            }
+          ]
+        },
+        {
+          "input": [
+            "name,age"
+          ],
+          "expected": []
+        },
+        {
+          "input": [
+            ""
+          ],
+          "expected": []
+        }
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "class Inventory",
+      "category": "26 · JavaScript Labs",
+      "difficulty": "Medium",
+      "front": "**class Inventory**\n\nFinish `Inventory`, storing quantities in a private `Map`. `add(item, qty)` and `remove(item, qty)` return the new quantity; `count(item)` is 0 for unknown items; `items()` lists items in stock, sorted. Throw `RangeError(\"quantity must be positive\")` for a quantity of 0 or less and `RangeError(\"not enough <item>\")` when removing more than you have. An item that reaches 0 is no longer in stock. Don't change `run`.\n\n```js\n// Test driver: don't change. Runs each [method, ...args] and records the result.\nfunction run(actions) {\n  const inventory = new Inventory();\n  return actions.map(([method, ...args]) => {\n    try {\n      return inventory[method](...args);\n    } catch (error) {\n      return `${error.name}: ${error.message}`;\n    }\n  });\n}\nclass Inventory {\n  // TODO: #stock = new Map(); add, remove, count, items\n}\n```",
+      "back": "// Why: Validate before changing anything, so a rejected call leaves the stock as it was.\n// Deleting empty items keeps items() honest.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RangeError\n// Test driver: don't change. Runs each [method, ...args] and records the result.\nfunction run(actions) {\n  const inventory = new Inventory();\n  return actions.map(([method, ...args]) => {\n    try {\n      return inventory[method](...args);\n    } catch (error) {\n      return `${error.name}: ${error.message}`;\n    }\n  });\n}\nclass Inventory {\n  #stock = new Map();\n\n  add(item, quantity) {\n    if (quantity <= 0) throw new RangeError(\"quantity must be positive\");\n    const total = this.count(item) + quantity;\n    this.#stock.set(item, total);\n    return total;\n  }\n\n  remove(item, quantity) {\n    if (quantity <= 0) throw new RangeError(\"quantity must be positive\");\n    const have = this.count(item);\n    if (quantity > have) throw new RangeError(`not enough ${item}`);\n    const left = have - quantity;\n    if (left === 0) this.#stock.delete(item);\n    else this.#stock.set(item, left);\n    return left;\n  }\n\n  count(item) {\n    return this.#stock.get(item) ?? 0;\n  }\n\n  items() {\n    return [...this.#stock.keys()].sort();\n  }\n}\n",
+      "quote": "The RangeError object indicates an error when a value is not in the set or range of allowed values.",
+      "locator": "MDN — RangeError",
+      "source_title": "MDN — RangeError",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "lab-inventory",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "// Test driver: don't change. Runs each [method, ...args] and records the result.\nfunction run(actions) {\n  const inventory = new Inventory();\n  return actions.map(([method, ...args]) => {\n    try {\n      return inventory[method](...args);\n    } catch (error) {\n      return `${error.name}: ${error.message}`;\n    }\n  });\n}\nclass Inventory {\n  // TODO: #stock = new Map(); add, remove, count, items\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            [
+              [
+                "add",
+                "apple",
+                5
+              ],
+              [
+                "remove",
+                "apple",
+                2
+              ],
+              [
+                "count",
+                "apple"
+              ]
+            ]
+          ],
+          "expected": [
+            5,
+            3,
+            3
+          ]
+        },
+        {
+          "input": [
+            [
+              [
+                "remove",
+                "pear",
+                1
+              ]
+            ]
+          ],
+          "expected": [
+            "RangeError: not enough pear"
+          ]
+        },
+        {
+          "input": [
+            [
+              [
+                "add",
+                "kiwi",
+                0
+              ]
+            ]
+          ],
+          "expected": [
+            "RangeError: quantity must be positive"
+          ]
+        },
+        {
+          "input": [
+            [
+              [
+                "count",
+                "fig"
+              ]
+            ]
+          ],
+          "expected": [
+            0
+          ]
+        },
+        {
+          "input": [
+            [
+              [
+                "add",
+                "a",
+                1
+              ],
+              [
+                "remove",
+                "a",
+                0
+              ]
+            ]
+          ],
+          "expected": [
+            1,
+            "RangeError: quantity must be positive"
+          ]
+        },
+        {
+          "input": [
+            [
+              [
+                "add",
+                "b",
+                1
+              ],
+              [
+                "add",
+                "a",
+                2
+              ],
+              [
+                "remove",
+                "b",
+                1
+              ],
+              [
+                "items"
+              ]
+            ]
+          ],
+          "expected": [
+            1,
+            2,
+            0,
+            [
+              "a"
+            ]
+          ]
+        },
+        {
+          "input": [
+            [
+              [
+                "add",
+                "a",
+                1
+              ],
+              [
+                "remove",
+                "a",
+                2
+              ],
+              [
+                "count",
+                "a"
+              ]
+            ]
+          ],
+          "expected": [
+            1,
+            "RangeError: not enough a",
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "wordWrap(text, width)",
+      "category": "26 · JavaScript Labs",
+      "difficulty": "Medium",
+      "front": "**wordWrap(text, width)**\n\nWrite `wordWrap(text, width)`: split `text` into lines of at most `width` characters, breaking only at spaces. A word longer than `width` gets a line of its own. Return the lines as an array (`[]` for empty text).\n\n```js\nfunction wordWrap(text, width) {\n  // TODO\n  return [text];\n}\n```",
+      "back": "// Why: Keep a current line and decide per word whether it fits (+1 for the space). Don't\n// forget to push the last line after the loop.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/split\nfunction wordWrap(text, width) {\n  const lines = [];\n  let line = \"\";\n  for (const word of text.split(\" \").filter(Boolean)) {\n    if (line === \"\") {\n      line = word;\n    } else if (line.length + 1 + word.length <= width) {\n      line += \" \" + word;\n    } else {\n      lines.push(line);\n      line = word;\n    }\n  }\n  if (line !== \"\") lines.push(line);\n  return lines;\n}\n",
+      "quote": "The split() method of String values takes a pattern and divides this string into an ordered list of substrings by searching for the pattern, puts these substrings into an array, and returns the array.",
+      "locator": "MDN — String.prototype.split()",
+      "source_title": "MDN — String.prototype.split()",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "lab-word-wrap",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function wordWrap(text, width) {\n  // TODO\n  return [text];\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            "the quick brown fox",
+            10
+          ],
+          "expected": [
+            "the quick",
+            "brown fox"
+          ]
+        },
+        {
+          "input": [
+            "exactly ten",
+            11
+          ],
+          "expected": [
+            "exactly ten"
+          ]
+        },
+        {
+          "input": [
+            "exactly ten",
+            10
+          ],
+          "expected": [
+            "exactly",
+            "ten"
+          ]
+        },
+        {
+          "input": [
+            "supercalifragilistic is long",
+            10
+          ],
+          "expected": [
+            "supercalifragilistic",
+            "is long"
+          ]
+        },
+        {
+          "input": [
+            "a b c",
+            1
+          ],
+          "expected": [
+            "a",
+            "b",
+            "c"
+          ]
+        },
+        {
+          "input": [
+            "",
+            5
+          ],
+          "expected": []
+        }
+      ]
+    }
+  ]
+}

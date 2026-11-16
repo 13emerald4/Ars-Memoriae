@@ -32,6 +32,18 @@ def iter_cards() -> Iterator[tuple[Part, Subdeck, Card]]:
                 yield part, subdeck, card
 
 
+def _attach_quotes() -> None:
+    """Give every card a documentation quote (see quotes.py)."""
+    from .quotes import QUOTES
+
+    for _, _, card in iter_cards():
+        if not (card.source and card.source.quote) and card.key in QUOTES:
+            card.source = QUOTES[card.key]
+
+
+_attach_quotes()
+
+
 __all__ = [
     "COURSE",
     "ROOT_NAME",

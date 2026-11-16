@@ -1,0 +1,159 @@
+[
+  {
+    "card_type": "code",
+    "title": "Fix formatId(id)",
+    "category": "18 · Unions & Narrowing",
+    "difficulty": "Easy",
+    "front": "**Fix formatId(id)**\n\nThis doesn't compile: `toUpperCase` doesn't exist on numbers. Narrow the union: numbers become 6 digits with leading zeros (`42` → `\"000042\"`), strings are upper-cased.\n\n```ts\nfunction formatId(id: number | string): string {\n  return id.toUpperCase();\n}\n```",
+    "back": "// Why: After `typeof id === \"number\"` returns, TypeScript knows id is a string on the next\n// line.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/everyday-types.html\nfunction formatId(id: number | string): string {\n  if (typeof id === \"number\") return String(id).padStart(6, \"0\");\n  return id.toUpperCase();\n}\n",
+    "quote": "Narrowing occurs when TypeScript can deduce a more specific type for a value based on the structure of the code.",
+    "locator": "TypeScript Handbook — Everyday Types",
+    "source_title": "TypeScript Handbook — Everyday Types",
+    "tags": [
+      "js-ts-course",
+      "fix",
+      "ts18-format-id",
+      "code"
+    ],
+    "language": "typescript",
+    "starter_code": "function formatId(id: number | string): string {\n  return id.toUpperCase();\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          42
+        ],
+        "expected": "000042"
+      },
+      {
+        "input": [
+          123456
+        ],
+        "expected": "123456"
+      },
+      {
+        "input": [
+          "ab12"
+        ],
+        "expected": "AB12"
+      }
+    ],
+    "type_check": true,
+    "type_tests": "// @ts-expect-error: only numbers and strings are ids\nformatId(true);\n"
+  },
+  {
+    "card_type": "code",
+    "title": "describeInput(value)",
+    "category": "18 · Unions & Narrowing",
+    "difficulty": "Easy",
+    "front": "**describeInput(value)**\n\nWrite `describeInput(value: string | string[] | null): string` — `\"nothing\"` for null, `\"text: <value>\"` for a string, `\"list of <n>\"` for an array.\n\n```ts\nfunction describeInput(value: string | string[] | null): string {\n  return \"text: \" + value;\n}\n```",
+    "back": "// Why: Check null and arrays first; whatever is left must be a string. An empty string is\n// not null.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/narrowing.html\nfunction describeInput(value: string | string[] | null): string {\n  if (value === null) return \"nothing\";\n  if (Array.isArray(value)) return `list of ${value.length}`;\n  return `text: ${value}`;\n}\n",
+    "quote": "TypeScript follows possible paths of execution that our programs can take to analyze the most specific possible type of a value at a given position.",
+    "locator": "TypeScript Handbook — Narrowing",
+    "source_title": "TypeScript Handbook — Narrowing",
+    "tags": [
+      "js-ts-course",
+      "write",
+      "ts18-describe-input",
+      "code"
+    ],
+    "language": "typescript",
+    "starter_code": "function describeInput(value: string | string[] | null): string {\n  return \"text: \" + value;\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          "hi"
+        ],
+        "expected": "text: hi"
+      },
+      {
+        "input": [
+          ""
+        ],
+        "expected": "text: "
+      },
+      {
+        "input": [
+          [
+            "a",
+            "b"
+          ]
+        ],
+        "expected": "list of 2"
+      },
+      {
+        "input": [
+          []
+        ],
+        "expected": "list of 0"
+      },
+      {
+        "input": [
+          null
+        ],
+        "expected": "nothing"
+      }
+    ],
+    "type_check": true,
+    "type_tests": "// @ts-expect-error: numbers aren't allowed\ndescribeInput(5);\n"
+  },
+  {
+    "card_type": "code",
+    "title": "Type guard isString",
+    "category": "18 · Unions & Narrowing",
+    "difficulty": "Medium",
+    "front": "**Type guard isString**\n\n`isString` works at run time, but `[\"a\", 1].filter(isString)` still has the type `(string | number)[]`. Change its return type to a type predicate so the filter result is `string[]`.\n\n```ts\nfunction isString(value: unknown): boolean {\n  return typeof value === \"string\";\n}\n```",
+    "back": "// Why: `value is string` tells TypeScript that true means \"value is a string\", and filter\n// uses that to narrow its result. The compiler does not check that your body really tests\n// for a string: a wrong guard lies to it.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/narrowing.html\nfunction isString(value: unknown): value is string {\n  return typeof value === \"string\";\n}\n",
+    "quote": "To define a user-defined type guard, we simply need to define a function whose return type is a type predicate:",
+    "locator": "TypeScript Handbook — Narrowing",
+    "source_title": "TypeScript Handbook — Narrowing",
+    "tags": [
+      "js-ts-course",
+      "types",
+      "ts18-is-string",
+      "code"
+    ],
+    "language": "typescript",
+    "starter_code": "function isString(value: unknown): boolean {\n  return typeof value === \"string\";\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          "a"
+        ],
+        "expected": true
+      },
+      {
+        "input": [
+          ""
+        ],
+        "expected": true
+      },
+      {
+        "input": [
+          1
+        ],
+        "expected": false
+      },
+      {
+        "input": [
+          null
+        ],
+        "expected": false
+      }
+    ],
+    "type_check": true,
+    "type_tests": "const words: string[] = [\"a\", 1, \"b\"].filter(isString);\n"
+  },
+  {
+    "card_type": "qa",
+    "front": "Does this compile with `tsc --strict`? If not, which statement fails, and why?\n\n```ts\nfunction shout(value: string | number) {\n  return value.toUpperCase();\n}\nfunction size(value: string | string[]) {\n  return value.length;\n}\n```",
+    "back": "No. `value.toUpperCase()` fails: it does not exist on type 'number'. `value.length` compiles.\n\nWhy: Without narrowing you may only use what every member of the union has. Both strings and arrays have length; numbers have no toUpperCase.\n\nDocs: TypeScript Handbook — Everyday Types — https://www.typescriptlang.org/docs/handbook/2/everyday-types.html",
+    "quote": "If every member in a union has a property in common, you can use that property without narrowing:",
+    "locator": "TypeScript Handbook — Everyday Types",
+    "source_title": "TypeScript Handbook — Everyday Types",
+    "tags": [
+      "js-ts-course",
+      "compile",
+      "ts18-union-access"
+    ]
+  }
+]

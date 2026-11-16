@@ -1,0 +1,105 @@
+[
+  {
+    "card_type": "code",
+    "title": "class Temperature",
+    "category": "24 · Classes in TypeScript",
+    "difficulty": "Medium",
+    "front": "**class Temperature**\n\nRewrite `Temperature` with a private, readonly parameter property `celsius`, a `fahrenheit` getter, and `describe()` returning e.g. `\"100°C\"`. Don't change `check`.\n\n```ts\n// Test driver: don't change.\nfunction check(celsius: number): [number, string] {\n  const t = new Temperature(celsius);\n  return [t.fahrenheit, t.describe()];\n}\n\nclass Temperature {\n  celsius: number;\n  constructor(celsius: number) {\n    this.celsius = celsius;\n  }\n  // TODO\n}\n```",
+    "back": "// Why: `constructor(private readonly celsius: number) {}` declares and assigns the field\n// in one go. A getter with no setter is read-only to callers.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/classes.html\n// Test driver: don't change.\nfunction check(celsius: number): [number, string] {\n  const t = new Temperature(celsius);\n  return [t.fahrenheit, t.describe()];\n}\n\nclass Temperature {\n  constructor(private readonly celsius: number) {}\n\n  get fahrenheit(): number {\n    return (this.celsius * 9) / 5 + 32;\n  }\n\n  describe(): string {\n    return `${this.celsius}°C`;\n  }\n}\n",
+    "quote": "TypeScript offers special syntax for turning a constructor parameter into a class property with the same name and value. These are called parameter properties and are created by prefixing a constructor argument with one of the visibility modifiers public, private, protected, or readonly.",
+    "locator": "TypeScript Handbook — Classes",
+    "source_title": "TypeScript Handbook — Classes",
+    "tags": [
+      "js-ts-course",
+      "write",
+      "ts24-temperature",
+      "code"
+    ],
+    "language": "typescript",
+    "starter_code": "// Test driver: don't change.\nfunction check(celsius: number): [number, string] {\n  const t = new Temperature(celsius);\n  return [t.fahrenheit, t.describe()];\n}\n\nclass Temperature {\n  celsius: number;\n  constructor(celsius: number) {\n    this.celsius = celsius;\n  }\n  // TODO\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          100
+        ],
+        "expected": [
+          212,
+          "100°C"
+        ]
+      },
+      {
+        "input": [
+          0
+        ],
+        "expected": [
+          32,
+          "0°C"
+        ]
+      },
+      {
+        "input": [
+          -40
+        ],
+        "expected": [
+          -40,
+          "-40°C"
+        ]
+      }
+    ],
+    "type_check": true,
+    "type_tests": "const t = new Temperature(20);\nconst f: number = t.fahrenheit;\n// @ts-expect-error: celsius is private\nt.celsius;\n// @ts-expect-error: fahrenheit has no setter\nt.fahrenheit = 0;\n"
+  },
+  {
+    "card_type": "qa",
+    "front": "Does this compile with `tsc --strict`? If not, which statement fails, and why?\n\n```ts\nclass Account {\n  private pin = 1234;\n  #secret = \"s3cret\";\n}\nconst account = new Account();\nconsole.log(account[\"pin\"]);\nconsole.log(account.pin);\n```",
+    "back": "No. `account.pin` fails: Property 'pin' is private. `account[\"pin\"]` compiles.\n\nWhy: TypeScript's private is only checked by the compiler, and bracket access is allowed as an escape hatch. At run time pin is an ordinary property. A #field can't be reached from outside at all.\n\nDocs: TypeScript Handbook — Classes — https://www.typescriptlang.org/docs/handbook/2/classes.html",
+    "quote": "This makes private-declared fields potentially easier to access for things like unit tests, with the drawback that these fields are soft private and don't strictly enforce privacy.",
+    "locator": "TypeScript Handbook — Classes",
+    "source_title": "TypeScript Handbook — Classes",
+    "tags": [
+      "js-ts-course",
+      "compile",
+      "ts24-private-vs-hash"
+    ]
+  },
+  {
+    "card_type": "code",
+    "title": "class MemoryLogger implements Logger",
+    "category": "24 · Classes in TypeScript",
+    "difficulty": "Medium",
+    "front": "**class MemoryLogger implements Logger**\n\nWrite `MemoryLogger` so it `implements Logger`: `log` stores messages in a private array and `history()` returns a copy, so callers can't change the stored log. Don't change `check` or `Logger`.\n\n```ts\n// Test driver: don't change.\nfunction check(messages: string[]): string[] {\n  const logger: Logger = new MemoryLogger();\n  messages.forEach((m) => logger.log(m));\n  logger.history().push(\"tampered\");\n  return logger.history();\n}\n\ninterface Logger {\n  log(message: string): void;\n  history(): string[];\n}\n\nclass MemoryLogger {\n  // TODO\n}\n```",
+    "back": "// Why: `implements` makes the compiler check the class against the interface. Returning\n// the private array itself would let any caller change it; return a copy.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/classes.html\n// Test driver: don't change.\nfunction check(messages: string[]): string[] {\n  const logger: Logger = new MemoryLogger();\n  messages.forEach((m) => logger.log(m));\n  logger.history().push(\"tampered\");\n  return logger.history();\n}\n\ninterface Logger {\n  log(message: string): void;\n  history(): string[];\n}\n\nclass MemoryLogger implements Logger {\n  private messages: string[] = [];\n\n  log(message: string): void {\n    this.messages.push(message);\n  }\n\n  history(): string[] {\n    return [...this.messages];\n  }\n}\n",
+    "quote": "You can use an implements clause to check that a class satisfies a particular interface.",
+    "locator": "TypeScript Handbook — Classes",
+    "source_title": "TypeScript Handbook — Classes",
+    "tags": [
+      "js-ts-course",
+      "write",
+      "ts24-implements",
+      "code"
+    ],
+    "language": "typescript",
+    "starter_code": "// Test driver: don't change.\nfunction check(messages: string[]): string[] {\n  const logger: Logger = new MemoryLogger();\n  messages.forEach((m) => logger.log(m));\n  logger.history().push(\"tampered\");\n  return logger.history();\n}\n\ninterface Logger {\n  log(message: string): void;\n  history(): string[];\n}\n\nclass MemoryLogger {\n  // TODO\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          [
+            "a",
+            "b"
+          ]
+        ],
+        "expected": [
+          "a",
+          "b"
+        ]
+      },
+      {
+        "input": [
+          []
+        ],
+        "expected": []
+      }
+    ],
+    "type_check": true
+  }
+]

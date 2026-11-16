@@ -1,0 +1,17 @@
+\phantomsection\label{ch:c09}
+\chap{9. How can a function solve a problem by calling itself?}{A recursive function answers the smallest case directly and hands a smaller version of the problem to itself.}
+
+\subsection{What makes recursion stop?}% sec:c09-base
+A base case. \term[\textbf{Recursion:} a function calling itself on a smaller part of the problem. Like nesting dolls: open one, find a smaller one, until the smallest.]{recursion}{Recursion} has two kinds of input: a \term[\textbf{Base case:} the input a recursive function answers without calling itself. The smallest doll, which doesn't open.]{basecase}{base case}, answered directly, and a recursive case, which calls the function again on something smaller. Without a base case that every input eventually reaches, the calls never stop and JavaScript throws a \code{RangeError} when its call stack is full.
+%%SNIPPET:c09-base%%
+
+\subsection{Why does recursion fit nested data?}% sec:c09-nested
+Because each nested piece is the same problem, smaller: an array inside an array, a folder inside a folder. The function handles one level and calls itself for each nested piece, so it works at any depth. \code{flat()} removes only one level of nesting.
+%%SNIPPET:c09-nested%%
+
+\subsection{In what order do recursive calls finish?}% sec:c09-order
+Last started, first finished. Each call waits on the \term[\textbf{Call stack:} the list of function calls that have started but not yet returned. Like a stack of plates: each call adds one, each return removes the top one.]{callstack}{call stack} until the smaller call returns, then uses that result. So results are put together on the way back out.
+%%SNIPPET:c09-order%%
+
+\mantra{Write the smallest case first; then shrink the problem toward it.}
+\begin{ponder}\code{factorial} returns 1 for any \code{n <= 1}. What does \code{factorial(-3)} return? Is that a correct answer, or would throwing an error be better?\end{ponder}

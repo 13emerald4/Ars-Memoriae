@@ -1,0 +1,235 @@
+{
+  "deck": "JavaScript & TypeScript: Zero to Mastery · 22 · Generics, Constraints & keyof",
+  "priority": 50,
+  "notes": [
+    {
+      "card_type": "code",
+      "title": "firstElement<T>(arr)",
+      "category": "22 · Generics, Constraints & keyof",
+      "difficulty": "Easy",
+      "front": "**firstElement<T>(arr)**\n\nWrite the generic `firstElement<T>(arr: T[]): T | undefined`: the first item, or `undefined` for an empty array. Callers must keep the item type and be told it might be missing.\n\n```ts\nfunction firstElement(arr: any[]): any {\n  return undefined;\n}\n```",
+      "back": "// Why: T is filled in from the argument (string[] gives T = string). The `| undefined` is\n// honest about empty arrays: arr[0] has type T, but at run time it can be undefined.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/generics.html\nfunction firstElement<T>(arr: T[]): T | undefined {\n  return arr[0];\n}\n",
+      "quote": "Here, we will use a type variable, a special kind of variable that works on types rather than values.",
+      "locator": "TypeScript Handbook — Generics",
+      "source_title": "TypeScript Handbook — Generics",
+      "tags": [
+        "js-ts-course",
+        "types",
+        "ts22-first-element",
+        "code"
+      ],
+      "language": "typescript",
+      "starter_code": "function firstElement(arr: any[]): any {\n  return undefined;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            [
+              "alpha",
+              "beta"
+            ]
+          ],
+          "expected": "alpha"
+        },
+        {
+          "input": [
+            [
+              42,
+              99
+            ]
+          ],
+          "expected": 42
+        },
+        {
+          "input": [
+            []
+          ],
+          "expected": {
+            "$undefined": true
+          }
+        }
+      ],
+      "type_check": true,
+      "type_tests": "const s: string | undefined = firstElement([\"a\", \"b\"]);\nconst n: number | undefined = firstElement([1, 2]);\n// @ts-expect-error: the result may be undefined\nconst definitely: number = firstElement([1]);\n"
+    },
+    {
+      "card_type": "code",
+      "title": "longest<T>(a, b)",
+      "category": "22 · Generics, Constraints & keyof",
+      "difficulty": "Easy",
+      "front": "**longest<T>(a, b)**\n\nWrite `longest(a, b)`: return whichever argument is longer (the first on a tie). It must accept anything with a numeric `length` — strings, arrays — keep the argument type, and reject numbers.\n\n```ts\nfunction longest(a: any, b: any): any {\n  return a.length > b.length ? a : b;\n}\n```",
+      "back": "// Why: `T extends { length: number }` lets the body use .length and makes the compiler\n// reject arguments without it, while T still remembers the exact type passed in.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/generics.html\nfunction longest<T extends { length: number }>(a: T, b: T): T {\n  return b.length > a.length ? b : a;\n}\n",
+      "quote": "Instead of working with any and all types, we'd like to constrain this function to work with any and all types that also have the .length property.",
+      "locator": "TypeScript Handbook — Generics",
+      "source_title": "TypeScript Handbook — Generics",
+      "tags": [
+        "js-ts-course",
+        "types",
+        "ts22-longest",
+        "code"
+      ],
+      "language": "typescript",
+      "starter_code": "function longest(a: any, b: any): any {\n  return a.length > b.length ? a : b;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            "alice",
+            "bob"
+          ],
+          "expected": "alice"
+        },
+        {
+          "input": [
+            [
+              1,
+              2
+            ],
+            [
+              1,
+              2,
+              3
+            ]
+          ],
+          "expected": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "input": [
+            "ab",
+            "cd"
+          ],
+          "expected": "ab"
+        }
+      ],
+      "type_check": true,
+      "type_tests": "const s: string = longest(\"a\", \"bb\");\nconst arr: number[] = longest([1], [2, 3]);\n// @ts-expect-error: numbers have no length\nlongest(10, 100);\n"
+    },
+    {
+      "card_type": "code",
+      "title": "getProperty(obj, key)",
+      "category": "22 · Generics, Constraints & keyof",
+      "difficulty": "Easy",
+      "front": "**getProperty(obj, key)**\n\nWrite `getProperty(obj, key)` so the key must be one of `obj`'s keys and the result has that property's type.\n\n```ts\nfunction getProperty(obj: any, key: string): any {\n  return obj[key];\n}\n```",
+      "back": "// Why: keyof T is the union of T's keys (\"id\" | \"name\"); K extends it, so only real keys\n// are allowed, and T[K] is the type stored under that key.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/keyof-types.html\nfunction getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {\n  return obj[key];\n}\n",
+      "quote": "The keyof operator takes an object type and produces a string or numeric literal union of its keys.",
+      "locator": "TypeScript Handbook — Keyof Type Operator",
+      "source_title": "TypeScript Handbook — Keyof Type Operator",
+      "tags": [
+        "js-ts-course",
+        "types",
+        "ts22-get-property",
+        "code"
+      ],
+      "language": "typescript",
+      "starter_code": "function getProperty(obj: any, key: string): any {\n  return obj[key];\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            {
+              "id": 1,
+              "name": "Ada"
+            },
+            "name"
+          ],
+          "expected": "Ada"
+        },
+        {
+          "input": [
+            {
+              "id": 1
+            },
+            "id"
+          ],
+          "expected": 1
+        }
+      ],
+      "type_check": true,
+      "type_tests": "const userName: string = getProperty({ id: 1, name: \"Ada\" }, \"name\");\nconst id: number = getProperty({ id: 1, name: \"Ada\" }, \"id\");\n// @ts-expect-error: \"age\" is not a key\ngetProperty({ id: 1, name: \"Ada\" }, \"age\");\n"
+    },
+    {
+      "card_type": "code",
+      "title": "pluck(items, key)",
+      "category": "22 · Generics, Constraints & keyof",
+      "difficulty": "Medium",
+      "front": "**pluck(items, key)**\n\nWrite `pluck(items, key)`: the value of `key` from every item, as an array. Type it so the key must exist on the items and the result has the right element type.\n\n```ts\nfunction pluck(items: any[], key: string): any[] {\n  return [];\n}\n```",
+      "back": "// Why: The same keyof pattern as getProperty, applied to every item: T[K][] is \"an array\n// of whatever is under K\".\n// Docs: https://www.typescriptlang.org/docs/handbook/2/indexed-access-types.html\nfunction pluck<T, K extends keyof T>(items: T[], key: K): T[K][] {\n  return items.map((item) => item[key]);\n}\n",
+      "quote": "We can use an indexed access type to look up a specific property on another type:",
+      "locator": "TypeScript Handbook — Indexed Access Types",
+      "source_title": "TypeScript Handbook — Indexed Access Types",
+      "tags": [
+        "js-ts-course",
+        "types",
+        "ts22-pluck",
+        "code"
+      ],
+      "language": "typescript",
+      "starter_code": "function pluck(items: any[], key: string): any[] {\n  return [];\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            [
+              {
+                "id": 1,
+                "name": "Ada"
+              },
+              {
+                "id": 2,
+                "name": "Grace"
+              }
+            ],
+            "name"
+          ],
+          "expected": [
+            "Ada",
+            "Grace"
+          ]
+        },
+        {
+          "input": [
+            [],
+            "name"
+          ],
+          "expected": []
+        },
+        {
+          "input": [
+            [
+              {
+                "v": 1
+              }
+            ],
+            "v"
+          ],
+          "expected": [
+            1
+          ]
+        },
+        {
+          "input": [
+            [
+              {
+                "v": 1
+              },
+              {
+                "v": 2
+              },
+              {
+                "v": 3
+              }
+            ],
+            "v"
+          ],
+          "expected": [
+            1,
+            2,
+            3
+          ]
+        }
+      ],
+      "type_check": true,
+      "type_tests": "const names: string[] = pluck([{ id: 1, name: \"Ada\" }], \"name\");\nconst ids: number[] = pluck([{ id: 1, name: \"Ada\" }], \"id\");\n// @ts-expect-error: \"age\" is not a key of the items\npluck([{ id: 1, name: \"Ada\" }], \"age\");\n"
+    }
+  ]
+}

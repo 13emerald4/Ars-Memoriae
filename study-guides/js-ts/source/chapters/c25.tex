@@ -1,0 +1,17 @@
+\phantomsection\label{ch:c25}
+\chap{25. Which compiler checks catch the most bugs?}{\code{strict} turns on \code{strictNullChecks}, so \code{null} and \code{undefined} must be handled; \code{noUncheckedIndexedAccess} (not part of \code{strict}) adds \code{| undefined} to index lookups; \code{satisfies} checks a value without widening its type.}
+
+\subsection{What does strictNullChecks change?}% sec:c25-null
+It makes \code{null} and \code{undefined} their own types. With \term[\textbf{strict mode:} the \code{strict} compiler option, which turns on a group of checks including \code{strictNullChecks} and \code{noImplicitAny}. Like the strictest proofreading setting.]{strict}{strict mode} on, a value that may be \code{null} must be tested before you use its methods or properties; \code{?.} and \code{??} are the short ways to do it.
+%%SNIPPET:c25-null%%
+
+\subsection{Why might arr[0] be undefined when its type says number?}% sec:c25-index
+Because an index can be past the end of the array, and by default TypeScript types \code{arr[0]} as the element type anyway. Turning on \code{noUncheckedIndexedAccess} adds \code{undefined} to every index lookup, so you must handle the missing case. Without it, this code compiles and then crashes on an empty array.
+%%SNIPPET:c25-index%%
+
+\subsection{How do you check a value against a type without losing its exact type?}% sec:c25-satisfies
+With \code{satisfies}. An annotation replaces the value's type with the annotated one; \code{satisfies} checks that the value matches the type and keeps the more precise type TypeScript inferred.
+%%SNIPPET:c25-satisfies%%
+
+\mantra{Turn the checks on; let the compiler find the null before your users do.}
+\begin{ponder}With \code{noUncheckedIndexedAccess}, \code{arr[0]} is \code{number | undefined} even right after \code{if (arr.length > 0)}. Why can't TypeScript connect the two, and what would you write instead?\end{ponder}

@@ -1,0 +1,117 @@
+[
+  {
+    "card_type": "code",
+    "title": "area(shape)",
+    "category": "21 · Discriminated Unions & Exhaustiveness",
+    "difficulty": "Easy",
+    "front": "**area(shape)**\n\nFinish `area` for every `Shape`, switching on `kind`, and add a `default` branch that assigns `shape` to a `never` variable so a new shape can't be forgotten.\n\n```ts\ntype Shape =\n  | { kind: \"circle\"; radius: number }\n  | { kind: \"square\"; side: number }\n  | { kind: \"rect\"; width: number; height: number };\n\nfunction area(shape: Shape): number {\n  switch (shape.kind) {\n    case \"circle\":\n      return Math.PI * shape.radius ** 2;\n    // TODO: square, rect, and a never check\n  }\n}\n```",
+    "back": "// Why: Inside `case \"rect\"`, TypeScript knows shape has width and height. In default every\n// variant has been handled, so shape is `never`; add a variant without a case and that\n// assignment stops compiling.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/narrowing.html\ntype Shape =\n  | { kind: \"circle\"; radius: number }\n  | { kind: \"square\"; side: number }\n  | { kind: \"rect\"; width: number; height: number };\n\nfunction area(shape: Shape): number {\n  switch (shape.kind) {\n    case \"circle\":\n      return Math.PI * shape.radius ** 2;\n    case \"square\":\n      return shape.side ** 2;\n    case \"rect\":\n      return shape.width * shape.height;\n    default: {\n      const unreachable: never = shape;\n      throw new Error(`unknown shape: ${JSON.stringify(unreachable)}`);\n    }\n  }\n}\n",
+    "quote": "The never type is assignable to every type; however, no type is assignable to never (except never itself). This means you can use narrowing and rely on never turning up to do exhaustive checking in a switch statement.",
+    "locator": "TypeScript Handbook — Narrowing",
+    "source_title": "TypeScript Handbook — Narrowing",
+    "tags": [
+      "js-ts-course",
+      "write",
+      "ts21-area",
+      "code"
+    ],
+    "language": "typescript",
+    "starter_code": "type Shape =\n  | { kind: \"circle\"; radius: number }\n  | { kind: \"square\"; side: number }\n  | { kind: \"rect\"; width: number; height: number };\n\nfunction area(shape: Shape): number {\n  switch (shape.kind) {\n    case \"circle\":\n      return Math.PI * shape.radius ** 2;\n    // TODO: square, rect, and a never check\n  }\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          {
+            "kind": "circle",
+            "radius": 1
+          }
+        ],
+        "expected": 3.141592653589793
+      },
+      {
+        "input": [
+          {
+            "kind": "square",
+            "side": 3
+          }
+        ],
+        "expected": 9
+      },
+      {
+        "input": [
+          {
+            "kind": "rect",
+            "width": 2,
+            "height": 5
+          }
+        ],
+        "expected": 10
+      }
+    ],
+    "type_check": true,
+    "type_tests": "// @ts-expect-error: a triangle is not a Shape\narea({ kind: \"triangle\", base: 1, height: 2 });\n"
+  },
+  {
+    "card_type": "qa",
+    "front": "Does this compile with `tsc --strict`? If not, which statement fails, and why?\n\n```ts\ntype Shape =\n  | { kind: \"circle\"; radius: number }\n  | { kind: \"square\"; side: number }\n  | { kind: \"triangle\"; base: number; height: number };\nfunction area(shape: Shape): number {\n  switch (shape.kind) {\n    case \"circle\":\n      return Math.PI * shape.radius ** 2;\n    case \"square\":\n      return shape.side ** 2;\n    default: {\n      const unreachable: never = shape;\n      throw new Error(`unknown shape: ${JSON.stringify(unreachable)}`);\n    }\n  }\n}\n```",
+    "back": "No. `const unreachable: never = shape` fails: the triangle type is not assignable to type 'never' — there is no case for \"triangle\".\n\nWhy: After the circle and square cases, the only thing shape can still be is a triangle, so it isn't never. Add the missing case and it compiles.\n\nDocs: TypeScript Handbook — Narrowing — https://www.typescriptlang.org/docs/handbook/2/narrowing.html",
+    "quote": "For example, adding a default to our getArea function which tries to assign the shape to never will not raise an error when every possible case has been handled.",
+    "locator": "TypeScript Handbook — Narrowing",
+    "source_title": "TypeScript Handbook — Narrowing",
+    "tags": [
+      "js-ts-course",
+      "compile",
+      "ts21-exhaustive"
+    ]
+  },
+  {
+    "card_type": "code",
+    "title": "Type the counter's actions",
+    "category": "21 · Discriminated Unions & Exhaustiveness",
+    "difficulty": "Medium",
+    "front": "**Type the counter's actions**\n\n`Action` is too loose: the compiler accepts `{ type: \"add\" }` with no amount, and actions that don't exist. Replace it with a discriminated union of the three real actions.\n\n```ts\ntype Action = { type: string; amount?: number };\n\nfunction counter(state: number, action: Action): number {\n  switch (action.type) {\n    case \"increment\":\n      return state + 1;\n    case \"add\":\n      return state + (action.amount ?? 0);\n    case \"reset\":\n      return 0;\n    default:\n      return state;\n  }\n}\n```",
+    "back": "// Why: With one object type per action, \"add\" must carry an amount and unknown types are\n// rejected where the action is created — and the switch needs no default.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/narrowing.html\ntype Action =\n  | { type: \"increment\" }\n  | { type: \"add\"; amount: number }\n  | { type: \"reset\" };\n\nfunction counter(state: number, action: Action): number {\n  switch (action.type) {\n    case \"increment\":\n      return state + 1;\n    case \"add\":\n      return state + action.amount;\n    case \"reset\":\n      return 0;\n  }\n}\n",
+    "quote": "Discriminated unions are useful for more than just talking about circles and squares.",
+    "locator": "TypeScript Handbook — Narrowing",
+    "source_title": "TypeScript Handbook — Narrowing",
+    "tags": [
+      "js-ts-course",
+      "types",
+      "ts21-counter-actions",
+      "code"
+    ],
+    "language": "typescript",
+    "starter_code": "type Action = { type: string; amount?: number };\n\nfunction counter(state: number, action: Action): number {\n  switch (action.type) {\n    case \"increment\":\n      return state + 1;\n    case \"add\":\n      return state + (action.amount ?? 0);\n    case \"reset\":\n      return 0;\n    default:\n      return state;\n  }\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          0,
+          {
+            "type": "increment"
+          }
+        ],
+        "expected": 1
+      },
+      {
+        "input": [
+          5,
+          {
+            "type": "add",
+            "amount": 10
+          }
+        ],
+        "expected": 15
+      },
+      {
+        "input": [
+          7,
+          {
+            "type": "reset"
+          }
+        ],
+        "expected": 0
+      }
+    ],
+    "type_check": true,
+    "type_tests": "counter(0, { type: \"add\", amount: 2 });\n// @ts-expect-error: \"add\" needs an amount\ncounter(0, { type: \"add\" });\n// @ts-expect-error: there is no \"jump\" action\ncounter(0, { type: \"jump\" });\n"
+  }
+]

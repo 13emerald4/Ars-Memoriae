@@ -1,0 +1,20 @@
+\phantomsection\label{ch:c02}
+\chap{2. How does JavaScript compare values and choose a branch?}{\code{===} compares without converting; truthiness decides an \code{if}; and \code{||}, \code{\&\&} and \code{??} hand back one of their operands.}
+
+\subsection{Why prefer === over ==?}% sec:c02-equality
+Because \code{===} never converts. \code{==} first applies \term[\textbf{Coercion:} JavaScript converting a value to another type on its own, e.g. \code{""} to \code{0}. Like a currency exchange that happens before you can compare prices.]{coercion}{coercion}, so \code{0 == ""} is \code{true}. The \term[\textbf{Strict equality (===):} comparison that treats values of different types as different. Like comparing two prices only if they are in the same currency.]{strict}{strict equality} operator treats operands of different types as different. Two other surprises: \code{null == undefined} is \code{true} but \code{null == 0} is not, and \code{NaN} equals nothing, not even itself---use \code{Number.isNaN}.
+%%SNIPPET:c02-equality%%
+
+\subsection{What counts as true in an if?}% sec:c02-truthy
+An \code{if} runs its block when the condition is \term[\textbf{Truthy / falsy:} whether a value counts as true or false in a condition. Like a bouncer's list: eight values are turned away, everyone else gets in.]{truthy}{truthy}. Exactly eight values are falsy: \code{false}, \code{0}, \code{-0}, \code{0n}, \code{""}, \code{null}, \code{undefined} and \code{NaN}. Everything else is truthy, including \code{[]}, \code{\{\}} and the strings \code{"0"} and \code{"false"}.
+
+\subsection{How do you write a chain of decisions?}% sec:c02-branches
+With \code{if} statements that return early, checked from the most demanding case down. Each later \code{if} then only sees what the earlier ones let through, so every boundary is decided once. Test each boundary value itself.
+%%SNIPPET:c02-branches%%
+
+\subsection{What do ||, \&\& and ?? really return?}% sec:c02-logical
+One of their operands, not \code{true} or \code{false}. \code{a || b} returns \code{a} if it is truthy, else \code{b}; \code{a \&\& b} returns \code{a} if it is falsy, else \code{b}. The \term[\textbf{Nullish coalescing (??):} returns its right side only when its left side is \code{null} or \code{undefined}. Like a substitute who steps in only if the player is absent, not if the player scores zero.]{nullish}{nullish coalescing} operator \code{??} returns its right side only for \code{null} or \code{undefined}, so a real \code{0} or \code{""} survives. That makes it the right tool for defaults.
+%%SNIPPET:c02-nullish%%
+
+\mantra{Compare with ===; default with ??.}
+\begin{ponder}An untouched form field holds \code{null}; a cleared one holds \code{""}. Should a blank (cleared) name become \code{"Anonymous"}? Which of \code{||} and \code{??} gives the behaviour you chose?\end{ponder}

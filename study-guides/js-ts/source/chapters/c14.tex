@@ -1,0 +1,16 @@
+\phantomsection\label{ch:c14}
+\chap{14. How do separate files share code?}{Each file is a module with its own scope: \code{export} shares a name, \code{import} borrows it---named imports in braces, the default import without---and a module runs once, so its importers share its state.}
+
+\subsection{How do you share a function between files?}% sec:c14-import
+Export it from one \term[\textbf{Module:} a file with its own scope that shares only what it exports. Like a room with labelled hatches: only what is passed through a hatch leaves the room.]{module}{module} and import it in another. A \term[\textbf{Named export:} a value exported under its own name and imported in braces, \code{import \{ PI \}}. A hatch with a nameplate.]{namedexport}{named export} is imported in braces under its exact name (rename with \code{as}). A module can have one \term[\textbf{Default export:} the one unnamed export of a module, imported without braces under any name you choose. The main hatch.]{defaultexport}{default export}, imported without braces under any name.
+%%SNIPPET:c14-import%%
+
+\subsection{What happens if you import a name that isn't exported?}% sec:c14-missing
+Nothing runs. Imports are checked before any code in the importing file runs, so asking for a named export that doesn't exist---for example asking for \code{\{ add \}} when \code{add} is the default export---fails at once with a \code{SyntaxError}.
+
+\subsection{If two files import the same module, do they get two copies?}% sec:c14-once
+No. A module is evaluated once, and every import is a live, read-only view of its exports. Two imports of the same function share the same variables behind it.
+%%SNIPPET:c14-once%%
+
+\mantra{Export on purpose; import by name.}
+\begin{ponder}A module keeps a counter in a \code{let} and exports it. Can a file that imports it write \code{count = 0} to reset it? What does ``read-only live binding'' predict?\end{ponder}

@@ -1,0 +1,17 @@
+\phantomsection\label{ch:c19}
+\chap{19. How do you type a function's inputs and outputs?}{\code{param?: T} may be left out; \code{param = value} has a default and an inferred type; overload signatures give one function several typed call shapes; a function typed \code{: undefined} needs no \code{return}.}
+
+\subsection{How do optional and default parameters differ?}% sec:c19-optional
+Both may be left out; only a default supplies a value. An optional parameter \code{mark?: string} has the type \code{string | undefined} inside the function, so you handle the missing case yourself. A default \code{greeting = "Hello"} gives the parameter its type from the value and uses that value whenever the argument is missing or \code{undefined}.
+%%SNIPPET:c19-optional%%
+
+\subsection{How can one function have several typed call shapes?}% sec:c19-overloads
+With \term[\textbf{Overload signatures:} several bodiless declarations of one function, each a call shape callers may use, followed by the implementation. Like a menu listing the orders the kitchen accepts.]{overload}{overload signatures}: write one bodiless signature per call shape, then a single implementation whose signature covers them all. Callers see only the overloads, so \code{parse("42")} is a \code{number} rather than \code{string | number}.
+%%SNIPPET:c19-overloads%%
+
+\subsection{Must a function that returns undefined say return?}% sec:c19-undefined
+No, since TypeScript 5.1. In JavaScript a function that ends without \code{return} returns \code{undefined}, and a function typed \code{: undefined} may now do the same. A function typed to return a \code{string} must still return one.
+%%SNIPPET:c19-undefined%%
+
+\mantra{Type the call shapes callers need; let defaults supply the rest.}
+\begin{ponder}The implementation of \code{parse} accepts \code{string | number}. Why can't a caller pass a value of type \code{string | number}, even though the body handles both?\end{ponder}

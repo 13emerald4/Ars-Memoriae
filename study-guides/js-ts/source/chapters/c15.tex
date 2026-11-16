@@ -1,0 +1,21 @@
+\phantomsection\label{ch:c15}
+\chap{15. What does TypeScript add to JavaScript, and what does it not do?}{TypeScript checks types before the code runs, then strips them: types never change what the program does, and \code{tsc} writes the JavaScript even when it finds errors. Data from outside must be checked with real code.}
+
+\subsection{What is TypeScript?}% sec:c15-checker
+\term[\textbf{TypeScript:} JavaScript plus type annotations that a checker reads before the code runs. Like JavaScript with a spell-checker for types.]{typescript}{TypeScript} is JavaScript with types written in. A \term[\textbf{Type annotation:} a type written after a name, as in \code{name: string}. Like a label on a box saying what may go in.]{annotation}{type annotation} such as \code{name: string} says what a value may be, and the \term[\textbf{Compiler (tsc):} the program that checks the types and writes plain JavaScript. Like a proofreader who reads your code before it is printed.]{compiler}{compiler}, \code{tsc}, reports any code that breaks those promises.
+%%SNIPPET:c15-checker%%
+
+\subsection{What happens to the types when the code runs?}% sec:c15-erasure
+They are gone. \term[\textbf{Type erasure:} the compiler removing type annotations when it writes JavaScript. Like peeling the labels off boxes before they ship.]{erasure}{Type erasure} means the compiler strips the annotations, and type annotations never change the runtime behaviour of a program. By default \code{tsc} still writes the JavaScript when it finds errors (the \code{noEmitOnError} option stops that), so a type error you ignore runs anyway.
+%%SNIPPET:c15-erasure%%
+
+\subsection{Is every TypeScript feature erased?}% sec:c15-enum
+No. A few features produce real code; \code{enum} is the common one. An enum is not a type-level extension of JavaScript: it compiles to an object, and a numeric enum also maps numbers back to names.
+%%SNIPPET:c15-enum%%
+
+\subsection{How do you check data that arrives at run time?}% sec:c15-runtime
+With ordinary checks such as \code{typeof} and \code{in}, which TypeScript understands (\hyperref[ch:c18]{Ch.~18}). Data from \code{JSON.parse} or a user has no checked type; give it the type \code{unknown} (\hyperref[ch:c20]{Ch.~20}). A \term[\textbf{Type assertion (as):} telling the compiler to treat a value as a type, e.g. \code{data as User}; nothing is checked. Like sticking a label on a box without opening it.]{assertion}{type assertion} such as \code{data as User} checks nothing; it only tells the compiler what to assume.
+%%SNIPPET:c15-runtime%%
+
+\mantra{Types are checked, then erased: check outside data yourself.}
+\begin{ponder}If \code{tsc} writes the JavaScript even when there are errors, why run it at all? What would turning on \code{noEmitOnError} change in your workflow?\end{ponder}

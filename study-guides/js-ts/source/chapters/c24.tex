@@ -1,0 +1,17 @@
+\phantomsection\label{ch:c24}
+\chap{24. What does TypeScript add to classes?}{TypeScript adds \code{public}, \code{private}, \code{protected} and \code{readonly}, parameter properties and \code{implements}. Its \code{private} is checked only by the compiler; a \code{\#field} stays private at run time.}
+
+\subsection{How do you declare fields concisely?}% sec:c24-modifiers
+With parameter properties: a constructor parameter prefixed by an \term[\textbf{Access modifier:} \code{public}, \code{private} or \code{protected} on a class member, saying who may use it. Like a sign on a door: ``staff only''.]{modifier}{access modifier} or \code{readonly} becomes a field with the same name and value, so \code{constructor(private readonly c: number) \{\}} declares and assigns \code{c} in one go. A \code{get} accessor with no setter is read-only to callers.
+%%SNIPPET:c24-modifiers%%
+
+\subsection{How private is private?}% sec:c24-private
+Only as private as the compiler is strict. TypeScript's \code{private} is checked during type checking, and bracket access (\code{obj["secret"]}) is allowed as an escape hatch. At run time the field is an ordinary property. A JavaScript \code{\#field} (Part~1, Ch.~12) cannot be reached from outside at all.
+%%SNIPPET:c24-private%%
+
+\subsection{How do you make a class promise an interface?}% sec:c24-implements
+With \code{implements}: \code{class C implements I} makes the compiler check that the class has everything the interface lists, and report the class if it doesn't.
+%%SNIPPET:c24-implements%%
+
+\mantra{private stops the compiler; \# stops the program.}
+\begin{ponder}A test wants to read a \code{private} field. Why does \code{obj["field"]} compile, and why is that both useful and risky?\end{ponder}

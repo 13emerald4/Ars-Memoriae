@@ -1,0 +1,17 @@
+\phantomsection\label{ch:c26}
+\chap{26. How do you build a small JavaScript program from the pieces?}{Clean the input first, check before you change any data, and build the result step by step in a variable; the edge cases (empty input, zero, an exact fit) decide whether the program is correct.}
+
+\subsection{How do you start a program that reads messy text?}% sec:c26-plan
+By cleaning the input before the main logic sees it: split the text into lines, trim each line, and drop the blank ones. Then look for the \term[\textbf{Edge case:} an input at the boundary of what a task allows: empty, zero, exactly full, one too many. Like the last step of a staircase, where people trip.]{edge}{edge cases}. \code{Number("")} is \code{0}, not \code{NaN}, so an empty cell turns silently into a zero unless you test for it before converting.
+%%SNIPPET:c26-plan%%
+
+\subsection{How do you keep an object's data correct?}% sec:c26-state
+By checking every argument before changing anything. Each class keeps an \term[\textbf{Invariant:} a fact about the data that must hold after every operation, such as ``no quantity is below zero''. Like a bank's rule that a balance never goes negative.]{invariant}{invariant}. A method that changes its data and then throws leaves it half-changed; a method that validates first leaves it exactly as it was when it rejects a call.
+%%SNIPPET:c26-state%%
+
+\subsection{How do you build a result one piece at a time?}% sec:c26-accumulate
+With an \term[\textbf{Accumulator:} a variable outside a loop that each step adds to, so the loop builds its result piece by piece. Like a basket you fill aisle by aisle.]{accumulator}{accumulator}: each step of the loop decides whether the next piece joins the current one or starts a new one. When the loop ends, the last piece is still in the variable and must be added by hand.
+%%SNIPPET:c26-accumulate%%
+
+\mantra{Clean the input, guard the data, flush the last piece.}
+\begin{ponder}The word-wrap loop above gets a width of 0. What should the result be, and what does the loop actually return? Which edge case would you add to the tests?\end{ponder}

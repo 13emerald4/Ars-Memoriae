@@ -1,0 +1,21 @@
+\phantomsection\label{ch:c10}
+\chap{10. What should a program do when something goes wrong?}{\code{throw} stops the function and travels up the calls until a \code{catch} handles it; catch only where you can do something useful, and \code{finally} runs whichever way the block exits.}
+
+\subsection{What happens when you throw?}% sec:c10-throw
+The function stops and an \term[\textbf{Exception:} an error object thrown to signal that something went wrong. Like a fire alarm: work stops and everyone heads for the nearest exit.]{exception}{exception} travels up the call stack to the first \code{catch} that waits for it; with no \code{catch}, the program ends. Throw the most specific built-in error: \code{RangeError} for a value outside the allowed range. An error has a \code{name} and a \code{message}.
+%%SNIPPET:c10-throw%%
+
+\subsection{Where should you catch an error?}% sec:c10-catch
+Only where you can do something useful. \code{try \{ \ldots \} catch (error) \{ \ldots \}} runs the \code{catch} block if the \code{try} block throws. Catching and returning a default \emph{swallows} the error: the caller can no longer tell ``broken input'' from ``no data''. Handle the cases you expect (such as blank text) and let the rest propagate. \code{JSON.parse} throws a \code{SyntaxError} on text that isn't valid JSON.
+%%SNIPPET:c10-catch%%
+
+\subsection{What does finally guarantee?}% sec:c10-finally
+A \code{finally} block always runs before control leaves the \code{try} construct---after a normal finish, an error, or a \code{return}.
+%%SNIPPET:c10-finally%%
+
+\subsection{How do you make your own kind of error?}% sec:c10-custom
+Extend \code{Error} (the class syntax is in \hyperref[ch:c12]{Ch.~12}) and set \code{name}. The subclass inherits \code{message}, but its name stays \code{"Error"} unless you set it. Callers can then tell your errors apart.
+%%SNIPPET:c10-custom%%
+
+\mantra{Throw early, catch where you can act, never catch and forget.}
+\begin{ponder}\code{readConfig} returns \code{\{\}} for blank text but throws on bad JSON. Why is blank text ``expected'' and bad JSON not? Who should decide---the function or its caller?\end{ponder}

@@ -1,0 +1,255 @@
+[
+  {
+    "card_type": "code",
+    "title": "sumTo(n)",
+    "category": "03 · Loops",
+    "difficulty": "Easy",
+    "front": "**sumTo(n)**\n\nWrite `sumTo(n)` with a `for` loop: return 1 + 2 + … + n. `sumTo(0)` is 0.\n\n```js\nfunction sumTo(n) {\n  let total = 0;\n  // TODO: loop from 1 to n\n  return total;\n}\n```",
+    "back": "// Why: `i <= n` includes n itself; `i < n` is the classic off-by-one that stops one short.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for\nfunction sumTo(n) {\n  let total = 0;\n  for (let i = 1; i <= n; i++) {\n    total += i;\n  }\n  return total;\n}\n",
+    "quote": "The for statement creates a loop that consists of three optional expressions, enclosed in parentheses and separated by semicolons, followed by a statement (usually a block statement) to be executed in the loop.",
+    "locator": "MDN — for",
+    "source_title": "MDN — for",
+    "tags": [
+      "js-ts-course",
+      "write",
+      "js03-sum-to",
+      "code"
+    ],
+    "language": "javascript",
+    "starter_code": "function sumTo(n) {\n  let total = 0;\n  // TODO: loop from 1 to n\n  return total;\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          0
+        ],
+        "expected": 0
+      },
+      {
+        "input": [
+          1
+        ],
+        "expected": 1
+      },
+      {
+        "input": [
+          5
+        ],
+        "expected": 15
+      },
+      {
+        "input": [
+          100
+        ],
+        "expected": 5050
+      }
+    ]
+  },
+  {
+    "card_type": "code",
+    "title": "countVowels(text)",
+    "category": "03 · Loops",
+    "difficulty": "Easy",
+    "front": "**countVowels(text)**\n\nWrite `countVowels(text)` using `for...of`: count a, e, i, o and u in either case.\n\n```js\nfunction countVowels(text) {\n  let count = 0;\n  // TODO: for (const ch of ...)\n  return count;\n}\n```",
+    "back": "// Why: `for...of` gives each character of a string. Lower-case once so one check covers\n// both cases.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for...of\nfunction countVowels(text) {\n  let count = 0;\n  for (const ch of text.toLowerCase()) {\n    if (\"aeiou\".includes(ch)) count++;\n  }\n  return count;\n}\n",
+    "quote": "The for...of statement executes a loop that operates on a sequence of values sourced from an iterable object.",
+    "locator": "MDN — for...of",
+    "source_title": "MDN — for...of",
+    "tags": [
+      "js-ts-course",
+      "write",
+      "js03-count-vowels",
+      "code"
+    ],
+    "language": "javascript",
+    "starter_code": "function countVowels(text) {\n  let count = 0;\n  // TODO: for (const ch of ...)\n  return count;\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          "hello"
+        ],
+        "expected": 2
+      },
+      {
+        "input": [
+          "AEIOU"
+        ],
+        "expected": 5
+      },
+      {
+        "input": [
+          "rhythm"
+        ],
+        "expected": 0
+      },
+      {
+        "input": [
+          ""
+        ],
+        "expected": 0
+      },
+      {
+        "input": [
+          "Programming Is Fun"
+        ],
+        "expected": 5
+      }
+    ]
+  },
+  {
+    "card_type": "code",
+    "title": "fizzBuzz(n)",
+    "category": "03 · Loops",
+    "difficulty": "Easy",
+    "front": "**fizzBuzz(n)**\n\nWrite `fizzBuzz(n)`: return an array of strings for 1..n — `\"Fizz\"` for multiples of 3, `\"Buzz\"` for multiples of 5, `\"FizzBuzz\"` for both, otherwise the number as a string.\n\n```js\nfunction fizzBuzz(n) {\n  const out = [];\n  // TODO\n  return out;\n}\n```",
+    "back": "// Why: Test the most specific case (divisible by both) first, or 15 is caught by the 3\n// check. The remainder operator % tells you divisibility.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Remainder\nfunction fizzBuzz(n) {\n  const out = [];\n  for (let i = 1; i <= n; i++) {\n    if (i % 15 === 0) out.push(\"FizzBuzz\");\n    else if (i % 3 === 0) out.push(\"Fizz\");\n    else if (i % 5 === 0) out.push(\"Buzz\");\n    else out.push(String(i));\n  }\n  return out;\n}\n",
+    "quote": "The remainder (%) operator returns the remainder left over when one operand is divided by a second operand.",
+    "locator": "MDN — Remainder (%)",
+    "source_title": "MDN — Remainder (%)",
+    "tags": [
+      "js-ts-course",
+      "write",
+      "js03-fizzbuzz",
+      "code"
+    ],
+    "language": "javascript",
+    "starter_code": "function fizzBuzz(n) {\n  const out = [];\n  // TODO\n  return out;\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          5
+        ],
+        "expected": [
+          "1",
+          "2",
+          "Fizz",
+          "4",
+          "Buzz"
+        ]
+      },
+      {
+        "input": [
+          15
+        ],
+        "expected": [
+          "1",
+          "2",
+          "Fizz",
+          "4",
+          "Buzz",
+          "Fizz",
+          "7",
+          "8",
+          "Fizz",
+          "Buzz",
+          "11",
+          "Fizz",
+          "13",
+          "14",
+          "FizzBuzz"
+        ]
+      },
+      {
+        "input": [
+          0
+        ],
+        "expected": []
+      }
+    ]
+  },
+  {
+    "card_type": "code",
+    "title": "firstIndexOver(nums, limit)",
+    "category": "03 · Loops",
+    "difficulty": "Easy",
+    "front": "**firstIndexOver(nums, limit)**\n\nWrite `firstIndexOver(nums, limit)`: return the index of the first number greater than `limit`, or -1 if there is none. Stop as soon as you find it.\n\n```js\nfunction firstIndexOver(nums, limit) {\n  // TODO\n  return -1;\n}\n```",
+    "back": "// Why: `return` inside the loop ends it at the first match. Without it you would keep\n// overwriting the answer and end up with the last match.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/return\nfunction firstIndexOver(nums, limit) {\n  for (let i = 0; i < nums.length; i++) {\n    if (nums[i] > limit) return i;\n  }\n  return -1;\n}\n",
+    "quote": "The return statement ends function execution and specifies a value to be returned to the function caller.",
+    "locator": "MDN — return",
+    "source_title": "MDN — return",
+    "tags": [
+      "js-ts-course",
+      "write",
+      "js03-first-index-over",
+      "code"
+    ],
+    "language": "javascript",
+    "starter_code": "function firstIndexOver(nums, limit) {\n  // TODO\n  return -1;\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          [
+            1,
+            5,
+            9
+          ],
+          4
+        ],
+        "expected": 1
+      },
+      {
+        "input": [
+          [
+            1,
+            2
+          ],
+          5
+        ],
+        "expected": -1
+      },
+      {
+        "input": [
+          [],
+          0
+        ],
+        "expected": -1
+      },
+      {
+        "input": [
+          [
+            5,
+            5,
+            6
+          ],
+          5
+        ],
+        "expected": 2
+      },
+      {
+        "input": [
+          [
+            7,
+            8
+          ],
+          5
+        ],
+        "expected": 0
+      }
+    ]
+  },
+  {
+    "card_type": "qa",
+    "front": "What does this print?\n\n```js\nconst withVar = [];\nfor (var i = 0; i < 3; i++) {\n  withVar.push(() => i);\n}\nconst withLet = [];\nfor (let j = 0; j < 3; j++) {\n  withLet.push(() => j);\n}\nconsole.log(withVar.map((f) => f()).join(\" \"));\nconsole.log(withLet.map((f) => f()).join(\" \"));\n```",
+    "back": "3 3 3\n0 1 2\n\nWhy: var makes one i for the whole loop, so every function sees its final value, 3. let makes a fresh j for each iteration, so each function keeps its own.\n\nDocs: MDN — Closures — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Closures",
+    "quote": "Prior to the introduction of the let keyword, a common problem with closures occurred when you created them inside a loop.",
+    "locator": "MDN — Closures",
+    "source_title": "MDN — Closures",
+    "tags": [
+      "js-ts-course",
+      "predict",
+      "js03-closure-in-loop"
+    ]
+  },
+  {
+    "card_type": "qa",
+    "front": "What does this print?\n\n```js\nconst scores = [10, 20];\nscores.label = \"round 1\";\nconst keys = [];\nfor (const key in scores) keys.push(key);\nconst values = [];\nfor (const value of scores) values.push(value);\nconsole.log(keys.join(\",\"));\nconsole.log(values.join(\",\"));\n```",
+    "back": "0,1,label\n10,20\n\nWhy: for...in visits every enumerable string key, extra and inherited properties included, and gives indexes as strings. Use for...of for the values of an array.\n\nDocs: MDN — for...in — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for...in",
+    "quote": "The for...in statement iterates over all enumerable string properties of an object (ignoring properties keyed by symbols), including inherited enumerable properties.",
+    "locator": "MDN — for...in",
+    "source_title": "MDN — for...in",
+    "tags": [
+      "js-ts-course",
+      "predict",
+      "js03-for-in-vs-of"
+    ]
+  }
+]

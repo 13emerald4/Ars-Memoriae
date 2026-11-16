@@ -1,0 +1,173 @@
+{
+  "deck": "JavaScript & TypeScript: Zero to Mastery · 04 · Strings",
+  "priority": 50,
+  "notes": [
+    {
+      "card_type": "code",
+      "title": "capitalize(word)",
+      "category": "04 · Strings",
+      "difficulty": "Easy",
+      "front": "**capitalize(word)**\n\nWrite `capitalize(word)`: first letter upper-case, the rest lower-case. `\"\"` stays `\"\"`.\n\n```js\nfunction capitalize(word) {\n  // TODO\n  return word;\n}\n```",
+      "back": "// Why: `word[0]` is undefined for \"\", and calling a method on undefined throws. `slice(1)`\n// returns everything after the first character.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/slice\nfunction capitalize(word) {\n  if (word === \"\") return \"\";\n  return word[0].toUpperCase() + word.slice(1).toLowerCase();\n}\n",
+      "quote": "The slice() method of String values extracts a section of this string and returns it as a new string, without modifying the original string.",
+      "locator": "MDN — String.prototype.slice()",
+      "source_title": "MDN — String.prototype.slice()",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js04-capitalize",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function capitalize(word) {\n  // TODO\n  return word;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            "hello"
+          ],
+          "expected": "Hello"
+        },
+        {
+          "input": [
+            "wORLD"
+          ],
+          "expected": "World"
+        },
+        {
+          "input": [
+            "a"
+          ],
+          "expected": "A"
+        },
+        {
+          "input": [
+            ""
+          ],
+          "expected": ""
+        }
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "isPalindrome(text)",
+      "category": "04 · Strings",
+      "difficulty": "Easy",
+      "front": "**isPalindrome(text)**\n\nWrite `isPalindrome(text)`: true if `text` reads the same backwards, ignoring case, spaces and punctuation.\n\n```js\nfunction isPalindrome(text) {\n  // TODO\n  return false;\n}\n```",
+      "back": "// Why: Clean the text first, then compare it with its reverse. Strings have no reverse():\n// spread into an array, reverse, and join back.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reverse\nfunction isPalindrome(text) {\n  const letters = text.toLowerCase().replace(/[^a-z0-9]/g, \"\");\n  return letters === [...letters].reverse().join(\"\");\n}\n",
+      "quote": "The reverse() method of Array instances reverses an array in place and returns the reference to the same array, the first array element now becoming the last, and the last array element becoming the first.",
+      "locator": "MDN — Array.prototype.reverse()",
+      "source_title": "MDN — Array.prototype.reverse()",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js04-palindrome",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function isPalindrome(text) {\n  // TODO\n  return false;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            "racecar"
+          ],
+          "expected": true
+        },
+        {
+          "input": [
+            "Race Car"
+          ],
+          "expected": true
+        },
+        {
+          "input": [
+            "A man, a plan, a canal: Panama"
+          ],
+          "expected": true
+        },
+        {
+          "input": [
+            "hello"
+          ],
+          "expected": false
+        },
+        {
+          "input": [
+            ""
+          ],
+          "expected": true
+        }
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "initials(fullName)",
+      "category": "04 · Strings",
+      "difficulty": "Easy",
+      "front": "**initials(fullName)**\n\nWrite `initials(fullName)`: `\"Ada Lovelace\"` → `\"A.L.\"`. Names may be lower-case and have extra spaces.\n\n```js\nfunction initials(fullName) {\n  // TODO\n  return \"\";\n}\n```",
+      "back": "// Why: `split(\" \")` leaves empty strings between repeated spaces; trim first and split on\n// the pattern /\\s+/ (one or more whitespace characters).\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/split\nfunction initials(fullName) {\n  return fullName\n    .trim()\n    .split(/\\s+/)\n    .map((part) => part[0].toUpperCase() + \".\")\n    .join(\"\");\n}\n",
+      "quote": "The split() method of String values takes a pattern and divides this string into an ordered list of substrings by searching for the pattern, puts these substrings into an array, and returns the array.",
+      "locator": "MDN — String.prototype.split()",
+      "source_title": "MDN — String.prototype.split()",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js04-initials",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function initials(fullName) {\n  // TODO\n  return \"\";\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            "Ada Lovelace"
+          ],
+          "expected": "A.L."
+        },
+        {
+          "input": [
+            "grace brewster hopper"
+          ],
+          "expected": "G.B.H."
+        },
+        {
+          "input": [
+            "  linus   torvalds "
+          ],
+          "expected": "L.T."
+        },
+        {
+          "input": [
+            "Cher"
+          ],
+          "expected": "C."
+        }
+      ]
+    },
+    {
+      "card_type": "qa",
+      "front": "What does this print?\n\n```js\nconsole.log(\"5\" + 3);\nconsole.log(\"5\" - 3);\nconsole.log(\"5\" * \"2\");\nconsole.log(1 + 2 + \"3\");\nconsole.log(\"1\" + 2 + 3);\n```",
+      "back": "53\n2\n10\n33\n123\n\nWhy: + concatenates as soon as either side is a string; -, * and / convert to numbers. Evaluation runs left to right: 1 + 2 is 3 before \"3\" is joined on.\n\nDocs: MDN — Addition (+) — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Addition",
+      "quote": "The addition (+) operator produces the sum of numeric operands or string concatenation.",
+      "locator": "MDN — Addition (+)",
+      "source_title": "MDN — Addition (+)",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js04-plus-coercion"
+      ]
+    },
+    {
+      "card_type": "qa",
+      "front": "What does this print?\n\n```js\nconst word = \"cat\";\nconst upper = word.toUpperCase();\nconst replaced = word.replace(\"c\", \"b\");\nconsole.log(word, upper, replaced);\n```",
+      "back": "cat CAT bat\n\nWhy: String methods return new strings; the original never changes.\n\nDocs: MDN — JavaScript data types — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Data_structures",
+      "quote": "JavaScript strings are immutable. This means that once a string is created, it is not possible to modify it.",
+      "locator": "MDN — JavaScript data types",
+      "source_title": "MDN — JavaScript data types",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js04-immutable"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,216 @@
+{
+  "deck": "JavaScript & TypeScript: Zero to Mastery · 10 · Errors: throw, try, catch, finally",
+  "priority": 50,
+  "notes": [
+    {
+      "card_type": "code",
+      "title": "parseAge(text)",
+      "category": "10 · Errors: throw, try, catch, finally",
+      "difficulty": "Easy",
+      "front": "**parseAge(text)**\n\nWrite `parseAge(text)`: return the age as a number. For anything that isn't a whole number from 0 to 150 (including empty text), throw a `RangeError` with the message `\"age must be a whole number from 0 to 150\"`.\n\n```js\nfunction parseAge(text) {\n  // TODO: validate, and throw new RangeError(...) for bad input\n  return Number(text);\n}\n```",
+      "back": "// Why: Throw the most specific built-in error (RangeError for out-of-range values) so\n// callers can tell failures apart. Number(\"\") is 0, so empty input needs its own check.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Control_flow_and_error_handling\nfunction parseAge(text) {\n  const age = Number(text);\n  if (text.trim() === \"\" || !Number.isInteger(age) || age < 0 || age > 150) {\n    throw new RangeError(\"age must be a whole number from 0 to 150\");\n  }\n  return age;\n}\n",
+      "quote": "You can throw exceptions using the throw statement and handle them using the try...catch statements.",
+      "locator": "MDN — Control flow and error handling",
+      "source_title": "MDN — Control flow and error handling",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js10-parse-age",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function parseAge(text) {\n  // TODO: validate, and throw new RangeError(...) for bad input\n  return Number(text);\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            "42"
+          ],
+          "expected": 42
+        },
+        {
+          "input": [
+            "0"
+          ],
+          "expected": 0
+        },
+        {
+          "input": [
+            "150"
+          ],
+          "expected": 150
+        },
+        {
+          "input": [
+            "151"
+          ],
+          "expected": {
+            "$throws": "RangeError: age must be a whole number"
+          }
+        },
+        {
+          "input": [
+            "-1"
+          ],
+          "expected": {
+            "$throws": "RangeError"
+          }
+        },
+        {
+          "input": [
+            "4.5"
+          ],
+          "expected": {
+            "$throws": "RangeError"
+          }
+        },
+        {
+          "input": [
+            "abc"
+          ],
+          "expected": {
+            "$throws": "RangeError"
+          }
+        },
+        {
+          "input": [
+            ""
+          ],
+          "expected": {
+            "$throws": "RangeError"
+          }
+        },
+        {
+          "input": [
+            "   "
+          ],
+          "expected": {
+            "$throws": "RangeError"
+          }
+        }
+      ]
+    },
+    {
+      "card_type": "qa",
+      "front": "What does this print?\n\n```js\nfunction load() {\n  try {\n    console.log(\"try\");\n    return \"result\";\n  } finally {\n    console.log(\"finally\");\n  }\n}\nconsole.log(load());\n```",
+      "back": "try\nfinally\nresult\n\nWhy: finally runs on every exit from the try block, return included, before the caller gets the value.\n\nDocs: MDN — try...catch — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch",
+      "quote": "The code in the finally block will always be executed before control flow exits the entire construct.",
+      "locator": "MDN — try...catch",
+      "source_title": "MDN — try...catch",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js10-finally"
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "Fix readConfig(json)",
+      "category": "10 · Errors: throw, try, catch, finally",
+      "difficulty": "Medium",
+      "front": "**Fix readConfig(json)**\n\n`readConfig(json)` hides broken input by returning `{}`, so callers never find out the config is invalid. Let a parse error reach the caller, but keep returning `{}` for empty or blank text.\n\n```js\nfunction readConfig(json) {\n  try {\n    return JSON.parse(json);\n  } catch {\n    return {};\n  }\n}\n```",
+      "back": "// Why: Swallowing an error turns \"your file is broken\" into \"you have no settings\". Handle\n// the case you expect (empty text) and let real errors propagate.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse\nfunction readConfig(json) {\n  if (json.trim() === \"\") return {};\n  return JSON.parse(json);\n}\n",
+      "quote": "When JSON.parse receives a string that does not conform to the JSON grammar, it throws a SyntaxError.",
+      "locator": "MDN — JSON.parse()",
+      "source_title": "MDN — JSON.parse()",
+      "tags": [
+        "js-ts-course",
+        "fix",
+        "js10-dont-swallow",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function readConfig(json) {\n  try {\n    return JSON.parse(json);\n  } catch {\n    return {};\n  }\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            "{\"debug\": true}"
+          ],
+          "expected": {
+            "debug": true
+          }
+        },
+        {
+          "input": [
+            ""
+          ],
+          "expected": {}
+        },
+        {
+          "input": [
+            "   "
+          ],
+          "expected": {}
+        },
+        {
+          "input": [
+            "{not json"
+          ],
+          "expected": {
+            "$throws": "SyntaxError"
+          }
+        }
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "ValidationError",
+      "category": "10 · Errors: throw, try, catch, finally",
+      "difficulty": "Medium",
+      "front": "**ValidationError**\n\nMake `ValidationError` an error whose `name` is `\"ValidationError\"`. Then make `validateUser(user)` throw one with the message `\"name is required\"` or `\"email is required\"` when that field is missing or empty, and return `true` otherwise.\n\n```js\nfunction validateUser(user) {\n  // TODO: throw a ValidationError for a missing name or email\n  return true;\n}\n\nclass ValidationError extends Error {\n  // TODO: set this.name\n}\n```",
+      "back": "// Why: A subclass of Error inherits message and stack, but its name stays \"Error\" unless\n// you set it. Callers can then check `error instanceof ValidationError`.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error\nfunction validateUser(user) {\n  if (!user.name) throw new ValidationError(\"name is required\");\n  if (!user.email) throw new ValidationError(\"email is required\");\n  return true;\n}\n\nclass ValidationError extends Error {\n  constructor(message) {\n    super(message);\n    this.name = \"ValidationError\";\n  }\n}\n",
+      "quote": "The Error object can also be used as a base object for user-defined exceptions.",
+      "locator": "MDN — Error",
+      "source_title": "MDN — Error",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js10-custom-error",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function validateUser(user) {\n  // TODO: throw a ValidationError for a missing name or email\n  return true;\n}\n\nclass ValidationError extends Error {\n  // TODO: set this.name\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            {
+              "name": "Ada",
+              "email": "ada@example.com"
+            }
+          ],
+          "expected": true
+        },
+        {
+          "input": [
+            {
+              "email": "ada@example.com"
+            }
+          ],
+          "expected": {
+            "$throws": "ValidationError: name is required"
+          }
+        },
+        {
+          "input": [
+            {
+              "name": "Ada"
+            }
+          ],
+          "expected": {
+            "$throws": "ValidationError: email is required"
+          }
+        },
+        {
+          "input": [
+            {
+              "name": "",
+              "email": "x@example.com"
+            }
+          ],
+          "expected": {
+            "$throws": "ValidationError: name is required"
+          }
+        }
+      ]
+    }
+  ]
+}

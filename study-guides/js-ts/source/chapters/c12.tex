@@ -1,0 +1,21 @@
+\phantomsection\label{ch:c12}
+\chap{12. How do classes bundle data with behaviour, and what is this?}{A class is a template for objects that share methods; \code{\#fields} are private; \code{this} is set by how a method is called, so a detached method or a \code{function} callback loses it.}
+
+\subsection{What does a class give you?}% sec:c12-class
+A \term[\textbf{Class:} a template for making objects that share the same methods. Like a blueprint.]{class}{class} describes objects; \code{new} makes an \term[\textbf{Instance:} one object made from a class. A house built from the blueprint.]{instance}{instance}. In the \code{constructor}, \code{this} is the new instance, so the constructor stores its starting data on \code{this}. Methods are written once in the class and shared by every instance.
+%%SNIPPET:c12-class%%
+
+\subsection{How do you keep state private?}% sec:c12-private
+Prefix the field name with \code{\#}. A \term[\textbf{Private field:} a class field whose name starts with \code{\#}; only code inside the class can read or write it. Like a safe that opens only from the inside.]{privatefield}{private field} must be declared in the class body and can only be used inside the class. From outside, \code{obj.balance} is just a different, missing property (\code{undefined}).
+%%SNIPPET:c12-private%%
+
+\subsection{Why does this go missing?}% sec:c12-this
+Because \code{this} is decided at the moment of the call: \code{greeter.greet()} sets it to \code{greeter}, but calling a method pulled off its object sets it to \code{undefined} (class and module code is strict), and reading a property of \code{undefined} throws. \code{fn.call(obj)} passes \code{this} for one call; \code{fn.bind(obj)} makes a copy with \code{this} fixed. An arrow function has no \code{this} of its own and uses the one around it, which is why arrow callbacks inside methods work and \code{function} callbacks do not.
+%%SNIPPET:c12-this%%
+
+\subsection{How does one class build on another?}% sec:c12-extends
+With \code{extends}: the child class gets the parent's methods and can replace (override) some. A child constructor must call \code{super(...)}---the parent's constructor---before it uses \code{this}. A method inherited from the parent that calls \code{this.area()} gets the child's version.
+%%SNIPPET:c12-extends%%
+
+\mantra{this is decided at the call, not where the method was written.}
+\begin{ponder}\code{setTimeout(account.deposit, 0, 10)} fails, but \code{setTimeout(() => account.deposit(10), 0)} works. What is \code{this} inside \code{deposit} in each case?\end{ponder}

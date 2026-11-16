@@ -1,0 +1,171 @@
+[
+  {
+    "card_type": "code",
+    "title": "updateTodo(todo, changes)",
+    "category": "23 · Utility Types",
+    "difficulty": "Easy",
+    "front": "**updateTodo(todo, changes)**\n\nWrite `updateTodo(todo, changes)`: return a new todo with `changes` applied. `changes` may contain any subset of a todo's fields — and nothing else.\n\n```ts\ninterface Todo {\n  title: string;\n  done: boolean;\n  priority: number;\n}\n\nfunction updateTodo(todo: Todo, changes: Todo): Todo {\n  return todo;\n}\n```",
+    "back": "// Why: Partial<Todo> is Todo with every property optional, which is exactly what a patch\n// is.\n// Docs: https://www.typescriptlang.org/docs/handbook/utility-types.html\ninterface Todo {\n  title: string;\n  done: boolean;\n  priority: number;\n}\n\nfunction updateTodo(todo: Todo, changes: Partial<Todo>): Todo {\n  return { ...todo, ...changes };\n}\n",
+    "quote": "Constructs a type with all properties of Type set to optional. This utility will return a type that represents all subsets of a given type.",
+    "locator": "TypeScript Handbook — Utility Types",
+    "source_title": "TypeScript Handbook — Utility Types",
+    "tags": [
+      "js-ts-course",
+      "types",
+      "ts23-update-todo",
+      "code"
+    ],
+    "language": "typescript",
+    "starter_code": "interface Todo {\n  title: string;\n  done: boolean;\n  priority: number;\n}\n\nfunction updateTodo(todo: Todo, changes: Todo): Todo {\n  return todo;\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          {
+            "title": "Write",
+            "done": false,
+            "priority": 1
+          },
+          {
+            "done": true
+          }
+        ],
+        "expected": {
+          "title": "Write",
+          "done": true,
+          "priority": 1
+        }
+      },
+      {
+        "input": [
+          {
+            "title": "Write",
+            "done": false,
+            "priority": 1
+          },
+          {}
+        ],
+        "expected": {
+          "title": "Write",
+          "done": false,
+          "priority": 1
+        }
+      },
+      {
+        "input": [
+          {
+            "title": "Write",
+            "done": false,
+            "priority": 1
+          },
+          {
+            "priority": 3,
+            "title": "Edit"
+          }
+        ],
+        "expected": {
+          "title": "Edit",
+          "done": false,
+          "priority": 3
+        }
+      }
+    ],
+    "type_check": true,
+    "type_tests": "const base: Todo = { title: \"Write\", done: false, priority: 1 };\nupdateTodo(base, { done: true });\nupdateTodo(base, {});\n// @ts-expect-error: there is no \"color\" field\nupdateTodo(base, { color: \"red\" });\n// @ts-expect-error: done is a boolean\nupdateTodo(base, { done: \"yes\" });\n"
+  },
+  {
+    "card_type": "code",
+    "title": "toPublicUser(user)",
+    "category": "23 · Utility Types",
+    "difficulty": "Easy",
+    "front": "**toPublicUser(user)**\n\nWrite `toPublicUser(user)`: return the user without `passwordHash`, typed with `Omit` so the compiler also knows the hash is gone.\n\n```ts\ninterface User {\n  id: number;\n  name: string;\n  passwordHash: string;\n}\n\nfunction toPublicUser(user: User): User {\n  return user;\n}\n```",
+    "back": "// Why: Removing the property at run time (rest destructuring) and in the type (Omit) go\n// together: either one alone leaves a gap.\n// Docs: https://www.typescriptlang.org/docs/handbook/utility-types.html\ninterface User {\n  id: number;\n  name: string;\n  passwordHash: string;\n}\n\nfunction toPublicUser(user: User): Omit<User, \"passwordHash\"> {\n  const { passwordHash, ...rest } = user;\n  return rest;\n}\n",
+    "quote": "Constructs a type by picking all properties from Type and then removing Keys (string literal or union of string literals).",
+    "locator": "TypeScript Handbook — Utility Types",
+    "source_title": "TypeScript Handbook — Utility Types",
+    "tags": [
+      "js-ts-course",
+      "types",
+      "ts23-public-user",
+      "code"
+    ],
+    "language": "typescript",
+    "starter_code": "interface User {\n  id: number;\n  name: string;\n  passwordHash: string;\n}\n\nfunction toPublicUser(user: User): User {\n  return user;\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          {
+            "id": 1,
+            "name": "Ada",
+            "passwordHash": "x1"
+          }
+        ],
+        "expected": {
+          "id": 1,
+          "name": "Ada"
+        }
+      }
+    ],
+    "type_check": true,
+    "type_tests": "const pub = toPublicUser({ id: 1, name: \"Ada\", passwordHash: \"x\" });\nconst n: string = pub.name;\n// @ts-expect-error: the hash is not part of the public type\npub.passwordHash;\n"
+  },
+  {
+    "card_type": "code",
+    "title": "countByRole(roles)",
+    "category": "23 · Utility Types",
+    "difficulty": "Easy",
+    "front": "**countByRole(roles)**\n\nWrite `countByRole(roles)`: how many times each role appears, with every role present (0 if absent). Type the result as `Record<Role, number>`.\n\n```ts\ntype Role = \"admin\" | \"editor\" | \"viewer\";\n\nfunction countByRole(roles: string[]): Record<string, number> {\n  const counts: Record<string, number> = {};\n  for (const role of roles) counts[role] = (counts[role] ?? 0) + 1;\n  return counts;\n}\n```",
+    "back": "// Why: Record<Role, number> requires every key of Role, so the compiler makes you start\n// each count at 0 — and rejects roles that don't exist.\n// Docs: https://www.typescriptlang.org/docs/handbook/utility-types.html\ntype Role = \"admin\" | \"editor\" | \"viewer\";\n\nfunction countByRole(roles: Role[]): Record<Role, number> {\n  const counts: Record<Role, number> = { admin: 0, editor: 0, viewer: 0 };\n  for (const role of roles) counts[role]++;\n  return counts;\n}\n",
+    "quote": "Constructs an object type whose property keys are Keys and whose property values are Type.",
+    "locator": "TypeScript Handbook — Utility Types",
+    "source_title": "TypeScript Handbook — Utility Types",
+    "tags": [
+      "js-ts-course",
+      "types",
+      "ts23-count-by-role",
+      "code"
+    ],
+    "language": "typescript",
+    "starter_code": "type Role = \"admin\" | \"editor\" | \"viewer\";\n\nfunction countByRole(roles: string[]): Record<string, number> {\n  const counts: Record<string, number> = {};\n  for (const role of roles) counts[role] = (counts[role] ?? 0) + 1;\n  return counts;\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          [
+            "admin",
+            "viewer",
+            "viewer"
+          ]
+        ],
+        "expected": {
+          "admin": 1,
+          "editor": 0,
+          "viewer": 2
+        }
+      },
+      {
+        "input": [
+          []
+        ],
+        "expected": {
+          "admin": 0,
+          "editor": 0,
+          "viewer": 0
+        }
+      }
+    ],
+    "type_check": true,
+    "type_tests": "const counts: Record<Role, number> = countByRole([\"admin\"]);\n// @ts-expect-error: \"owner\" is not a Role\ncountByRole([\"owner\"]);\n"
+  },
+  {
+    "card_type": "qa",
+    "front": "Does this compile with `tsc --strict`? If not, which statement fails, and why?\n\n```ts\ninterface Team {\n  name: string;\n  members: string[];\n}\nconst team: Readonly<Team> = { name: \"Core\", members: [\"Ada\"] };\nteam.members.push(\"Grace\");\nteam.name = \"Platform\";\n```",
+    "back": "No. `team.name = \"Platform\"` fails: name is a read-only property. `team.members.push(...)` compiles.\n\nWhy: Readonly only stops reassigning the object's own properties. The array inside can still be changed, and nothing is enforced at run time.\n\nDocs: TypeScript Handbook — Object Types — https://www.typescriptlang.org/docs/handbook/2/objects.html",
+    "quote": "Using the readonly modifier doesn't necessarily imply that a value is totally immutable - or in other words, that its internal contents can't be changed. It just means the property itself can't be re-written to.",
+    "locator": "TypeScript Handbook — Object Types",
+    "source_title": "TypeScript Handbook — Object Types",
+    "tags": [
+      "js-ts-course",
+      "compile",
+      "ts23-readonly-shallow"
+    ]
+  }
+]

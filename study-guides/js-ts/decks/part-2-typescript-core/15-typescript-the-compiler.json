@@ -1,0 +1,105 @@
+[
+  {
+    "card_type": "qa",
+    "front": "`tsc` reports a type error in this file but still writes the JavaScript (that is its default). What does running the output print?\n\n```ts\nconst count: number = \"3\" as any;\nconst label: string = 42 as any;\nconsole.log(count + 1, label + 1);\n```",
+    "back": "31 43\n\nWhy: Types are erased before the code runs, so they cannot convert or check values. count is really the string \"3\" (so + concatenates) and label the number 42. Fix type errors; don't silence them with any.\n\nDocs: TypeScript Handbook — The Basics — https://www.typescriptlang.org/docs/handbook/2/basic-types.html",
+    "quote": "Remember: Type annotations never change the runtime behavior of your program.",
+    "locator": "TypeScript Handbook — The Basics",
+    "source_title": "TypeScript Handbook — The Basics",
+    "tags": [
+      "js-ts-course",
+      "predict",
+      "ts15-emits-anyway"
+    ]
+  },
+  {
+    "card_type": "qa",
+    "front": "What does this print?\n\n```ts\nenum Direction {\n  Up,\n  Down,\n}\nconsole.log(Direction.Down, Direction[0], Object.keys(Direction).length);\n```",
+    "back": "1 Up 4\n\nWhy: enum is one of the few TypeScript features that is not erased: it compiles to a real object. A numeric enum also maps numbers back to names, so it has four keys: \"0\", \"1\", \"Up\" and \"Down\".\n\nDocs: TypeScript Handbook — Enums — https://www.typescriptlang.org/docs/handbook/enums.html",
+    "quote": "Enums are one of the few features TypeScript has which is not a type-level extension of JavaScript.",
+    "locator": "TypeScript Handbook — Enums",
+    "source_title": "TypeScript Handbook — Enums",
+    "tags": [
+      "js-ts-course",
+      "predict",
+      "ts15-enum-emits"
+    ]
+  },
+  {
+    "card_type": "code",
+    "title": "parseUser(data: unknown)",
+    "category": "15 · TypeScript & the Compiler",
+    "difficulty": "Medium",
+    "front": "**parseUser(data: unknown)**\n\n`data` came from `JSON.parse`, so its type is `unknown`. Return a `User` (only its `name` and `age`) when `data` is an object with a string `name` and a number `age`; otherwise return `null`. The `as User` in the starter checks nothing.\n\n```ts\ntype User = { name: string; age: number };\n\nfunction parseUser(data: unknown): User | null {\n  return data as User;\n}\n```",
+    "back": "// Why: A type annotation or `as` only tells the compiler what to assume. For data from\n// outside, check it with typeof and `in`; TypeScript narrows `unknown` as you go.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/basic-types.html\ntype User = { name: string; age: number };\n\nfunction parseUser(data: unknown): User | null {\n  if (typeof data !== \"object\" || data === null) return null;\n  if (!(\"name\" in data) || typeof data.name !== \"string\") return null;\n  if (!(\"age\" in data) || typeof data.age !== \"number\") return null;\n  return { name: data.name, age: data.age };\n}\n",
+    "quote": "Most TypeScript-specific code gets erased away, and likewise, here our type annotations were completely erased.",
+    "locator": "TypeScript Handbook — The Basics",
+    "source_title": "TypeScript Handbook — The Basics",
+    "tags": [
+      "js-ts-course",
+      "types",
+      "ts15-parse-user",
+      "code"
+    ],
+    "language": "typescript",
+    "starter_code": "type User = { name: string; age: number };\n\nfunction parseUser(data: unknown): User | null {\n  return data as User;\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          {
+            "name": "Ada",
+            "age": 36
+          }
+        ],
+        "expected": {
+          "name": "Ada",
+          "age": 36
+        }
+      },
+      {
+        "input": [
+          {
+            "name": "Ada",
+            "age": 36,
+            "admin": true
+          }
+        ],
+        "expected": {
+          "name": "Ada",
+          "age": 36
+        }
+      },
+      {
+        "input": [
+          {
+            "name": "Ada"
+          }
+        ],
+        "expected": null
+      },
+      {
+        "input": [
+          {
+            "name": "Ada",
+            "age": "36"
+          }
+        ],
+        "expected": null
+      },
+      {
+        "input": [
+          null
+        ],
+        "expected": null
+      },
+      {
+        "input": [
+          "Ada"
+        ],
+        "expected": null
+      }
+    ],
+    "type_check": true,
+    "type_tests": "const parsed: { name: string; age: number } | null = parseUser(JSON.parse(\"{}\"));\nparseUser(42);\n"
+  }
+]

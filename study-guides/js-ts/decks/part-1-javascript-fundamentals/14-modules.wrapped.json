@@ -1,0 +1,45 @@
+{
+  "deck": "JavaScript & TypeScript: Zero to Mastery · 14 · Modules",
+  "priority": 50,
+  "notes": [
+    {
+      "card_type": "qa",
+      "front": "What does running `main.js` print?\n\n`math.js`\n```js\nexport default function add(a, b) {\n  return a + b;\n}\nexport const PI = 3.14;\n```\n\n`main.js`\n```js\nimport plus, { PI } from \"./math.js\";\nconsole.log(plus(2, 3), PI);\n```",
+      "back": "5 3.14\n\nWhy: The default export is imported without braces, under any name you choose. Named exports go in braces and must match the exported name.\n\nDocs: MDN — JavaScript modules — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules",
+      "quote": "Each module can have up to one default export.",
+      "locator": "MDN — JavaScript modules",
+      "source_title": "MDN — JavaScript modules",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js14-default-and-named"
+      ]
+    },
+    {
+      "card_type": "qa",
+      "front": "What does running `main.js` print?\n\n`math.js`\n```js\nexport default function add(a, b) {\n  return a + b;\n}\n```\n\n`main.js`\n```js\nimport { add } from \"./math.js\";\nconsole.log(add(2, 3));\n```",
+      "back": "SyntaxError: The requested module './math.js' does not provide an export named 'add'\n\nWhy: add is the default export, not a named one. Imports are checked before any code runs, so nothing is printed. Write `import add from \"./math.js\"`.\n\nDocs: MDN — import — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import",
+      "quote": "The static import declaration is used to import read-only live bindings which are exported by another module.",
+      "locator": "MDN — import",
+      "source_title": "MDN — import",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js14-missing-named-export"
+      ]
+    },
+    {
+      "card_type": "qa",
+      "front": "What does running `main.js` print?\n\n`counter.js`\n```js\nlet count = 0;\nexport function increment() {\n  count += 1;\n  return count;\n}\n```\n\n`main.js`\n```js\nimport { increment as next } from \"./counter.js\";\nimport { increment } from \"./counter.js\";\nnext();\nnext();\nconsole.log(increment());\n```",
+      "back": "3\n\nWhy: A module is evaluated once. Both imports are the same function, closing over the same count.\n\nDocs: MDN — import — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import",
+      "quote": "The imported bindings are called live bindings because they are updated by the module that exported the binding, but cannot be re-assigned by the importing module.",
+      "locator": "MDN — import",
+      "source_title": "MDN — import",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js14-shared-state"
+      ]
+    }
+  ]
+}

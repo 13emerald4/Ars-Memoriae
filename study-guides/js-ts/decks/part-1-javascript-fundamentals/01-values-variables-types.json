@@ -1,0 +1,185 @@
+[
+  {
+    "card_type": "qa",
+    "front": "What does this print?\n\n```js\nconsole.log(typeof 42);\nconsole.log(typeof \"42\");\nconsole.log(typeof null);\nconsole.log(typeof []);\nconsole.log(typeof undefined);\nconsole.log(typeof 10n);\n```",
+    "back": "number\nstring\nobject\nobject\nundefined\nbigint\n\nWhy: typeof null is \"object\" (a bug kept for compatibility), so test for null with === null. Arrays are objects, so use Array.isArray to spot them. 10n is a BigInt.\n\nDocs: MDN — JavaScript data types — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Data_structures",
+    "quote": "typeof null returns \"object\", so one has to use === null to test for null.",
+    "locator": "MDN — JavaScript data types",
+    "source_title": "MDN — JavaScript data types",
+    "tags": [
+      "js-ts-course",
+      "predict",
+      "js01-typeof"
+    ]
+  },
+  {
+    "card_type": "code",
+    "title": "describeType(value)",
+    "category": "01 · Values, Variables & Types",
+    "difficulty": "Easy",
+    "front": "**describeType(value)**\n\nWrite `describeType(value)`: return `\"null\"` for `null`, `\"array\"` for arrays, and what `typeof` says for everything else.\n\n```js\nfunction describeType(value) {\n  // TODO: handle null and arrays before falling back to typeof\n  return typeof value;\n}\n```",
+    "back": "// Why: `=== null` is the only reliable null check, and `Array.isArray` the only reliable\n// array check. `!value` would also catch 0, \"\" and undefined; `== null` would also catch\n// undefined.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/isArray\nfunction describeType(value) {\n  if (value === null) return \"null\";\n  if (Array.isArray(value)) return \"array\";\n  return typeof value;\n}\n",
+    "quote": "The Array.isArray() static method determines whether the passed value is an Array.",
+    "locator": "MDN — Array.isArray()",
+    "source_title": "MDN — Array.isArray()",
+    "tags": [
+      "js-ts-course",
+      "write",
+      "js01-describe-type",
+      "code"
+    ],
+    "language": "javascript",
+    "starter_code": "function describeType(value) {\n  // TODO: handle null and arrays before falling back to typeof\n  return typeof value;\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          null
+        ],
+        "expected": "null"
+      },
+      {
+        "input": [
+          [
+            1,
+            2
+          ]
+        ],
+        "expected": "array"
+      },
+      {
+        "input": [
+          {}
+        ],
+        "expected": "object"
+      },
+      {
+        "input": [
+          "hi"
+        ],
+        "expected": "string"
+      },
+      {
+        "input": [
+          ""
+        ],
+        "expected": "string"
+      },
+      {
+        "input": [
+          0
+        ],
+        "expected": "number"
+      },
+      {
+        "input": [
+          {
+            "$undefined": true
+          }
+        ],
+        "expected": "undefined"
+      }
+    ]
+  },
+  {
+    "card_type": "code",
+    "title": "parseCount(text)",
+    "category": "01 · Values, Variables & Types",
+    "difficulty": "Easy",
+    "front": "**parseCount(text)**\n\nWrite `parseCount(text)`: return the whole number written in `text`, or `null` if it isn't one. `\"007\"` is 7, `\"-4\"` is -4; `\"\"`, `\"   \"`, `\"3.5\"` and `\"12abc\"` are all `null`.\n\n```js\nfunction parseCount(text) {\n  return parseInt(text, 10);\n}\n```",
+    "back": "// Why: `parseInt(\"12abc\")` stops at the first bad character and returns 12;\n// `Number(\"12abc\")` is NaN. But `Number(\"\")` and `Number(\"   \")` are 0, so empty input\n// needs its own check.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isInteger\nfunction parseCount(text) {\n  if (text.trim() === \"\") return null;\n  const n = Number(text);\n  return Number.isInteger(n) ? n : null;\n}\n",
+    "quote": "The Number.isInteger() static method determines whether the passed value is an integer.",
+    "locator": "MDN — Number.isInteger()",
+    "source_title": "MDN — Number.isInteger()",
+    "tags": [
+      "js-ts-course",
+      "write",
+      "js01-parse-count",
+      "code"
+    ],
+    "language": "javascript",
+    "starter_code": "function parseCount(text) {\n  return parseInt(text, 10);\n}\n",
+    "test_cases": [
+      {
+        "input": [
+          "12"
+        ],
+        "expected": 12
+      },
+      {
+        "input": [
+          "007"
+        ],
+        "expected": 7
+      },
+      {
+        "input": [
+          "-4"
+        ],
+        "expected": -4
+      },
+      {
+        "input": [
+          ""
+        ],
+        "expected": null
+      },
+      {
+        "input": [
+          "   "
+        ],
+        "expected": null
+      },
+      {
+        "input": [
+          "3.5"
+        ],
+        "expected": null
+      },
+      {
+        "input": [
+          "12abc"
+        ],
+        "expected": null
+      }
+    ]
+  },
+  {
+    "card_type": "qa",
+    "front": "What does this print?\n\n```js\nconst settings = { theme: \"dark\" };\nsettings.theme = \"light\";\nconsole.log(settings.theme);\ntry {\n  settings = {};\n} catch (error) {\n  console.log(error.name);\n}\n```",
+    "back": "light\nTypeError\n\nWhy: const stops the variable from being reassigned (a TypeError at run time), but the object it points to can still change.\n\nDocs: MDN — const — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/const",
+    "quote": "The value of a constant can't be changed through reassignment using the assignment operator, but if a constant is an object, its properties can be added, updated, or removed.",
+    "locator": "MDN — const",
+    "source_title": "MDN — const",
+    "tags": [
+      "js-ts-course",
+      "predict",
+      "js01-const"
+    ]
+  },
+  {
+    "card_type": "qa",
+    "front": "What does this print?\n\n```js\nfunction rename(user) {\n  user.name = \"Grace\";\n  user = { name: \"Linus\" };\n}\nconst person = { name: \"Ada\" };\nrename(person);\nconsole.log(person.name);\n```",
+    "back": "Grace\n\nWhy: JavaScript passes every argument by value. For an object that value is a reference, so changing a property through it is seen by the caller, but pointing the parameter at a new object is not.\n\nDocs: MDN — Functions — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions",
+    "quote": "When you pass an object as a parameter, if the function changes the object's properties, that change is visible outside the function, as shown in the following example:",
+    "locator": "MDN — Functions",
+    "source_title": "MDN — Functions",
+    "tags": [
+      "js-ts-course",
+      "predict",
+      "js01-pass-by-sharing"
+    ]
+  },
+  {
+    "card_type": "qa",
+    "front": "What does this print?\n\n```js\nconsole.log(typeof hoisted);\ntry {\n  console.log(early);\n} catch (error) {\n  console.log(error.name);\n}\nlet early = 1;\nvar hoisted = 2;\n```",
+    "back": "undefined\nReferenceError\n\nWhy: A var exists (as undefined) from the top of its function. A let or const exists too, but reading it before its declaration line throws: it is in the temporal dead zone.\n\nDocs: MDN — let — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/let",
+    "quote": "While inside the TDZ, the variable has not been initialized with a value, and any attempt to access it will result in a ReferenceError.",
+    "locator": "MDN — let",
+    "source_title": "MDN — let",
+    "tags": [
+      "js-ts-course",
+      "predict",
+      "js01-tdz"
+    ]
+  }
+]

@@ -1,0 +1,76 @@
+{
+  "deck": "JavaScript & TypeScript: Zero to Mastery · 20 · any vs unknown",
+  "priority": 50,
+  "notes": [
+    {
+      "card_type": "qa",
+      "front": "Does this compile with `tsc --strict`? If not, which statement fails, and why?\n\n```ts\nconst a: any = \"hello\";\na.launch();\nconst u: unknown = \"hello\";\nu.launch();\nif (typeof u === \"string\") {\n  console.log(u.toUpperCase());\n}\n```",
+      "back": "No. `u.launch()` fails: 'u' is of type 'unknown'. `a.launch()` compiles (and would crash at run time); inside the typeof check, u is a string.\n\nWhy: any turns checking off; unknown keeps it on and asks you to prove the type first.\n\nDocs: TypeScript Handbook — More on Functions — https://www.typescriptlang.org/docs/handbook/2/functions.html#unknown",
+      "quote": "This is similar to the any type, but is safer because it's not legal to do anything with an unknown value:",
+      "locator": "TypeScript Handbook — More on Functions",
+      "source_title": "TypeScript Handbook — More on Functions",
+      "tags": [
+        "js-ts-course",
+        "compile",
+        "ts20-any-vs-unknown"
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "Fix lengthOf(value: unknown)",
+      "category": "20 · any vs unknown",
+      "difficulty": "Easy",
+      "front": "**Fix lengthOf(value: unknown)**\n\nThis doesn't compile: `value` is `unknown`. Return the length of a string or array, and 0 for anything else — including objects that happen to have a `length` property.\n\n```ts\nfunction lengthOf(value: unknown): number {\n  return value.length;\n}\n```",
+      "back": "// Why: Narrow unknown with real checks. Switching to any compiles, but then anything with\n// a length gets through.\n// Docs: https://www.typescriptlang.org/docs/handbook/2/narrowing.html\nfunction lengthOf(value: unknown): number {\n  if (typeof value === \"string\" || Array.isArray(value)) return value.length;\n  return 0;\n}\n",
+      "quote": "This analysis of code based on reachability is called control flow analysis, and TypeScript uses this flow analysis to narrow types as it encounters type guards and assignments.",
+      "locator": "TypeScript Handbook — Narrowing",
+      "source_title": "TypeScript Handbook — Narrowing",
+      "tags": [
+        "js-ts-course",
+        "fix",
+        "ts20-length-of",
+        "code"
+      ],
+      "language": "typescript",
+      "starter_code": "function lengthOf(value: unknown): number {\n  return value.length;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            "abc"
+          ],
+          "expected": 3
+        },
+        {
+          "input": [
+            [
+              1,
+              2
+            ]
+          ],
+          "expected": 2
+        },
+        {
+          "input": [
+            42
+          ],
+          "expected": 0
+        },
+        {
+          "input": [
+            null
+          ],
+          "expected": 0
+        },
+        {
+          "input": [
+            {
+              "length": 5
+            }
+          ],
+          "expected": 0
+        }
+      ],
+      "type_check": true
+    }
+  ]
+}

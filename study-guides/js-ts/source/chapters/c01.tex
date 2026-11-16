@@ -1,0 +1,24 @@
+\phantomsection\label{ch:c01}
+\chap{1. What is a value, and how do you name one?}{Every piece of data is a value of some type; a variable is a name that points at a value, and \code{const} pins the name, not the value.}
+
+\subsection{What kinds of values are there?}% sec:c01-types
+JavaScript has seven primitive types and objects. A \term[\textbf{Value:} one piece of data the program works with, such as \code{42} or \code{"hi"}. Like a coin: you can hand it around and look at it.]{value}{value} is either a \term[\textbf{Primitive:} a simple value that cannot be changed: a string, number, bigint, boolean, undefined, symbol or null. Like a number stamped on a coin.]{primitive}{primitive}---string, number, bigint, boolean, \code{undefined}, symbol, \code{null}---or an \term[\textbf{Object:} a value that holds other values under names and can be changed. Like a filing cabinet whose drawers you can open, fill and empty.]{object}{object}. Arrays and functions are objects too.
+
+The \term[\textbf{typeof:} an operator that returns a string naming a value's type. Like a label maker that reads a value and prints what kind it is.]{typeof}{typeof} operator names a value's type. It has two traps: \code{typeof null} is \code{"object"}, and an array is reported as \code{"object"} as well. Test for \code{null} with \code{=== null} and for arrays with \code{Array.isArray}.
+%%SNIPPET:c01-typeof%%
+
+\subsection{How do you turn text into a number safely?}% sec:c01-numbers
+Use \code{Number(text)}, then check the result. \code{Number} reads the whole string: \code{Number("12abc")} is \code{NaN}, the special ``not a number'' value. \code{parseInt} stops at the first character it cannot read, so \code{parseInt("12abc", 10)} is \code{12}. Watch empty text: \code{Number("")} and \code{Number("   ")} are \code{0}. \code{Number.isInteger} then tells you whether you got a whole number.
+%%SNIPPET:c01-numbers%%
+
+\subsection{What do let, const and var actually fix?}% sec:c01-names
+A \term[\textbf{Variable:} a name that points at a value. Like a name tag tied to a parcel: you can move the tag to another parcel (reassign) or open the parcel (change an object).]{variable}{variable} is a name pointing at a value. \code{let} and \code{const} names exist only inside the block \code{\{ ... \}} that declares them; \code{const} also forbids pointing the name at a different value. It does not freeze the value: an object behind a \code{const} can still be changed.
+%%SNIPPET:c01-const%%
+\code{var} is older: its name exists, as \code{undefined}, from the top of its function. A \code{let} or \code{const} name cannot be read before its declaration line runs; that stretch is the \term[\textbf{Temporal dead zone (TDZ):} the part of a block before a \code{let}/\code{const} line runs, where reading the name throws a ReferenceError. Like a roped-off area before the shop opens.]{tdz}{temporal dead zone}, and reading it there throws a \code{ReferenceError}.
+
+\subsection{What happens when you pass a value to a function?}% sec:c01-sharing
+The function gets a copy of the value. For an object, that value is a \term[\textbf{Reference:} the value that stands for an object: where it lives, not the object itself. Like a street address on a card, not a duplicate house.]{reference}{reference}: the function and the caller now hold the same address. Changing a property through it is seen by the caller; pointing the parameter at a new object is not.
+%%SNIPPET:c01-sharing%%
+
+\mantra{A name points; const pins the name, not the thing.}
+\begin{ponder}A function receives an array and calls \code{arr.push(1)}. Another does \code{arr = [...arr, 1]}. Which change does the caller see, and why?\end{ponder}

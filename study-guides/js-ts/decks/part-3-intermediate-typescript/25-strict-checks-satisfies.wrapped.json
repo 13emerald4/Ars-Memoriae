@@ -1,0 +1,45 @@
+{
+  "deck": "JavaScript & TypeScript: Zero to Mastery · 25 · Strict Checks & satisfies",
+  "priority": 50,
+  "notes": [
+    {
+      "card_type": "qa",
+      "front": "Does this compile with `tsc --strict`? If not, which statement fails, and why?\n\n```ts\nfunction initial(name: string | null): string {\n  return name[0];\n}\nfunction initialSafe(name: string | null): string {\n  return name?.[0] ?? \"?\";\n}\n```",
+      "back": "No. `return name[0]` fails: 'name' is possibly 'null'. initialSafe compiles.\n\nWhy: With strictNullChecks, string | null must be narrowed before use. ?. stops at null and ?? supplies the fallback, so every path returns a string.\n\nDocs: TypeScript Handbook — Everyday Types — https://www.typescriptlang.org/docs/handbook/2/everyday-types.html",
+      "quote": "With strictNullChecks on, when a value is null or undefined, you will need to test for those values before using methods or properties on that value.",
+      "locator": "TypeScript Handbook — Everyday Types",
+      "source_title": "TypeScript Handbook — Everyday Types",
+      "tags": [
+        "js-ts-course",
+        "compile",
+        "ts25-strict-null"
+      ]
+    },
+    {
+      "card_type": "qa",
+      "front": "Does this compile with `tsc --strict` `--noUncheckedIndexedAccess`? If not, which statement fails, and why?\n\n```ts\nconst scores = [90, 85];\nconst first = scores[0];\nconsole.log(first.toFixed(1));\nconst safe = scores[0] ?? 0;\nconsole.log(safe.toFixed(1));\n```",
+      "back": "No. `first.toFixed(1)` fails: 'first' is possibly 'undefined'. The `safe` lines compile.\n\nWhy: With noUncheckedIndexedAccess, scores[0] is number | undefined, because an index may be past the end. Without the flag the same code compiles and would crash on an empty array.\n\nDocs: TSConfig reference — noUncheckedIndexedAccess — https://www.typescriptlang.org/tsconfig/#noUncheckedIndexedAccess",
+      "quote": "Turning on noUncheckedIndexedAccess will add undefined to any un-declared field in the type.",
+      "locator": "TSConfig reference — noUncheckedIndexedAccess",
+      "source_title": "TSConfig reference — noUncheckedIndexedAccess",
+      "tags": [
+        "js-ts-course",
+        "compile",
+        "ts25-unchecked-index"
+      ]
+    },
+    {
+      "card_type": "qa",
+      "front": "Does this compile with `tsc --strict`? If not, which statement fails, and why?\n\n```ts\ntype Color = string | [number, number, number];\nconst annotated: Record<\"red\" | \"green\", Color> = { red: \"#f00\", green: [0, 255, 0] };\nconst checked = { red: \"#f00\", green: [0, 255, 0] } satisfies Record<\"red\" | \"green\", Color>;\nannotated.red.toUpperCase();\nchecked.red.toUpperCase();\n```",
+      "back": "No. `annotated.red.toUpperCase()` fails: toUpperCase does not exist on the tuple type. `checked.red.toUpperCase()` compiles.\n\nWhy: An annotation replaces the value's type, so annotated.red is just Color. satisfies checks the object against the type but keeps what it inferred: checked.red is a string.\n\nDocs: TypeScript 4.9 release notes — https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-9.html",
+      "quote": "The new satisfies operator lets us validate that the type of an expression matches some type, without changing the resulting type of that expression.",
+      "locator": "TypeScript 4.9 release notes",
+      "source_title": "TypeScript 4.9 release notes",
+      "tags": [
+        "js-ts-course",
+        "compile",
+        "ts25-satisfies"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+{
+  "deck": "JavaScript & TypeScript: Zero to Mastery · 13 · Asynchronous JavaScript",
+  "priority": 50,
+  "notes": [
+    {
+      "card_type": "qa",
+      "front": "What does this print?\n\n```js\nconsole.log(\"A\");\nsetTimeout(() => console.log(\"B\"), 0);\nPromise.resolve().then(() => console.log(\"C\"));\nconsole.log(\"D\");\n```",
+      "back": "A\nD\nC\nB\n\nWhy: Synchronous code runs first (A, D). Then the microtask queue — promise callbacks — is emptied (C). Timers run after that, even with a 0 ms delay (B).\n\nDocs: MDN — Using promises — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Using_promises",
+      "quote": "Promise callbacks are handled as a microtask whereas setTimeout() callbacks are handled as task queues.",
+      "locator": "MDN — Using promises",
+      "source_title": "MDN — Using promises",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js13-event-loop"
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "Make loadNames(ids) concurrent",
+      "category": "13 · Asynchronous JavaScript",
+      "difficulty": "Medium",
+      "front": "**Make loadNames(ids) concurrent**\n\n`loadNames(ids)` returns the right names but fetches one user at a time. Make all the `getUser` calls run at once with `Promise.all`, keeping the names in the order of `ids`. Don't change `check` or `getUser`.\n\n```js\n// Test driver: don't change.\nasync function check(ids) {\n  maxInFlight = 0;\n  const names = await loadNames(ids);\n  return { names, concurrent: ids.length < 2 || maxInFlight === ids.length };\n}\n\nasync function loadNames(ids) {\n  const names = [];\n  for (const id of ids) {\n    const user = await getUser(id);\n    names.push(user.name);\n  }\n  return names;\n}\n\n// Fake API: don't change.\nlet inFlight = 0;\nlet maxInFlight = 0;\nfunction getUser(id) {\n  inFlight++;\n  maxInFlight = Math.max(maxInFlight, inFlight);\n  return new Promise((resolve) => {\n    setTimeout(() => {\n      inFlight--;\n      resolve({ id, name: `user${id}` });\n    }, 10);\n  });\n}\n```",
+      "back": "// Why: `await` in a loop waits for each request before starting the next. Start them all\n// with map, then await Promise.all, which keeps results in input order.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all\n// Test driver: don't change.\nasync function check(ids) {\n  maxInFlight = 0;\n  const names = await loadNames(ids);\n  return { names, concurrent: ids.length < 2 || maxInFlight === ids.length };\n}\n\nasync function loadNames(ids) {\n  const users = await Promise.all(ids.map((id) => getUser(id)));\n  return users.map((user) => user.name);\n}\n\n// Fake API: don't change.\nlet inFlight = 0;\nlet maxInFlight = 0;\nfunction getUser(id) {\n  inFlight++;\n  maxInFlight = Math.max(maxInFlight, inFlight);\n  return new Promise((resolve) => {\n    setTimeout(() => {\n      inFlight--;\n      resolve({ id, name: `user${id}` });\n    }, 10);\n  });\n}\n",
+      "quote": "This returned promise fulfills when all of the input's promises fulfill (including when an empty iterable is passed), with an array of the fulfillment values.",
+      "locator": "MDN — Promise.all()",
+      "source_title": "MDN — Promise.all()",
+      "tags": [
+        "js-ts-course",
+        "fix",
+        "js13-load-names",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "// Test driver: don't change.\nasync function check(ids) {\n  maxInFlight = 0;\n  const names = await loadNames(ids);\n  return { names, concurrent: ids.length < 2 || maxInFlight === ids.length };\n}\n\nasync function loadNames(ids) {\n  const names = [];\n  for (const id of ids) {\n    const user = await getUser(id);\n    names.push(user.name);\n  }\n  return names;\n}\n\n// Fake API: don't change.\nlet inFlight = 0;\nlet maxInFlight = 0;\nfunction getUser(id) {\n  inFlight++;\n  maxInFlight = Math.max(maxInFlight, inFlight);\n  return new Promise((resolve) => {\n    setTimeout(() => {\n      inFlight--;\n      resolve({ id, name: `user${id}` });\n    }, 10);\n  });\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            [
+              1,
+              2,
+              3
+            ]
+          ],
+          "expected": {
+            "names": [
+              "user1",
+              "user2",
+              "user3"
+            ],
+            "concurrent": true
+          }
+        },
+        {
+          "input": [
+            []
+          ],
+          "expected": {
+            "names": [],
+            "concurrent": true
+          }
+        },
+        {
+          "input": [
+            [
+              5
+            ]
+          ],
+          "expected": {
+            "names": [
+              "user5"
+            ],
+            "concurrent": true
+          }
+        }
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "Fix getJson(url)",
+      "category": "13 · Asynchronous JavaScript",
+      "difficulty": "Medium",
+      "front": "**Fix getJson(url)**\n\n`getJson(url)` returns the error page's body when the server answers 404 or 500. Throw `new Error(`HTTP ${status}`)` (e.g. `\"HTTP 404\"`) when the response isn't ok. Don't change the fake `fetch`.\n\n```js\nasync function getJson(url) {\n  const response = await fetch(url);\n  return response.json();\n}\n\n// Fake server for the tests: don't change.\nasync function fetch(url) {\n  const routes = {\n    \"/users/1\": { status: 200, body: { id: 1, name: \"Ada\" } },\n    \"/down\": { status: 500, body: { error: \"server error\" } },\n  };\n  const route = routes[url] ?? { status: 404, body: { error: \"not found\" } };\n  return {\n    ok: route.status >= 200 && route.status < 300,\n    status: route.status,\n    json: async () => route.body,\n  };\n}\n```",
+      "back": "// Why: An HTTP error is still a successful fetch: the promise resolves with the response.\n// `response.ok` is true only for 200–299, so check it before reading the body.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch\nasync function getJson(url) {\n  const response = await fetch(url);\n  if (!response.ok) throw new Error(`HTTP ${response.status}`);\n  return response.json();\n}\n\n// Fake server for the tests: don't change.\nasync function fetch(url) {\n  const routes = {\n    \"/users/1\": { status: 200, body: { id: 1, name: \"Ada\" } },\n    \"/down\": { status: 500, body: { error: \"server error\" } },\n  };\n  const route = routes[url] ?? { status: 404, body: { error: \"not found\" } };\n  return {\n    ok: route.status >= 200 && route.status < 300,\n    status: route.status,\n    json: async () => route.body,\n  };\n}\n",
+      "quote": "A fetch() promise only rejects when the request fails, for example, because of a badly-formed request URL or a network error. A fetch() promise does not reject if the server responds with HTTP status codes that indicate errors (404, 504, etc.).",
+      "locator": "MDN — Window: fetch()",
+      "source_title": "MDN — Window: fetch()",
+      "tags": [
+        "js-ts-course",
+        "fix",
+        "js13-fetch-ok",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "async function getJson(url) {\n  const response = await fetch(url);\n  return response.json();\n}\n\n// Fake server for the tests: don't change.\nasync function fetch(url) {\n  const routes = {\n    \"/users/1\": { status: 200, body: { id: 1, name: \"Ada\" } },\n    \"/down\": { status: 500, body: { error: \"server error\" } },\n  };\n  const route = routes[url] ?? { status: 404, body: { error: \"not found\" } };\n  return {\n    ok: route.status >= 200 && route.status < 300,\n    status: route.status,\n    json: async () => route.body,\n  };\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            "/users/1"
+          ],
+          "expected": {
+            "id": 1,
+            "name": "Ada"
+          }
+        },
+        {
+          "input": [
+            "/missing"
+          ],
+          "expected": {
+            "$throws": "HTTP 404"
+          }
+        },
+        {
+          "input": [
+            "/down"
+          ],
+          "expected": {
+            "$throws": "HTTP 500"
+          }
+        }
+      ]
+    },
+    {
+      "card_type": "qa",
+      "front": "What does this print?\n\n```js\nconst ok = Promise.resolve(\"ok\");\nconst fail = Promise.reject(new Error(\"boom\"));\ntry {\n  await Promise.all([ok, fail]);\n} catch (error) {\n  console.log(\"all:\", error.message);\n}\nconst results = await Promise.allSettled([ok, fail]);\nconsole.log(\"allSettled:\", results.map((r) => r.status).join(\",\"));\n```",
+      "back": "all: boom\nallSettled: fulfilled,rejected\n\nWhy: Promise.all rejects with the first rejection. Promise.allSettled always fulfills, with a status for each promise. Neither one starts the work: the promises were already running when created.\n\nDocs: MDN — Promise.all() — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all",
+      "quote": "It rejects when any of the input's promises rejects, with this first rejection reason.",
+      "locator": "MDN — Promise.all()",
+      "source_title": "MDN — Promise.all()",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js13-all-vs-allsettled"
+      ]
+    }
+  ]
+}

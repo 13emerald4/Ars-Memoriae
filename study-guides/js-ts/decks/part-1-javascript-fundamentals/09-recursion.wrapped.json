@@ -1,0 +1,194 @@
+{
+  "deck": "JavaScript & TypeScript: Zero to Mastery · 09 · Recursion",
+  "priority": 50,
+  "notes": [
+    {
+      "card_type": "code",
+      "title": "factorial(n)",
+      "category": "09 · Recursion",
+      "difficulty": "Easy",
+      "front": "**factorial(n)**\n\nWrite `factorial(n)` recursively: n × (n − 1) × … × 1, with `factorial(0)` = 1.\n\n```js\nfunction factorial(n) {\n  // TODO: base case, then n * factorial(n - 1)\n  return n;\n}\n```",
+      "back": "// Why: Without a base case that covers 0, factorial(0) recurses forever and overflows the\n// stack.\n// Docs: https://developer.mozilla.org/en-US/docs/Glossary/Recursion\nfunction factorial(n) {\n  if (n <= 1) return 1;\n  return n * factorial(n - 1);\n}\n",
+      "quote": "A recursive function can receive two inputs: a base case (ends recursion) or a recursive case (resumes recursion).",
+      "locator": "MDN — Recursion",
+      "source_title": "MDN — Recursion",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js09-factorial",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function factorial(n) {\n  // TODO: base case, then n * factorial(n - 1)\n  return n;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            0
+          ],
+          "expected": 1
+        },
+        {
+          "input": [
+            1
+          ],
+          "expected": 1
+        },
+        {
+          "input": [
+            5
+          ],
+          "expected": 120
+        },
+        {
+          "input": [
+            10
+          ],
+          "expected": 3628800
+        }
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "sumNested(items)",
+      "category": "09 · Recursion",
+      "difficulty": "Easy",
+      "front": "**sumNested(items)**\n\nWrite `sumNested(items)`: add every number in an array whose items can be arrays, nested to any depth.\n\n```js\nfunction sumNested(items) {\n  let total = 0;\n  // TODO\n  return total;\n}\n```",
+      "back": "// Why: Each array is the same problem, smaller. `flat()` only removes one level of\n// nesting.\n// Docs: https://developer.mozilla.org/en-US/docs/Glossary/Recursion\nfunction sumNested(items) {\n  let total = 0;\n  for (const item of items) {\n    total += Array.isArray(item) ? sumNested(item) : item;\n  }\n  return total;\n}\n",
+      "quote": "The act of a function calling itself, recursion is used to solve problems that contain smaller sub-problems.",
+      "locator": "MDN — Recursion",
+      "source_title": "MDN — Recursion",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js09-sum-nested",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function sumNested(items) {\n  let total = 0;\n  // TODO\n  return total;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            [
+              1,
+              [
+                2,
+                3
+              ],
+              [
+                [
+                  4
+                ]
+              ]
+            ]
+          ],
+          "expected": 10
+        },
+        {
+          "input": [
+            []
+          ],
+          "expected": 0
+        },
+        {
+          "input": [
+            [
+              [
+                []
+              ]
+            ]
+          ],
+          "expected": 0
+        },
+        {
+          "input": [
+            [
+              5
+            ]
+          ],
+          "expected": 5
+        }
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "countFiles(folder)",
+      "category": "09 · Recursion",
+      "difficulty": "Easy",
+      "front": "**countFiles(folder)**\n\nA folder is `{ name, files: string[], folders: Folder[] }`. Write `countFiles(folder)`: the number of files in it and every folder below it.\n\n```js\nfunction countFiles(folder) {\n  // TODO\n  return folder.files.length;\n}\n```",
+      "back": "// Why: The base case is a folder with no sub-folders: the loop doesn't run and it returns\n// its own file count.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions\nfunction countFiles(folder) {\n  let total = folder.files.length;\n  for (const child of folder.folders) {\n    total += countFiles(child);\n  }\n  return total;\n}\n",
+      "quote": "A function can call itself. For example, here is a function that computes factorials recursively:",
+      "locator": "MDN — Functions",
+      "source_title": "MDN — Functions",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js09-count-files",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "function countFiles(folder) {\n  // TODO\n  return folder.files.length;\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            {
+              "name": "root",
+              "files": [
+                "a"
+              ],
+              "folders": []
+            }
+          ],
+          "expected": 1
+        },
+        {
+          "input": [
+            {
+              "name": "root",
+              "files": [
+                "a",
+                "b"
+              ],
+              "folders": [
+                {
+                  "name": "docs",
+                  "files": [
+                    "c"
+                  ],
+                  "folders": [
+                    {
+                      "name": "deep",
+                      "files": [
+                        "d",
+                        "e"
+                      ],
+                      "folders": []
+                    }
+                  ]
+                },
+                {
+                  "name": "empty",
+                  "files": [],
+                  "folders": []
+                }
+              ]
+            }
+          ],
+          "expected": 5
+        }
+      ]
+    },
+    {
+      "card_type": "qa",
+      "front": "What does this print?\n\n```js\nfunction countdown(n) {\n  if (n === 0) return \"liftoff\";\n  return n + \" \" + countdown(n - 1);\n}\nconsole.log(countdown(3));\n```",
+      "back": "3 2 1 liftoff\n\nWhy: Each call waits for the smaller call to return, then puts its own number in front.\n\nDocs: MDN — Functions — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions",
+      "quote": "A function can refer to and call itself.",
+      "locator": "MDN — Functions",
+      "source_title": "MDN — Functions",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js09-trace"
+      ]
+    }
+  ]
+}

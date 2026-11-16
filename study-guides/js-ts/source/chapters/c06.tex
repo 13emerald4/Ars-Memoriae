@@ -1,0 +1,25 @@
+\phantomsection\label{ch:c06}
+\chap{6. How do you work with a list of values?}{\code{map} transforms, \code{filter} keeps, \code{reduce} folds, \code{forEach} only acts; \code{sort} changes the array in place and compares as text unless told otherwise.}
+
+\subsection{How do you transform or select items?}% sec:c06-map
+An \term[\textbf{Array:} an ordered list of values, numbered from 0. Like a row of numbered lockers.]{array}{array} has methods that take a \term[\textbf{Callback:} a function you pass to another function, which calls it for you. Like instructions you hand a helper: ``do this with each item''.]{callback}{callback}. \code{map} returns a new array of the same length with each item transformed; \code{filter} returns a new array of the items whose callback returned a truthy value.
+%%SNIPPET:c06-map%%
+
+\subsection{How do you boil a list down to one value?}% sec:c06-reduce
+With \code{reduce}. It carries an \term[\textbf{Accumulator:} the running result \code{reduce} passes from one item to the next. Like a running tally on a notepad.]{accumulator}{accumulator} through the array: each callback gets the tally so far and the next item and returns the new tally. Give it a starting value (\code{0}, \code{\{\}}, \ldots): without one, an empty array throws a \code{TypeError}. The callback must return the accumulator every time.
+%%SNIPPET:c06-reduce%%
+
+\subsection{When is forEach the wrong tool?}% sec:c06-foreach
+When you want a result. \code{forEach} runs the callback for each item and always returns \code{undefined}; it is for side effects such as adding to a total. To build a new array, use \code{map}.
+%%SNIPPET:c06-foreach%%
+
+\subsection{Why does sort put 100 before 9?}% sec:c06-sort
+Without a compare function, \code{sort} compares items as strings, and \code{"100"} comes before \code{"9"}. Pass \code{(a, b) => a - b} to sort numbers ascending. \code{sort} also changes the array \term[\textbf{In place:} changing the original rather than making a new copy. Like rearranging the books on your shelf instead of buying a sorted set.]{inplace}{in place}; copy first (\code{[...nums]}) if the caller's array must stay as it was.
+%%SNIPPET:c06-sort%%
+
+\subsection{Is a copy of an array a new array?}% sec:c06-copy
+Only if you make one. \code{const b = a} copies the reference (\hyperref[ch:c01]{Ch.~1}), so both names point at one array. \code{[...a]} builds a new array with the same items; the items themselves are shared, not copied.
+%%SNIPPET:c06-copy%%
+
+\mantra{Return from map, act in forEach, start reduce with a value.}
+\begin{ponder}A \code{reduce} callback returns the accumulator on one branch but forgets to on another. What is the accumulator for the next item after the forgetful branch runs?\end{ponder}

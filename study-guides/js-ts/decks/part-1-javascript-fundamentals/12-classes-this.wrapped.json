@@ -1,0 +1,237 @@
+{
+  "deck": "JavaScript & TypeScript: Zero to Mastery · 12 · Classes & this",
+  "priority": 50,
+  "notes": [
+    {
+      "card_type": "code",
+      "title": "class BankAccount",
+      "category": "12 · Classes & this",
+      "difficulty": "Medium",
+      "front": "**class BankAccount**\n\nFinish `BankAccount`: keep the balance in a private `#balance` field starting at 0. `deposit(amount)` and `withdraw(amount)` return the new balance; `getBalance()` returns it. Throw `RangeError(\"deposit must be positive\")` for a deposit of 0 or less and `RangeError(\"insufficient funds\")` when withdrawing more than the balance. Don't change `run`.\n\n```js\n// Test driver: don't change. Runs each [method, ...args] and records the result.\nfunction run(actions) {\n  const account = new BankAccount(\"Ada\");\n  return actions.map(([method, ...args]) => {\n    if (method === \"publicBalance\") return account.balance;\n    try {\n      return account[method](...args);\n    } catch (error) {\n      return `${error.name}: ${error.message}`;\n    }\n  });\n}\n\nclass BankAccount {\n  constructor(owner) {\n    this.owner = owner;\n  }\n\n  // TODO: #balance, deposit(amount), withdraw(amount), getBalance()\n}\n```",
+      "back": "// Why: A # field can only be read inside the class: `account.balance` from outside is\n// undefined. Validate before changing state so a failed call leaves it untouched.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Using_classes\n// Test driver: don't change. Runs each [method, ...args] and records the result.\nfunction run(actions) {\n  const account = new BankAccount(\"Ada\");\n  return actions.map(([method, ...args]) => {\n    if (method === \"publicBalance\") return account.balance;\n    try {\n      return account[method](...args);\n    } catch (error) {\n      return `${error.name}: ${error.message}`;\n    }\n  });\n}\n\nclass BankAccount {\n  #balance = 0;\n\n  constructor(owner) {\n    this.owner = owner;\n  }\n\n  deposit(amount) {\n    if (amount <= 0) throw new RangeError(\"deposit must be positive\");\n    this.#balance += amount;\n    return this.#balance;\n  }\n\n  withdraw(amount) {\n    if (amount > this.#balance) throw new RangeError(\"insufficient funds\");\n    this.#balance -= amount;\n    return this.#balance;\n  }\n\n  getBalance() {\n    return this.#balance;\n  }\n}\n",
+      "quote": "A private field is an identifier prefixed with # (the hash symbol).",
+      "locator": "MDN — Using classes",
+      "source_title": "MDN — Using classes",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js12-bank-account",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "// Test driver: don't change. Runs each [method, ...args] and records the result.\nfunction run(actions) {\n  const account = new BankAccount(\"Ada\");\n  return actions.map(([method, ...args]) => {\n    if (method === \"publicBalance\") return account.balance;\n    try {\n      return account[method](...args);\n    } catch (error) {\n      return `${error.name}: ${error.message}`;\n    }\n  });\n}\n\nclass BankAccount {\n  constructor(owner) {\n    this.owner = owner;\n  }\n\n  // TODO: #balance, deposit(amount), withdraw(amount), getBalance()\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            [
+              [
+                "deposit",
+                50
+              ],
+              [
+                "withdraw",
+                20
+              ],
+              [
+                "getBalance"
+              ]
+            ]
+          ],
+          "expected": [
+            50,
+            30,
+            30
+          ]
+        },
+        {
+          "input": [
+            [
+              [
+                "withdraw",
+                1
+              ]
+            ]
+          ],
+          "expected": [
+            "RangeError: insufficient funds"
+          ]
+        },
+        {
+          "input": [
+            [
+              [
+                "deposit",
+                10
+              ],
+              [
+                "withdraw",
+                10
+              ]
+            ]
+          ],
+          "expected": [
+            10,
+            0
+          ]
+        },
+        {
+          "input": [
+            [
+              [
+                "deposit",
+                0
+              ],
+              [
+                "deposit",
+                -5
+              ]
+            ]
+          ],
+          "expected": [
+            "RangeError: deposit must be positive",
+            "RangeError: deposit must be positive"
+          ]
+        },
+        {
+          "input": [
+            [
+              [
+                "deposit",
+                10
+              ],
+              [
+                "publicBalance"
+              ]
+            ]
+          ],
+          "expected": [
+            10,
+            {
+              "$undefined": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "card_type": "qa",
+      "front": "What does this print?\n\n```js\nclass Greeter {\n  constructor(name) {\n    this.name = name;\n  }\n  greet() {\n    return `Hi, ${this.name}`;\n  }\n}\nconst greeter = new Greeter(\"Ada\");\nconst { greet } = greeter;\ntry {\n  console.log(greet());\n} catch (error) {\n  console.log(error.name);\n}\nconsole.log(greet.call(greeter));\nconst bound = greeter.greet.bind(greeter);\nconsole.log(bound());\n```",
+      "back": "TypeError\nHi, Ada\nHi, Ada\n\nWhy: this is set by how a function is called, not where it was defined. Called on its own, greet gets this = undefined (class code is strict), so this.name throws. call() passes this for one call; bind() makes a copy with this fixed.\n\nDocs: MDN — Function.prototype.bind() — https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/bind",
+      "quote": "The bind() method of Function instances creates a new function that, when called, calls this function with its this keyword set to the provided value, and a given sequence of arguments preceding any provided when the new function is called.",
+      "locator": "MDN — Function.prototype.bind()",
+      "source_title": "MDN — Function.prototype.bind()",
+      "tags": [
+        "js-ts-course",
+        "predict",
+        "js12-lost-this"
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "Fix Cart.total()",
+      "category": "12 · Classes & this",
+      "difficulty": "Medium",
+      "front": "**Fix Cart.total()**\n\n`total()` throws a TypeError: inside the `function` callback, `this` is not the cart. Fix it. Don't change `check`.\n\n```js\n// Test driver: don't change.\nfunction check(prices) {\n  return new Cart(prices).total();\n}\n\nclass Cart {\n  constructor(prices) {\n    this.prices = prices;\n    this.sum = 0;\n  }\n\n  total() {\n    this.sum = 0;\n    this.prices.forEach(function (price) {\n      this.sum += price;\n    });\n    return this.sum;\n  }\n}\n```",
+      "back": "// Why: A `function` callback gets its own `this` (undefined here). An arrow function has\n// no `this` of its own, so it uses the method's.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions\n// Test driver: don't change.\nfunction check(prices) {\n  return new Cart(prices).total();\n}\n\nclass Cart {\n  constructor(prices) {\n    this.prices = prices;\n    this.sum = 0;\n  }\n\n  total() {\n    this.sum = 0;\n    this.prices.forEach((price) => {\n      this.sum += price;\n    });\n    return this.sum;\n  }\n}\n",
+      "quote": "Arrow function expressions should only be used for non-method functions because they do not have their own this.",
+      "locator": "MDN — Arrow function expressions",
+      "source_title": "MDN — Arrow function expressions",
+      "tags": [
+        "js-ts-course",
+        "fix",
+        "js12-this-in-callback",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "// Test driver: don't change.\nfunction check(prices) {\n  return new Cart(prices).total();\n}\n\nclass Cart {\n  constructor(prices) {\n    this.prices = prices;\n    this.sum = 0;\n  }\n\n  total() {\n    this.sum = 0;\n    this.prices.forEach(function (price) {\n      this.sum += price;\n    });\n    return this.sum;\n  }\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            [
+              1,
+              2,
+              3
+            ]
+          ],
+          "expected": 6
+        },
+        {
+          "input": [
+            [
+              10
+            ]
+          ],
+          "expected": 10
+        },
+        {
+          "input": [
+            []
+          ],
+          "expected": 0
+        }
+      ]
+    },
+    {
+      "card_type": "code",
+      "title": "Circle and Rectangle extend Shape",
+      "category": "12 · Classes & this",
+      "difficulty": "Medium",
+      "front": "**Circle and Rectangle extend Shape**\n\nWrite `Circle` (constructor `radius`, name `\"circle\"`, area πr²) and `Rectangle` (constructor `width, height`, name `\"rectangle\"`) so both extend `Shape`, call `super(name)`, and implement `area()`. Don't change `check` or `Shape`.\n\n```js\n// Test driver: don't change.\nfunction check(specs) {\n  return specs.map(([kind, ...dims]) => {\n    const shape = kind === \"circle\" ? new Circle(...dims) : new Rectangle(...dims);\n    return [shape instanceof Shape, shape.describe()];\n  });\n}\n\nclass Shape {\n  constructor(name) {\n    this.name = name;\n  }\n  area() {\n    return 0;\n  }\n  describe() {\n    return `${this.name} with area ${this.area().toFixed(2)}`;\n  }\n}\n\nclass Circle extends Shape {\n  // TODO\n}\n\nclass Rectangle extends Shape {\n  // TODO\n}\n```",
+      "back": "// Why: A subclass must call super() before it uses `this`. It inherits describe() and\n// overrides area(), so Shape's describe() calls the right area for each shape.\n// Docs: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/extends\n// Test driver: don't change.\nfunction check(specs) {\n  return specs.map(([kind, ...dims]) => {\n    const shape = kind === \"circle\" ? new Circle(...dims) : new Rectangle(...dims);\n    return [shape instanceof Shape, shape.describe()];\n  });\n}\n\nclass Shape {\n  constructor(name) {\n    this.name = name;\n  }\n  area() {\n    return 0;\n  }\n  describe() {\n    return `${this.name} with area ${this.area().toFixed(2)}`;\n  }\n}\n\nclass Circle extends Shape {\n  constructor(radius) {\n    super(\"circle\");\n    this.radius = radius;\n  }\n  area() {\n    return Math.PI * this.radius ** 2;\n  }\n}\n\nclass Rectangle extends Shape {\n  constructor(width, height) {\n    super(\"rectangle\");\n    this.width = width;\n    this.height = height;\n  }\n  area() {\n    return this.width * this.height;\n  }\n}\n",
+      "quote": "The extends keyword is used in class declarations or class expressions to create a class that is a child of another class.",
+      "locator": "MDN — extends",
+      "source_title": "MDN — extends",
+      "tags": [
+        "js-ts-course",
+        "write",
+        "js12-inheritance",
+        "code"
+      ],
+      "language": "javascript",
+      "starter_code": "// Test driver: don't change.\nfunction check(specs) {\n  return specs.map(([kind, ...dims]) => {\n    const shape = kind === \"circle\" ? new Circle(...dims) : new Rectangle(...dims);\n    return [shape instanceof Shape, shape.describe()];\n  });\n}\n\nclass Shape {\n  constructor(name) {\n    this.name = name;\n  }\n  area() {\n    return 0;\n  }\n  describe() {\n    return `${this.name} with area ${this.area().toFixed(2)}`;\n  }\n}\n\nclass Circle extends Shape {\n  // TODO\n}\n\nclass Rectangle extends Shape {\n  // TODO\n}\n",
+      "test_cases": [
+        {
+          "input": [
+            [
+              [
+                "circle",
+                1
+              ],
+              [
+                "rectangle",
+                2,
+                3
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              true,
+              "circle with area 3.14"
+            ],
+            [
+              true,
+              "rectangle with area 6.00"
+            ]
+          ]
+        },
+        {
+          "input": [
+            [
+              [
+                "circle",
+                2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              true,
+              "circle with area 12.57"
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

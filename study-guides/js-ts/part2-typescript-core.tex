@@ -1,0 +1,1456 @@
+\documentclass[10pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[letterpaper, left=0.65in, textwidth=4.7in, marginparsep=0.3in, marginparwidth=2.45in, top=0.75in, bottom=0.75in]{geometry}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage[most]{tcolorbox}
+\usepackage{multicol}
+\usepackage[titles]{tocloft}
+\usepackage{marginnote}
+\usepackage{marginfix}
+\usepackage{ragged2e}
+\usepackage{hyperref}
+
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black}
+\setlist{nosep,leftmargin=1.3em,topsep=2pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\setcounter{secnumdepth}{0}
+\setcounter{tocdepth}{1}
+
+% Heading Formats
+\titleformat{\part}[block]{\LARGE\bfseries\color{blue!40!black}}{}{0pt}{}
+\titlespacing*{\part}{0pt}{10pt}{2pt}
+\titleformat{\section}{\Large\bfseries\color{blue!50!black}}{}{0pt}{}
+\titlespacing*{\section}{0pt}{14pt}{4pt}
+\titleformat{\subsection}{\normalsize\bfseries\itshape\color{black!80}}{}{0pt}{}
+\titlespacing*{\subsection}{0pt}{7pt}{1pt}
+
+% Editorial Table of Contents (Book Style)
+\renewcommand{\contentsname}{Contents}
+\renewcommand{\cfttoctitlefont}{\hfill\Large\bfseries\color{blue!50!black}}
+\renewcommand{\cftaftertoctitle}{\hfill}
+\setlength{\cftbeforetoctitleskip}{4pt}
+\setlength{\cftaftertoctitleskip}{12pt}
+
+% Parts: Structural rubrics without page numbers or dot leaders
+\renewcommand{\cftpartfont}{\large\bfseries\color{blue!40!black}}
+\setlength{\cftbeforepartskip}{11pt}
+\setlength{\cftpartindent}{0pt}
+\cftpagenumbersoff{part}
+\renewcommand{\cftpartleader}{\hfill}
+
+% Sections/Chapters: Indented, clean whitespace, flush-right page numbers
+\renewcommand{\cftsecfont}{\normalsize\normalfont}
+\renewcommand{\cftsecpagefont}{\normalsize\normalfont\color{black!75}}
+\setlength{\cftsecindent}{1.4em}
+\setlength{\cftsecnumwidth}{1.8em}
+\setlength{\cftbeforesecskip}{4pt}
+\renewcommand{\cftsecleader}{\hfill}
+\cftsetpnumwidth{1.6em}
+\cftsetrmarg{2.0em}
+
+% Code Listing Settings (adapt language as needed)
+\lstset{basicstyle=\ttfamily\footnotesize,columns=fullflexible,keepspaces=true,
+  frame=l,framerule=1.5pt,rulecolor=\color{gray!50},xleftmargin=8pt,
+  aboveskip=4pt,belowskip=4pt,showstringspaces=false,upquote=true,breaklines=true}
+\newcommand{\code}[1]{{\ttfamily\small #1}}
+
+% Collision-Free Sidenote Engine
+\setlength{\marginparpush}{7pt}
+\newcommand{\marginnotestyle}{\scriptsize\sffamily\color{black!80}\RaggedRight}
+
+\makeatletter
+\newcommand{\safemargin}[1]{%
+  \ifinner%
+    % Suppressed inside tables/boxes to avoid collisions and "Float(s) lost" crashes
+  \else%
+    \marginpar{\marginnotestyle #1}%
+  \fi%
+}
+\makeatother
+
+\newcommand{\term}[3][]{%
+  \hypertarget{t:#2}{\textbf{#3}}%
+  \if\relax\detokenize{#1}\relax\else%
+    \safemargin{#1}%
+  \fi%
+}
+\renewcommand{\footnote}[1]{\safemargin{#1}}
+\newcommand{\ix}[3]{\hyperlink{t:#1}{#2}\dotfill #3\par}
+
+% Socratic Callout Boxes
+\newtcolorbox{corebox}{colback=blue!4,colframe=blue!45!black,boxrule=0.6pt,arc=2pt,
+  left=6pt,right=6pt,top=3pt,bottom=3pt,fontupper=\small}
+\newtcolorbox{ponder}{colback=green!3,colframe=green!35!black,boxrule=0.5pt,arc=2pt,
+  left=6pt,right=6pt,top=2pt,bottom=2pt,fontupper=\small,
+  title={\small\bfseries Think it through},coltitle=white,colbacktitle=green!35!black,
+  toptitle=1pt,bottomtitle=1pt}
+
+\newcommand{\chap}[2]{\section*{#1}\addcontentsline{toc}{section}{#1}\vspace{-2pt}\begin{corebox}\textbf{Core idea.} #2\end{corebox}}
+\newcommand{\partq}[2]{\part*{#1}{\small\itshape #2}}
+
+% ---------------------------------------------------------------------------
+% Document-specific additions
+\usepackage{lmodern}     % scalable fonts: avoids "Font ecsx0800 not found" on some TeX installs
+\usepackage{needspace}   % \Needspace before short listings
+\newcommand{\ch}[1]{{\small\color{black!55}[#1]}}   % source tag, e.g. \ch{Ch 13, p269}
+\newcommand{\mantra}[1]{\par\smallskip{\color{blue!45!black}\textbf{Rule:}~\emph{#1}}\par}
+\newcommand{\partline}[2]{\phantomsection\partq{#1}{#2}}  % titlesec adds the TOC entry
+\usepackage{amssymb}
+\setlength{\emergencystretch}{3em}  % let lines with unbreakable inline code stretch instead of overflowing
+% JavaScript and TypeScript for listings, plus the non-ASCII characters the code uses.
+\lstdefinelanguage{JavaScript}{
+  morekeywords={async,await,break,case,catch,class,const,continue,default,delete,do,else,export,extends,
+    false,finally,for,from,function,get,if,import,in,instanceof,let,new,null,of,return,set,static,super,
+    switch,this,throw,true,try,typeof,undefined,var,void,while,yield},
+  sensitive=true,morecomment=[l]{//},morecomment=[s]{/*}{*/},
+  morestring=[b]",morestring=[b]',morestring=[b]`}
+\lstdefinelanguage{TypeScript}[]{JavaScript}{
+  morekeywords={type,interface,enum,namespace,implements,private,protected,public,readonly,keyof,
+    unknown,never,any,number,string,boolean,satisfies,as,is,declare,abstract}}
+\lstset{keywordstyle=\color{blue!55!black}\bfseries,commentstyle=\color{green!35!black}\itshape,
+  stringstyle=\color{red!45!black},extendedchars=true,
+  literate={°}{{\textdegree}}1 {π}{{$\pi$}}1 {²}{{$^2$}}1 {×}{{$\times$}}1 {–}{{--}}1 {—}{{---}}1
+    {…}{{\ldots}}1 {→}{{$\rightarrow$}}1 {≥}{{$\geq$}}1}
+% Card-by-card solution guide
+\newcommand{\trap}{\par\raggedright\textbf{\color{red!70!black}Trap:}~}
+\newcommand{\core}[1]{\textit{#1}\par}
+\newcommand{\practice}{\textbf{\color{blue!50!black}Practice:}~}
+\newcommand{\deckhead}[2]{\par\ifdim\dimexpr\pagegoal-\pagetotal\relax<0.3\textheight\newpage\fi\bigskip\phantomsection\addcontentsline{toc}{section}{#1}{\Large\bfseries\color{blue!50!black}#1}\hfill{\small #2 cards}\par\nopagebreak\vspace{3pt}}
+\newcommand{\cardhead}[2]{\par\ifdim\dimexpr\pagegoal-\pagetotal\relax<0.28\textheight\newpage\fi\bigskip\noindent{\color{blue!50!black}\rule{\linewidth}{0.8pt}}\par\nopagebreak\noindent{\large\bfseries\color{blue!50!black}#1:}\enspace{\ttfamily #2}\par\nopagebreak}
+\newcommand{\cardsub}[1]{\par\medskip\noindent{\small\bfseries\scshape\color{black!70}#1}\par\nopagebreak\vspace{1pt}}
+\newcommand{\readchap}[2]{\par\medskip\noindent{\bfseries\color{blue!40!black}#1}\par\nopagebreak\noindent{\small\textit{Core idea:} #2}\par\nopagebreak}
+\newcommand{\readq}[1]{\par\smallskip\noindent{\bfseries\itshape\small #1}\par\nopagebreak}
+\newcommand{\cardend}{\par\medskip}
+\newtcolorbox{sumbox}[1]{breakable,colback=orange!3,colframe=orange!45!black,boxrule=0.5pt,arc=2pt,
+  left=6pt,right=6pt,top=3pt,bottom=3pt,fontupper=\small,title={\small\bfseries #1},coltitle=white,
+  colbacktitle=orange!45!black,toptitle=1pt,bottomtitle=1pt}
+\newlist{cardrows}{itemize}{1}
+\setlist[cardrows]{label={},leftmargin=5.3em,labelwidth=4.9em,labelsep=0.4em,labelindent=0pt,align=left,font=\small\bfseries,before={\small\raggedright},itemsep=0.5pt,topsep=2pt}
+% ---------------------------------------------------------------------------
+\begin{document}
+{\noindent\raggedright\LARGE\bfseries\color{blue!40!black} Part 2 · TypeScript Core\par}
+\vspace{2pt}{\large A Socratic study guide to the 19 cards of Part 2 of “JavaScript \& TypeScript: Zero to Mastery”}\par\vspace{6pt}
+\begin{corebox}\textbf{The question this guide answers.} How do TypeScript's types make JavaScript safer, and where do they stop protecting you?\par\smallskip
+Part A asks what TypeScript is and what its types do and do not do at run time; B, how you write types for values, objects and unions; C, how you type functions and values of unknown type. Every section heading is a question, answered in its first sentence; every code sample was run, and every claim about the compiler was checked with \code{tsc}. The Card-by-Card Solution Guide then works every card in the deck.\end{corebox}
+\vspace{6pt}\tableofcontents\vspace{6pt}
+\newpage
+\partline{A. What do types do, and what don't they?}{The compiler, type erasure and run-time data.}
+\phantomsection\label{ch:c15}
+\chap{15. What does TypeScript add to JavaScript, and what does it not do?}{TypeScript checks types before the code runs, then strips them: types never change what the program does, and \code{tsc} writes the JavaScript even when it finds errors. Data from outside must be checked with real code.}
+
+\subsection{What is TypeScript?}% sec:c15-checker
+\term[\textbf{TypeScript:} JavaScript plus type annotations that a checker reads before the code runs. Like JavaScript with a spell-checker for types.]{typescript}{TypeScript} is JavaScript with types written in. A \term[\textbf{Type annotation:} a type written after a name, as in \code{name: string}. Like a label on a box saying what may go in.]{annotation}{type annotation} such as \code{name: string} says what a value may be, and the \term[\textbf{Compiler (tsc):} the program that checks the types and writes plain JavaScript. Like a proofreader who reads your code before it is printed.]{compiler}{compiler}, \code{tsc}, reports any code that breaks those promises.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function greet(name: string): string {
+  return "Hi " + name;
+}
+greet(42);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 4: Argument of type 'number' is not assignable to parameter of type 'string'.}\par
+
+\subsection{What happens to the types when the code runs?}% sec:c15-erasure
+They are gone. \term[\textbf{Type erasure:} the compiler removing type annotations when it writes JavaScript. Like peeling the labels off boxes before they ship.]{erasure}{Type erasure} means the compiler strips the annotations, and type annotations never change the runtime behaviour of a program. By default \code{tsc} still writes the JavaScript when it finds errors (the \code{noEmitOnError} option stops that), so a type error you ignore runs anyway.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+const count: number = "3" as any;
+console.log(count + 1, typeof count);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{31 string}}\par
+
+\subsection{Is every TypeScript feature erased?}% sec:c15-enum
+No. A few features produce real code; \code{enum} is the common one. An enum is not a type-level extension of JavaScript: it compiles to an object, and a numeric enum also maps numbers back to names.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+enum Level { Low, High }
+console.log(Level.High, Level[0]);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{1 Low}}\par
+
+\subsection{How do you check data that arrives at run time?}% sec:c15-runtime
+With ordinary checks such as \code{typeof} and \code{in}, which TypeScript understands (\hyperref[ch:c18]{Ch.~18}). Data from \code{JSON.parse} or a user has no checked type; give it the type \code{unknown} (\hyperref[ch:c20]{Ch.~20}). A \term[\textbf{Type assertion (as):} telling the compiler to treat a value as a type, e.g. \code{data as User}; nothing is checked. Like sticking a label on a box without opening it.]{assertion}{type assertion} such as \code{data as User} checks nothing; it only tells the compiler what to assume.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+const data: unknown = JSON.parse('{"name": "Ada"}');
+if (typeof data === "object" && data !== null && "name" in data) {
+  console.log(typeof data.name);
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{string}}\par
+
+\mantra{Types are checked, then erased: check outside data yourself.}
+\begin{ponder}If \code{tsc} writes the JavaScript even when there are errors, why run it at all? What would turning on \code{noEmitOnError} change in your workflow?\end{ponder}
+
+\phantomsection\label{ch:c16}
+\chap{16. When do you write a type, and when does TypeScript work it out?}{Annotate parameters and what TypeScript cannot work out, and let it infer the rest. Under \code{strict}, a parameter with no type is an error, and a variable keeps the type of its first value.}
+
+\subsection{What is type inference?}% sec:c16-infer
+TypeScript working out a type from the code. With \term[\textbf{Type inference:} TypeScript deciding a type from the value or code, without an annotation. Like guessing a box's label from what is put in it first.]{inference}{type inference}, \code{let count = 5} gives \code{count} the type \code{number}, and that type sticks: assigning a string later is an error. Leave out annotations where inference would give the same type.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+let count = 5;
+count = "five";
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 2: Type 'string' is not assignable to type 'number'.}\par
+
+\subsection{Why must parameters be annotated?}% sec:c16-any
+Because nothing tells TypeScript what a caller will pass. A parameter with no type would be \term[\textbf{any:} the type that switches checking off; anything goes in and anything can be done with it. Like a box with no label: nobody checks its contents.]{any}{any}, which checks nothing. With \code{strict} on, the \code{noImplicitAny} check reports every such parameter, so you must write its type.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function total(items) {
+  return items.length;
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 1: Parameter 'items' implicitly has an 'any' type.}\par
+
+\subsection{What does a return type annotation buy you?}% sec:c16-return
+An error at the function rather than wherever its result is used. TypeScript can infer the return type, but writing it states the promise, so a body that returns the wrong kind of value fails at the \code{return} line.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function price(cents: number): string {
+  return cents / 100;
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 2: Type 'number' is not assignable to type 'string'.}\par
+
+\mantra{Annotate the edges (parameters, returns); let TypeScript fill the middle.}
+\begin{ponder}\code{let label;} with no value compiles, then accepts a string and later a number. Is that a hole in the type system? What type does TypeScript give \code{label} after each assignment?\end{ponder}
+
+\partline{B. How do you describe values with types?}{Object shapes, unions and narrowing.}
+\phantomsection\label{ch:c17}
+\chap{17. How do you describe the shape of an object?}{An interface or type alias names an object's shape; \code{?} marks optional properties and \code{readonly} blocks reassignment. TypeScript compares shapes, not names, and checks object literals for extra properties.}
+
+\subsection{How do you write an object type?}% sec:c17-interface
+With an \term[\textbf{Interface:} a named description of an object's properties and their types. Like a form with labelled blanks.]{interface}{interface} (or a \code{type} alias) listing each property and its type. Mark a property optional with \code{?} after its name. Inside a function, an optional \code{discount?: number} has the type \code{number | undefined}, so it needs a fallback such as \code{?? 0}.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+interface Product { name: string; price: number; discount?: number }
+function cost(p: Product): number {
+  return p.price * (1 - (p.discount ?? 0));
+}
+console.log(cost({ name: "Pen", price: 10 }));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{10}}\par
+
+\subsection{Does a value need to be declared as the type?}% sec:c17-structural
+No. TypeScript uses \term[\textbf{Structural typing:} types match when their shapes match, whatever they are named. Like a key that opens a lock because it fits, not because of its brand.]{structural}{structural typing}: type checking focuses on the shape a value has. Any value with a string \code{name} is a \code{Named}, whatever class made it.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+interface Named { name: string }
+class Dog { constructor(public name: string) {} }
+const pet: Named = new Dog("Rex");
+console.log(pet.name);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{Rex}}\par
+
+\subsection{Why is an extra property sometimes an error?}% sec:c17-excess
+Because an object literal written straight into a typed place gets an excess property check: a property the target type doesn't have is probably a typo. The same object stored in a variable first is just checked for having the required properties.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+interface Point { x: number; y: number }
+const p: Point = { x: 1, y: 2, z: 3 };
+const raw = { x: 1, y: 2, z: 3 };
+const q: Point = raw;
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 2: Object literal may only specify known properties, and 'z' does not exist in type 'Point'.}\par
+
+\subsection{How do you stop an array or property being changed?}% sec:c17-readonly
+Mark it \code{readonly}. A \code{readonly number[]} has no mutating methods (\code{push}, \code{sort}, \code{splice}\ldots), so code that would change it does not compile. \code{readonly} on a property blocks reassigning that property, not changes inside the value it holds.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function first(nums: readonly number[]): number {
+  nums.push(0);
+  return nums[0];
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 2: Property 'push' does not exist on type 'readonly number[]'.}\par
+
+\mantra{Describe the shape; TypeScript checks the fit.}
+\begin{ponder}A \code{readonly number[]} parameter accepts a plain \code{number[]} argument, but a \code{number[]} parameter rejects a \code{readonly} array. Why does that direction make sense?\end{ponder}
+
+\phantomsection\label{ch:c18}
+\chap{18. How do you work with a value that could be one of several types?}{A union allows any of its members; until you narrow it, only what all members share is allowed. Checks such as \code{typeof} and \code{Array.isArray} narrow it, and a type predicate lets your own function narrow it---trusted, not verified.}
+
+\subsection{What is a union type, and what can you do with one?}% sec:c18-union
+A \term[\textbf{Union type:} \code{A | B}, a value that may be any one of the listed types. Like a box labelled ``apple or orange'': you may only do what works for both.]{union}{union type} \code{A | B} is either \code{A} or \code{B}. Before you check which, you may use only what every member has: strings and arrays both have \code{length}, numbers have no \code{toUpperCase}.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function size(x: string | string[]) {
+  return x.length;
+}
+function shout(x: string | number) {
+  return x.toUpperCase();
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 5: Property 'toUpperCase' does not exist on type 'string | number'.   Property 'toUpperCase' does not exist on type 'number'.}\par
+
+\subsection{How does TypeScript narrow a union?}% sec:c18-narrow
+By following your checks. \term[\textbf{Narrowing:} TypeScript working out a more specific type from a check in the code. Like a sorting office that knows a parcel is fragile once it has passed the ``fragile'' gate.]{narrowing}{Narrowing} happens when TypeScript can tell from the code that a value is a more specific type. A check it understands is a \term[\textbf{Type guard:} a check such as \code{typeof x === "string"} that TypeScript uses to narrow. A checkpoint: past it, the guard knows who you are.]{typeguard}{type guard}: \code{typeof}, \code{Array.isArray}, \code{=== null}, \code{in}, \code{instanceof}. After a branch returns, the rest of the function knows that case is gone.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function describe(v: string | string[] | null): string {
+  if (v === null) return "nothing";
+  if (Array.isArray(v)) return `list of ${v.length}`;
+  return `text: ${v.toUpperCase()}`;
+}
+console.log(describe(null), describe(["a"]), describe("hi"));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{nothing list of 1 text: HI}}\par
+
+\subsection{How do you write your own type guard?}% sec:c18-predicate
+Give a boolean function a return type of the form \code{value is string}, a \term[\textbf{Type predicate:} the return type \code{v is T}, telling TypeScript that \code{true} means \code{v} is a \code{T}. Like a stamp that says ``inspected''---whoever stamps it is trusted.]{predicate}{type predicate}. Callers, \code{filter} included, then narrow on its result. The compiler does not check that the body really tests for that type: a wrong guard misleads it.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function isText(v: unknown): v is string {
+  return typeof v === "string";
+}
+const words: string[] = ["a", 1, "b"].filter(isText);
+console.log(words.join(""));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{ab}}\par
+
+\mantra{Narrow first, then use.}
+\begin{ponder}A guard returns \code{typeof v === "number"} but declares \code{v is string}. Does it compile? What happens at run time when a caller trusts it?\end{ponder}
+
+\partline{C. How do you type functions and unknown data?}{Parameters, overloads, any and unknown.}
+\phantomsection\label{ch:c19}
+\chap{19. How do you type a function's inputs and outputs?}{\code{param?: T} may be left out; \code{param = value} has a default and an inferred type; overload signatures give one function several typed call shapes; a function typed \code{: undefined} needs no \code{return}.}
+
+\subsection{How do optional and default parameters differ?}% sec:c19-optional
+Both may be left out; only a default supplies a value. An optional parameter \code{mark?: string} has the type \code{string | undefined} inside the function, so you handle the missing case yourself. A default \code{greeting = "Hello"} gives the parameter its type from the value and uses that value whenever the argument is missing or \code{undefined}.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function greet(name: string, greeting = "Hello", mark?: string) {
+  return `${greeting}, ${name}${mark ?? "!"}`;
+}
+console.log(greet("Ada"), greet("Ada", undefined, "?"));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{Hello, Ada! Hello, Ada?}}\par
+
+\subsection{How can one function have several typed call shapes?}% sec:c19-overloads
+With \term[\textbf{Overload signatures:} several bodiless declarations of one function, each a call shape callers may use, followed by the implementation. Like a menu listing the orders the kitchen accepts.]{overload}{overload signatures}: write one bodiless signature per call shape, then a single implementation whose signature covers them all. Callers see only the overloads, so \code{parse("42")} is a \code{number} rather than \code{string | number}.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function parse(v: string): number;
+function parse(v: number): string;
+function parse(v: string | number): string | number {
+  return typeof v === "string" ? Number(v) : v.toFixed(2);
+}
+const n: number = parse("42");
+console.log(n + 1);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{43}}\par
+
+\subsection{Must a function that returns undefined say return?}% sec:c19-undefined
+No, since TypeScript 5.1. In JavaScript a function that ends without \code{return} returns \code{undefined}, and a function typed \code{: undefined} may now do the same. A function typed to return a \code{string} must still return one.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function log(v: string): undefined {
+  console.log(v);
+}
+function get(): string {
+  console.log("none");
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 4: A function whose declared type is neither 'undefined', 'void', nor 'any' must return a value.}\par
+
+\mantra{Type the call shapes callers need; let defaults supply the rest.}
+\begin{ponder}The implementation of \code{parse} accepts \code{string | number}. Why can't a caller pass a value of type \code{string | number}, even though the body handles both?\end{ponder}
+
+\phantomsection\label{ch:c20}
+\chap{20. What is the difference between any and unknown?}{\code{any} switches checking off; \code{unknown} accepts any value but makes you narrow it before use---the safe type for data you haven't checked.}
+
+\subsection{What does any do?}% sec:c20-any
+It turns type checking off for that value. Anything can be assigned to it and anything can be done with it, so mistakes compile and fail only at run time. Using \code{any} often defeats the purpose of using TypeScript.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+const a: any = "hello";
+a.launch();
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+
+\subsection{Why is unknown safer?}% sec:c20-unknown
+Because it keeps checking on. \term[\textbf{unknown:} the type of a value that could be anything, which must be narrowed before use. Like a sealed parcel: you may hold it, but must open and check it before using what's inside.]{unknown}{unknown} accepts any value, like \code{any}, but you may do nothing with it until a check narrows it (\hyperref[ch:c18]{Ch.~18}). That makes it the right type for data from \code{JSON.parse}, users or other programs.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function lengthOf(v: unknown): number {
+  if (typeof v === "string" || Array.isArray(v)) return v.length;
+  return 0;
+}
+console.log(lengthOf("abc"), lengthOf({ length: 5 }));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{3 0}}\par
+
+\mantra{Reach for unknown; earn the type with a check.}
+\begin{ponder}A library function returns \code{any}. You assign its result to a \code{string} variable. Does TypeScript complain? What would change if the function returned \code{unknown}?\end{ponder}
+
+\phantomsection\label{synthesis}
+\section*{How the Parts Answer the Question}\addcontentsline{toc}{section}{How the Parts Answer the Question}
+
+TypeScript makes JavaScript safer in one way only: it reads your code before it runs and refuses promises the code breaks. Each Part marks out where that protection reaches.
+
+\textbf{What the checker sees (A).} It sees annotations and what it can infer, and it stops at run time: types are erased, \code{tsc} emits JavaScript even with errors, and an \code{as} assertion checks nothing. So the protection covers your code's internal consistency, not the data that arrives from outside---that still needs real checks.
+
+\textbf{What you tell it (B).} Interfaces describe shapes, matched structurally; unions say ``one of these''; narrowing turns a union back into one type as your checks prove it. Each of these lets the compiler reject a mistake at the line that makes it: a missing property, an extra one, a method the value might not have.
+
+\textbf{Where it is weakest (C).} Functions get exactly the promises you write: optional versus default parameters, overloads for several call shapes. \code{any} removes the checker entirely; \code{unknown} keeps it and makes you prove the type. A type predicate is trusted without being checked.
+
+\textbf{The strongest objection} is that types slow you down without changing what the program does. The answer: they don't change what it does, but they change \emph{when} you find out it is wrong---at the line where the mistake is made, before any user runs it. The cards in this Part are mostly bugs that JavaScript would only reveal at run time.
+
+\section*{Test Yourself}\addcontentsline{toc}{section}{Test Yourself}
+Answer without looking; the link after each question points to the chapter that holds the answer.
+\begin{enumerate}[leftmargin=1.6em,itemsep=3pt]
+\item Does a type annotation change what a program does when it runs? Name one TypeScript feature that does produce code. \hfill{\small\hyperref[ch:c15]{$\rightarrow$ Ch.~ 15}}
+\item What does \code{data as User} check? \hfill{\small\hyperref[ch:c15]{$\rightarrow$ Ch.~ 15}}
+\item Why does \code{let count = 5; count = \textquotedbl{}five\textquotedbl{};} fail, while \code{let label; label = \textquotedbl{}x\textquotedbl{}; label = 5;} compiles? \hfill{\small\hyperref[ch:c16]{$\rightarrow$ Ch.~ 16}}
+\item What does \code{noImplicitAny} reject, and why? \hfill{\small\hyperref[ch:c16]{$\rightarrow$ Ch.~ 16}}
+\item Why is passing \code{\{ x: 1, y: 2, z: 3 \}} straight to a \code{Point} parameter an error, but passing it through a variable is not? \hfill{\small\hyperref[ch:c17]{$\rightarrow$ Ch.~ 17}}
+\item Why does \code{sort} not compile on a \code{readonly number[]}, and what do you use instead? \hfill{\small\hyperref[ch:c17]{$\rightarrow$ Ch.~ 17}}
+\item What may you do with a \code{string | number} before narrowing it? \hfill{\small\hyperref[ch:c18]{$\rightarrow$ Ch.~ 18}}
+\item What does the return type \code{value is string} promise, and who checks it? \hfill{\small\hyperref[ch:c18]{$\rightarrow$ Ch.~ 18}}
+\item How does \code{greeting = \textquotedbl{}Hello\textquotedbl{}} differ from \code{greeting?: string}? \hfill{\small\hyperref[ch:c19]{$\rightarrow$ Ch.~ 19}}
+\item Why does \code{parse(\textquotedbl{}42\textquotedbl{})} have the type \code{number} only after you add overload signatures? \hfill{\small\hyperref[ch:c19]{$\rightarrow$ Ch.~ 19}}
+\item Why is \code{unknown} safer than \code{any} for data from \code{JSON.parse}? \hfill{\small\hyperref[ch:c20]{$\rightarrow$ Ch.~ 20}}
+\end{enumerate}
+\newpage\phantomsection\partline{Card-by-Card Solution Guide}{One entry for every card in this Part's decks.}
+\begin{corebox}\textbf{How this part works.} Each entry is self-contained: it repeats the card, the terms it needs and the chapter sections it drills, so you can study a card without turning back. That repetition is deliberate (the one exception to saying each thing once). For each card: the card as it appears in your deck; how to solve it (approach, what must stay true, what lives in memory, the types involved, how it fails, how to test it) and the trap that most often costs it; the solution, checked by actually running it; and the readings from the chapters.\end{corebox}
+\subsection*{Which card drills which chapters?}
+{\footnotesize\begin{tabularx}{\linewidth}{@{}rXl@{}}\toprule
+\textbf{\#} & \textbf{Card} & \textbf{Chapters it drills}\\\midrule
+1 & What does this print? (ts15-emits-anyway) & Ch.~\hyperref[ch:c15]{15}\\
+2 & What does this print? (ts15-enum-emits) & Ch.~\hyperref[ch:c15]{15}\\
+3 & \code{parseUser(data: unknown)} & Ch.~\hyperref[ch:c15]{15}, \hyperref[ch:c20]{20}\\
+4 & \code{Add types to totalPrice} & Ch.~\hyperref[ch:c16]{16}\\
+5 & Does it compile? (ts16-inferred-type) & Ch.~\hyperref[ch:c16]{16}\\
+6 & \code{Fix formatPrice(cents)} & Ch.~\hyperref[ch:c16]{16}\\
+7 & \code{interface Product} & Ch.~\hyperref[ch:c17]{17}\\
+8 & Does it compile? (ts17-excess-property) & Ch.~\hyperref[ch:c17]{17}\\
+9 & \code{Fix sortedCopy(nums)} & Ch.~\hyperref[ch:c17]{17}\\
+10 & Does it compile? (ts17-structural) & Ch.~\hyperref[ch:c17]{17}\\
+11 & \code{Fix formatId(id)} & Ch.~\hyperref[ch:c18]{18}\\
+12 & \code{describeInput(value)} & Ch.~\hyperref[ch:c18]{18}\\
+13 & \code{Type guard isString} & Ch.~\hyperref[ch:c18]{18}\\
+14 & Does it compile? (ts18-union-access) & Ch.~\hyperref[ch:c18]{18}\\
+15 & \code{greet(name, greeting?, punctuation?)} & Ch.~\hyperref[ch:c19]{19}\\
+16 & Does it compile? (ts19-undefined-return) & Ch.~\hyperref[ch:c19]{19}\\
+17 & \code{Overloads for parse(value)} & Ch.~\hyperref[ch:c19]{19}\\
+18 & Does it compile? (ts20-any-vs-unknown) & Ch.~\hyperref[ch:c20]{20}\\
+19 & \code{Fix lengthOf(value: unknown)} & Ch.~\hyperref[ch:c20]{20}\\
+\bottomrule\end{tabularx}}\par
+\deckhead{15 · TypeScript \& the Compiler}{3}
+\begin{corebox}\textbf{Core idea.} TypeScript checks types before the code runs, then strips them: types never change what the program does, and \code{tsc} writes the JavaScript even when it finds errors. Data from outside must be checked with real code.\end{corebox}
+\begin{sumbox}{Deck summary sheet --- 15 · TypeScript \& the Compiler}
+TypeScript is JavaScript plus types. The compiler checks the types, then strips them: they never change what the program does, and by default \code{tsc} still writes the JavaScript when it finds errors. So data from outside (JSON, user input) has to be checked with real code. A few TypeScript features, like \code{enum}, do produce code.\par
+\smallskip{\footnotesize Read more: \href{https://www.typescriptlang.org/docs/handbook/2/basic-types.html}{TypeScript Handbook — The Basics}; \href{https://www.typescriptlang.org/docs/handbook/typescript-from-scratch.html}{TypeScript for the New Programmer}}\end{sumbox}
+\cardhead{Card 1 --- What does this print?}{predict · ts15-emits-anyway}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Type erasure:} the compiler removing type annotations when it writes JavaScript. Like peeling the labels off boxes before they ship.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c15]{Ch.~15} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/basic-types.html}{TypeScript Handbook — The Basics}.}\par
+\cardsub{The card}
+\code{tsc} reports a type error in this file but still writes the JavaScript (that is its default). What does running the output print?\par
+\begin{lstlisting}[language=TypeScript]
+const count: number = "3" as any;
+const label: string = 42 as any;
+console.log(count + 1, label + 1);
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] The \code{as any} silences the checker; at run time \code{count} is the string "3" and \code{label} the number 42.
+\item[Invariants] Types never change values at run time.
+\item[Memory] A string and a number, whatever their annotations say.
+\item[Types] declared number and string; actually string and number.
+\item[Failure] Answering "4 \textbackslash{}"421\textbackslash{}"" by trusting the annotations.
+\item[Tests] Run it, then change one line and predict again.
+\end{cardrows}
+\trap An annotation is a promise, not a conversion.\par
+\cardsub{Solution}
+{\small\textbf{Prints:}}
+\begin{lstlisting}
+31 43
+\end{lstlisting}
+{\small\textit{Verified: Node v22.23.4 prints exactly this.}}\par
+\smallskip{\small\textbf{Why:} Types are erased before the code runs, so they cannot convert or check values. count is really the string "3" (so + concatenates) and label the number 42. Fix type errors; don't silence them with any.}\par
+\cardsub{From the readings}
+\readchap{15. What does TypeScript add to JavaScript, and what does it not do?}{TypeScript checks types before the code runs, then strips them: types never change what the program does, and \code{tsc} writes the JavaScript even when it finds errors. Data from outside must be checked with real code.}
+\readq{What happens to the types when the code runs?}
+They are gone. \textbf{Type erasure} means the compiler strips the annotations, and type annotations never change the runtime behaviour of a program. By default \code{tsc} still writes the JavaScript when it finds errors (the \code{noEmitOnError} option stops that), so a type error you ignore runs anyway.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+const count: number = "3" as any;
+console.log(count + 1, typeof count);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{31 string}}\par
+
+\cardend
+\cardhead{Card 2 --- What does this print?}{predict · ts15-enum-emits}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c15]{Ch.~15} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/enums.html}{TypeScript Handbook — Enums}.}\par
+\cardsub{The card}
+What does this print?\par
+\begin{lstlisting}[language=TypeScript]
+enum Direction {
+  Up,
+  Down,
+}
+console.log(Direction.Down, Direction[0], Object.keys(Direction).length);
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] The enum compiles to an object with Up = 0, Down = 1, plus reverse entries 0 $\rightarrow$ "Up" and 1 $\rightarrow$ "Down".
+\item[Invariants] A numeric enum maps names to numbers and numbers back to names.
+\item[Memory] One object with four keys.
+\item[Types] numbers, strings.
+\item[Failure] Answering 2 keys (forgetting the reverse mapping).
+\item[Tests] Run it, then change one line and predict again.
+\end{cardrows}
+\trap enum is real code, with a reverse mapping.\par
+\cardsub{Solution}
+{\small\textbf{Prints:}}
+\begin{lstlisting}
+1 Up 4
+\end{lstlisting}
+{\small\textit{Verified: Node v22.23.4 prints exactly this.}}\par
+\smallskip{\small\textbf{Why:} enum is one of the few TypeScript features that is not erased: it compiles to a real object. A numeric enum also maps numbers back to names, so it has four keys: "0", "1", "Up" and "Down".}\par
+\cardsub{From the readings}
+\readchap{15. What does TypeScript add to JavaScript, and what does it not do?}{TypeScript checks types before the code runs, then strips them: types never change what the program does, and \code{tsc} writes the JavaScript even when it finds errors. Data from outside must be checked with real code.}
+\readq{Is every TypeScript feature erased?}
+No. A few features produce real code; \code{enum} is the common one. An enum is not a type-level extension of JavaScript: it compiles to an object, and a numeric enum also maps numbers back to names.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+enum Level { Low, High }
+console.log(Level.High, Level[0]);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{1 Low}}\par
+
+\cardend
+\cardhead{Card 3 --- parseUser(data: unknown)}{types · typescript · Medium}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Type assertion (as):} telling the compiler to treat a value as a type, e.g. \code{data as User}; nothing is checked. Like sticking a label on a box without opening it.\par\smallskip \textbf{unknown:} the type of a value that could be anything, which must be narrowed before use. Like a sealed parcel: you may hold it, but must open and check it before using what's inside.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c15]{Ch.~15}, \hyperref[ch:c20]{Ch.~20} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/basic-types.html}{TypeScript Handbook — The Basics}.}\par
+\cardsub{The card}
+\textbf{parseUser(data: unknown)}\par
+\code{data} came from \code{JSON.parse}, so its type is \code{unknown}. Return a \code{User} (only its \code{name} and \code{age}) when \code{data} is an object with a string \code{name} and a number \code{age}; otherwise return \code{null}. The \code{as User} in the starter checks nothing.\par
+\begin{lstlisting}[language=TypeScript]
+type User = { name: string; age: number };
+
+function parseUser(data: unknown): User | null {
+  return data as User;
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Reject non-objects and null, check \code{\textquotedbl{}name\textquotedbl{} in data} with a string type and \code{\textquotedbl{}age\textquotedbl{} in data} with a number type, then return only those two fields.
+\item[Invariants] Only objects with a string name and a number age come back, without extra fields.
+\item[Memory] A new two-field object.
+\item[Types] unknown in; \code{User | null} out.
+\item[Failure] Typing the parameter \code{any} lets strings slip through; typing it \code{User} rejects \code{parseUser(42)} at compile time.
+\item[Tests] A valid user, extra fields, a missing age, a string age, null and a plain string.
+\end{cardrows}
+\trap \code{as User} checks nothing; real checks must.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+type User = { name: string; age: number };
+
+function parseUser(data: unknown): User | null {
+  if (typeof data !== "object" || data === null) return null;
+  if (!("name" in data) || typeof data.name !== "string") return null;
+  if (!("age" in data) || typeof data.age !== "number") return null;
+  return { name: data.name, age: data.age };
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 6 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} A type annotation or \code{as} only tells the compiler what to assume. For data from outside, check it with typeof and \code{in}; TypeScript narrows \code{unknown} as you go.}\par
+\cardsub{From the readings}
+\readchap{15. What does TypeScript add to JavaScript, and what does it not do?}{TypeScript checks types before the code runs, then strips them: types never change what the program does, and \code{tsc} writes the JavaScript even when it finds errors. Data from outside must be checked with real code.}
+\readq{How do you check data that arrives at run time?}
+With ordinary checks such as \code{typeof} and \code{in}, which TypeScript understands (\hyperref[ch:c18]{Ch.~18}). Data from \code{JSON.parse} or a user has no checked type; give it the type \code{unknown} (\hyperref[ch:c20]{Ch.~20}). A \textbf{type assertion} such as \code{data as User} checks nothing; it only tells the compiler what to assume.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+const data: unknown = JSON.parse('{"name": "Ada"}');
+if (typeof data === "object" && data !== null && "name" in data) {
+  console.log(typeof data.name);
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{string}}\par
+
+\readchap{20. What is the difference between any and unknown?}{\code{any} switches checking off; \code{unknown} accepts any value but makes you narrow it before use---the safe type for data you haven't checked.}
+\readq{Why is unknown safer?}
+Because it keeps checking on. \textbf{unknown} accepts any value, like \code{any}, but you may do nothing with it until a check narrows it (\hyperref[ch:c18]{Ch.~18}). That makes it the right type for data from \code{JSON.parse}, users or other programs.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function lengthOf(v: unknown): number {
+  if (typeof v === "string" || Array.isArray(v)) return v.length;
+  return 0;
+}
+console.log(lengthOf("abc"), lengthOf({ length: 5 }));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{3 0}}\par
+
+\cardend
+\deckhead{16 · Annotations \& Inference}{3}
+\begin{corebox}\textbf{Core idea.} Annotate parameters and what TypeScript cannot work out, and let it infer the rest. Under \code{strict}, a parameter with no type is an error, and a variable keeps the type of its first value.\end{corebox}
+\begin{sumbox}{Deck summary sheet --- 16 · Annotations \& Inference}
+Annotate function parameters and the values TypeScript can't work out; let it infer the rest. With \code{strict} on, \code{noImplicitAny} rejects parameters with no type. A variable initialised with a value keeps that value's type.\par
+\smallskip{\footnotesize Read more: \href{https://www.typescriptlang.org/docs/handbook/2/basic-types.html}{TypeScript Handbook — The Basics}; \href{https://www.typescriptlang.org/docs/handbook/2/everyday-types.html}{TypeScript Handbook — Everyday Types}}\end{sumbox}
+\cardhead{Card 4 --- Add types to totalPrice}{types · typescript · Easy}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{any:} the type that switches checking off; anything goes in and anything can be done with it. Like a box with no label: nobody checks its contents.\par\smallskip \textbf{Type inference:} TypeScript deciding a type from the value or code, without an annotation. Like guessing a box's label from what is put in it first.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c16]{Ch.~16} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/basic-types.html}{TypeScript Handbook — The Basics}.}\par
+\cardsub{The card}
+\textbf{Add types to totalPrice}\par
+This JavaScript doesn't compile under \code{strict}: its parameters are implicitly \code{any}. Add types — items are \code{\{ price: number; quantity: number \}} — so it compiles and rejects bad calls.\par
+\begin{lstlisting}[language=TypeScript]
+function totalPrice(items, taxRate) {
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  return Math.round(subtotal * (1 + taxRate) * 100) / 100;
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Type \code{items} as an array of \code{\{ price: number; quantity: number \}} and \code{taxRate} as \code{number}; let the rest be inferred.
+\item[Invariants] Every item has a numeric price and quantity.
+\item[Memory] One running subtotal.
+\item[Types] \code{LineItem[]} and \code{number} in; \code{number} out.
+\item[Failure] Typing the parameters \code{any} compiles but lets a string tax rate and items without quantity through.
+\item[Tests] A normal cart and an empty one; type tests reject a string rate and a missing quantity.
+\end{cardrows}
+\trap \code{any} makes the error go away and the checking too.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+type LineItem = { price: number; quantity: number };
+
+function totalPrice(items: LineItem[], taxRate: number): number {
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  return Math.round(subtotal * (1 + taxRate) * 100) / 100;
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 2 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} Parameters are where types matter most: inside the function TypeScript infers the rest (\code{sum}, \code{item}, \code{subtotal}). Typing them \code{any} compiles but checks nothing.}\par
+\cardsub{From the readings}
+\readchap{16. When do you write a type, and when does TypeScript work it out?}{Annotate parameters and what TypeScript cannot work out, and let it infer the rest. Under \code{strict}, a parameter with no type is an error, and a variable keeps the type of its first value.}
+\readq{Why must parameters be annotated?}
+Because nothing tells TypeScript what a caller will pass. A parameter with no type would be \textbf{any}, which checks nothing. With \code{strict} on, the \code{noImplicitAny} check reports every such parameter, so you must write its type.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function total(items) {
+  return items.length;
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 1: Parameter 'items' implicitly has an 'any' type.}\par
+
+\readq{What is type inference?}
+TypeScript working out a type from the code. With \textbf{type inference}, \code{let count = 5} gives \code{count} the type \code{number}, and that type sticks: assigning a string later is an error. Leave out annotations where inference would give the same type.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+let count = 5;
+count = "five";
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 2: Type 'string' is not assignable to type 'number'.}\par
+
+\cardend
+\cardhead{Card 5 --- Does it compile?}{compile · ts16-inferred-type}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Type inference:} TypeScript deciding a type from the value or code, without an annotation. Like guessing a box's label from what is put in it first.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c16]{Ch.~16} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/basic-types.html}{TypeScript Handbook — The Basics}.}\par
+\cardsub{The card}
+Does this compile with \code{tsc --strict}? If not, which statement fails, and why?\par
+\begin{lstlisting}[language=TypeScript]
+let count = 5;
+count = "five";
+let label;
+label = "five";
+label = 5;
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] \code{count} was inferred as \code{number} from 5; \code{label} had no initial value, so its type follows each assignment.
+\item[Invariants] An initialised variable keeps its inferred type.
+\item[Memory] Two variables.
+\item[Types] number; string then number.
+\item[Failure] Thinking \code{label = 5} also fails.
+\item[Tests] Paste it into the TypeScript Playground (or run \code{tsc --strict}) and read the error.
+\end{cardrows}
+\trap No initial value means no fixed type yet.\par
+\cardsub{Solution}
+No. \code{count = \textquotedbl{}five\textquotedbl{}} fails: Type 'string' is not assignable to type 'number'. The label lines compile.\par
+{\small\textit{Verified: tsc 5.9.3 (strict) reports: line 2: Type 'string' is not assignable to type 'number'..}}\par
+\smallskip{\small\textbf{Why:} count was inferred as number from its initial value, and that type sticks. label had no initial value, so its type follows each assignment.}\par
+\cardsub{From the readings}
+\readchap{16. When do you write a type, and when does TypeScript work it out?}{Annotate parameters and what TypeScript cannot work out, and let it infer the rest. Under \code{strict}, a parameter with no type is an error, and a variable keeps the type of its first value.}
+\readq{What is type inference?}
+TypeScript working out a type from the code. With \textbf{type inference}, \code{let count = 5} gives \code{count} the type \code{number}, and that type sticks: assigning a string later is an error. Leave out annotations where inference would give the same type.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+let count = 5;
+count = "five";
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 2: Type 'string' is not assignable to type 'number'.}\par
+
+\cardend
+\cardhead{Card 6 --- Fix formatPrice(cents)}{fix · typescript · Easy}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c16]{Ch.~16} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/everyday-types.html}{TypeScript Handbook — Everyday Types}.}\par
+\cardsub{The card}
+\textbf{Fix formatPrice(cents)}\par
+This doesn't compile: the return type says \code{string} but the body returns a number. Return the price as dollars with two decimals, e.g. 1250 $\rightarrow$ \code{\textquotedbl{}\$12.50\textquotedbl{}}.\par
+\begin{lstlisting}[language=TypeScript]
+function formatPrice(cents: number): string {
+  return cents / 100;
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Return `\code{ }\$\$\{(cents / 100).toFixed(2)\}\code{ }` — a string, with two decimals.
+\item[Invariants] The function always returns a string.
+\item[Memory] No state.
+\item[Types] number in; string out.
+\item[Failure] \code{\textquotedbl{}\$\textquotedbl{} + cents / 100} compiles but prints "\$12.5".
+\item[Tests] 1250, 5 and 0.
+\end{cardrows}
+\trap toFixed(2) keeps the trailing zero.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+function formatPrice(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 3 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} A return type annotation turns "returns the wrong kind of value" into a compile error at the function, instead of a bug wherever it is used. toFixed(2) keeps "12.50".}\par
+\cardsub{From the readings}
+\readchap{16. When do you write a type, and when does TypeScript work it out?}{Annotate parameters and what TypeScript cannot work out, and let it infer the rest. Under \code{strict}, a parameter with no type is an error, and a variable keeps the type of its first value.}
+\readq{What does a return type annotation buy you?}
+An error at the function rather than wherever its result is used. TypeScript can infer the return type, but writing it states the promise, so a body that returns the wrong kind of value fails at the \code{return} line.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function price(cents: number): string {
+  return cents / 100;
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 2: Type 'number' is not assignable to type 'string'.}\par
+
+\cardend
+\deckhead{17 · Object Types \& Interfaces}{4}
+\begin{corebox}\textbf{Core idea.} An interface or type alias names an object's shape; \code{?} marks optional properties and \code{readonly} blocks reassignment. TypeScript compares shapes, not names, and checks object literals for extra properties.\end{corebox}
+\begin{sumbox}{Deck summary sheet --- 17 · Object Types \& Interfaces}
+An interface (or type alias) names the shape of an object; \code{?} marks optional properties and \code{readonly} stops reassignment. TypeScript compares shapes, not names. Object literals get an extra check: properties the target type doesn't have are errors.\par
+\smallskip{\footnotesize Read more: \href{https://www.typescriptlang.org/docs/handbook/2/objects.html}{TypeScript Handbook — Object Types}}\end{sumbox}
+\cardhead{Card 7 --- interface Product}{types · typescript · Easy}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Interface:} a named description of an object's properties and their types. Like a form with labelled blanks.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c17]{Ch.~17} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/objects.html}{TypeScript Handbook — Object Types}.}\par
+\cardsub{The card}
+\textbf{interface Product}\par
+Write an interface \code{Product} with \code{id} and \code{name} (strings), \code{price} (number) and an optional numeric \code{discount}, then type \code{finalPrice} with it.\par
+\begin{lstlisting}[language=TypeScript]
+// TODO: interface Product { ... }
+
+function finalPrice(product) {
+  const discount = product.discount ?? 0;
+  return product.price * (1 - discount);
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Declare \code{interface Product} with \code{discount?: number}, type the parameter, and keep \code{?? 0}.
+\item[Invariants] Every product has id, name and price; discount may be missing.
+\item[Memory] No state.
+\item[Types] Product in; number out.
+\item[Failure] \code{discount?: any} lets "10\%" through; a required discount rejects products without one.
+\item[Tests] With and without a discount; type tests reject a missing price and a string discount.
+\end{cardrows}
+\trap Optional means \code{number | undefined} inside the function.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  discount?: number;
+}
+
+function finalPrice(product: Product): number {
+  const discount = product.discount ?? 0;
+  return product.price * (1 - discount);
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 2 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} \code{discount?: number} means the property may be missing, so its type inside the function is number | undefined — which is why \code{?? 0} is needed.}\par
+\cardsub{From the readings}
+\readchap{17. How do you describe the shape of an object?}{An interface or type alias names an object's shape; \code{?} marks optional properties and \code{readonly} blocks reassignment. TypeScript compares shapes, not names, and checks object literals for extra properties.}
+\readq{How do you write an object type?}
+With an \textbf{interface} (or a \code{type} alias) listing each property and its type. Mark a property optional with \code{?} after its name. Inside a function, an optional \code{discount?: number} has the type \code{number | undefined}, so it needs a fallback such as \code{?? 0}.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+interface Product { name: string; price: number; discount?: number }
+function cost(p: Product): number {
+  return p.price * (1 - (p.discount ?? 0));
+}
+console.log(cost({ name: "Pen", price: 10 }));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{10}}\par
+
+\cardend
+\cardhead{Card 8 --- Does it compile?}{compile · ts17-excess-property}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c17]{Ch.~17} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/objects.html}{TypeScript Handbook — Object Types}.}\par
+\cardsub{The card}
+Does this compile with \code{tsc --strict}? If not, which statement fails, and why?\par
+\begin{lstlisting}[language=TypeScript]
+interface Point {
+  x: number;
+  y: number;
+}
+function draw(p: Point): void {}
+draw({ x: 1, y: 2, color: "red" });
+const p = { x: 1, y: 2, color: "red" };
+draw(p);
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Only the call with the object literal gets an excess property check; the variable passes because it has x and y.
+\item[Invariants] A fresh literal may not add unknown properties.
+\item[Memory] Two objects with a colour.
+\item[Types] Point, object literal.
+\item[Failure] Expecting both calls to fail, or neither.
+\item[Tests] Paste it into the TypeScript Playground (or run \code{tsc --strict}) and read the error.
+\end{cardrows}
+\trap Excess property checks apply to fresh literals only.\par
+\cardsub{Solution}
+No. \code{draw(\{ x: 1, y: 2, color: \textquotedbl{}red\textquotedbl{} \})} fails: 'color' does not exist in type 'Point'. Passing the variable p compiles.\par
+{\small\textit{Verified: tsc 5.9.3 (strict) reports: line 6: Object literal may only specify known properties, and 'color' does not exist in type 'Point'..}}\par
+\smallskip{\small\textbf{Why:} An object literal written straight into a call gets an excess property check, since an unknown property there is probably a typo. A variable is just checked for having x and y.}\par
+\cardsub{From the readings}
+\readchap{17. How do you describe the shape of an object?}{An interface or type alias names an object's shape; \code{?} marks optional properties and \code{readonly} blocks reassignment. TypeScript compares shapes, not names, and checks object literals for extra properties.}
+\readq{Why is an extra property sometimes an error?}
+Because an object literal written straight into a typed place gets an excess property check: a property the target type doesn't have is probably a typo. The same object stored in a variable first is just checked for having the required properties.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+interface Point { x: number; y: number }
+const p: Point = { x: 1, y: 2, z: 3 };
+const raw = { x: 1, y: 2, z: 3 };
+const q: Point = raw;
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 2: Object literal may only specify known properties, and 'z' does not exist in type 'Point'.}\par
+
+\cardend
+\cardhead{Card 9 --- Fix sortedCopy(nums)}{fix · typescript · Easy}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c17]{Ch.~17} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/objects.html}{TypeScript Handbook — Object Types}.}\par
+\cardsub{The card}
+\textbf{Fix sortedCopy(nums)}\par
+\code{sortedCopy} must not change its input, so its parameter is \code{readonly number[]} — and now it doesn't compile, because \code{sort} sorts in place. Fix it.\par
+\begin{lstlisting}[language=TypeScript]
+function sortedCopy(nums: readonly number[]): number[] {
+  return nums.sort((a, b) => a - b);
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Copy, then sort: \code{[...nums].sort((a, b) =\textgreater{} a - b)}.
+\item[Invariants] The input array is never changed.
+\item[Memory] One new array.
+\item[Types] \code{readonly number[]} in; \code{number[]} out.
+\item[Failure] Changing the parameter to \code{number[]} compiles but sorts the caller's array.
+\item[Tests] Unsorted numbers, numbers that sort wrongly as text, and empty.
+\end{cardrows}
+\trap \code{sort} sorts in place.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+function sortedCopy(nums: readonly number[]): number[] {
+  return [...nums].sort((a, b) => a - b);
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 3 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} A readonly array type has no mutating methods (push, sort, splice\ldots{}), so the compiler catches the accidental mutation. Copy first, or use toSorted().}\par
+\cardsub{From the readings}
+\readchap{17. How do you describe the shape of an object?}{An interface or type alias names an object's shape; \code{?} marks optional properties and \code{readonly} blocks reassignment. TypeScript compares shapes, not names, and checks object literals for extra properties.}
+\readq{How do you stop an array or property being changed?}
+Mark it \code{readonly}. A \code{readonly number[]} has no mutating methods (\code{push}, \code{sort}, \code{splice}\ldots), so code that would change it does not compile. \code{readonly} on a property blocks reassigning that property, not changes inside the value it holds.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function first(nums: readonly number[]): number {
+  nums.push(0);
+  return nums[0];
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 2: Property 'push' does not exist on type 'readonly number[]'.}\par
+
+\cardend
+\cardhead{Card 10 --- Does it compile?}{compile · ts17-structural}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Structural typing:} types match when their shapes match, whatever they are named. Like a key that opens a lock because it fits, not because of its brand.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c17]{Ch.~17} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/typescript-in-5-minutes.html}{TypeScript for JavaScript Programmers}.}\par
+\cardsub{The card}
+Does this compile with \code{tsc --strict}? If not, which statement fails, and why?\par
+\begin{lstlisting}[language=TypeScript]
+interface Named {
+  name: string;
+}
+class Dog {
+  constructor(public name: string, public breed: string) {}
+}
+const pet: Named = new Dog("Rex", "lab");
+const thing: Named = { title: "Rex" };
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] A Dog has a string \code{name}, so it is a \code{Named}; the literal has no \code{name} and an unknown \code{title}.
+\item[Invariants] Types match by shape.
+\item[Memory] One Dog instance.
+\item[Types] Named, Dog, object literal.
+\item[Failure] Expecting the Dog line to fail because Dog never mentions Named.
+\item[Tests] Paste it into the TypeScript Playground (or run \code{tsc --strict}) and read the error.
+\end{cardrows}
+\trap TypeScript checks shapes, not class names.\par
+\cardsub{Solution}
+No. \code{const thing: Named = \{ title: \textquotedbl{}Rex\textquotedbl{} \}} fails ('title' does not exist in type 'Named'). The Dog line compiles.\par
+{\small\textit{Verified: tsc 5.9.3 (strict) reports: line 8: Object literal may only specify known properties, and 'title' does not exist in type 'Named'..}}\par
+\smallskip{\small\textbf{Why:} TypeScript compares shapes, not class names: a Dog has a string name, so it is a Named. The literal has no name (and an unknown title).}\par
+\cardsub{From the readings}
+\readchap{17. How do you describe the shape of an object?}{An interface or type alias names an object's shape; \code{?} marks optional properties and \code{readonly} blocks reassignment. TypeScript compares shapes, not names, and checks object literals for extra properties.}
+\readq{Does a value need to be declared as the type?}
+No. TypeScript uses \textbf{structural typing}: type checking focuses on the shape a value has. Any value with a string \code{name} is a \code{Named}, whatever class made it.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+interface Named { name: string }
+class Dog { constructor(public name: string) {} }
+const pet: Named = new Dog("Rex");
+console.log(pet.name);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{Rex}}\par
+
+\readq{Why is an extra property sometimes an error?}
+Because an object literal written straight into a typed place gets an excess property check: a property the target type doesn't have is probably a typo. The same object stored in a variable first is just checked for having the required properties.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+interface Point { x: number; y: number }
+const p: Point = { x: 1, y: 2, z: 3 };
+const raw = { x: 1, y: 2, z: 3 };
+const q: Point = raw;
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 2: Object literal may only specify known properties, and 'z' does not exist in type 'Point'.}\par
+
+\cardend
+\deckhead{18 · Unions \& Narrowing}{4}
+\begin{corebox}\textbf{Core idea.} A union allows any of its members; until you narrow it, only what all members share is allowed. Checks such as \code{typeof} and \code{Array.isArray} narrow it, and a type predicate lets your own function narrow it---trusted, not verified.\end{corebox}
+\begin{sumbox}{Deck summary sheet --- 18 · Unions \& Narrowing}
+A union \code{A | B} allows either type; until you narrow it you can only use what both share. \code{typeof}, \code{Array.isArray}, \code{in}, \code{instanceof}, equality and truthiness checks narrow it. A type predicate (\code{value is string}) turns your own function into a check the compiler understands — and trusts without verifying.\par
+\smallskip{\footnotesize Read more: \href{https://www.typescriptlang.org/docs/handbook/2/narrowing.html}{TypeScript Handbook — Narrowing}; \href{https://www.typescriptlang.org/docs/handbook/2/everyday-types.html}{TypeScript Handbook — Everyday Types: Union Types}}\end{sumbox}
+\cardhead{Card 11 --- Fix formatId(id)}{fix · typescript · Easy}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Narrowing:} TypeScript working out a more specific type from a check in the code. Like a sorting office that knows a parcel is fragile once it has passed the ``fragile'' gate.\par\smallskip \textbf{Type guard:} a check such as \code{typeof x === "string"} that TypeScript uses to narrow. A checkpoint: past it, the guard knows who you are.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c18]{Ch.~18} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/everyday-types.html}{TypeScript Handbook — Everyday Types}.}\par
+\cardsub{The card}
+\textbf{Fix formatId(id)}\par
+This doesn't compile: \code{toUpperCase} doesn't exist on numbers. Narrow the union: numbers become 6 digits with leading zeros (\code{42} $\rightarrow$ \code{\textquotedbl{}000042\textquotedbl{}}), strings are upper-cased.\par
+\begin{lstlisting}[language=TypeScript]
+function formatId(id: number | string): string {
+  return id.toUpperCase();
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Branch on \code{typeof id === \textquotedbl{}number\textquotedbl{}}: pad with \code{padStart(6, \textquotedbl{}0\textquotedbl{})}; otherwise upper-case the string.
+\item[Invariants] Inside each branch, \code{id} has one type.
+\item[Memory] No state.
+\item[Types] \code{number | string} in; string out.
+\item[Failure] Typing \code{id} as \code{any} compiles but lets \code{true} through.
+\item[Tests] 42, 123456 and "ab12"; a type test rejects \code{true}.
+\end{cardrows}
+\trap Narrow before calling a type-specific method.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+function formatId(id: number | string): string {
+  if (typeof id === "number") return String(id).padStart(6, "0");
+  return id.toUpperCase();
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 3 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} After \code{typeof id === \textquotedbl{}number\textquotedbl{}} returns, TypeScript knows id is a string on the next line.}\par
+\cardsub{From the readings}
+\readchap{18. How do you work with a value that could be one of several types?}{A union allows any of its members; until you narrow it, only what all members share is allowed. Checks such as \code{typeof} and \code{Array.isArray} narrow it, and a type predicate lets your own function narrow it---trusted, not verified.}
+\readq{How does TypeScript narrow a union?}
+By following your checks. \textbf{Narrowing} happens when TypeScript can tell from the code that a value is a more specific type. A check it understands is a \textbf{type guard}: \code{typeof}, \code{Array.isArray}, \code{=== null}, \code{in}, \code{instanceof}. After a branch returns, the rest of the function knows that case is gone.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function describe(v: string | string[] | null): string {
+  if (v === null) return "nothing";
+  if (Array.isArray(v)) return `list of ${v.length}`;
+  return `text: ${v.toUpperCase()}`;
+}
+console.log(describe(null), describe(["a"]), describe("hi"));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{nothing list of 1 text: HI}}\par
+
+\cardend
+\cardhead{Card 12 --- describeInput(value)}{write · typescript · Easy}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Narrowing:} TypeScript working out a more specific type from a check in the code. Like a sorting office that knows a parcel is fragile once it has passed the ``fragile'' gate.\par\smallskip \textbf{Type guard:} a check such as \code{typeof x === "string"} that TypeScript uses to narrow. A checkpoint: past it, the guard knows who you are.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c18]{Ch.~18} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/narrowing.html}{TypeScript Handbook — Narrowing}.}\par
+\cardsub{The card}
+\textbf{describeInput(value)}\par
+Write \code{describeInput(value: string | string[] | null): string} — \code{\textquotedbl{}nothing\textquotedbl{}} for null, \code{\textquotedbl{}text: \textless{}value\textgreater{}\textquotedbl{}} for a string, \code{\textquotedbl{}list of \textless{}n\textgreater{}\textquotedbl{}} for an array.\par
+\begin{lstlisting}[language=TypeScript]
+function describeInput(value: string | string[] | null): string {
+  return "text: " + value;
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Check \code{=== null}, then \code{Array.isArray}; what is left is a string.
+\item[Invariants] Each branch handles exactly one member of the union.
+\item[Memory] No state.
+\item[Types] \code{string | string[] | null} in; string out.
+\item[Failure] \code{!value} treats the empty string as null.
+\item[Tests] "hi", "", ["a", "b"], [] and null.
+\end{cardrows}
+\trap An empty string is not null.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+function describeInput(value: string | string[] | null): string {
+  if (value === null) return "nothing";
+  if (Array.isArray(value)) return `list of ${value.length}`;
+  return `text: ${value}`;
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 5 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} Check null and arrays first; whatever is left must be a string. An empty string is not null.}\par
+\cardsub{From the readings}
+\readchap{18. How do you work with a value that could be one of several types?}{A union allows any of its members; until you narrow it, only what all members share is allowed. Checks such as \code{typeof} and \code{Array.isArray} narrow it, and a type predicate lets your own function narrow it---trusted, not verified.}
+\readq{How does TypeScript narrow a union?}
+By following your checks. \textbf{Narrowing} happens when TypeScript can tell from the code that a value is a more specific type. A check it understands is a \textbf{type guard}: \code{typeof}, \code{Array.isArray}, \code{=== null}, \code{in}, \code{instanceof}. After a branch returns, the rest of the function knows that case is gone.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function describe(v: string | string[] | null): string {
+  if (v === null) return "nothing";
+  if (Array.isArray(v)) return `list of ${v.length}`;
+  return `text: ${v.toUpperCase()}`;
+}
+console.log(describe(null), describe(["a"]), describe("hi"));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{nothing list of 1 text: HI}}\par
+
+\cardend
+\cardhead{Card 13 --- Type guard isString}{types · typescript · Medium}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Type predicate:} the return type \code{v is T}, telling TypeScript that \code{true} means \code{v} is a \code{T}. Like a stamp that says ``inspected''---whoever stamps it is trusted.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c18]{Ch.~18} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/narrowing.html}{TypeScript Handbook — Narrowing}.}\par
+\cardsub{The card}
+\textbf{Type guard isString}\par
+\code{isString} works at run time, but \code{[\textquotedbl{}a\textquotedbl{}, 1].filter(isString)} still has the type \code{(string | number)[]}. Change its return type to a type predicate so the filter result is \code{string[]}.\par
+\begin{lstlisting}[language=TypeScript]
+function isString(value: unknown): boolean {
+  return typeof value === "string";
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Change the return type to \code{value is string}; the body stays the same.
+\item[Invariants] \code{true} means the value is a string.
+\item[Memory] No state.
+\item[Types] unknown in; boolean (as a type predicate) out.
+\item[Failure] Returning plain \code{boolean} leaves \code{filter}'s result as \code{(string | number)[]}.
+\item[Tests] Runtime cases pass either way; the type test needs \code{string[]}.
+\end{cardrows}
+\trap The compiler trusts a type predicate; it doesn't check the body.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 4 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} \code{value is string} tells TypeScript that true means "value is a string", and filter uses that to narrow its result. The compiler does not check that your body really tests for a string: a wrong guard lies to it.}\par
+\cardsub{From the readings}
+\readchap{18. How do you work with a value that could be one of several types?}{A union allows any of its members; until you narrow it, only what all members share is allowed. Checks such as \code{typeof} and \code{Array.isArray} narrow it, and a type predicate lets your own function narrow it---trusted, not verified.}
+\readq{How do you write your own type guard?}
+Give a boolean function a return type of the form \code{value is string}, a \textbf{type predicate}. Callers, \code{filter} included, then narrow on its result. The compiler does not check that the body really tests for that type: a wrong guard misleads it.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function isText(v: unknown): v is string {
+  return typeof v === "string";
+}
+const words: string[] = ["a", 1, "b"].filter(isText);
+console.log(words.join(""));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{ab}}\par
+
+\cardend
+\cardhead{Card 14 --- Does it compile?}{compile · ts18-union-access}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Union type:} \code{A | B}, a value that may be any one of the listed types. Like a box labelled ``apple or orange'': you may only do what works for both.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c18]{Ch.~18} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/everyday-types.html}{TypeScript Handbook — Everyday Types}.}\par
+\cardsub{The card}
+Does this compile with \code{tsc --strict}? If not, which statement fails, and why?\par
+\begin{lstlisting}[language=TypeScript]
+function shout(value: string | number) {
+  return value.toUpperCase();
+}
+function size(value: string | string[]) {
+  return value.length;
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] \code{toUpperCase} isn't on number, so line 2 fails; \code{length} exists on both string and string[].
+\item[Invariants] Without narrowing only shared members are allowed.
+\item[Memory] No state.
+\item[Types] \code{string | number}, \code{string | string[]}.
+\item[Failure] Expecting \code{value.length} to fail too.
+\item[Tests] Paste it into the TypeScript Playground (or run \code{tsc --strict}) and read the error.
+\end{cardrows}
+\trap Shared members are allowed; the rest need narrowing.\par
+\cardsub{Solution}
+No. \code{value.toUpperCase()} fails: it does not exist on type 'number'. \code{value.length} compiles.\par
+{\small\textit{Verified: tsc 5.9.3 (strict) reports: line 2: Property 'toUpperCase' does not exist on type 'string | number'.   Property 'toUpperCase' does not exist on type 'number'..}}\par
+\smallskip{\small\textbf{Why:} Without narrowing you may only use what every member of the union has. Both strings and arrays have length; numbers have no toUpperCase.}\par
+\cardsub{From the readings}
+\readchap{18. How do you work with a value that could be one of several types?}{A union allows any of its members; until you narrow it, only what all members share is allowed. Checks such as \code{typeof} and \code{Array.isArray} narrow it, and a type predicate lets your own function narrow it---trusted, not verified.}
+\readq{What is a union type, and what can you do with one?}
+A \textbf{union type} \code{A | B} is either \code{A} or \code{B}. Before you check which, you may use only what every member has: strings and arrays both have \code{length}, numbers have no \code{toUpperCase}.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function size(x: string | string[]) {
+  return x.length;
+}
+function shout(x: string | number) {
+  return x.toUpperCase();
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 5: Property 'toUpperCase' does not exist on type 'string | number'.   Property 'toUpperCase' does not exist on type 'number'.}\par
+
+\cardend
+\deckhead{19 · Function Types: Optional, Default \& Overloads}{3}
+\begin{corebox}\textbf{Core idea.} \code{param?: T} may be left out; \code{param = value} has a default and an inferred type; overload signatures give one function several typed call shapes; a function typed \code{: undefined} needs no \code{return}.\end{corebox}
+\begin{sumbox}{Deck summary sheet --- 19 · Function Types: Optional, Default \& Overloads}
+\code{param?: T} may be left out (its type is T | undefined); \code{param = value} has a default and an inferred type. Overload signatures give one function several typed call shapes. A function typed \code{: undefined} needs no return statement (TypeScript 5.1+).\par
+\smallskip{\footnotesize Read more: \href{https://www.typescriptlang.org/docs/handbook/2/functions.html}{TypeScript Handbook — More on Functions}; \href{https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-1.html}{TypeScript 5.1 release notes}}\end{sumbox}
+\cardhead{Card 15 --- greet(name, greeting?, punctuation?)}{write · typescript · Easy}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c19]{Ch.~19} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/functions.html}{TypeScript Handbook — More on Functions}.}\par
+\cardsub{The card}
+\textbf{greet(name, greeting?, punctuation?)}\par
+Write \code{greet}: \code{greeting} defaults to \code{\textquotedbl{}Hello\textquotedbl{}} and \code{punctuation} is optional (\code{\textquotedbl{}!\textquotedbl{}} when missing). \code{greet(\textquotedbl{}Ada\textquotedbl{})} $\rightarrow$ \code{\textquotedbl{}Hello, Ada!\textquotedbl{}}.\par
+\begin{lstlisting}[language=TypeScript]
+function greet(name: string, greeting: string, punctuation: string): string {
+  return `${greeting}, ${name}${punctuation}`;
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] \code{greeting = \textquotedbl{}Hello\textquotedbl{}} as a default, \code{punctuation?: string} with \code{?? \textquotedbl{}!\textquotedbl{}}.
+\item[Invariants] \code{name} is required; the others may be missing or undefined.
+\item[Memory] No state.
+\item[Types] strings in; string out.
+\item[Failure] Typing greeting \code{any} lets \code{greet(\textquotedbl{}Ada\textquotedbl{}, 5)} compile; \code{||} would turn an empty punctuation into "!".
+\item[Tests] One, two and three arguments, an explicit undefined, and "" as punctuation.
+\end{cardrows}
+\trap A default is used for undefined; \code{??} keeps "".\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+function greet(name: string, greeting = "Hello", punctuation?: string): string {
+  return `${greeting}, ${name}${punctuation ?? "!"}`;
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 5 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} A default value also gives the parameter its type (string) and makes it optional; passing undefined uses the default.}\par
+\cardsub{From the readings}
+\readchap{19. How do you type a function's inputs and outputs?}{\code{param?: T} may be left out; \code{param = value} has a default and an inferred type; overload signatures give one function several typed call shapes; a function typed \code{: undefined} needs no \code{return}.}
+\readq{How do optional and default parameters differ?}
+Both may be left out; only a default supplies a value. An optional parameter \code{mark?: string} has the type \code{string | undefined} inside the function, so you handle the missing case yourself. A default \code{greeting = "Hello"} gives the parameter its type from the value and uses that value whenever the argument is missing or \code{undefined}.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function greet(name: string, greeting = "Hello", mark?: string) {
+  return `${greeting}, ${name}${mark ?? "!"}`;
+}
+console.log(greet("Ada"), greet("Ada", undefined, "?"));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{Hello, Ada! Hello, Ada?}}\par
+
+\cardend
+\cardhead{Card 16 --- Does it compile?}{compile · ts19-undefined-return}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c19]{Ch.~19} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-1.html}{TypeScript 5.1 release notes}.}\par
+\cardsub{The card}
+Does this compile with \code{tsc --strict}? If not, which statement fails, and why?\par
+\begin{lstlisting}[language=TypeScript]
+function logValue(value: string): undefined {
+  console.log(value);
+}
+function getValue(): string {
+  console.log("no return");
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] \code{logValue} may end without return (TS 5.1+); \code{getValue} promises a string and returns none.
+\item[Invariants] A function with a value return type must return one.
+\item[Memory] No state.
+\item[Types] undefined, string.
+\item[Failure] Expecting \code{logValue} to fail as in older TypeScript.
+\item[Tests] Paste it into the TypeScript Playground (or run \code{tsc --strict}) and read the error.
+\end{cardrows}
+\trap Since 5.1, \code{: undefined} needs no return statement.\par
+\cardsub{Solution}
+No. getValue fails: a function whose declared type is neither undefined, void nor any must return a value. logValue compiles (TypeScript 5.1+).\par
+{\small\textit{Verified: tsc 5.9.3 (strict) reports: line 4: A function whose declared type is neither 'undefined', 'void', nor 'any' must return a value..}}\par
+\smallskip{\small\textbf{Why:} Since TypeScript 5.1, a function that returns undefined needs no return statement, just like JavaScript. A function promising a string must return one.}\par
+\cardsub{From the readings}
+\readchap{19. How do you type a function's inputs and outputs?}{\code{param?: T} may be left out; \code{param = value} has a default and an inferred type; overload signatures give one function several typed call shapes; a function typed \code{: undefined} needs no \code{return}.}
+\readq{Must a function that returns undefined say return?}
+No, since TypeScript 5.1. In JavaScript a function that ends without \code{return} returns \code{undefined}, and a function typed \code{: undefined} may now do the same. A function typed to return a \code{string} must still return one.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function log(v: string): undefined {
+  console.log(v);
+}
+function get(): string {
+  console.log("none");
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 4: A function whose declared type is neither 'undefined', 'void', nor 'any' must return a value.}\par
+
+\cardend
+\cardhead{Card 17 --- Overloads for parse(value)}{types · typescript · Medium}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Overload signatures:} several bodiless declarations of one function, each a call shape callers may use, followed by the implementation. Like a menu listing the orders the kitchen accepts.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c19]{Ch.~19} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/functions.html}{TypeScript Handbook — More on Functions}.}\par
+\cardsub{The card}
+\textbf{Overloads for parse(value)}\par
+\code{parse} turns a string into a number and a number into a 2-decimal string, but callers always get \code{string | number}. Add overload signatures so \code{parse(\textquotedbl{}42\textquotedbl{})} is a number and \code{parse(3)} a string.\par
+\begin{lstlisting}[language=TypeScript]
+function parse(value: string | number): string | number {
+  return typeof value === "string" ? Number(value) : value.toFixed(2);
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Add \code{function parse(value: string): number;} and \code{function parse(value: number): string;} above the implementation.
+\item[Invariants] Callers see only the overloads.
+\item[Memory] No state.
+\item[Types] string $\rightarrow$ number, number $\rightarrow$ string.
+\item[Failure] Without overloads every call returns \code{string | number}.
+\item[Tests] Runtime cases pass either way; the type tests need the precise types.
+\end{cardrows}
+\trap The implementation signature isn't callable from outside.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+function parse(value: string): number;
+function parse(value: number): string;
+function parse(value: string | number): string | number {
+  return typeof value === "string" ? Number(value) : value.toFixed(2);
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 2 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} Callers see only the overload signatures; the last signature is the implementation's and must be compatible with all of them.}\par
+\cardsub{From the readings}
+\readchap{19. How do you type a function's inputs and outputs?}{\code{param?: T} may be left out; \code{param = value} has a default and an inferred type; overload signatures give one function several typed call shapes; a function typed \code{: undefined} needs no \code{return}.}
+\readq{How can one function have several typed call shapes?}
+With \textbf{overload signatures}: write one bodiless signature per call shape, then a single implementation whose signature covers them all. Callers see only the overloads, so \code{parse("42")} is a \code{number} rather than \code{string | number}.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function parse(v: string): number;
+function parse(v: number): string;
+function parse(v: string | number): string | number {
+  return typeof v === "string" ? Number(v) : v.toFixed(2);
+}
+const n: number = parse("42");
+console.log(n + 1);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{43}}\par
+
+\cardend
+\deckhead{20 · any vs unknown}{2}
+\begin{corebox}\textbf{Core idea.} \code{any} switches checking off; \code{unknown} accepts any value but makes you narrow it before use---the safe type for data you haven't checked.\end{corebox}
+\begin{sumbox}{Deck summary sheet --- 20 · any vs unknown}
+\code{any} switches type checking off. \code{unknown} also accepts any value, but you must narrow it before using it — the safe choice for data you haven't checked yet.\par
+\smallskip{\footnotesize Read more: \href{https://www.typescriptlang.org/docs/handbook/2/functions.html\#unknown}{TypeScript Handbook — More on Functions: unknown}}\end{sumbox}
+\cardhead{Card 18 --- Does it compile?}{compile · ts20-any-vs-unknown}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{unknown:} the type of a value that could be anything, which must be narrowed before use. Like a sealed parcel: you may hold it, but must open and check it before using what's inside.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c20]{Ch.~20} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/functions.html\#unknown}{TypeScript Handbook — More on Functions}.}\par
+\cardsub{The card}
+Does this compile with \code{tsc --strict}? If not, which statement fails, and why?\par
+\begin{lstlisting}[language=TypeScript]
+const a: any = "hello";
+a.launch();
+const u: unknown = "hello";
+u.launch();
+if (typeof u === "string") {
+  console.log(u.toUpperCase());
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] \code{any} allows \code{a.launch()}; \code{unknown} refuses \code{u.launch()}; inside \code{typeof u === \textquotedbl{}string\textquotedbl{}} u is a string.
+\item[Invariants] unknown must be narrowed before use.
+\item[Memory] No state.
+\item[Types] any, unknown, string.
+\item[Failure] Expecting \code{a.launch()} to fail at compile time.
+\item[Tests] Paste it into the TypeScript Playground (or run \code{tsc --strict}) and read the error.
+\end{cardrows}
+\trap any compiles and crashes later; unknown refuses up front.\par
+\cardsub{Solution}
+No. \code{u.launch()} fails: 'u' is of type 'unknown'. \code{a.launch()} compiles (and would crash at run time); inside the typeof check, u is a string.\par
+{\small\textit{Verified: tsc 5.9.3 (strict) reports: line 4: 'u' is of type 'unknown'..}}\par
+\smallskip{\small\textbf{Why:} any turns checking off; unknown keeps it on and asks you to prove the type first.}\par
+\cardsub{From the readings}
+\readchap{20. What is the difference between any and unknown?}{\code{any} switches checking off; \code{unknown} accepts any value but makes you narrow it before use---the safe type for data you haven't checked.}
+\readq{What does any do?}
+It turns type checking off for that value. Anything can be assigned to it and anything can be done with it, so mistakes compile and fail only at run time. Using \code{any} often defeats the purpose of using TypeScript.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+const a: any = "hello";
+a.launch();
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+
+\readq{Why is unknown safer?}
+Because it keeps checking on. \textbf{unknown} accepts any value, like \code{any}, but you may do nothing with it until a check narrows it (\hyperref[ch:c18]{Ch.~18}). That makes it the right type for data from \code{JSON.parse}, users or other programs.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function lengthOf(v: unknown): number {
+  if (typeof v === "string" || Array.isArray(v)) return v.length;
+  return 0;
+}
+console.log(lengthOf("abc"), lengthOf({ length: 5 }));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{3 0}}\par
+
+\cardend
+\cardhead{Card 19 --- Fix lengthOf(value: unknown)}{fix · typescript · Easy}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{unknown:} the type of a value that could be anything, which must be narrowed before use. Like a sealed parcel: you may hold it, but must open and check it before using what's inside.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c20]{Ch.~20} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/narrowing.html}{TypeScript Handbook — Narrowing}.}\par
+\cardsub{The card}
+\textbf{Fix lengthOf(value: unknown)}\par
+This doesn't compile: \code{value} is \code{unknown}. Return the length of a string or array, and 0 for anything else — including objects that happen to have a \code{length} property.\par
+\begin{lstlisting}[language=TypeScript]
+function lengthOf(value: unknown): number {
+  return value.length;
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Narrow with \code{typeof value === \textquotedbl{}string\textquotedbl{} || Array.isArray(value)} and return the length; else 0.
+\item[Invariants] Only strings and arrays report a length.
+\item[Memory] No state.
+\item[Types] unknown in; number out.
+\item[Failure] Switching to \code{any} compiles but returns 5 for \code{\{ length: 5 \}}.
+\item[Tests] "abc", [1, 2], 42, null and \code{\{ length: 5 \}}.
+\end{cardrows}
+\trap Duck-typing on \code{length} lets impostors through.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+function lengthOf(value: unknown): number {
+  if (typeof value === "string" || Array.isArray(value)) return value.length;
+  return 0;
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 5 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} Narrow unknown with real checks. Switching to any compiles, but then anything with a length gets through.}\par
+\cardsub{From the readings}
+\readchap{20. What is the difference between any and unknown?}{\code{any} switches checking off; \code{unknown} accepts any value but makes you narrow it before use---the safe type for data you haven't checked.}
+\readq{Why is unknown safer?}
+Because it keeps checking on. \textbf{unknown} accepts any value, like \code{any}, but you may do nothing with it until a check narrows it (\hyperref[ch:c18]{Ch.~18}). That makes it the right type for data from \code{JSON.parse}, users or other programs.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function lengthOf(v: unknown): number {
+  if (typeof v === "string" || Array.isArray(v)) return v.length;
+  return 0;
+}
+console.log(lengthOf("abc"), lengthOf({ length: 5 }));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{3 0}}\par
+
+\cardend
+\addtocontents{toc}{\vspace{6pt}}
+\Needspace{14\baselineskip}\phantomsection\section*{Appendix: Audit Trail}\addcontentsline{toc}{section}{Appendix: Audit Trail}
+\subsection*{Sources}
+{\footnotesize\begin{tabularx}{\linewidth}{@{}p{1.6in}p{0.9in}X@{}}\toprule
+\textbf{Source} & \textbf{How much read} & \textbf{Used for}\\\midrule
+Course deck: \path{backend/app/content/js_ts_course/part2.py}, \path{quotes.py} & In full & Cards, tests, type tests, solutions, quotes, deck summaries\\
+TypeScript Handbook (source text, TypeScript-Website repository): The Basics; Everyday Types; Narrowing; More on Functions; Object Types; TypeScript for the New Programmer; TypeScript for JavaScript Programmers; Enums & Searched by keyword; relevant sections read & Chapter facts; card quotes\\
+TypeScript 5.1 release notes & Section on undefined-returning functions read & Ch.~19; card quote\\
+TSConfig reference: strict, noImplicitAny & Opening paragraphs & Ch.~16\\
+\bottomrule\end{tabularx}}
+
+{\footnotesize\textbf{Not read:} the rest of the TypeScript Handbook (modules, declaration files, type manipulation beyond Part 3's needs); the TypeScript specification and compiler source.}
+\subsection*{Claim ledger}
+{\footnotesize Each card's explanation rests on the documentation excerpt shown with it; the table lists, per source page, the cards whose claim it backs. Code behaviour claimed in the chapters and solutions was established by running it (see Checks run).}
+{\footnotesize\begin{tabularx}{\linewidth}{@{}p{2.2in}X@{}}\toprule
+\textbf{Source (all quoted, checked word for word)} & \textbf{Cards whose claim it backs}\\\midrule
+TypeScript 5.1 release notes (\href{https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-1.html}{page}) & ts19-undefined-return\\
+TypeScript Handbook — Enums (\href{https://www.typescriptlang.org/docs/handbook/enums.html}{page}) & ts15-enum-emits\\
+TypeScript Handbook — Everyday Types (\href{https://www.typescriptlang.org/docs/handbook/2/everyday-types.html}{page}) & ts16-format-price, ts18-format-id, ts18-union-access\\
+TypeScript Handbook — More on Functions (\href{https://www.typescriptlang.org/docs/handbook/2/functions.html}{page}) & ts19-greet, ts19-overloads, ts20-any-vs-unknown\\
+TypeScript Handbook — Narrowing (\href{https://www.typescriptlang.org/docs/handbook/2/narrowing.html}{page}) & ts18-describe-input, ts18-is-string, ts20-length-of\\
+TypeScript Handbook — Object Types (\href{https://www.typescriptlang.org/docs/handbook/2/objects.html}{page}) & ts17-product, ts17-excess-property, ts17-readonly-sort\\
+TypeScript Handbook — The Basics (\href{https://www.typescriptlang.org/docs/handbook/2/basic-types.html}{page}) & ts15-emits-anyway, ts15-parse-user, ts16-total-price, ts16-inferred-type\\
+TypeScript for JavaScript Programmers (\href{https://www.typescriptlang.org/docs/handbook/typescript-in-5-minutes.html}{page}) & ts17-structural\\
+\bottomrule\end{tabularx}}
+{\footnotesize\textbf{Authored, not sourced:} every analogy in a term definition (15 terms), every rule of thumb, every Think-it-through box, the chapter prose that connects the sourced facts, the How-to-solve rows and traps, and all chapter code snippets (their behaviour was run, see below). The cards themselves (tasks, tests, solutions) were written for this course earlier in this session and are verified, not sourced.}
+\subsection*{Flags}
+{\footnotesize\begin{itemize}
+\item Outside the material: compiler messages quoted in this guide come from running tsc 5.9.3, not from the documentation; Node's ability to run TypeScript directly (type stripping) is a property of the runtime used for the checks, not something the material describes.
+\item Conflicts: none found between the deck and the documentation.
+\item The TypeScript Playground is mentioned as a way to see compiler errors; it was not used for any check.
+\item Analogies are authored and simplify; for example, structural typing also allows extra properties when the value is not a fresh object literal, which the key-and-lock image does not show.
+\end{itemize}}
+\subsection*{Checks run}
+{\footnotesize\begin{itemize}
+\item Code cards: 11 reference answers run in the app's own code runner against the cards' 40 test cases: all pass. Every starter fails. 11 TypeScript answers also type-checked (strict) with their type tests: all pass.
+\item Predict cards: 2 snippets run in Node v22.23.4: each prints exactly the card's answer.
+\item Compile cards: 6 snippets checked with tsc 5.9.3 (strict): errors on exactly the stated lines.
+\item Chapter snippets: 10 run in Node v22.23.4; every \textit{Prints} line is the captured output. 19 checked with tsc 5.9.3.
+\item Quotes: every card's quote found word for word (ignoring markdown) in the documentation source text (MDN content and TypeScript-Website repositories, fetched on 2026-11-16).
+\item The course's own test suite (\code{tests/test\_js\_ts\_course.py}) passes, including planted wrong answers that each card must reject.
+\item Deck files: \path{study-guides/js-ts/decks/part-2-typescript-core/} holds the 6 decks of this Part as JSON (a plain array and a wrapped copy each): 11 code cards and 8 qa cards, each with its verified quote. They are written by \path{export\_decks.py} from the same course data the checks above ran on. All 27 deck files of the course were imported through the app's \code{POST /api/import/json} into a fresh test database: no warnings, every quote became a citation, and every code card's answer passed all its test cases (and its type check) through the imported card's run-code endpoint.
+\item Not run: the cards in your own app with the local 3B grading model (grading of typed answers is not verified here).
+\item Not run: Node 24 on Windows; checks used Node v22.23.4 on Linux.
+\item Not checked: the live web pages (the quotes were checked against the pages' source files, which can lag or lead the site).
+\end{itemize}}
+\subsection*{Deviations}
+{\footnotesize\begin{itemize}
+\item Summary sheets: the course has no separate summary sheets, so each deck's own documentation (the summary stored with the deck in the app) is copied in its box instead.
+\item \emph{From the readings} copies only the chapter sections each card drills (listed per card), not every section of its chapters, to keep the guide usable.
+\item The card decks were not generated anew: the guide uses the 105-card deck built earlier in this session (the same material), exported as JSON deck files alongside this guide.
+\item The skill requires a quote on every card; 68 cards had none, so verified quotes were added to the course itself (\code{quotes.py}), where the app shows them too.
+\item Read-only cards (what does this print? / does it compile?) are typed-answer cards in the app; their \emph{Solution} shows the verified output or compiler verdict, and their How-to-solve rows read: Solve = how to trace it, Tests = how to check it by running.
+\item Chapters follow the deck's subdeck order rather than a strict stasis order, so card and chapter numbers match the app.
+\item Snippets that exist to show a compiler error were checked with tsc but not run (their run-time output is beside the point); each shows the compiler's verdict under it.
+\end{itemize}}
+\subsection*{Revision log}
+{\footnotesize\begin{itemize}
+\item 2026-11-16: first version.
+\end{itemize}}
+\addtocontents{toc}{\vspace{6pt}}
+\phantomsection\section*{Index of Terms}\addcontentsline{toc}{section}{Index of Terms}
+{\small\begin{multicols}{2}
+\ix{any}{any}{Ch.~16}
+\ix{compiler}{compiler}{Ch.~15}
+\ix{interface}{interface}{Ch.~17}
+\ix{narrowing}{Narrowing}{Ch.~18}
+\ix{overload}{overload signatures}{Ch.~19}
+\ix{structural}{structural typing}{Ch.~17}
+\ix{annotation}{type annotation}{Ch.~15}
+\ix{assertion}{type assertion}{Ch.~15}
+\ix{erasure}{Type erasure}{Ch.~15}
+\ix{typeguard}{type guard}{Ch.~18}
+\ix{inference}{type inference}{Ch.~16}
+\ix{predicate}{type predicate}{Ch.~18}
+\ix{typescript}{TypeScript}{Ch.~15}
+\ix{union}{union type}{Ch.~18}
+\ix{unknown}{unknown}{Ch.~20}
+\end{multicols}}
+\end{document}

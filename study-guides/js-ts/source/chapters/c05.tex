@@ -1,0 +1,18 @@
+\phantomsection\label{ch:c05}
+\chap{5. How do you package logic so it can be reused?}{A function bundles steps behind a name; declarations are usable before their line, and a closure keeps the variables it was created with.}
+
+\subsection{What is a function, and what does hoisting change?}% sec:c05-define
+A \term[\textbf{Function:} a named, reusable block of steps that takes inputs and can return a result. Like a recipe card: write it once, cook from it many times.]{function}{function} takes \term[\textbf{Parameter:} a name in a function's definition that receives an input. A blank on the recipe card, e.g. ``\_\_ cups of flour''.]{parameter}{parameters}, runs its body and hands back a value with \code{return}. A function declaration is \term[\textbf{Hoisting:} JavaScript making a declaration usable before the line it is written on. Like a speaker whose name is on the programme before they walk on stage.]{hoisting}{hoisted}: you can call it above the line where it is written. A function stored in a \code{const} is not usable until that line runs.
+%%SNIPPET:c05-hoisting%%
+
+\subsection{How can a function keep private state?}% sec:c05-closures
+By closing over a variable (\hyperref[ch:c03]{Ch.~3}). Each call to an outer function creates new variables; the inner functions it returns keep using those, and nothing outside can reach them. An \term[\textbf{Arrow function:} the short form \code{(x) => x * 2} of a function expression. Like a sticky note instead of a recipe card.]{arrow}{arrow function} is a compact way to write such an inner function.
+%%SNIPPET:c05-closure%%
+To remember ``already done'', keep a separate flag. Using the stored result as the flag fails when the result is itself \code{undefined}.
+
+\subsection{How does a function accept any number of arguments?}% sec:c05-rest
+With a \term[\textbf{Rest parameter:} \code{...name} as the last parameter, gathering all remaining arguments into an array. Like a sack that holds however many apples you hand over.]{rest}{rest parameter}: \code{function sum(...numbers)} receives every argument in a real array. Adding them up with \code{reduce} (\hyperref[ch:c06]{Ch.~6}) needs a starting value, or zero arguments would throw.
+%%SNIPPET:c05-rest%%
+
+\mantra{Name it once, call it anywhere; let closures carry state.}
+\begin{ponder}You call \code{makeCounter(0)} twice. How many count variables now exist, and which one does each \code{increment} change? What if \code{count} were declared outside \code{makeCounter}?\end{ponder}

@@ -1,0 +1,17 @@
+\phantomsection\label{ch:c18}
+\chap{18. How do you work with a value that could be one of several types?}{A union allows any of its members; until you narrow it, only what all members share is allowed. Checks such as \code{typeof} and \code{Array.isArray} narrow it, and a type predicate lets your own function narrow it---trusted, not verified.}
+
+\subsection{What is a union type, and what can you do with one?}% sec:c18-union
+A \term[\textbf{Union type:} \code{A | B}, a value that may be any one of the listed types. Like a box labelled ``apple or orange'': you may only do what works for both.]{union}{union type} \code{A | B} is either \code{A} or \code{B}. Before you check which, you may use only what every member has: strings and arrays both have \code{length}, numbers have no \code{toUpperCase}.
+%%SNIPPET:c18-union%%
+
+\subsection{How does TypeScript narrow a union?}% sec:c18-narrow
+By following your checks. \term[\textbf{Narrowing:} TypeScript working out a more specific type from a check in the code. Like a sorting office that knows a parcel is fragile once it has passed the ``fragile'' gate.]{narrowing}{Narrowing} happens when TypeScript can tell from the code that a value is a more specific type. A check it understands is a \term[\textbf{Type guard:} a check such as \code{typeof x === "string"} that TypeScript uses to narrow. A checkpoint: past it, the guard knows who you are.]{typeguard}{type guard}: \code{typeof}, \code{Array.isArray}, \code{=== null}, \code{in}, \code{instanceof}. After a branch returns, the rest of the function knows that case is gone.
+%%SNIPPET:c18-narrow%%
+
+\subsection{How do you write your own type guard?}% sec:c18-predicate
+Give a boolean function a return type of the form \code{value is string}, a \term[\textbf{Type predicate:} the return type \code{v is T}, telling TypeScript that \code{true} means \code{v} is a \code{T}. Like a stamp that says ``inspected''---whoever stamps it is trusted.]{predicate}{type predicate}. Callers, \code{filter} included, then narrow on its result. The compiler does not check that the body really tests for that type: a wrong guard misleads it.
+%%SNIPPET:c18-predicate%%
+
+\mantra{Narrow first, then use.}
+\begin{ponder}A guard returns \code{typeof v === "number"} but declares \code{v is string}. Does it compile? What happens at run time when a caller trusts it?\end{ponder}

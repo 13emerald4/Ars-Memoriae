@@ -1,0 +1,26 @@
+\phantomsection\label{ch:c03}
+\chap{3. How do you make code repeat?}{A loop repeats a block while a condition holds: \code{for} to count, \code{for...of} to walk values, and \code{return} or \code{break} to stop early.}
+
+\subsection{How does a counting for loop work?}% sec:c03-for
+A \term[\textbf{Loop:} code that runs a block again and again. Like laps on a track with a lap counter.]{loop}{loop} repeats a block. A \code{for} loop has three parts: start (\code{let i = 1}), keep-going test (\code{i <= n}) and step (\code{i++}). Each run of the block is an \term[\textbf{Iteration:} one run of a loop's body. One lap.]{iteration}{iteration}. Write \code{<=} to include the last value; \code{<} stops one short---the classic \term[\textbf{Off-by-one error:} a loop that runs one time too many or too few. Like counting fence posts instead of gaps.]{offbyone}{off-by-one error}.
+
+The remainder operator \code{\%} gives what is left after division, so \code{i \% 3 === 0} means ``divisible by 3''.
+%%SNIPPET:c03-for%%
+
+\subsection{How do you walk through the values of an array or string?}% sec:c03-forof
+With \code{for...of}, which hands you each value in turn. On a string it gives one character at a time.
+%%SNIPPET:c03-forof%%
+
+\subsection{How do you stop a loop early?}% sec:c03-exit
+\code{return} ends the whole function, loop included; \code{break} ends only the loop. To find the first match, return as soon as you see it; if you only record matches, you end up with the last one.
+%%SNIPPET:c03-break%%
+
+\subsection{Why does let matter inside a loop?}% sec:c03-let
+A function made inside a loop remembers the variable it can see. That pairing of a function with the variables around it is a \term[\textbf{Closure:} a function together with the variables it could see when it was created. Like a snow globe: the scene inside is sealed in with it.]{closure}{closure}. \code{let} creates a fresh variable for each iteration, so each function keeps its own; \code{var} makes one variable for the whole loop, so every function sees its final value.
+%%SNIPPET:c03-let%%
+
+\subsection{Why is for...in the wrong loop for arrays?}% sec:c03-forin
+\code{for...in} walks an object's keys, as strings, including extra and inherited ones. On an array that means \code{"0"}, \code{"1"}, \ldots{} plus any property someone added. Use \code{for...of} for an array's values.
+
+\mantra{Count with for, walk with for...of, leave with return.}
+\begin{ponder}A loop runs \code{for (let i = 0; i <= arr.length; i++)}. What is \code{arr[i]} on the last lap, and why does JavaScript not stop you?\end{ponder}

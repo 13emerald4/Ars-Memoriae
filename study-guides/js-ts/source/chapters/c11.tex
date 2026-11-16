@@ -1,0 +1,13 @@
+\phantomsection\label{ch:c11}
+\chap{11. How do you turn data into text and back?}{\code{JSON.stringify} writes values as text and quietly drops what JSON cannot hold; \code{JSON.parse} reads the text back and throws on bad input.}
+
+\subsection{How do you read JSON?}% sec:c11-parse
+\term[\textbf{JSON:} a text format for data (objects, arrays, strings, numbers, booleans, null) that any program can read. Like a shipping label written in a standard layout.]{json}{JSON} is text. \code{JSON.parse(text)} turns it into JavaScript values. Missing fields come back as \code{undefined}, so supply defaults with \code{??} (\hyperref[ch:c02]{Ch.~2}), which keeps a saved \code{0} or \code{false}.
+%%SNIPPET:c11-parse%%
+
+\subsection{What does JSON.stringify leave out?}% sec:c11-stringify
+Everything JSON cannot represent. \code{undefined} and functions are left out of objects and become \code{null} in arrays. A \code{Date} is written as a string, and a \code{Map} or \code{Set} becomes \code{"\{\}"} because only an object's own enumerable properties are written. The third argument sets the indentation: \code{JSON.stringify(value, null, 2)}.
+%%SNIPPET:c11-stringify%%
+
+\mantra{stringify drops what JSON can't spell; parse throws on what it can't read.}
+\begin{ponder}You save \code{\{ when: new Date() \}} with \code{stringify} and read it back with \code{parse}. What type is \code{when} now? How would you get a \code{Date} back?\end{ponder}

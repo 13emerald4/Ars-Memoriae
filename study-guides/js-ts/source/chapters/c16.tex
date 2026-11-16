@@ -1,0 +1,17 @@
+\phantomsection\label{ch:c16}
+\chap{16. When do you write a type, and when does TypeScript work it out?}{Annotate parameters and what TypeScript cannot work out, and let it infer the rest. Under \code{strict}, a parameter with no type is an error, and a variable keeps the type of its first value.}
+
+\subsection{What is type inference?}% sec:c16-infer
+TypeScript working out a type from the code. With \term[\textbf{Type inference:} TypeScript deciding a type from the value or code, without an annotation. Like guessing a box's label from what is put in it first.]{inference}{type inference}, \code{let count = 5} gives \code{count} the type \code{number}, and that type sticks: assigning a string later is an error. Leave out annotations where inference would give the same type.
+%%SNIPPET:c16-infer%%
+
+\subsection{Why must parameters be annotated?}% sec:c16-any
+Because nothing tells TypeScript what a caller will pass. A parameter with no type would be \term[\textbf{any:} the type that switches checking off; anything goes in and anything can be done with it. Like a box with no label: nobody checks its contents.]{any}{any}, which checks nothing. With \code{strict} on, the \code{noImplicitAny} check reports every such parameter, so you must write its type.
+%%SNIPPET:c16-any%%
+
+\subsection{What does a return type annotation buy you?}% sec:c16-return
+An error at the function rather than wherever its result is used. TypeScript can infer the return type, but writing it states the promise, so a body that returns the wrong kind of value fails at the \code{return} line.
+%%SNIPPET:c16-return%%
+
+\mantra{Annotate the edges (parameters, returns); let TypeScript fill the middle.}
+\begin{ponder}\code{let label;} with no value compiles, then accepts a string and later a number. Is that a hole in the type system? What type does TypeScript give \code{label} after each assignment?\end{ponder}

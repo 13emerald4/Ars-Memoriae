@@ -1,0 +1,21 @@
+\phantomsection\label{ch:c07}
+\chap{7. How do you hold named data?}{An object maps property names to values; destructuring unpacks it, spread copies one level of it, \code{in} asks whether a property exists, and \code{?.} stops at a missing link.}
+
+\subsection{How do you pull properties out into variables?}% sec:c07-destructure
+An object stores values under names; each is a \term[\textbf{Property:} a named value inside an object, like \code{user.name}. A labelled drawer in the filing cabinet.]{property}{property}. \term[\textbf{Destructuring:} syntax that unpacks properties into variables, as in \code{const \{ a, b \} = obj}. Like emptying labelled drawers onto matching labelled trays.]{destructuring}{Destructuring} copies properties into variables in one line, with renames (\code{\{ a: b \}}) and defaults (\code{\{ role = "guest" \}}). A default is used when the property is missing or \code{undefined}---not when it is \code{null}.
+%%SNIPPET:c07-destructure%%
+
+\subsection{How do you copy or merge objects?}% sec:c07-spread
+With spread: \code{\{ ...a, ...b \}} builds a new object from both; when a name appears twice, the later value wins. So spread the defaults first and the overrides second. Spread makes a \term[\textbf{Shallow copy:} a copy of the top level only; anything nested is shared, not copied. Like photocopying a folder's index page: the pages it lists are still the originals.]{shallow}{shallow copy}: a nested array or object is shared between the copy and the original.
+%%SNIPPET:c07-spread%%
+
+\subsection{How do you tell a missing property from an empty one?}% sec:c07-in
+Ask \code{key in obj}: it is \code{true} when the property exists, whatever its value. Testing the value instead (\code{if (obj[key])}) wrongly treats \code{null}, \code{0} and \code{""} as missing.
+%%SNIPPET:c07-in%%
+
+\subsection{How do you read a property that might not be there?}% sec:c07-optional
+With \term[\textbf{Optional chaining (?.):} reads a property but returns \code{undefined} instead of throwing when the value before it is \code{null} or \code{undefined}. Like a hallway with ``if the door is locked, turn back'' signs.]{optional}{optional chaining}. \code{a?.b} is \code{undefined} when \code{a} is \code{null} or \code{undefined}; plain \code{a.b} would throw a \code{TypeError}. Combine it with \code{??} to supply a fallback.
+%%SNIPPET:c07-optional%%
+
+\mantra{Ask in whether it exists; ask ?? what to use instead.}
+\begin{ponder}\code{withDefaults} spreads the defaults, then the options. If \code{options} is \code{\{ fontSize: undefined \}}, which \code{fontSize} ends up in the result? Would a destructuring default behave the same way?\end{ponder}
