@@ -141,6 +141,12 @@ async def import_json(
                     field_values["difficulty"] = item.difficulty
                 if item.category:
                     field_values["category"] = item.category
+                if item.language:
+                    field_values["language"] = item.language
+                if item.type_check:
+                    field_values["type_check"] = True
+                    if item.type_tests:
+                        field_values["type_tests"] = item.type_tests
 
         profile = "math_code" if is_code else "short_answer"
         nt = await default_note_type(db, user, "cloze" if is_cloze else "basic", grading_profile=profile)

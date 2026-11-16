@@ -1,7 +1,137 @@
 import fs from 'node:fs';
 import { deepStrictEqual } from 'node:assert';
+import { createRequire } from 'node:module';
+import path from 'node:path';
 import { performance } from 'node:perf_hooks';
+import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+
+// Node runs TypeScript by stripping the types, so `enum`, `namespace` and
+// constructor parameter properties (`constructor(private x: number)`) fail to
+// parse unless type transformation is switched on as well.
+const NODE_RUN_FLAGS = ['--no-warnings'];
+if (process.allowedNodeEnvironmentFlags.has('--experimental-transform-types')) {
+  NODE_RUN_FLAGS.push('--experimental-transform-types');
+}
+
+// --- Optional type checking -------------------------------------------------
+// Stripping types means a wrongly typed answer runs (and passes) like any
+// other. A card that sets `type_check` is also checked with the TypeScript
+// compiler, in strict mode, together with its `type_tests`: lines such as
+//   // @ts-expect-error: "b" is not a key of the items
+//   pluck([{ a: 1 }], "b");
+// that only compile cleanly when the answer's types are as tight as asked.
+
+const WORKER_DIR = path.dirname(fileURLToPath(import.meta.url));
+const BACKEND_DIR = path.resolve(WORKER_DIR, '..', '..');
+
+function loadTypeScript() {
+  const req = createRequire(import.meta.url);
+  // The backend has no node_modules of its own; the frontend's toolchain
+  // already installs the compiler.
+  for (const base of [BACKEND_DIR, path.join(BACKEND_DIR, '..', 'frontend')]) {
+    try {
+      return req(req.resolve('typescript', { paths: [base] }));
+    } catch {}
+  }
+  return null;
+}
+
+// Node's globals the answers may use. The checker loads only the ES library,
+// not the DOM or @types/node, so these are declared by hand.
+const RUNNER_GLOBALS = `
+declare var console: {
+  log(...data: any[]): void; error(...data: any[]): void;
+  warn(...data: any[]): void; info(...data: any[]): void;
+};
+declare function setTimeout(handler: (...args: any[]) => void, timeout?: number, ...args: any[]): number;
+declare function clearTimeout(id: number | undefined): void;
+declare function queueMicrotask(callback: () => void): void;
+declare function structuredClone<T>(value: T): T;
+`;
+
+function typeCheck(code, typeTests) {
+  const ts = loadTypeScript();
+  if (!ts) return { available: false, errors: [] };
+
+  const codeLines = code.split('\n').length;
+  const source = typeTests ? `${code}\n${typeTests}` : code;
+  const files = { 'solution.ts': source, 'runner-globals.d.ts': RUNNER_GLOBALS };
+  const options = {
+    strict: true,
+    noEmit: true,
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.ESNext,
+    // Each answer is its own module, so a top-level `const name` does not
+    // collide with a global of the same name.
+    moduleDetection: ts.ModuleDetectionKind.Force,
+    lib: ['lib.es2024.d.ts'],
+    types: [],
+    skipLibCheck: true,
+  };
+  const host = ts.createCompilerHost(options, true);
+  const getSourceFile = host.getSourceFile.bind(host);
+  const fileExists = host.fileExists.bind(host);
+  const readFile = host.readFile.bind(host);
+  host.getSourceFile = (name, version, ...rest) =>
+    name in files ? ts.createSourceFile(name, files[name], version, true) : getSourceFile(name, version, ...rest);
+  host.fileExists = (name) => name in files || fileExists(name);
+  host.readFile = (name) => (name in files ? files[name] : readFile(name));
+
+  const program = ts.createProgram(Object.keys(files), options, host);
+  const sourceLines = source.split('\n');
+  const errors = ts
+    .getPreEmitDiagnostics(program)
+    .filter((d) => d.category === ts.DiagnosticCategory.Error)
+    .map((d) => {
+      const message = ts.flattenDiagnosticMessageText(d.messageText, ' ');
+      if (!d.file || d.file.fileName !== 'solution.ts' || d.start === undefined) {
+        return { where: 'code', line: null, message, text: '' };
+      }
+      const line = d.file.getLineAndCharacterOfPosition(d.start).line;
+      if (line < codeLines) {
+        return { where: 'code', line: line + 1, message, text: sourceLines[line].trim() };
+      }
+      // An unused @ts-expect-error means the answer accepts a call it should
+      // reject; show that call, and the directive's reason, not the bare TS text.
+      const text = sourceLines[line].trim();
+      if (/@ts-expect-error/.test(text) && /Unused '@ts-expect-error'/.test(message)) {
+        const reason = text.replace(/^\/\/\s*@ts-expect-error:?\s*/, '');
+        const call = (sourceLines[line + 1] || '').trim();
+        return {
+          where: 'type_test',
+          line: null,
+          message: `Your types accept \`${call}\`, which should be a type error${reason ? ` (${reason})` : ''}.`,
+          text: call,
+        };
+      }
+      return { where: 'type_test', line: null, message: `${message} In: \`${text}\``, text };
+    });
+  return { available: true, errors };
+}
+
+function formatTypeErrors(errors) {
+  const lines = errors.slice(0, 8).map((e) =>
+    e.where === 'code' && e.line ? `Line ${e.line}: ${e.message}` : e.message
+  );
+  if (errors.length > 8) lines.push(`…and ${errors.length - 8} more`);
+  return `TypeScript type check failed:\n${lines.join('\n')}`;
+}
+
+// Applies the type-check verdict to a finished run. Runtime results stay, so
+// the learner still sees which tests passed, but the run is not "Accepted".
+function withTypeResult(summary, typeResult) {
+  if (!typeResult) return summary;
+  if (!typeResult.available) return { ...summary, type_check: 'unavailable' };
+  if (typeResult.errors.length === 0) return { ...summary, type_check: 'passed' };
+  return {
+    ...summary,
+    type_check: 'failed',
+    type_errors: typeResult.errors,
+    status: summary.status === 'Compile Error' ? summary.status : 'Type Error',
+    error: summary.status === 'Compile Error' ? summary.error : formatTypeErrors(typeResult.errors),
+  };
+}
 
 function deepEqual(a, b) {
   if (a === b) return true;
@@ -51,6 +181,7 @@ async function main() {
   const testCode = payload.test_code || '';
   const testCases = payload.test_cases || [];
   const customEntrypoint = payload.custom_entrypoint;
+  const typeResult = payload.type_check === true ? typeCheck(code, payload.type_tests || '') : null;
 
   // Intercept stdout / console
   let stdoutLogs = [];
@@ -101,7 +232,7 @@ async function main() {
     const elapsed = performance.now() - start;
     const captured = stdoutLogs.join('\n');
 
-    process.stdout.write(JSON.stringify({
+    process.stdout.write(JSON.stringify(withTypeResult({
       status: runtimeErr ? 'Runtime Error' : 'Accepted',
       passed_count: runtimeErr ? 0 : 1,
       total_count: 1,
@@ -114,7 +245,7 @@ async function main() {
         error: runtimeErr,
         runtime_ms: Math.round(elapsed * 100) / 100
       }]
-    }));
+    }, typeResult)));
     return;
   }
 
@@ -451,10 +582,24 @@ const __results = [];
 let __passedCount = 0;
 let __overallStatus = 'Accepted';
 
+// JSON has no \`undefined\`, so a test case spells it {"$undefined": true},
+// in an input (a missing argument or property) or as the expected value.
+function __decodeSpecial(v) {
+  if (Array.isArray(v)) return v.map(__decodeSpecial);
+  if (v && typeof v === 'object') {
+    const keys = Object.keys(v);
+    if (keys.length === 1 && keys[0] === '$undefined' && v.$undefined === true) return undefined;
+    const out = {};
+    for (const k of keys) out[k] = __decodeSpecial(v[k]);
+    return out;
+  }
+  return v;
+}
+
 for (let __i = 0; __i < __testCases.length; __i++) {
   const __tc = __testCases[__i];
-  const __input = __tc.input;
-  const __expected = __tc.expected;
+  const __input = __decodeSpecial(__tc.input);
+  const __expected = __decodeSpecial(__tc.expected);
 
   let __actual = null;
   let __err = null;
@@ -510,8 +655,8 @@ for (let __i = 0; __i < __testCases.length; __i++) {
   __results.push({
     test_index: __i + 1,
     passed: __passed,
-    input: __input,
-    expected: __expected,
+    input: __tc.input,
+    expected: __tc.expected,
     actual: __actual,
     stdout: __logs.join('\\n'),
     error: __err,
@@ -574,15 +719,19 @@ process.stdout.write(JSON.stringify(__summary));
   try {
     fs.writeFileSync(tempRunnerFile, harnessCode, 'utf-8');
     const { execSync } = await import('node:child_process');
-    const output = execSync(`"${process.execPath}" --no-warnings "${tempRunnerFile}"`, {
+    const output = execSync(`"${process.execPath}" ${NODE_RUN_FLAGS.join(' ')} "${tempRunnerFile}"`, {
       encoding: 'utf-8',
       timeout: 5000,
       maxBuffer: 5 * 1024 * 1024
     });
-    process.stdout.write(output);
+    let summary = null;
+    try {
+      summary = JSON.parse(output);
+    } catch {}
+    process.stdout.write(summary ? JSON.stringify(withTypeResult(summary, typeResult)) : output);
   } catch (err) {
     const errorMsg = err.stderr ? err.stderr.toString() : err.message;
-    process.stdout.write(JSON.stringify({
+    process.stdout.write(JSON.stringify(withTypeResult({
       status: 'Compile Error',
       passed_count: 0,
       total_count: testCases.length,
@@ -598,7 +747,7 @@ process.stdout.write(JSON.stringify(__summary));
         error: errorMsg.split('\n')[0] || 'Error',
         runtime_ms: 0
       }))
-    }));
+    }, typeResult)));
   } finally {
     try {
       if (fs.existsSync(tempRunnerFile)) fs.unlinkSync(tempRunnerFile);

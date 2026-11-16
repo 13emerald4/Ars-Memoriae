@@ -39,6 +39,9 @@ _NODE_WORKER = Path(__file__).with_name("ts_sandbox_worker.mjs")
 MAX_CONCURRENT_RUNS = 2
 MAX_OUTPUT_BYTES = 2 * 1024 * 1024
 PYTHON_MEMORY_LIMIT_BYTES = 512 * 1024 * 1024
+# Loading the TypeScript compiler and checking one answer takes well under a
+# second on a desktop; this leaves room for a slow first load.
+TYPE_CHECK_EXTRA_SECONDS = 6.0
 
 # One semaphore per event loop: a loop-bound primitive created at import time
 # breaks as soon as a second loop (e.g. each test's) contends for it.
@@ -183,6 +186,7 @@ async def _run_worker(
     spawn_error: str,
     invalid_output_error: str,
     memory_limit_bytes: int | None = None,
+    extra_payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Runs one worker process over a JSON payload on stdin.
 
@@ -207,6 +211,7 @@ async def _run_worker(
             spawn_error,
             invalid_output_error,
             memory_limit_bytes,
+            extra_payload,
         )
 
 
@@ -220,8 +225,10 @@ async def _run_worker_now(
     spawn_error: str,
     invalid_output_error: str,
     memory_limit_bytes: int | None,
+    extra_payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload = json.dumps({
+        **(extra_payload or {}),
         "code": code,
         "test_code": test_code,
         "test_cases": test_cases,
@@ -329,9 +336,21 @@ async def run_node_code(
     test_code: str | None = None,
     custom_entrypoint: str | None = None,
     timeout_sec: float = 4.0,
+    *,
+    type_check: bool = False,
+    type_tests: str | None = None,
 ) -> dict[str, Any]:
-    """Executes TypeScript / JavaScript code against test cases using isolated Node.js worker."""
+    """Executes TypeScript / JavaScript code against test cases using isolated Node.js worker.
+
+    With ``type_check`` the worker also runs the TypeScript compiler (strict)
+    over the code plus ``type_tests``, and reports a "Type Error" status when
+    it fails. Loading the compiler takes a moment, so the timeout grows.
+    """
     node_bin = shutil.which("node") or shutil.which("node.exe") or r"C:\Program Files\nodejs\node.EXE"
+    extra: dict[str, Any] | None = None
+    if type_check:
+        extra = {"type_check": True, "type_tests": type_tests or ""}
+        timeout_sec += TYPE_CHECK_EXTRA_SECONDS
     return await _run_worker(
         # V8 reserves far more address space than it uses, so Node gets a
         # heap cap instead of RLIMIT_AS.
@@ -343,6 +362,7 @@ async def run_node_code(
         timeout_sec,
         spawn_error="Failed to spawn Node execution worker (is Node.js installed?)",
         invalid_output_error="Node execution worker returned invalid output.",
+        extra_payload=extra,
     )
 
 
@@ -353,8 +373,14 @@ async def run_code(
     test_code: str | None = None,
     custom_entrypoint: str | None = None,
     timeout_sec: float = 4.0,
+    *,
+    type_check: bool = False,
+    type_tests: str | None = None,
 ) -> dict[str, Any]:
-    """Universal sandbox runner supporting Python, TypeScript, and JavaScript."""
+    """Universal sandbox runner supporting Python, TypeScript, and JavaScript.
+
+    ``type_check`` / ``type_tests`` apply to TypeScript and JavaScript only.
+    """
     lang = (language or "python").lower().strip()
     if lang in ("typescript", "javascript", "ts", "js"):
         return await run_node_code(
@@ -363,6 +389,8 @@ async def run_code(
             test_code=test_code,
             custom_entrypoint=custom_entrypoint,
             timeout_sec=timeout_sec,
+            type_check=type_check,
+            type_tests=type_tests,
         )
     return await run_python_code(
         code=code,

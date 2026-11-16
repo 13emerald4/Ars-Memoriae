@@ -484,6 +484,12 @@ class JsonImportNote(BaseModel):
     starter_code: str | None = Field(default=None, max_length=10_000)
     starter_tests: str | None = Field(default=None, max_length=20_000)
     test_cases: list[dict] = Field(default_factory=list)
+    # Code cards: the runner language, and an optional TypeScript type check
+    # of the answer (strict) together with `type_tests`, lines that only
+    # compile when the answer's types are right (see ts_sandbox_worker.mjs).
+    language: str | None = Field(default=None, max_length=30)
+    type_check: bool = False
+    type_tests: str | None = Field(default=None, max_length=10_000)
     time_complexity: str | None = Field(default=None, max_length=100)
     space_complexity: str | None = Field(default=None, max_length=100)
     edge_cases: list[str] = Field(default_factory=list)
