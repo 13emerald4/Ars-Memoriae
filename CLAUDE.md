@@ -128,6 +128,12 @@ Composes the priority queue:
 
 **Performance note:** Never load the entire collection to return one card. Always use bounded queries and covering indexes (migration 0003).
 
+**`app/services/code_runner_service.py`** (+ `ts_sandbox_worker.mjs`)
+Runs a code card's answer against its `test_cases` in a child process (not a sandbox). In a test case, `{"$undefined": true}` stands for `undefined` (in an input or as the expected value) and `{"$throws": "text"}` expects an error whose `Name: message` contains the text. A card with `type_check: true` is also checked by the TypeScript compiler in strict mode, together with its `type_tests` (`// @ts-expect-error` lines pin the types); a type error caps the grade inside "hard". The compiler is borrowed from `frontend/node_modules` (`npm ci` in frontend/); without it the run is graded on behaviour only.
+
+**`app/content/js_ts_course/`**
+The coding-first JavaScript & TypeScript course (105 cards: write/fix/type code, predict the output, does it compile). `scripts/rebuild_js_ts_deck.py` installs it over a user's "JavaScript & TypeScript: Zero to Mastery" deck. `tests/test_js_ts_course.py` proves every card: the reference answer passes, the starter and listed wrong answers fail, predicted outputs match Node, compile verdicts match `tsc`.
+
 ### Frontend Structure
 
 **`frontend/src/api/client.ts`**
