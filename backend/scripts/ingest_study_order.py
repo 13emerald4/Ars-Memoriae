@@ -24,15 +24,14 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
 from sqlalchemy import select, update
+
 from app.db import SessionLocal
 from app.models import (
     Card,
     CardReference,
     Deck,
-    Import,
     KnowledgeNode,
     Note,
-    NoteType,
     Source,
     User,
 )
@@ -372,14 +371,14 @@ async def run_study_order_ingest():
             tex_path = STUDY_GUIDES_ROOT / tex_file
             raw_text = None
             if tex_path.exists():
-                with open(tex_path, "r", encoding="utf-8", errors="ignore") as f:
+                with open(tex_path, encoding="utf-8", errors="ignore") as f:
                     raw_text = f.read()
             await ensure_source(db, user.id, title, raw_text, pdf_path, prio)
 
         # =========================================================================
         # 3. BUILD ALL MASTER BACKUP SUBDECKS WITH HIERARCHICAL PRIORITIES
         # =========================================================================
-        with open(MASTER_BACKUP_PATH, "r", encoding="utf-8") as f:
+        with open(MASTER_BACKUP_PATH, encoding="utf-8") as f:
             master_data = json.load(f)
 
         master_decks_data = master_data.get("decks", [])
@@ -422,7 +421,7 @@ async def run_study_order_ingest():
                     mapped_parent_id = deck_id_map[pid]
                     target_uuid = uuid.UUID(hex=d["id"])
                     prio = get_subdeck_priority(d["name"], pid)
-                    
+
                     # Check existing deck
                     existing_d = await db.get(Deck, target_uuid)
                     if existing_d is None:
@@ -506,7 +505,7 @@ async def run_study_order_ingest():
             lab_decks_map[lname] = lab_d
 
         # Ensure MT3 subdecks exist
-        mt3_essentials_deck = await ensure_deck(
+        await ensure_deck(
             db,
             user.id,
             name="CPSC 210 MT3 Essentials",
@@ -544,7 +543,6 @@ async def run_study_order_ingest():
         )
 
         all_decks = (await db.scalars(select(Deck).where(Deck.user_id == user.id))).all()
-        decks_by_name = {d.name: d for d in all_decks}
         decks_by_id = {d.id: d for d in all_decks}
 
         # Cache existing cards & notes
@@ -695,7 +693,7 @@ async def run_study_order_ingest():
         # =========================================================================
         log.info("Ingesting Track 1: Basics (13 cards, priority 100)...")
         basics_file = FLASHCARDS_ROOT / "7 - Basics" / "cpsc210_basics_foundations.json"
-        with open(basics_file, "r", encoding="utf-8") as f:
+        with open(basics_file, encoding="utf-8") as f:
             basics_cards = json.load(f)
         b_add, b_skip = await ingest_card_list(
             basics_cards, basics_deck, assigned_priority=100, source_file_label="cpsc210_basics_foundations.json", allow_duplicate_title=True
@@ -704,7 +702,7 @@ async def run_study_order_ingest():
 
         log.info("Ingesting Track 2: Final Prep 1 (11 cards, priority 90)...")
         fp1_file = FLASHCARDS_ROOT / "8 - Final" / "cpsc210_final_p1_making_code_correct.json"
-        with open(fp1_file, "r", encoding="utf-8") as f:
+        with open(fp1_file, encoding="utf-8") as f:
             fp1_cards = json.load(f)
         fp1_add, fp1_skip = await ingest_card_list(
             fp1_cards, final_p1_deck, assigned_priority=90, source_file_label="cpsc210_final_p1_making_code_correct.json", allow_duplicate_title=True
@@ -713,7 +711,7 @@ async def run_study_order_ingest():
 
         log.info("Ingesting Track 3: Final Prep 2 (11 cards, priority 80)...")
         fp2_file = FLASHCARDS_ROOT / "8 - Final" / "cpsc210_final_p2_building_abstractions.json"
-        with open(fp2_file, "r", encoding="utf-8") as f:
+        with open(fp2_file, encoding="utf-8") as f:
             fp2_cards = json.load(f)
         fp2_add, fp2_skip = await ingest_card_list(
             fp2_cards, final_p2_deck, assigned_priority=80, source_file_label="cpsc210_final_p2_building_abstractions.json", allow_duplicate_title=True
@@ -722,7 +720,7 @@ async def run_study_order_ingest():
 
         log.info("Ingesting Track 4: Final Prep 3 (11 cards, priority 70)...")
         fp3_file = FLASHCARDS_ROOT / "8 - Final" / "cpsc210_final_p3_growing_systems.json"
-        with open(fp3_file, "r", encoding="utf-8") as f:
+        with open(fp3_file, encoding="utf-8") as f:
             fp3_cards = json.load(f)
         fp3_add, fp3_skip = await ingest_card_list(
             fp3_cards, final_p3_deck, assigned_priority=70, source_file_label="cpsc210_final_p3_growing_systems.json", allow_duplicate_title=True
@@ -754,7 +752,7 @@ async def run_study_order_ingest():
                 if not fname.endswith(".json") or fname.endswith("_wrapped.json"):
                     continue
                 fpath = tb_dir / fname
-                with open(fpath, "r", encoding="utf-8") as f:
+                with open(fpath, encoding="utf-8") as f:
                     data = json.load(f)
                 notes = data if isinstance(data, list) else data.get("notes", [])
                 t_deck = ch08_deck if "ch8" in fname else (ch09_deck if "ch9" in fname else foundations_deck)
@@ -767,7 +765,7 @@ async def run_study_order_ingest():
             for i in range(8, 13):
                 laf = la_dir / f"cpsc210_mt3_LA{i:02d}.json"
                 if laf.exists():
-                    with open(laf, "r", encoding="utf-8") as f:
+                    with open(laf, encoding="utf-8") as f:
                         data = json.load(f)
                     notes = data if isinstance(data, list) else data.get("notes", [])
                     t_deck = la_decks_map.get(f"LA{i:02d}", la_parent_deck)
@@ -776,7 +774,7 @@ async def run_study_order_ingest():
         # Ingest Lab 5
         lab5_file = FLASHCARDS_ROOT / "6 - Labs" / "cpsc210_lab05_watching_the_tides.json"
         if lab5_file.exists():
-            with open(lab5_file, "r", encoding="utf-8") as f:
+            with open(lab5_file, encoding="utf-8") as f:
                 data = json.load(f)
             notes = data if isinstance(data, list) else data.get("notes", [])
             t_deck = lab_decks_map.get("Lab05 - Watching the Tides", labs_parent_deck)
@@ -785,7 +783,7 @@ async def run_study_order_ingest():
         # Ingest MT3 practice midterm
         mt3_prac_file = FLASHCARDS_ROOT / "5 - MT3" / "cpsc210_mt3_practice_midterm.json"
         if mt3_prac_file.exists():
-            with open(mt3_prac_file, "r", encoding="utf-8") as f:
+            with open(mt3_prac_file, encoding="utf-8") as f:
                 data = json.load(f)
             notes = data if isinstance(data, list) else data.get("notes", [])
             await ingest_card_list(notes, mt3_practice_deck, assigned_priority=35, source_file_label=mt3_prac_file.name)

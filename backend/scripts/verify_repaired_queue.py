@@ -1,14 +1,13 @@
 import asyncio
-import json
-import os
 import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from app.db import SessionLocal
-from app.models import Card, Deck, Note, User
-from app.services.queue_service import compose_session, fetch_new_candidates
 from sqlalchemy import select
+
+from app.db import SessionLocal
+from app.models import User
+from app.services.queue_service import fetch_new_candidates
 
 USER_EMAIL = "michael.r.polley@outlook.com"
 
@@ -21,14 +20,6 @@ async def run_verification():
 
         print(f"=== VERIFYING REPAIRED QUEUE FOR {user.email} ===")
 
-        # Total cards
-        total_cards = await db.scalar(
-            select(Card)
-            .join(Note, Note.id == Card.note_id)
-            .where(Note.user_id == user.id)
-            .with_only_columns(Card.id)
-        )
-        
         # Check duplicate pairs
         import sqlite3
         conn = sqlite3.connect("dev.db")
@@ -59,7 +50,7 @@ async def run_verification():
             fv = card.note.field_values or {}
             title = fv.get("title") or fv.get("Front") or fv.get("front") or ""
             deck_name = card.deck.name
-            print(f"  {idx:2d}. [Prio {card.effective_priority:3d} | Pos {str(card.position):>4s}] [{deck_name[:32]}] {title[:45]}")
+            print(f"  {idx:2d}. [Prio {card.effective_priority:3d} | Pos {card.position!s:>4s}] [{deck_name[:32]}] {title[:45]}")
 
         # Priority distribution across all decks
         print("\n=== PRIORITY DISTRIBUTION ACROSS ALL DECKS ===")
