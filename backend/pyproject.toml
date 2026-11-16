@@ -66,6 +66,7 @@ ignore = [
 "app/services/problems_catalog.py" = ["W291", "W293"]
 # Course-content strings legitimately contain typographic dashes.
 "scripts/populate_cpsc210.py" = ["RUF001", "RUF003"]
+"app/content/*" = ["RUF001", "RUF003"]
 # Prompt and rubric text shown to the model and the user ("0–39%").
 "app/services/code_ai_service.py" = ["RUF001"]
 "app/services/grading_profiles.py" = ["RUF001"]

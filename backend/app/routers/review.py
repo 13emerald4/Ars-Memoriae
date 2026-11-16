@@ -203,6 +203,20 @@ def _infer_code_language(
     return "python"
 
 
+# A code card with `type_check` set also has its answer checked by the
+# TypeScript compiler. A run that behaves right but is typed wrong is capped
+# here, inside the "hard" band.
+TYPE_ERROR_SCORE_CAP = 60
+
+
+def _type_check_options(field_values: dict) -> dict:
+    """The type-check settings a code card's fields ask for."""
+    if not field_values.get("type_check"):
+        return {}
+    tests = field_values.get("type_tests")
+    return {"type_check": True, "type_tests": tests if isinstance(tests, str) else None}
+
+
 def _is_harness_redeclaration_error(exec_res: dict, has_student_test_code: bool) -> bool:
     if has_student_test_code or exec_res.get("status") != "Compile Error":
         return False
@@ -232,7 +246,12 @@ def _format_execution_summary(exec_res: dict) -> str:
                     f"actual={json.dumps(tc.get('actual'))[:120]})"
                 )
         lines.append(f"- {detail}")
-    if status_text == "Accepted" and total > 0 and passed == total:
+    if status_text == "Type Error":
+        lines.append(
+            "The TypeScript type check FAILED (errors above), so the answer's types are wrong even where "
+            "the runtime tests pass. Ground the score and weaknesses in those type errors."
+        )
+    elif status_text == "Accepted" and total > 0 and passed == total:
         lines.append(
             "All sandbox unit tests PASSED at runtime. Do NOT claim the user's code fails these tests "
             "or returns a starter stub value such as -1; evaluate code quality, complexity, and edge cases not tested above."
@@ -258,6 +277,9 @@ def _apply_execution_guardrails(result: dict, exec_res: dict) -> None:
     elif passed < total:
         cap = round(35 + 50 * (passed / total))
         score = min(score, cap)
+    if exec_status == "Type Error":
+        # Right behaviour, wrong types: at best "hard", never "good".
+        score = min(score, TYPE_ERROR_SCORE_CAP)
     result["score"] = score
     result["grade"] = grade_for_score(score)
 
@@ -355,6 +377,7 @@ async def submit_answer(
             language=code_lang,
             test_code=body.test_code,
             timeout_sec=4.0,
+            **_type_check_options(fv),
         )
         if not _is_harness_redeclaration_error(candidate_exec, bool(body.test_code)):
             exec_res = candidate_exec
@@ -803,9 +826,10 @@ async def run_card_code(
     card = await _owned_card(db, user, cid)
 
     # Use custom test cases if provided, or pull test cases from note field_values
+    fv = (card.note.field_values if card.note else None) or {}
     test_cases = body.custom_test_cases
-    if not test_cases and card.note and card.note.field_values:
-        test_cases = card.note.field_values.get("test_cases") or []
+    if not test_cases:
+        test_cases = fv.get("test_cases") or []
 
     res = await run_code(
         code=body.code,
@@ -813,6 +837,7 @@ async def run_card_code(
         language=body.language,
         test_code=body.test_code,
         timeout_sec=4.0,
+        **_type_check_options(fv),
     )
     return res
 

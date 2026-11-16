@@ -22,19 +22,18 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
-from sqlalchemy import select, update
+from sqlalchemy import select
+
 from app.db import SessionLocal
 from app.models import (
     Card,
     CardReference,
     Deck,
     Import,
-    KnowledgeNode,
     Note,
-    NoteType,
     User,
 )
-from app.services.note_service import default_note_type, sync_cards
+from app.services.note_service import default_note_type
 from app.services.tree_service import ensure_tree
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -158,7 +157,7 @@ async def run_import():
         log.info(f"Existing notes: {len(existing_notes)}, indexed front/title keys: {len(existing_fronts)}")
 
         # 3. Load master backup file
-        with open(MASTER_BACKUP_PATH, "r", encoding="utf-8") as f:
+        with open(MASTER_BACKUP_PATH, encoding="utf-8") as f:
             master_data = json.load(f)
 
         master_decks_data = master_data.get("decks", [])
@@ -230,9 +229,8 @@ async def run_import():
 
         # Build deck tree from master backup in dependency order (parents before children)
         # 1. Group master decks by parent_id
-        master_by_id = {d["id"]: d for d in master_decks_data}
         unprocessed = list(master_decks_data)
-        
+
         while unprocessed:
             progress = False
             remaining = []
@@ -247,7 +245,7 @@ async def run_import():
                     # Parent is mapped or None
                     mapped_parent_id = deck_id_map[pid] if pid else None
                     target_deck_uuid = uuid.UUID(hex=did)
-                    
+
                     # Check if already exists by uuid
                     existing_d = decks_by_id.get(target_deck_uuid)
                     if existing_d:
@@ -302,7 +300,7 @@ async def run_import():
             if mt3_essentials and mt3_essentials.parent_id != mt3_deck_id:
                 mt3_essentials.parent_id = mt3_deck_id
                 await db.flush()
-                log.info(f"Nested 'CPSC 210 MT3 Essentials' under Midterm 3 deck.")
+                log.info("Nested 'CPSC 210 MT3 Essentials' under Midterm 3 deck.")
 
         # Ensure Basics Deck
         part1_deck_id = deck_id_map.get("51e040a5a0f146f8841da50ee63c9b46")
@@ -590,7 +588,7 @@ async def run_import():
                 if not fname.endswith(".json") or fname.endswith("_wrapped.json"):
                     continue
                 fpath = tb_dir / fname
-                with open(fpath, "r", encoding="utf-8") as f:
+                with open(fpath, encoding="utf-8") as f:
                     data = json.load(f)
                 notes = data if isinstance(data, list) else data.get("notes", [])
 
@@ -613,7 +611,7 @@ async def run_import():
                 if t_deck is None:
                     t_deck = cpsc210_root
 
-                a, s, c = await ingest_subfolder_notes(
+                a, s, _c = await ingest_subfolder_notes(
                     notes, t_deck, default_prio=50, default_source_file=fname
                 )
                 subfolder_report.append({"folder": "3 - Textbook Ch1-7", "file": fname, "deck": t_deck.name, "added": a, "skipped": s})
@@ -621,10 +619,10 @@ async def run_import():
         # 7B. 7 - Basics
         basics_file = SOURCE_ROOT / "7 - Basics" / "cpsc210_basics_foundations.json"
         if basics_file.exists():
-            with open(basics_file, "r", encoding="utf-8") as f:
+            with open(basics_file, encoding="utf-8") as f:
                 data = json.load(f)
             notes = data if isinstance(data, list) else data.get("notes", [])
-            a, s, c = await ingest_subfolder_notes(
+            a, s, _c = await ingest_subfolder_notes(
                 notes, basics_deck, default_prio=50, default_source_file=basics_file.name
             )
             subfolder_report.append({"folder": "7 - Basics", "file": basics_file.name, "deck": basics_deck.name, "added": a, "skipped": s})
@@ -639,10 +637,10 @@ async def run_import():
         for fname, f_deck in final_files_map.items():
             fpath = final_dir / fname
             if fpath.exists():
-                with open(fpath, "r", encoding="utf-8") as f:
+                with open(fpath, encoding="utf-8") as f:
                     data = json.load(f)
                 notes = data if isinstance(data, list) else data.get("notes", [])
-                a, s, c = await ingest_subfolder_notes(
+                a, s, _c = await ingest_subfolder_notes(
                     notes, f_deck, default_prio=75, default_source_file=fname
                 )
                 subfolder_report.append({"folder": "8 - Final", "file": fname, "deck": f_deck.name, "added": a, "skipped": s})
@@ -657,10 +655,10 @@ async def run_import():
                 if not fname.endswith(".json") or fname.endswith("_wrapped.json"):
                     continue
                 fpath = odir / fname
-                with open(fpath, "r", encoding="utf-8") as f:
+                with open(fpath, encoding="utf-8") as f:
                     data = json.load(f)
                 notes = data if isinstance(data, list) else data.get("notes", [])
-                
+
                 # Best effort deck routing for any leftover cards
                 t_deck = cpsc210_root
                 if of == "1 - LA decks":
@@ -680,7 +678,7 @@ async def run_import():
                                 t_deck = d_obj
                                 break
 
-                a, s, c = await ingest_subfolder_notes(
+                a, s, _c = await ingest_subfolder_notes(
                     notes, t_deck, default_prio=50, default_source_file=fname
                 )
                 if a > 0 or s > 0:

@@ -266,3 +266,34 @@ Parse the provided flashcard deck:
 - **Web UI:** Decks → **Import JSON** → paste the JSON array → name the deck → click **Import**.
 - **REST API:** `POST /api/import/json?deck=<Deck+Name>` with the JSON array as the request body.
 - **Learn & Practice:** Every card with a non-empty `quote` field automatically unlocks reading citations and the Pre-Answer Primer.
+
+---
+
+## 6. Code Cards (JavaScript, TypeScript, Python)
+
+A code card is graded by running the answer against its tests, so it needs a
+starter, a reference answer and test cases. The function the tests call must
+be the **first** function in the code.
+
+```json
+{
+  "kind": "code",
+  "language": "typescript",
+  "title": "firstElement<T>(arr)",
+  "front": "Return the first item of an array, or undefined when it is empty.",
+  "starter_code": "function firstElement(arr: any[]): any {\n  return undefined;\n}",
+  "back": "function firstElement<T>(arr: T[]): T | undefined {\n  return arr[0];\n}",
+  "test_cases": [
+    { "input": [["a", "b"]], "expected": "a" },
+    { "input": [[]], "expected": { "$undefined": true } }
+  ],
+  "type_check": true,
+  "type_tests": "// @ts-expect-error: the result may be undefined\nconst n: number = firstElement([1]);"
+}
+```
+
+- **`input`** is the argument list (`[arg1, arg2]`). Wrap a single array argument in another array.
+- **`{"$undefined": true}`** stands for `undefined`, which JSON can't write, in an input or as `expected`.
+- **`{"$throws": "RangeError: too big"}`** expects the call to throw (or reject) with an error whose `Name: message` contains that text.
+- **`type_check`** (TypeScript) also checks the answer with the compiler in strict mode; **`type_tests`** are extra lines that must compile, and `// @ts-expect-error` lines that must *not* — use them to reject answers typed `any`.
+- Include tests for the edge cases (empty input, boundaries, error paths), not only the happy path: a test suite that a wrong answer passes grades that wrong answer as correct.
