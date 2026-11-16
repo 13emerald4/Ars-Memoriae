@@ -603,8 +603,16 @@ for (let __i = 0; __i < __testCases.length; __i++) {
 
   let __actual = null;
   let __err = null;
+  let __threw = false;
+  let __errText = '';
   let __passed = false;
   const __logs = [];
+  // {"$throws": "text"} (or true): the call must throw or reject, with an
+  // error whose "Name: message" contains the text.
+  const __throwSpec = (__tc.expected && typeof __tc.expected === 'object' && !Array.isArray(__tc.expected)
+    && Object.keys(__tc.expected).length === 1 && '$throws' in __tc.expected)
+    ? __tc.expected.$throws
+    : undefined;
 
   const __oldLog = console.log;
   const __oldErr = console.error;
@@ -632,7 +640,9 @@ for (let __i = 0; __i < __testCases.length; __i++) {
     }
     __actual = await Promise.resolve(__res);
   } catch (e) {
+    __threw = true;
     __err = e instanceof Error ? e.message : String(e);
+    __errText = e instanceof Error ? e.name + ': ' + e.message : String(e);
   } finally {
     console.log = __oldLog;
     console.error = __oldErr;
@@ -640,7 +650,21 @@ for (let __i = 0; __i < __testCases.length; __i++) {
   const __t1 = performance.now();
   const __runtime = Math.round((__t1 - __t0) * 100) / 100;
 
-  if (__err) {
+  if (__throwSpec !== undefined) {
+    const __want = __throwSpec === true ? '' : String(__throwSpec);
+    if (__threw) {
+      __passed = __errText.includes(__want);
+      __err = __passed ? null : 'Threw "' + __errText + '", expected an error containing "' + __want + '"';
+    } else {
+      __passed = false;
+      __err = 'Expected an error' + (__want ? ' containing "' + __want + '"' : '') + ', but it returned ' + JSON.stringify(__actual);
+    }
+    if (__passed) {
+      __passedCount++;
+    } else if (__overallStatus === 'Accepted') {
+      __overallStatus = 'Wrong Answer';
+    }
+  } else if (__err) {
     if (__overallStatus === 'Accepted') __overallStatus = 'Runtime Error';
     __passed = false;
   } else {

@@ -92,6 +92,62 @@ async def test_a_lookalike_object_is_not_decoded():
     assert res["status"] == "Accepted", res
 
 
+# ── expected errors ────────────────────────────────────────────────────────
+
+PARSE_AGE = """
+class ValidationError extends Error {
+  name = "ValidationError";
+}
+function parseAge(text: string): number {
+  const n = Number(text);
+  if (!Number.isInteger(n) || n < 0) throw new ValidationError(`invalid age: ${text}`);
+  return n;
+}
+"""
+
+
+@pytest.mark.asyncio
+async def test_expected_throw_matches_name_and_message():
+    tests = [
+        {"input": ["42"], "expected": 42},
+        {"input": ["-1"], "expected": {"$throws": "ValidationError: invalid age"}},
+        {"input": ["abc"], "expected": {"$throws": True}},
+    ]
+    res = await run_code(PARSE_AGE, tests, language="typescript")
+    assert res["status"] == "Accepted", res
+    assert res["passed_count"] == 3
+
+
+@pytest.mark.asyncio
+async def test_expected_throw_fails_when_nothing_is_thrown_or_the_message_differs():
+    lenient = "function parseAge(text: string): number { return Number(text) || 0; }"
+    res = await run_code(
+        lenient, [{"input": ["-1"], "expected": {"$throws": "invalid age"}}], language="typescript"
+    )
+    assert res["status"] == "Wrong Answer", res
+    assert "Expected an error" in res["results"][0]["error"]
+
+    other = 'function parseAge(text: string): number { throw new RangeError("nope"); }'
+    res = await run_code(
+        other, [{"input": ["-1"], "expected": {"$throws": "invalid age"}}], language="typescript"
+    )
+    assert res["status"] == "Wrong Answer", res
+    assert "RangeError: nope" in res["results"][0]["error"]
+
+
+@pytest.mark.asyncio
+async def test_expected_rejection_of_an_async_function():
+    code = (
+        'async function load(ok: boolean) { if (!ok) throw new Error("HTTP 404"); return "body"; }'
+    )
+    tests = [
+        {"input": [True], "expected": "body"},
+        {"input": [False], "expected": {"$throws": "HTTP 404"}},
+    ]
+    res = await run_code(code, tests, language="typescript")
+    assert res["status"] == "Accepted", res
+
+
 # ── TypeScript-only syntax ─────────────────────────────────────────────────
 
 
