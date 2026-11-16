@@ -1,0 +1,1590 @@
+{
+ "decks": [
+  {
+   "id": "e30021420844491c95775e8cdf9cc81f",
+   "name": "JavaScript & TypeScript: Zero to Mastery",
+   "parent_id": null,
+   "position": 0,
+   "documentation": "# JavaScript & TypeScript: Zero to Mastery — Curriculum Master Architecture\n\n## 1. Executive Summary & Curriculum Scope\nThis curriculum provides a mathematically sound, pedagogically sequenced path from ECMAScript runtime mechanics through intermediate TypeScript type calculus and hands-on system design. \n\nThe core thesis of this curriculum is **Runtime Primacy Followed by Compile-Time Static Typing**:\n- **Phase 1 (JavaScript Runtime)**: Memory model, value taxonomy, variable scoping & hoisting (TDZ), prototypal inheritance, closure lexical environments, and the single-threaded asynchronous Event Loop.\n- **Phase 2 (TypeScript Static Safety Layer)**: Type erasure, top (`unknown`, `any`) vs bottom (`never`) set-theoretic types, inference rules, control-flow narrowing, and function signature contracts.\n- **Phase 3 (Intermediate Type System & System Design)**: Object modeling (`interface` vs `type`), algebraic data types (discriminated unions with compile-time exhaustiveness), generic abstraction with `extends` and `keyof` constraints, built-in utility transformations, and `tsconfig` strict-mode hardening.\n- **Phase 4 (Interactive Code Lab Synthesis)**: Test-driven drills validating algorithmic fluency in pure JavaScript and static type refactoring in TypeScript.\n\n---\n\n## 2. Complete Subtree Topology & Priority Hierarchy\n\n```text\nJavaScript & TypeScript: Zero to Mastery (Root Deck | Priority: 90 | Pos: 0 | 62 Cards)\n│\n├── Part 1: JavaScript Fundamentals (Runtime & Core Syntax) (Module Deck | Priority: 90 | Pos: 0 | 26 Cards)\n│   ├── 01 - Values, Variables & Primitive Types (Subdeck | Priority: 90 | Pos: 0 | Cards: #00–#04)\n│   ├── 02 - Operators, Equality & Conditionals (Subdeck | Priority: 90 | Pos: 1 | Cards: #05–#08)\n│   ├── 03 - Functions, Callbacks & Scope (Subdeck | Priority: 90 | Pos: 2 | Cards: #09–#12)\n│   ├── 04 - Objects, Prototypes & Destructuring (Subdeck | Priority: 90 | Pos: 3 | Cards: #13–#16)\n│   ├── 05 - Arrays & Iteration Methods (Subdeck | Priority: 90 | Pos: 4 | Cards: #17–#21)\n│   └── 06 - Asynchronous JavaScript (Promises & Async/Await) (Subdeck | Priority: 90 | Pos: 5 | Cards: #22–#25)\n│\n├── Part 2: TypeScript Core (Static Types as a Safety Layer) (Module Deck | Priority: 80 | Pos: 1 | 17 Cards)\n│   ├── 07 - The Mental Model & Type Erasure (Subdeck | Priority: 80 | Pos: 0 | Cards: #26–#29)\n│   ├── 08 - Primitive Annotations & Type Inference (Subdeck | Priority: 80 | Pos: 1 | Cards: #30–#33)\n│   ├── 09 - Object Shapes & Interfaces (Subdeck | Priority: 80 | Pos: 2 | Cards: #34–#36)\n│   ├── 10 - Union Types & Control-Flow Narrowing (Subdeck | Priority: 80 | Pos: 3 | Cards: #37–#39)\n│   └── 11 - Function Signatures & Typing (Subdeck | Priority: 80 | Pos: 4 | Cards: #40–#42)\n│\n├── Part 3: Intermediate TypeScript & System Design (Module Deck | Priority: 70 | Pos: 2 | 13 Cards)\n│   ├── 12 - Type Aliases vs Interfaces & Extensibility (Subdeck | Priority: 70 | Pos: 0 | Cards: #43–#44)\n│   ├── 13 - Discriminated Unions & Exhaustiveness (Subdeck | Priority: 70 | Pos: 1 | Cards: #45–#46)\n│   ├── 14 - Generics: Functions, Interfaces & Constraints (Subdeck | Priority: 70 | Pos: 2 | Cards: #47–#49)\n│   ├── 15 - Essential Utility Types (Partial, Pick, Omit, Record) (Subdeck | Priority: 70 | Pos: 3 | Cards: #50–#52)\n│   └── 16 - TypeScript Tooling, tsconfig & Strict Mode (Subdeck | Priority: 70 | Pos: 4 | Cards: #53–#55)\n│\n└── Part 4: Hands-On Code Lab Drills (Module Deck | Priority: 60 | Pos: 3 | 6 Cards)\n    ├── 17 - JavaScript Practice Drills (Subdeck | Priority: 60 | Pos: 0 | Cards: #56–#57)\n    ├── 18 - Refactoring JS to TS Drills (Subdeck | Priority: 60 | Pos: 1 | Cards: #58–#59)\n    └── 19 - Generics & Type-Guard Drills (Subdeck | Priority: 60 | Pos: 2 | Cards: #60–#61)\n```\n\n---\n\n## 3. Pedagogical Principles & Spaced Repetition Design\n1. **Strict Progressive Ordering**: Cards are indexed globally (`position: 0..61`) across subdecks. When studying the Root Deck or any Module, cards appear in strict curriculum sequence, never interleaving disjoint topics.\n2. **Atomic Answer Rule**: Every flashcard isolates exactly one concept (e.g. `typeof null`, Temporal Dead Zone, `never` bottom type, Excess Property Checking). Questions avoid multi-part cognitive overload.\n3. **Pre-Answer Primer & Citations**: Every card links to verified official sources (TypeScript Handbook v2, ECMAScript 2024 Specification, MDN Web Docs) and includes a context hook anchoring the memory before the answer prompt.\n4. **FSRS Scheduling Parameters**: Desired retention default is set to 0.90 with module priority cascading (Part 1 = 90, Part 2 = 80, Part 3 = 70, Part 4 = 60).\n\n---\n\n## 4. LLM Auditor Instruction & Evaluation Criteria\nIf you are an external LLM auditing this curriculum:\n- **Audit Objective 1: Topological Dependency Correctness**. Verify that no card references concepts introduced in a later card (e.g. no TypeScript types are referenced in Part 1; no Generics are assumed in Part 2).\n- **Audit Objective 2: Factual Accuracy against Modern Standards**. Verify that explanations conform to ECMAScript 2024 and TypeScript 5.x (e.g. `bigint` included in primitives; `exactOptionalPropertyTypes` awareness; correct distinction between `void` and `undefined`).\n- **Audit Objective 3: Card Atomicity & Testability**. Ensure every card prompt can be answered concisely and deterministically without ambiguity.\n- **Audit Objective 4: Code Lab Test Robustness**. Verify that the Code Lab test suites in Part 4 thoroughly validate edge cases (empty arrays, boundary numbers, negative values)."
+  },
+  {
+   "id": "c214617fb9ff472bab836dea4c1788b0",
+   "name": "Part 1: JavaScript Fundamentals (Runtime & Core Syntax)",
+   "parent_id": "e30021420844491c95775e8cdf9cc81f",
+   "position": 0,
+   "documentation": "# Part 1: JavaScript Fundamentals (Runtime & Core Syntax) — Module Architecture\n\n## 1. Module Rationale & Scope\nTypeScript does not alter runtime JavaScript semantics. Every syntactic and semantic rule of ECMAScript executes identically after TypeScript type erasure. Developers who skip JavaScript fundamentals inevitably struggle with TypeScript because type errors often disguise underlying misunderstandings of JavaScript's memory model, truthiness, or asynchronous event loop.\n\n## 2. Learning Outcomes\nUpon mastering Part 1, the learner will be able to:\n1. Differentiate the 7 primitive types from heap-allocated reference objects.\n2. Explain the execution phases of JavaScript engines: Lexical Environment creation, Variable Hoisting, Temporal Dead Zone (TDZ), and block scope.\n3. Predict type coercion outcomes across `==` vs `===` and master all 8 falsy values.\n4. Explain Lexical Closures, arrow function `this` binding, and execution contexts.\n5. Model prototypal inheritance chains (`[[Prototype]]`) up to `Object.prototype`.\n6. Predict microtask vs macrotask execution order in the single-threaded Event Loop.\n\n## 3. Subtree Inventory\n- **01 - Values, Variables & Primitive Types** (Cards #00–#04): Primitives, `let`/`const`/`var`, `null` vs `undefined`, `typeof null` bug, template literals.\n- **02 - Operators, Equality & Conditionals** (Cards #05–#08): Strict equality, complete falsy value set, short-circuit `&&`, `||`, `??`, ternary expressions.\n- **03 - Functions, Callbacks & Scope** (Cards #09–#12): Declarations vs expressions, arrow functions (`this` immutability), closures, rest parameters.\n- **04 - Objects, Prototypes & Destructuring** (Cards #13–#16): Object destructuring & defaults, spread cloning (`...`), prototype chain lookup, optional chaining (`?.`).\n- **05 - Arrays & Iteration Methods** (Cards #17–#21): Mutating vs non-mutating methods, `.map()` invariant, `.filter()`, `.reduce()` accumulator rules, `for...of` vs `for...in`.\n- **06 - Asynchronous JavaScript (Promises & Async/Await)** (Cards #22–#25): Event loop queues, Promise states & immutability, `async`/`await` desugaring, `Promise.all()` failure semantics.\n\n## 4. LLM Audit Checklist for Part 1\n- Verify that `null` vs `undefined` accurately describes engine initialization vs author intent.\n- Verify that the 8 falsy values list is complete: `false`, `0`, `-0`, `0n`, `\"\"`, `null`, `undefined`, `NaN`.\n- Verify that the Closure explanation explicitly mentions the retention of the outer Lexical Environment via heap allocation."
+  },
+  {
+   "id": "2141d8dd623f497fafe9459f7c20d390",
+   "name": "01 - Values, Variables & Primitive Types",
+   "parent_id": "c214617fb9ff472bab836dea4c1788b0",
+   "position": 0,
+   "documentation": "# 01 - Values, Variables & Primitive Types — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 0 in Part 1 (Global Card Range: #00 to #04)\n- **Priority**: 90 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `javascript.fundamentals.primitives_and_variables`\n- **Primary References**: \n  - MDN Web Docs: *JavaScript data types and data structures*\n  - ECMAScript Specification: *The Lexical Environment and Lexical Declarations*\n\n## 2. Core Theorems & Mechanics\n1. **Value Taxonomy**: JavaScript has exactly 7 primitive types (`string`, `number`, `boolean`, `null`, `undefined`, `symbol`, `bigint`). Primitives are immutable and compared by value. All other values are reference `Objects` stored on the heap and compared by memory reference.\n2. **Variable Scoping Matrix**:\n   - `var`: Function-scoped, hoisted and initialized to `undefined`, re-declarable.\n   - `let`: Block-scoped, hoisted but uninitialized (inhabits Temporal Dead Zone until declaration line), re-assignable.\n   - `const`: Block-scoped, hoisted but uninitialized (TDZ), requires immediate initialization, immutable binding (reference cannot be reassigned; interior properties of objects remain mutable).\n3. **`null` vs `undefined`**:\n   - `undefined`: The default value assigned by the JS engine to uninitialized variables, missing arguments, or non-existent properties.\n   - `null`: An intentional assignment signifying the deliberate absence of any object value.\n4. **The `typeof null === \"object\"` Quirk**: In JS 1995, values were represented with type tags in their lower bits (`000` designated an object). `null` was represented as the NULL pointer (`0x00`), causing `typeof` to mistakenly read the `000` tag as object.\n5. **Template Literals**: Enclosed by backticks (`` ` ``); support `${expression}` interpolation, multiline formatting, and tagged template parsing.\n\n## 3. Detailed Card Inventory\n- **Card #00 (Global #0)**: *What are the 7 primitive data types in JavaScript, and how do they fundamentally differ from objects?*\n  - Answer: 7 primitives (`string`, `number`, `boolean`, `null`, `undefined`, `symbol`, `bigint`). Primitives are immutable & value-compared; objects are mutable & reference-compared.\n- **Card #01 (Global #1)**: *Compare `let`, `const`, and `var` in JavaScript regarding scoping, reassignment, and hoisting.*\n  - Answer: `var` is function-scoped & initialized to `undefined`; `let`/`const` are block-scoped and enter TDZ until declared. `const` requires assignment and cannot be rebound.\n- **Card #02 (Global #2)**: *What is the exact semantic difference between `null` and `undefined` in JavaScript?*\n  - Answer: `undefined` = engine absence (unassigned variable, missing param); `null` = programmer-assigned intentional emptiness.\n- **Card #03 (Global #3)**: *What does `typeof null` return, and why does this historical quirk exist?*\n  - Answer: Returns `\"object\"`. Caused by 1995 C-level representation using `000` bit-tag for objects and `0x00` pointer for null.\n- **Card #04 (Global #4)**: *How do Template Literals work in JavaScript, and what capabilities do they provide over traditional strings?*\n  - Answer: Uses backticks; enables `${}` interpolation, multiline without `\\n`, and tagged template functions.\n\n## 4. LLM Auditor Rubric\n- Check that `bigint` is explicitly listed among the 7 primitives.\n- Verify that `const` explanation clarifies that internal object mutations (e.g. `obj.prop = 1`) are permitted while reassignment (`obj = {}`) is forbidden."
+  },
+  {
+   "id": "eb54d8c26aee43e3880d186c4842d9d8",
+   "name": "02 - Operators, Equality & Conditionals",
+   "parent_id": "c214617fb9ff472bab836dea4c1788b0",
+   "position": 1,
+   "documentation": "# 02 - Operators, Equality & Conditionals — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 1 in Part 1 (Global Card Range: #05 to #08)\n- **Priority**: 90 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `javascript.fundamentals.operators_and_control_flow`\n- **Primary References**: \n  - MDN Web Docs: *Expressions and operators — Equality comparisons and sameness*\n\n## 2. Core Theorems & Mechanics\n1. **Strict (`===`) vs Loose (`==`) Equality**:\n   - `===` checks both value AND type without coercion.\n   - `==` performs implicit type coercion via the abstract `IsLooselyEqual` algorithm (converting strings to numbers, booleans to numbers, and objects to primitives via `[Symbol.toPrimitive]`/`valueOf`/`toString`). This creates unintuitive results like `\"\" == 0` (true) or `[] == ![]` (true).\n2. **Exhaustive Falsy Set**:\n   In JavaScript, exactly 8 values coerce to `false` in a boolean context:\n   `false`, `0`, `-0`, `0n` (BigInt zero), `\"\"` (empty string), `null`, `undefined`, `NaN`.\n   *Everything else* is truthy (including empty arrays `[]`, empty objects `{}`, and `\"false\"`).\n3. **Short-Circuit Logical Operators**:\n   - `a && b`: Returns `a` if `a` is falsy; otherwise evaluates and returns `b`.\n   - `a || b`: Returns `a` if `a` is truthy; otherwise evaluates and returns `b`.\n   - `a ?? b` (Nullish Coalescing): Returns `b` ONLY if `a` is `null` or `undefined`. If `a` is `0`, `\"\"`, or `false`, it returns `a` (unlike `||`).\n4. **Conditional (Ternary) Operator**:\n   - `condition ? exprIfTrue : exprIfFalse`: A concise expression returning a value, ideal for inline variable initialization without mutable `let`.\n\n## 3. Detailed Card Inventory\n- **Card #05 (Global #5)**: *Why is strict equality (`===`) always preferred over loose equality (`==`) in JavaScript?*\n  - Answer: `===` prevents implicit type coercion bugs and compares both type and value.\n- **Card #06 (Global #6)**: *What are all the falsy values in JavaScript?*\n  - Answer: Exactly 8: `false`, `0`, `-0`, `0n`, `\"\"`, `null`, `undefined`, `NaN`.\n- **Card #07 (Global #7)**: *How does short-circuit evaluation work for `&&`, `||`, and `??` (Nullish Coalescing)?*\n  - Answer: `&&` returns first falsy; `||` returns first truthy; `??` returns right side only on `null` or `undefined`.\n- **Card #08 (Global #8)**: *What is the syntax of the ternary operator, and when should it be used?*\n  - Answer: `cond ? exprT : exprF`. Use for concise inline assignments; avoid nested chains.\n\n## 4. LLM Auditor Rubric\n- Confirm that `-0` and `0n` are documented in the falsy values list.\n- Confirm the distinction between `||` (fails on `0` and `\"\"`) and `??` (retains `0` and `\"\"`)."
+  },
+  {
+   "id": "ea270d5286cc4e1a9ce0db523416aed1",
+   "name": "03 - Functions, Callbacks & Scope",
+   "parent_id": "c214617fb9ff472bab836dea4c1788b0",
+   "position": 2,
+   "documentation": "# 03 - Functions, Callbacks & Scope — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 2 in Part 1 (Global Card Range: #09 to #12)\n- **Priority**: 90 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `javascript.fundamentals.functions_and_closures`\n- **Primary References**: \n  - MDN Web Docs: *Functions & Closures*\n  - ECMAScript Specification: *Function Definitions & Arrow Function Definitions*\n\n## 2. Core Theorems & Mechanics\n1. **Function Declarations vs Function Expressions**:\n   - *Declarations* (`function foo() {}`): Hoisted with both identifier and full body. Can be called before their syntactic declaration line.\n   - *Expressions* (`const foo = function() {}`): Variable identifier hoisted according to `const`/`let` (TDZ) or `var` (`undefined`); function body assigned only at runtime evaluation line.\n2. **Arrow Functions (`() => {}`) vs Traditional Functions**:\n   - Arrow functions have **lexical `this`** bound to enclosing lexical scope at creation time. They cannot be rebound using `.bind()`, `.call()`, or `.apply()`.\n   - Arrow functions lack their own `arguments` object, `super`, and `new.target`, and **cannot be used as constructors** (calling `new Arrow()` throws TypeError).\n3. **Lexical Closures**:\n   - A closure is the combination of a function bundled together with references to its surrounding lexical state (`LexicalEnvironment`).\n   - Enables a function to access variables in an outer scope even after the outer function has returned and exited the call stack. The engine preserves the lexical environment on the heap.\n4. **Rest Parameters (`...args`)**:\n   - Standardized syntax collecting indefinite remaining arguments into a true JavaScript `Array`. Replaces the legacy, array-like `arguments` object. Must be the final parameter.\n\n## 3. Detailed Card Inventory\n- **Card #09 (Global #9)**: *What is the key difference between a Function Declaration and a Function Expression regarding hoisting?*\n  - Answer: Declarations are fully hoisted (callable prior to definition); expressions are bound to variables subject to TDZ.\n- **Card #10 (Global #10)**: *What are the core differences between traditional functions and Arrow Functions?*\n  - Answer: Arrow functions have lexical `this`, lack `arguments`, and cannot be invoked with `new`.\n- **Card #11 (Global #11)**: *What is a Closure in JavaScript, and what makes it powerful?*\n  - Answer: A function retaining access to its parent lexical environment after the parent returns, enabling state encapsulation.\n- **Card #12 (Global #12)**: *How do Rest Parameters (`...args`) work, and why do they replace the legacy `arguments` object?*\n  - Answer: Collects remaining parameters into a true `Array` instance with array methods, unlike array-like `arguments`.\n\n## 4. LLM Auditor Rubric\n- Verify that arrow function `this` binding is accurately identified as immutable and lexically scoped.\n- Verify closure explanation references lexical scope persistence on the heap."
+  },
+  {
+   "id": "7143c79714024e7baecb925e55b4ef3e",
+   "name": "04 - Objects, Prototypes & Destructuring",
+   "parent_id": "c214617fb9ff472bab836dea4c1788b0",
+   "position": 3,
+   "documentation": "# 04 - Objects, Prototypes & Destructuring — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 3 in Part 1 (Global Card Range: #13 to #16)\n- **Priority**: 90 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `javascript.fundamentals.objects_and_prototypes`\n- **Primary References**: \n  - MDN Web Docs: *Working with objects & Inheritance and the prototype chain*\n\n## 2. Core Theorems & Mechanics\n1. **Object Destructuring & Aliasing**:\n   - Syntax: `const { prop: aliasName = defaultValue } = obj;`. Extracts property `prop`, renames it to local variable `aliasName`, and defaults to `defaultValue` if `obj.prop === undefined`.\n2. **Object Spread (`{ ...obj }`)**:\n   - Creates a **shallow clone** of enumerable own properties. Nested objects retain identical reference pointers.\n   - Does not preserve prototype linkage (the clone inherits from `Object.prototype`, not `obj`'s prototype).\n3. **Prototypal Inheritance Chain**:\n   - Every object has an internal `[[Prototype]]` link (accessible via `Object.getPrototypeOf(obj)` or legacy `__proto__`).\n   - When accessing `obj.prop`, if `prop` is not an own property, the engine traverses the prototype chain up to `Object.prototype`, and finally `null`. If not found, returns `undefined`.\n4. **Optional Chaining (`?.`)**:\n   - Short-circuits property access (`a?.b`), method invocation (`a?.b()`), and dynamic property access (`a?.[b]`). If the target is `null` or `undefined`, the expression immediately evaluates to `undefined` without throwing `TypeError`.\n\n## 3. Detailed Card Inventory\n- **Card #13 (Global #13)**: *How does Object Destructuring work with property renaming and default values?*\n  - Answer: `const { key: alias = defaultVal } = obj;` renames `key` to `alias` and falls back if `undefined`.\n- **Card #14 (Global #14)**: *What does the Object Spread Operator (`...`) do, and is it deep or shallow?*\n  - Answer: Copies enumerable own properties shallowly. Nested reference objects remain shared.\n- **Card #15 (Global #15)**: *How does the Prototype Chain work when accessing a property on a JavaScript object?*\n  - Answer: Engine searches own properties, then traverses `[[Prototype]]` upwards until `Object.prototype` and `null`.\n- **Card #16 (Global #16)**: *How does Optional Chaining (`?.`) prevent runtime exceptions in JavaScript?*\n  - Answer: Evaluates to `undefined` if reference is `null` or `undefined`, halting navigation safely.\n\n## 4. LLM Auditor Rubric\n- Check that Object Spread is explicitly verified as shallow.\n- Check that default destructuring triggers only on `undefined` (not on `null`)."
+  },
+  {
+   "id": "72f00c2c1f8d446e86c7bc6020601bd5",
+   "name": "05 - Arrays & Iteration Methods",
+   "parent_id": "c214617fb9ff472bab836dea4c1788b0",
+   "position": 4,
+   "documentation": "# 05 - Arrays & Iteration Methods — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 4 in Part 1 (Global Card Range: #17 to #21)\n- **Priority**: 90 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `javascript.fundamentals.arrays_and_iteration`\n- **Primary References**: \n  - MDN Web Docs: *Array methods & Iteration protocols*\n\n## 2. Core Theorems & Mechanics\n1. **Mutating vs Non-Mutating Array Operations**:\n   - *Mutating (In-place)*: `push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse`, `fill`.\n   - *Non-Mutating (Pure/Immutable)*: `map`, `filter`, `reduce`, `slice`, `concat`, `flat`, `toSorted`, `toReversed`, `toSpliced`.\n2. **The `.map()` Invariant**:\n   - Always returns a new array of the **exact same length** as the original array, applying the transformer callback to every element.\n3. **The `.filter()` Invariant**:\n   - Returns a new array containing only elements for which the predicate callback returns a truthy value. Length is always $\\le$ source length.\n4. **The `.reduce()` Accumulator Invariant**:\n   - Iteratively folds an array into a single accumulated result: `arr.reduce((acc, curr, index, arr) => nextAcc, initialValue)`.\n   - *Mandatory Practice*: Always supply `initialValue`. Omitting it causes empty array to throw `TypeError: Reduce of empty array with no initial value` and skips index 0.\n5. **`for...of` vs `for...in`**:\n   - `for...of`: Iterates over the **values** of an iterable object (`Array`, `Map`, `Set`, `String`) conforming to `[Symbol.iterator]`.\n   - `for...in`: Enumerates all enumerable **property keys** (strings) of an object, including inherited properties on the prototype chain.\n\n## 3. Detailed Card Inventory\n- **Card #17 (Global #17)**: *Which common JavaScript array methods mutate the original array, and which return a new array?*\n  - Answer: Mutating: `push`, `pop`, `splice`, `sort`. Non-mutating: `map`, `filter`, `slice`, `concat`, `toSorted`.\n- **Card #18 (Global #18)**: *What does `.map()` do, and what invariant does it guarantee regarding array length?*\n  - Answer: Returns new array applying callback to each item; guaranteed exact same length as source array.\n- **Card #19 (Global #19)**: *How does `.filter()` work, and what determines whether an element is included in the output?*\n  - Answer: Returns subset where predicate returns truthy value.\n- **Card #20 (Global #20)**: *How does `.reduce()` accumulate values, and why should you always supply an initial value?*\n  - Answer: Accumulates collection into single value; initial value prevents empty array `TypeError`.\n- **Card #21 (Global #21)**: *What is the crucial difference between `for...of` and `for...in` loops in JavaScript?*\n  - Answer: `for...of` iterates iterable values; `for...in` enumerates object keys including prototype chain.\n\n## 4. LLM Auditor Rubric\n- Verify that modern non-mutating methods (`toSorted`, `toReversed`) are acknowledged.\n- Verify warning about omitting `initialValue` in `.reduce()`."
+  },
+  {
+   "id": "18fc3270f7094e9a9c1843c747d8a135",
+   "name": "06 - Asynchronous JavaScript (Promises & Async/Await)",
+   "parent_id": "c214617fb9ff472bab836dea4c1788b0",
+   "position": 5,
+   "documentation": "# 06 - Asynchronous JavaScript (Promises & Async/Await) — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 5 in Part 1 (Global Card Range: #22 to #25)\n- **Priority**: 90 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `javascript.fundamentals.async_event_loop`\n- **Primary References**: \n  - MDN Web Docs: *Asynchronous JavaScript & Event loop*\n  - ECMAScript Specification: *Promise Objects & AsyncFunction Definitions*\n\n## 2. Core Theorems & Mechanics\n1. **The Single-Threaded Event Loop**:\n   - JavaScript execution runs on a single main thread with a synchronous Call Stack.\n   - Asynchronous operations are delegated to runtime APIs (browser Web APIs or Node.js libuv thread pool).\n   - When operations complete, their callbacks enter queues:\n     - **Microtask Queue**: Promise handlers (`.then`, `.catch`, `.finally`), `queueMicrotask`, `process.nextTick`. Drain to completion after every stack frame, BEFORE the next macrotask.\n     - **Macrotask (Task) Queue**: `setTimeout`, `setInterval`, I/O, UI rendering events.\n2. **Promise State Lifecycle & Immutability**:\n   - A Promise has 3 mutually exclusive states: `pending`, `fulfilled`, or `rejected`.\n   - Once a Promise transitions to `fulfilled` or `rejected`, it is **settled** and its state and resolved value become permanently immutable. Further resolve/reject calls are silently ignored.\n3. **`async` / `await` Under the Hood**:\n   - Syntactic sugar over Promises and Generators. An `async` function always returns a Promise (wrapping non-promise returns via `Promise.resolve()`).\n   - The `await` keyword suspends function execution non-blockingly, yielding control back to the event loop, and resumes execution as a microtask when the awaited promise settles.\n4. **`Promise.all()` Short-Circuit Failure**:\n   - Takes an iterable of Promises and returns a single Promise resolving to an array of results.\n   - **Fast-fails**: If any promise rejects, `Promise.all()` immediately rejects with that reason, abandoning waiting on remaining unresolved promises (though remaining operations still execute in background).\n   - Use `Promise.allSettled()` when you need all outcomes regardless of rejection.\n\n## 3. Detailed Card Inventory\n- **Card #22 (Global #22)**: *How does the JavaScript Event Loop manage asynchronous tasks on a single thread?*\n  - Answer: Single thread with Call Stack; drains Microtask Queue (Promises) completely before executing Macrotask Queue (`setTimeout`).\n- **Card #23 (Global #23)**: *What are the 3 states of a JavaScript Promise, and can a settled Promise change state?*\n  - Answer: `pending`, `fulfilled`, `rejected`. Once settled, state and value are immutable.\n- **Card #24 (Global #24)**: *How do `async` and `await` work under the hood with Promises?*\n  - Answer: Desugars to Promises; `async` wraps returns in Promise; `await` pauses execution non-blockingly until microtask resumes.\n- **Card #25 (Global #25)**: *How does `Promise.all()` behave when executing concurrent asynchronous operations, and what is its failure mode?*\n  - Answer: Runs concurrently; resolves when all fulfill; immediately fast-fails on first rejection.\n\n## 4. LLM Auditor Rubric\n- Check that microtask priority over macrotasks is correctly articulated.\n- Check that `Promise.all` failure behavior is contrasted with `Promise.allSettled`."
+  },
+  {
+   "id": "009d902d4d0742d28bf54a2a4387c1b3",
+   "name": "Part 2: TypeScript Core (Static Types as a Safety Layer)",
+   "parent_id": "e30021420844491c95775e8cdf9cc81f",
+   "position": 1,
+   "documentation": "# Part 2: TypeScript Core (Static Types as a Safety Layer) — Module Architecture\n\n## 1. Module Rationale & Scope\nPart 2 introduces TypeScript's static type checker (`tsc`) as a purely compile-time analytical layer. The overarching goal is mastering the mental model: **Types exist exclusively at compile-time to prove structural invariants, after which type erasure eliminates them entirely.**\n\n## 2. Learning Outcomes\nUpon completing Part 2, the learner will be able to:\n1. Explain Type Erasure and why TypeScript cannot perform runtime data validation.\n2. Formulate correct type annotations vs relying on contextual type inference.\n3. Employ set-theoretic Top types (`unknown`, `any`) and Bottom type (`never`) safely.\n4. Leverage structural subtyping (\"duck typing\") and understand excess property checks.\n5. Apply control-flow narrowing using `typeof`, `instanceof`, `in`, and custom type predicates (`val is Type`).\n6. Model function types, optional/default parameters, and understand `void` vs `undefined`.\n\n## 3. Subtree Inventory\n- **07 - The Mental Model & Type Erasure** (Cards #26–#29): TS role, type erasure, runtime boundary limitations (API data), Playground tool.\n- **08 - Primitive Annotations & Type Inference** (Cards #30–#33): When to annotate vs infer, `any` vs `unknown`, `never` applications, Arrays vs Tuples.\n- **09 - Object Shapes & Interfaces** (Cards #34–#36): `interface` contracts, structural typing semantics, excess property checks on fresh object literals.\n- **10 - Union Types & Control-Flow Narrowing** (Cards #37–#39): Union types (`A | B`), built-in narrowing guards, custom type predicates.\n- **11 - Function Signatures & Typing** (Cards #40–#42): `void` return semantics, optional/default parameters, function overload signatures.\n\n## 4. LLM Audit Checklist for Part 2\n- Verify that `unknown` is presented as the type-safe alternative to `any`.\n- Verify that structural typing emphasizes compatibility by member shape rather than nominal declaration.\n- Verify that `void` allows returning non-undefined values in callback positions for compatibility."
+  },
+  {
+   "id": "66f690a19bc54e34bf3a7add05bf0ee0",
+   "name": "07 - The Mental Model & Type Erasure",
+   "parent_id": "009d902d4d0742d28bf54a2a4387c1b3",
+   "position": 0,
+   "documentation": "# 07 - The Mental Model & Type Erasure — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 0 in Part 2 (Global Card Range: #26 to #29)\n- **Priority**: 80 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `typescript.core.mental_model_and_type_erasure`\n- **Primary References**: \n  - TypeScript Handbook: *TypeScript for the New Programmer* & *TypeScript for JavaScript Programmers*\n\n## 2. Core Theorems & Mechanics\n1. **TypeScript's Fundamental Role**:\n   - TypeScript is a static type checker that analyzes JavaScript code at authoring and build time. It issues compiler diagnostics without modifying how the code executes.\n2. **Type Erasure**:\n   - The TypeScript compiler strips all type annotations, interfaces, type aliases, and type parameters during transpilation, emitting standard JavaScript.\n   - Result: Types have **zero runtime overhead** and **zero runtime footprint**. You cannot inspect a TypeScript type at runtime via `typeof` or reflection.\n3. **The Runtime Safety Boundary**:\n   - Because types are erased, TypeScript **cannot validate untrusted runtime inputs** (e.g. `fetch()` JSON payloads, `localStorage`, form inputs).\n   - If an API returns malformed JSON, TypeScript types will not throw an error at the boundary; code will fail at runtime unless validated using runtime validators (Zod, Valibot) or type guards.\n4. **TypeScript Playground**:\n   - Interactive REPL exposing compiler flags, side-by-side JS emitted code, and generated `.d.ts` declaration files. Essential for verifying how static types transpile to JavaScript.\n\n## 3. Detailed Card Inventory\n- **Card #26 (Global #26)**: *What is TypeScript's fundamental role in relation to JavaScript?*\n  - Answer: Static type checker operating at compile-time to detect errors before runtime without changing JS behavior.\n- **Card #27 (Global #27)**: *What is 'Type Erasure' in TypeScript, and what is its impact on runtime performance and bundle size?*\n  - Answer: Transpiler completely removes all type syntax; results in zero runtime overhead and zero added runtime bundle size.\n- **Card #28 (Global #28)**: *Can TypeScript types validate API responses or user input at runtime? Why or why not?*\n  - Answer: No; types are erased. Runtime data requires explicit type guards or schema validation libraries (Zod).\n- **Card #29 (Global #29)**: *What makes the official TypeScript Playground such an effective tool for understanding type behavior?*\n  - Answer: Shows live TS-to-JS compilation, `.d.ts` output, and allows testing compiler flags (`strict`, `target`).\n\n## 4. LLM Auditor Rubric\n- Check that type erasure is explicitly highlighted as the reason runtime validation libraries are necessary."
+  },
+  {
+   "id": "9c0b036ec55f4c1fa902198d2219f1f5",
+   "name": "08 - Primitive Annotations & Type Inference",
+   "parent_id": "009d902d4d0742d28bf54a2a4387c1b3",
+   "position": 1,
+   "documentation": "# 08 - Primitive Annotations & Type Inference — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 1 in Part 2 (Global Card Range: #30 to #33)\n- **Priority**: 80 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `typescript.core.annotations_and_inference`\n- **Primary References**: \n  - TypeScript Handbook: *Everyday Types* & *Type Inference*\n\n## 2. Core Theorems & Mechanics\n1. **Annotation vs Inference Best Practice**:\n   - TypeScript automatically infers types from literal initializers (`let x = 10` -> `number`).\n   - *Best Practice*: Rely on inference for local variables initialized immediately. Annotate function parameters, complex return types, and uninitialized variables.\n2. **Top Types: `any` vs `unknown`**:\n   - `any`: Disables all type-checking. Allows arbitrary property access and invocation. Propagates unchecked (\"type contagion\").\n   - `unknown`: Safe top type. Represents any value, but **forbids any property access, method calls, or operations** until narrowed using type guards.\n3. **Bottom Type: `never`**:\n   - The empty set ($\\emptyset$) containing no values. Represents values that can never occur:\n     - Return type of functions that never return (infinite loops or functions that always throw).\n     - Exhaustive check in `switch`/`if-else` blocks (assigning an unhandled branch to `never` produces compile-time error).\n4. **Arrays vs Tuples**:\n   - `T[]` (or `Array<T>`): Variable-length homogeneous list of elements of type `T`.\n   - `[T1, T2, ...Tn]`: Fixed-length sequence with strict types at specific index positions (e.g. `[string, number]`).\n\n## 3. Detailed Card Inventory\n- **Card #30 (Global #30)**: *When should you write explicit type annotations, and when should you rely on TypeScript's Type Inference?*\n  - Answer: Infer initialized local variables; annotate function parameters, exported API returns, and uninitialized variables.\n- **Card #31 (Global #31)**: *What is the crucial difference between the `any` type and the `unknown` type in TypeScript?*\n  - Answer: `any` disables type-checking; `unknown` is type-safe and requires narrowing before usage.\n- **Card #32 (Global #32)**: *What is the `never` type in TypeScript, and what are its two primary use cases?*\n  - Answer: Bottom type representing impossible values. Used for functions that throw/loop forever and exhaustive switch checks.\n- **Card #33 (Global #33)**: *What is the difference between an Array type (`number[]`) and a Tuple (`[string, number]`) in TypeScript?*\n  - Answer: Array is variable-length homogeneous; Tuple is fixed-length with specific types per index.\n\n## 4. LLM Auditor Rubric\n- Confirm set-theoretic framing: `unknown` = universal set, `never` = empty set."
+  },
+  {
+   "id": "a6f20bb792a644f8941204ab290cd628",
+   "name": "09 - Object Shapes & Interfaces",
+   "parent_id": "009d902d4d0742d28bf54a2a4387c1b3",
+   "position": 2,
+   "documentation": "# 09 - Object Shapes & Interfaces — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 2 in Part 2 (Global Card Range: #34 to #36)\n- **Priority**: 80 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `typescript.core.interfaces_and_structural_typing`\n- **Primary References**: \n  - TypeScript Handbook: *Everyday Types — Interfaces* & *Object Types*\n\n## 2. Core Theorems & Mechanics\n1. **Defining Object Contracts with `interface`**:\n   - Declares the required shape of an object: property names, types, optional properties (`?`), and immutable properties (`readonly`).\n2. **Structural Typing (Duck Typing)**:\n   - TypeScript compares types based solely on their **shape/members**, not their nominal declaration or class name.\n   - If object $B$ possesses all properties required by type $A$ (with compatible types), $B$ is assignable to $A$, even if $B$ has extra properties:\n     $$B \text{ extends } A \\iff B \\subseteq A \text{ in value space (has at least all keys of } A)$$\n3. **Excess Property Checks**:\n   - When assigning a **fresh object literal** directly to an annotated location (`const u: User = { name: \"A\", extra: 1 }`), TypeScript applies strict excess property checks and flags unexpected keys as errors.\n   - Passing an existing object reference (`const tmp = { name: \"A\", extra: 1 }; const u: User = tmp;`) bypasses excess property checks due to structural compatibility.\n\n## 3. Detailed Card Inventory\n- **Card #34 (Global #34)**: *How do you define an object contract using a TypeScript `interface`?*\n  - Answer: `interface User { id: string; name: string; age?: number; readonly createdAt: Date; }`\n- **Card #35 (Global #35)**: *What is 'Structural Typing' (Duck Typing) in TypeScript?*\n  - Answer: Type compatibility is based on property shape rather than explicit nominal declarations.\n- **Card #36 (Global #36)**: *What are Excess Property Checks in TypeScript, and when are they triggered?*\n  - Answer: Strict checks flagging unknown properties when assigning fresh object literals directly.\n\n## 4. LLM Auditor Rubric\n- Check that excess property checks are clearly differentiated from general structural subtyping."
+  },
+  {
+   "id": "451d804e0b4d4df2927f8a578c6efd0e",
+   "name": "10 - Union Types & Control-Flow Narrowing",
+   "parent_id": "009d902d4d0742d28bf54a2a4387c1b3",
+   "position": 3,
+   "documentation": "# 10 - Union Types & Control-Flow Narrowing — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 3 in Part 2 (Global Card Range: #37 to #39)\n- **Priority**: 80 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `typescript.core.unions_and_narrowing`\n- **Primary References**: \n  - TypeScript Handbook: *Narrowing*\n\n## 2. Core Theorems & Mechanics\n1. **Union Types (`A | B`)**:\n   - Represents a value that can be *either* type `A` or type `B`.\n   - Before narrowing, TypeScript only permits accessing properties common to **all** members of the union ($A \\cap B$ in property space).\n2. **Control-Flow Narrowing**:\n   - The compiler analyzes branching paths (`if`, `switch`, ternaries) and refines broad types into more specific types.\n   - Built-in type guards:\n     - `typeof x === \"string\"`: Narrows primitive types.\n     - `x instanceof Date`: Narrows constructor/class instances.\n     - `\"prop\" in x`: Narrows object shapes containing property `\"prop\"`.\n     - Strict equality checks (`x === null`, `x === undefined`, `x === \"literal\"`).\n3. **Custom Type Predicates (`val is Type`)**:\n   - A function returning a boolean whose return type annotation is `parameterName is TargetType`.\n   - When the function returns `true`, TypeScript narrows `parameterName` to `TargetType` inside the conditional block:\n     ```typescript\n     function isFish(pet: Fish | Bird): pet is Fish {\n       return (pet as Fish).swim !== undefined;\n     }\n     ```\n\n## 3. Detailed Card Inventory\n- **Card #37 (Global #37)**: *What is a Union Type (`A | B`), and what properties can you access on an un-narrowed union?*\n  - Answer: Represents values of either type; only properties shared by all union constituents are accessible prior to narrowing.\n- **Card #38 (Global #38)**: *What is Control Flow Narrowing, and what are the 4 most common built-in type guards?*\n  - Answer: Compiler path analysis refining broad types. 4 guards: `typeof`, `instanceof`, `in`, equality checks.\n- **Card #39 (Global #39)**: *How do you write a Custom Type Guard using a Type Predicate (`val is Type`)?*\n  - Answer: Return boolean with signature `param is TargetType`; compiler narrows on truthy branch.\n\n## 4. LLM Auditor Rubric\n- Check that custom type predicate syntax is explicitly demonstrated with `val is Type`."
+  },
+  {
+   "id": "ba42a3b72d924b8f8aed4b066584327d",
+   "name": "11 - Function Signatures & Typing",
+   "parent_id": "009d902d4d0742d28bf54a2a4387c1b3",
+   "position": 4,
+   "documentation": "# 11 - Function Signatures & Typing — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 4 in Part 2 (Global Card Range: #40 to #42)\n- **Priority**: 80 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `typescript.core.function_signatures`\n- **Primary References**: \n  - TypeScript Handbook: *More on Functions*\n\n## 2. Core Theorems & Mechanics\n1. **The `void` Return Type**:\n   - Signifies that a function does not return a meaningful value for the caller to observe.\n   - *Key distinction from `undefined`*: A function typed to return `undefined` must explicitly return `undefined` or have an empty `return;`. A callback typed with `() => void` can return any value (e.g. `Array.prototype.push`), but callers are warned not to use that returned value.\n2. **Optional and Default Parameters**:\n   - Optional parameters use `?` (e.g. `x?: number`) and receive the type `number | undefined`. Must appear after required parameters.\n   - Default parameters (e.g. `x = 10`) infer their type and are automatically optional for callers.\n3. **Function Overloads**:\n   - Provide multiple call signatures followed by a single implementation signature.\n   - Only the overload signatures are visible to external callers; the implementation signature is internal and must be broad enough to handle all overloads.\n\n## 3. Detailed Card Inventory\n- **Card #40 (Global #40)**: *What does a `void` return type signify in TypeScript, and how does it differ from returning `undefined`?*\n  - Answer: `void` means return value is ignored by callers; `undefined` requires explicit return of undefined.\n- **Card #41 (Global #41)**: *What are the rules for Optional Parameters and Default Parameters in TypeScript functions?*\n  - Answer: Optional parameters (`param?: type`) must follow required params; default values infer type and become optional.\n- **Card #42 (Global #42)**: *How do Function Overloads work in TypeScript, and what is the relationship between overload signatures and implementation?*\n  - Answer: Declare multiple public callable signatures followed by one private compatible implementation.\n\n## 4. LLM Auditor Rubric\n- Confirm that callback `void` assignability (why `forEach` callback can return a number) is correctly distinguished from direct `undefined` returns."
+  },
+  {
+   "id": "c854773877604e61a2dc6f25f229459c",
+   "name": "Part 3: Intermediate TypeScript & System Design",
+   "parent_id": "e30021420844491c95775e8cdf9cc81f",
+   "position": 2,
+   "documentation": "# Part 3: Intermediate TypeScript & System Design — Module Architecture\n\n## 1. Module Rationale & Scope\nPart 3 transitions from basic syntax annotations to intermediate type calculus and architectural system design. It teaches developers how to construct robust, type-safe domain models that make illegal program states unrepresentable.\n\n## 2. Learning Outcomes\nUpon completing Part 3, the learner will be able to:\n1. Choose judiciously between `interface` (OOP contracts, declaration merging) and `type` aliases (unions, primitives, tuples).\n2. Model domain entities using Discriminated (Tagged) Unions and enforce compile-time exhaustiveness with `never`.\n3. Author generic functions and interfaces with strict `extends` and `keyof` constraints.\n4. Utilize TypeScript's built-in utility transformations (`Partial`, `Pick`, `Omit`, `Record`).\n5. Configure `tsconfig.json` in strict mode (`strictNullChecks`, `noImplicitAny`).\n\n## 3. Subtree Inventory\n- **12 - Type Aliases vs Interfaces & Extensibility** (Cards #43–#44): `type` vs `interface`, declaration merging, intersection types (`&`).\n- **13 - Discriminated Unions & Exhaustiveness** (Cards #45–#46): Tagged union state modeling, exhaustiveness check with `never`.\n- **14 - Generics: Functions, Interfaces & Constraints** (Cards #47–#49): Parameterized types (`<T>`), constraints with `extends`, `keyof` indexed lookup.\n- **15 - Essential Utility Types (Partial, Pick, Omit, Record)** (Cards #50–#52): `Partial`/`Readonly`, `Pick`/`Omit`, `Record<K, V>`.\n- **16 - TypeScript Tooling, tsconfig & Strict Mode** (Cards #53–#55): `\"strict\": true` suite, `strictNullChecks` protection, `.d.ts` declaration files.\n\n## 4. LLM Audit Checklist for Part 3\n- Verify that `interface` declaration merging is explicitly explained.\n- Verify that the Discriminated Union pattern demonstrates making impossible states unrepresentable (avoiding multiple optional booleans).\n- Verify generic property extraction uses `<T, K extends keyof T>(obj: T, key: K): T[K]`."
+  },
+  {
+   "id": "e83e58c7fa8c41dfb9a7846cedbd434c",
+   "name": "12 - Type Aliases vs Interfaces & Extensibility",
+   "parent_id": "c854773877604e61a2dc6f25f229459c",
+   "position": 0,
+   "documentation": "# 12 - Type Aliases vs Interfaces & Extensibility — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 0 in Part 3 (Global Card Range: #43 to #44)\n- **Priority**: 70 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `typescript.intermediate.types_vs_interfaces`\n- **Primary References**: \n  - TypeScript Handbook: *Everyday Types — Differences Between Type Aliases and Interfaces*\n\n## 2. Core Theorems & Mechanics\n1. **`interface` vs `type` Aliases**:\n   - `interface`: Open for extension via **Declaration Merging** (multiple declarations of the same interface name merge their fields). Extends other interfaces via `extends`. Best for object contracts, library APIs, and public OOP models.\n   - `type`: Closed (cannot declaration-merge). Can define unions (`A | B`), intersections (`A & B`), primitives, tuples, and mapped types.\n2. **Intersection Types (`A & B`)**:\n   - Combines multiple object shapes into a single type containing all fields from all constituent types.\n   - If properties have conflicting primitive types (e.g. `{ id: string } & { id: number }`), the resulting property type collapses to `never`.\n\n## 3. Detailed Card Inventory\n- **Card #43 (Global #43)**: *What are the key technical differences between `type` aliases and `interface` in TypeScript?*\n  - Answer: Interfaces support declaration merging and `extends`; type aliases can represent unions, primitives, tuples, and cannot re-open.\n- **Card #44 (Global #44)**: *What is an Intersection Type (`&`) in TypeScript, and what happens when properties conflict?*\n  - Answer: Combines all properties of constituents; conflicting primitive types collapse to `never`.\n\n## 4. LLM Auditor Rubric\n- Check that declaration merging is clearly identified as unique to `interface`."
+  },
+  {
+   "id": "5c218b3856b3414387772b908dcc41e5",
+   "name": "13 - Discriminated Unions & Exhaustiveness",
+   "parent_id": "c854773877604e61a2dc6f25f229459c",
+   "position": 1,
+   "documentation": "# 13 - Discriminated Unions & Exhaustiveness — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 1 in Part 3 (Global Card Range: #45 to #46)\n- **Priority**: 70 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `typescript.intermediate.discriminated_unions`\n- **Primary References**: \n  - TypeScript Handbook: *Narrowing — Discriminated unions*\n\n## 2. Core Theorems & Mechanics\n1. **Discriminated (Tagged) Unions**:\n   - A union of object types where every member contains a shared, common property with a unique literal singleton value (the \"discriminant\", e.g. `status: \"idle\" | \"loading\" | \"success\" | \"error\"`).\n   - Prevents invalid state combinations (e.g. `{ isLoading: true, isSuccess: true, data: null, error: Error }`).\n2. **Exhaustiveness Checking with `never`**:\n   - By asserting that the `default` case of a `switch` statement has type `never`, the compiler will report an error if a developer adds a new variant to the union without handling it:\n     ```typescript\n     function handleState(s: State) {\n       switch (s.status) {\n         case \"idle\": return;\n         case \"success\": return s.data;\n         default: {\n           const _exhaustiveCheck: never = s; // Compile error if variant missed!\n           throw new Error(`Unhandled state: ${_exhaustiveCheck}`);\n         }\n       }\n     }\n     ```\n\n## 3. Detailed Card Inventory\n- **Card #45 (Global #45)**: *What is a Discriminated Union (Tagged Union), and why is it considered the gold standard for state modeling in TypeScript?*\n  - Answer: Objects sharing a literal discriminant key. Makes impossible states unrepresentable.\n- **Card #46 (Global #46)**: *How do you implement compile-time Exhaustiveness Checking using the `never` type?*\n  - Answer: Assign unhandled case to `never` variable; compiler raises error if any variant is unhandled.\n\n## 4. LLM Auditor Rubric\n- Verify that the `const _exhaustive: never = s;` pattern is accurately detailed."
+  },
+  {
+   "id": "3030348c22114348a061b314c541ba9c",
+   "name": "14 - Generics: Functions, Interfaces & Constraints",
+   "parent_id": "c854773877604e61a2dc6f25f229459c",
+   "position": 2,
+   "documentation": "# 14 - Generics: Functions, Interfaces & Constraints — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 2 in Part 3 (Global Card Range: #47 to #49)\n- **Priority**: 70 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `typescript.intermediate.generics`\n- **Primary References**: \n  - TypeScript Handbook: *Generics*\n\n## 2. Core Theorems & Mechanics\n1. **Why Generics over `any`?**:\n   - `any` loses all type relationships between inputs and outputs.\n   - Generics introduce type variables (`<T>`) that capture the caller's specific type, preserving type safety throughout function execution and return values.\n2. **Generic Constraints (`extends`)**:\n   - Prevents arbitrary types from being passed when specific capabilities are required:\n     ```typescript\n     function logLength<T extends { length: number }>(item: T): number {\n       return item.length;\n     }\n     ```\n3. **The `keyof` Operator & Indexed Access**:\n   - `keyof T` produces a union of all property name literals of type `T`.\n   - Constraining `<K extends keyof T>` ensures that `key` is a valid property name on `obj: T`, allowing TypeScript to infer the exact return type as `T[K]`.\n\n## 3. Detailed Card Inventory\n- **Card #47 (Global #47)**: *Why are Generics used in TypeScript instead of `any`?*\n  - Answer: Captures and preserves type identity between inputs and outputs without losing type checking.\n- **Card #48 (Global #48)**: *How do you constrain a Generic type parameter using `extends`?*\n  - Answer: Use `<T extends Constraint>` to restrict `T` to types satisfying the constraint interface.\n- **Card #49 (Global #49)**: *How do you safely extract a property from an object using Generics and the `keyof` operator?*\n  - Answer: `function getProp<T, K extends keyof T>(obj: T, key: K): T[K] { return obj[key]; }`\n\n## 4. LLM Auditor Rubric\n- Check that the `keyof` indexed access signature `<T, K extends keyof T>(obj: T, key: K): T[K]` is mathematically accurate."
+  },
+  {
+   "id": "c6f79f8921bf41baa634938b8bcec04f",
+   "name": "15 - Essential Utility Types (Partial, Pick, Omit, Record)",
+   "parent_id": "c854773877604e61a2dc6f25f229459c",
+   "position": 3,
+   "documentation": "# 15 - Essential Utility Types (Partial, Pick, Omit, Record) — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 3 in Part 3 (Global Card Range: #50 to #52)\n- **Priority**: 70 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `typescript.intermediate.utility_types`\n- **Primary References**: \n  - TypeScript Handbook: *Utility Types*\n\n## 2. Core Theorems & Mechanics\n1. **`Partial<T>` & `Readonly<T>`**:\n   - `Partial<T>`: Constructs a type with all properties of `T` set to optional (`?`). Ideal for patch/update payloads.\n   - `Readonly<T>`: Constructs a type with all properties set to `readonly`, preventing property reassignment.\n2. **`Pick<T, Keys>` vs `Omit<T, Keys>`**:\n   - `Pick<T, Keys>`: Constructs a type by picking a subset of keys (`Keys extends keyof T`) from `T`.\n   - `Omit<T, Keys>`: Constructs a type by removing a subset of keys from `T`.\n3. **`Record<Keys, Value>`**:\n   - Constructs an object type whose property keys are `Keys` and values are `Value`:\n     `Record<\"admin\" | \"user\", Permissions>`\n\n## 3. Detailed Card Inventory\n- **Card #50 (Global #50)**: *What do `Partial<T>` and `Readonly<T>` do in TypeScript?*\n  - Answer: `Partial` makes all properties optional; `Readonly` prevents reassigning properties.\n- **Card #51 (Global #51)**: *How do `Pick<T, Keys>` and `Omit<T, Keys>` differ in transforming object types?*\n  - Answer: `Pick` selects specified keys; `Omit` excludes specified keys.\n- **Card #52 (Global #52)**: *What is `Record<Keys, Value>` used for in TypeScript?*\n  - Answer: Creates dictionary type mapping a set of union keys to a specific value type.\n\n## 4. LLM Auditor Rubric\n- Check that `Record` is explained with union string keys."
+  },
+  {
+   "id": "65e5b5e5503c4163829e8a2c3ec9070d",
+   "name": "16 - TypeScript Tooling, tsconfig & Strict Mode",
+   "parent_id": "c854773877604e61a2dc6f25f229459c",
+   "position": 4,
+   "documentation": "# 16 - TypeScript Tooling, tsconfig & Strict Mode — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 4 in Part 3 (Global Card Range: #53 to #55)\n- **Priority**: 70 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `typescript.intermediate.tooling_and_strict_mode`\n- **Primary References**: \n  - TypeScript Handbook: *The tsconfig.json & Compiler Options*\n\n## 2. Core Theorems & Mechanics\n1. **`\"strict\": true` Master Setting**:\n   - Enables all strict type-checking compiler flags: `strictNullChecks`, `noImplicitAny`, `strictFunctionTypes`, `strictBindCallApply`, `strictPropertyInitialization`, `noImplicitThis`, `alwaysStrict`, and `useUnknownInCatchVariables`.\n2. **`strictNullChecks`**:\n   - Without this flag, `null` and `undefined` are assignable to every type (`let s: string = null` succeeds), causing widespread runtime null pointer bugs.\n   - With `strictNullChecks`, `null` and `undefined` become distinct types and must be explicitly handled via unions (`string | null`).\n3. **Declaration Files (`.d.ts`)**:\n   - Type definition files describing the API shape of JavaScript libraries without providing executable code.\n\n## 3. Detailed Card Inventory\n- **Card #53 (Global #53)**: *What does setting `\"strict\": true` in `tsconfig.json` do, and why is it recommended for all modern projects?*\n  - Answer: Turns on entire suite of strict compiler checks, eliminating silent `any` and unhandled nulls.\n- **Card #54 (Global #54)**: *How does `strictNullChecks` protect code from unexpected null pointer errors?*\n  - Answer: Disallows assigning `null`/`undefined` to primitive types; forces explicit union modeling.\n- **Card #55 (Global #55)**: *What is a `.d.ts` Declaration File in TypeScript?*\n  - Answer: Type-only file providing TypeScript shapes for plain JavaScript libraries without emitting code.\n\n## 4. LLM Auditor Rubric\n- Check that `strictNullChecks` is cited as the guard against \"Billion Dollar Mistake\" null pointers."
+  },
+  {
+   "id": "2112a22170564252918482d2bac71070",
+   "name": "Part 4: Hands-On Code Lab Drills",
+   "parent_id": "e30021420844491c95775e8cdf9cc81f",
+   "position": 3,
+   "documentation": "# Part 4: Hands-On Code Lab Drills — Module Architecture\n\n## 1. Module Rationale & Scope\nKnowledge retention requires procedural synthesis. Part 4 provides interactive, executable Code Lab flashcards featuring embedded unit tests. Learners write code in the embedded editor and run test suites to verify runtime mechanics and TypeScript type safety.\n\n## 2. Learning Outcomes\nUpon completing Part 4, the learner will be able to:\n1. Write pure JavaScript data transformation utilities using object destructuring and higher-order `.reduce()`.\n2. Refactor loose JavaScript utilities into robust TypeScript with typed arguments and interfaces.\n3. Author generic algorithms with bounded `extends keyof` constraints.\n\n## 3. Subtree Inventory\n- **17 - JavaScript Practice Drills** (Cards #56–#57):\n  - Card #56: `formatUser({ firstName, lastName, age })` with fallback default age.\n  - Card #57: `groupByCategory(items)` grouping array into dictionary via `.reduce()`.\n- **18 - Refactoring JS to TS Drills** (Cards #58–#59):\n  - Card #58: `clamp(value: number, min: number, max: number): number`.\n  - Card #59: `CartItem` interface and `calculateTotal(items: CartItem[]): number`.\n- **19 - Generics & Type-Guard Drills** (Cards #60–#61):\n  - Card #60: `firstElement<T>(arr: T[]): T | undefined`.\n  - Card #61: `pluck<T, K extends keyof T>(items: T[], key: K): T[K][]`.\n\n## 4. LLM Audit Checklist for Part 4\n- Verify that every Code Lab card contains test cases with assertions for valid data, empty collections, and boundary conditions."
+  },
+  {
+   "id": "4a9d41d6786f48f5a53d8c17d233bcfe",
+   "name": "17 - JavaScript Practice Drills",
+   "parent_id": "2112a22170564252918482d2bac71070",
+   "position": 0,
+   "documentation": "# 17 - JavaScript Practice Drills — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 0 in Part 4 (Global Card Range: #56 to #57)\n- **Priority**: 60 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `javascript.drills.practical_functions`\n- **Primary References**: \n  - MDN Web Docs: *Array.prototype.reduce() & Destructuring assignment*\n\n## 2. Interactive Code Lab Drills\n### Drill 1 (Card #56): `formatUser`\n- **Task**: Write `formatUser(user)` accepting `{ firstName, lastName, age }` and returning `\"FirstName LastName (Age)\"`. If `age` is missing or undefined, default to `\"Unknown\"`.\n- **Test Suite**:\n  - `formatUser({ firstName: \"Ada\", lastName: \"Lovelace\", age: 36 })` === `\"Ada Lovelace (36)\"`\n  - `formatUser({ firstName: \"Alan\", lastName: \"Turing\" })` === `\"Alan Turing (Unknown)\"`\n\n### Drill 2 (Card #57): `groupByCategory`\n- **Task**: Write `groupByCategory(items)` using `.reduce()` to group an array of objects `{ id, category }` into an object mapping each category to an array of items.\n- **Test Suite**:\n  - Groups items into categories; handles empty array returning `{}`; handles single-item array.\n\n## 3. LLM Auditor Rubric\n- Check that destructuring defaults and empty `.reduce()` accumulator are properly tested."
+  },
+  {
+   "id": "7df3ab73dc1245b49461125d4643627e",
+   "name": "18 - Refactoring JS to TS Drills",
+   "parent_id": "2112a22170564252918482d2bac71070",
+   "position": 1,
+   "documentation": "# 18 - Refactoring JS to TS Drills — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 1 in Part 4 (Global Card Range: #58 to #59)\n- **Priority**: 60 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `typescript.drills.refactoring_js_to_ts`\n- **Primary References**: \n  - TypeScript Handbook: *Everyday Types & TypeScript in 5 Minutes*\n\n## 2. Interactive Code Lab Drills\n### Drill 1 (Card #58): `clamp`\n- **Task**: Implement `clamp(value: number, min: number, max: number): number`. Restricts `value` between `min` and `max`.\n- **Test Suite**:\n  - `clamp(5, 0, 10)` === `5`\n  - `clamp(-5, 0, 10)` === `0`\n  - `clamp(15, 0, 10)` === `10`\n\n### Drill 2 (Card #59): `CartItem` and `calculateTotal`\n- **Task**: Define interface `CartItem` (`id: string; price: number; quantity: number`) and implement `calculateTotal(items: CartItem[]): number`.\n- **Test Suite**:\n  - Correctly sums `price * quantity`; handles empty array returning `0`.\n\n## 3. LLM Auditor Rubric\n- Verify that types are strictly enforced and edge case of empty cart returns 0."
+  },
+  {
+   "id": "5b1b316a6691489e96fa07f2c61c5698",
+   "name": "19 - Generics & Type-Guard Drills",
+   "parent_id": "2112a22170564252918482d2bac71070",
+   "position": 2,
+   "documentation": "# 19 - Generics & Type-Guard Drills — Subdeck Documentation\n\n## 1. Domain Specification\n- **Subdeck Position**: 2 in Part 4 (Global Card Range: #60 to #61)\n- **Priority**: 60 | **Desired Retention**: 0.90\n- **KnowledgeNode Path**: `typescript.drills.generics_and_type_guards`\n- **Primary References**: \n  - TypeScript Handbook: *Generics & Narrowing*\n\n## 2. Interactive Code Lab Drills\n### Drill 1 (Card #60): `firstElement<T>`\n- **Task**: Implement `firstElement<T>(arr: T[]): T | undefined`.\n- **Test Suite**:\n  - `firstElement([1, 2, 3])` === `1` (inferred return: `number | undefined`)\n  - `firstElement([\"a\", \"b\"])` === `\"a\"` (inferred return: `string | undefined`)\n  - `firstElement([])` === `undefined`\n\n### Drill 2 (Card #61): `pluck<T, K extends keyof T>`\n- **Task**: Implement `pluck<T, K extends keyof T>(items: T[], key: K): T[K][]`. Maps array of objects extracting specified key safely.\n- **Test Suite**:\n  - `pluck([{ name: \"Alice\", age: 30 }, { name: \"Bob\", age: 25 }], \"name\")` === `[\"Alice\", \"Bob\"]`\n  - `pluck([{ x: 1 }, { x: 2 }], \"x\")` === `[1, 2]`\n\n## 3. LLM Auditor Rubric\n- Confirm that type parameters retain strict inference without falling back to `any[]`."
+  }
+ ],
+ "cards": [
+  {
+   "id": "1eaa601fdc994f95a741eccbf45cc6ed",
+   "deck_id": "18fc3270f7094e9a9c1843c747d8a135",
+   "position": 22,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "async",
+    "event-loop",
+    "concurrency"
+   ],
+   "field_values": {
+    "Front": "How does the JavaScript Event Loop manage asynchronous tasks on a single thread?",
+    "Back": "The Event Loop continuously checks if the Call Stack is empty; when empty, it processes pending **Microtasks** (Promises, queueMicrotask) before processing **Macrotasks** (setTimeout, I/O).\n\n```text\nJavaScript Runtime Architecture\n├── Call Stack (synchronous function frames)\n├── Web APIs / Node C++ APIs (background I/O, timers, fetch)\n├── Microtask Queue (Promise .then/catch, async resume) [HIGHER PRIORITY]\n└── Macrotask Queue (setTimeout, setInterval, DOM events) [LOWER PRIORITY]\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "ea4e02afdabb4bc8b0923dc7949371c8",
+   "deck_id": "18fc3270f7094e9a9c1843c747d8a135",
+   "position": 23,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "async",
+    "promises",
+    "states"
+   ],
+   "field_values": {
+    "Front": "What are the 3 states of a JavaScript Promise, and can a settled Promise change state?",
+    "Back": "A Promise exists in either `pending`, `fulfilled`, or `rejected`, and once it settles (`fulfilled` or `rejected`), its state and resolved value are **permanently immutable**."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "caa8ff1f36f34b06bf9b0e755defee56",
+   "deck_id": "18fc3270f7094e9a9c1843c747d8a135",
+   "position": 24,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "async",
+    "async-await",
+    "es2017"
+   ],
+   "field_values": {
+    "Front": "How do `async` and `await` work under the hood with Promises?",
+    "Back": "`async` guarantees that a function always returns a `Promise`, and `await` pauses execution inside that async function until the Promise resolves, resuming with the unpacked value.\n\n```javascript\nasync function loadUser(id) {\n  try {\n    const response = await fetch(`/api/users/${id}`);\n    const user = await response.json();\n    return user;\n  } catch (err) {\n    console.error(\"Failed to load user:\", err);\n  }\n}\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "0297d79d31ba4e268b4782d100ce943d",
+   "deck_id": "18fc3270f7094e9a9c1843c747d8a135",
+   "position": 25,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "async",
+    "promise-all",
+    "concurrency"
+   ],
+   "field_values": {
+    "Front": "How does `Promise.all()` behave when executing concurrent asynchronous operations, and what is its failure mode?",
+    "Back": "`Promise.all([p1, p2, ...])` runs all promises concurrently and resolves with an array of all results, but **rejects immediately (fail-fast)** as soon as any single promise rejects.\n\nTo wait for all promises regardless of whether they succeed or fail, use `Promise.allSettled()` instead."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "152fe5004e18469cbf1636a45aedd903",
+   "deck_id": "2141d8dd623f497fafe9459f7c20d390",
+   "position": 0,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "primitives",
+    "types",
+    "fundamentals"
+   ],
+   "field_values": {
+    "Front": "What are the 7 primitive data types in JavaScript, and how do they fundamentally differ from objects?",
+    "Back": "JavaScript has exactly 7 primitive types (`string`, `number`, `boolean`, `null`, `undefined`, `symbol`, `bigint`), and all other values are reference `objects`.\n\nPrimitives are **immutable** and passed by **value**, whereas objects are **mutable** and passed by **reference**.\n\n```text\nJavaScript Value Taxonomy\n├── Primitives (Immutable, Value Comparison)\n│   ├── string\n│   ├── number\n│   ├── boolean\n│   ├── null\n│   ├── undefined\n│   ├── symbol\n│   └── bigint\n└── Objects (Mutable, Reference Comparison)\n    ├── Plain Objects ({})\n    ├── Arrays ([])\n    ├── Functions (function/()=>)\n    └── Built-ins (Date, RegExp, Map, Set)\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "d61abe20f907438dba5ed5083169c04b",
+   "deck_id": "2141d8dd623f497fafe9459f7c20d390",
+   "position": 1,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "variables",
+    "scoping",
+    "es6"
+   ],
+   "field_values": {
+    "Front": "Compare `let`, `const`, and `var` in JavaScript regarding scoping, reassignment, and hoisting.",
+    "Back": "`const` declares block-scoped, non-reassignable bindings; `let` declares block-scoped, reassignable variables; and `var` declares function-scoped, hoisted variables that ignore block boundaries.\n\n- **`const`**: Block-scoped. Cannot be reassigned (though mutated object properties can change). Temporal Dead Zone (TDZ) applies.\n- **`let`**: Block-scoped. Can be reassigned. Temporal Dead Zone (TDZ) applies.\n- **`var`**: Function/global-scoped. Can be reassigned and redeclared. Hoisted with `undefined` initialization."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "0e5a0d31e5624342bf08511da22459e1",
+   "deck_id": "2141d8dd623f497fafe9459f7c20d390",
+   "position": 2,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "primitives",
+    "null",
+    "undefined"
+   ],
+   "field_values": {
+    "Front": "What is the exact semantic difference between `null` and `undefined` in JavaScript?",
+    "Back": "`undefined` signifies that a variable has been declared but not yet assigned any value (system default), whereas `null` represents the intentional assignment of an empty or nonexistent value (deliberate absence).\n\n```javascript\nlet user;           // undefined (unassigned)\nlet selected = null; // null (explicitly cleared/empty)\n\ntypeof undefined;   // \"undefined\"\ntypeof null;        // \"object\" (legacy JS quirk)\nnull == undefined;  // true (loose equality)\nnull === undefined; // false (strict equality)\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "08522b62348c4f98a3d4a3e4385cba59",
+   "deck_id": "2141d8dd623f497fafe9459f7c20d390",
+   "position": 3,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "operators",
+    "typeof",
+    "quirks"
+   ],
+   "field_values": {
+    "Front": "What does `typeof null` return, and why does this historical quirk exist?",
+    "Back": "`typeof null` returns `\"object\"` due to a 1995 legacy implementation bug where object type tags and NULL pointers both used zero (`0x00`).\n\nTo reliably check if a variable `val` is strictly `null`, use `val === null` rather than `typeof`."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "9f892d5fd8f64dd28dbda9d97c0e7890",
+   "deck_id": "2141d8dd623f497fafe9459f7c20d390",
+   "position": 4,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "strings",
+    "template-literals",
+    "es6"
+   ],
+   "field_values": {
+    "Front": "How do Template Literals work in JavaScript, and what capabilities do they offer over classic quoted strings?",
+    "Back": "Template literals are enclosed by backticks (`` `...` ``) and support **multiline strings** and **expression interpolation** via `${expression}`.\n\n```javascript\nconst user = \"Alice\";\nconst score = 42;\n\n// Expression interpolation & multiline\nconst summary = `User ${user.toUpperCase()}\nhas a score of ${score * 2}.`;\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "d2d9a625fa9f42cc841cf940e172e03c",
+   "deck_id": "3030348c22114348a061b314c541ba9c",
+   "position": 47,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "generics",
+    "reusability",
+    "handbook"
+   ],
+   "field_values": {
+    "Front": "Why are Generics used in TypeScript instead of `any`?",
+    "Back": "Generics capture and enforce the **exact relationships between argument and return types**, preserving full type safety across calls without stripping type information like `any` does.\n\n```typescript\n// Using any loses return type:\nfunction identityAny(arg: any): any { return arg; }\n\n// Using generic <T> preserves exact type:\nfunction identity<T>(arg: T): T { return arg; }\nconst output = identity(\"hello\"); // inferred as 'string'!\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "94db51cd1a4142cfb09c16434613b143",
+   "deck_id": "3030348c22114348a061b314c541ba9c",
+   "position": 48,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "generics",
+    "constraints",
+    "extends"
+   ],
+   "field_values": {
+    "Front": "How do you constrain a Generic type parameter using `extends`?",
+    "Back": "Use `<T extends Constraint>` to require that any passed type argument possesses specific properties:\n\n```typescript\ninterface HasLength {\n  length: number;\n}\n\nfunction logLength<T extends HasLength>(item: T): number {\n  return item.length; // Safe because T is guaranteed to have .length\n}\nlogLength(\"hello\");     // Valid (string has length)\nlogLength([1, 2, 3]);   // Valid (array has length)\nlogLength(123);         // Error: number doesn't have length\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "24caeed3134c419ab473def3c541097f",
+   "deck_id": "3030348c22114348a061b314c541ba9c",
+   "position": 49,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "generics",
+    "keyof",
+    "lookup-types"
+   ],
+   "field_values": {
+    "Front": "How do you safely extract a property from an object using Generics and the `keyof` operator?",
+    "Back": "Constrain the key parameter with `K extends keyof T`, and declare the return type as `T[K]`:\n\n```typescript\nfunction getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {\n  return obj[key];\n}\n\nconst user = { id: 1, name: \"Alice\" };\nconst name = getProperty(user, \"name\"); // type 'string'\n// getProperty(user, \"age\"); // Compile Error! Argument 'age' not assignable to 'id' | 'name'\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "1296cc38aee84f5bbb6df4e3b876f797",
+   "deck_id": "451d804e0b4d4df2927f8a578c6efd0e",
+   "position": 37,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "unions",
+    "types",
+    "fundamentals"
+   ],
+   "field_values": {
+    "Front": "What is a Union Type (`A | B`), and what properties can you access on an un-narrowed union?",
+    "Back": "A union type (`A | B`) represents a value that can be any of the member types, and before narrowing you can **only access properties that are common to all union members**.\n\n```typescript\nfunction printId(id: number | string) {\n  // Error: Property 'toUpperCase' does not exist on type 'number | string':\n  // id.toUpperCase(); \n  \n  if (typeof id === \"string\") {\n    console.log(id.toUpperCase()); // Safe after narrowing!\n  }\n}\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "b2aecbc56eb740ff925dd1709dc6da4b",
+   "deck_id": "451d804e0b4d4df2927f8a578c6efd0e",
+   "position": 38,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "narrowing",
+    "control-flow",
+    "type-guards"
+   ],
+   "field_values": {
+    "Front": "What is Control Flow Narrowing, and what are the 4 most common built-in type guards?",
+    "Back": "Narrowing is TypeScript's process of refining a broad type into a more specific type within a code block based on conditional runtime checks:\n\n```text\nBuilt-in Type Narrowing Mechanisms\n├── 1. typeof guard: typeof x === \"string\" (primitives)\n├── 2. instanceof guard: x instanceof Date (class/constructor)\n├── 3. in operator guard: \"role\" in user (property presence)\n└── 4. Equality & Truthiness: x === null, if (val)\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "f05ec46511164ce288c7d16af84e8021",
+   "deck_id": "451d804e0b4d4df2927f8a578c6efd0e",
+   "position": 39,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "narrowing",
+    "custom-type-guards",
+    "predicates"
+   ],
+   "field_values": {
+    "Front": "How do you write a Custom Type Guard using a Type Predicate (`val is Type`)?",
+    "Back": "Define a function that returns a boolean, and declare its return type as `parameterName is Type`:\n\n```typescript\ninterface Fish { swim(): void; }\ninterface Bird { fly(): void; }\n\n// Type Predicate: animal is Fish\nfunction isFish(animal: Fish | Bird): animal is Fish {\n  return (animal as Fish).swim !== undefined;\n}\n\nif (isFish(pet)) {\n  pet.swim(); // TypeScript knows pet is Fish here!\n}\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "e7b439e82e2a476ba6f3d800d3022d45",
+   "deck_id": "4a9d41d6786f48f5a53d8c17d233bcfe",
+   "position": 56,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "code",
+    "drill",
+    "destructuring",
+    "strings"
+   ],
+   "field_values": {
+    "Front": "Implement `formatUser(user)` in JavaScript. Given an object `{ firstName, lastName, role }`, return `\"LastName, FirstName (ROLE)\"` where role is uppercase. If `role` is missing, default to `\"GUEST\"`.",
+    "Back": "function formatUser(user) {\n  const { firstName, lastName, role = \"GUEST\" } = user;\n  return `${lastName}, ${firstName} (${role.toUpperCase()})`;\n}",
+    "title": "Drill 1: formatUser(user)",
+    "language": "javascript",
+    "starter_code": "function formatUser(user) {\n  // TODO: extract firstName, lastName, role (default 'GUEST')\n  // Return: 'LastName, FirstName (ROLE)'\n  return \"\";\n}",
+    "test_cases": [
+     {
+      "input": {
+       "user": {
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "role": "admin"
+       }
+      },
+      "expected": "Lovelace, Ada (ADMIN)"
+     },
+     {
+      "input": {
+       "user": {
+        "firstName": "Alan",
+        "lastName": "Turing"
+       }
+      },
+      "expected": "Turing, Alan (GUEST)"
+     }
+    ],
+    "time_complexity": "O(1)",
+    "space_complexity": "O(1)",
+    "edge_cases": [
+     "Role missing (defaults to GUEST)",
+     "Mixed case role"
+    ]
+   },
+   "note_type": "Math / Code",
+   "template_kind": "basic",
+   "grading_profile": "math_code"
+  },
+  {
+   "id": "a7772eb2177044689cb6b5f7e3400a9d",
+   "deck_id": "4a9d41d6786f48f5a53d8c17d233bcfe",
+   "position": 57,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "code",
+    "drill",
+    "arrays",
+    "reduce"
+   ],
+   "field_values": {
+    "Front": "Implement `groupByCategory(items)` in JavaScript using `.reduce()`. Given an array of `{ name, category }`, return an object mapping each category to an array of item names.",
+    "Back": "function groupByCategory(items) {\n  return items.reduce((acc, item) => {\n    const cat = item.category;\n    if (!acc[cat]) {\n      acc[cat] = [];\n    }\n    acc[cat].push(item.name);\n    return acc;\n  }, {});\n}",
+    "title": "Drill 2: groupByCategory(items)",
+    "language": "javascript",
+    "starter_code": "function groupByCategory(items) {\n  // TODO: Use reduce to return { [category]: [name1, name2] }\n  return {};\n}",
+    "test_cases": [
+     {
+      "input": {
+       "items": [
+        {
+         "name": "Apple",
+         "category": "Fruit"
+        },
+        {
+         "name": "Carrot",
+         "category": "Vegetable"
+        },
+        {
+         "name": "Banana",
+         "category": "Fruit"
+        }
+       ]
+      },
+      "expected": {
+       "Fruit": [
+        "Apple",
+        "Banana"
+       ],
+       "Vegetable": [
+        "Carrot"
+       ]
+      }
+     },
+     {
+      "input": {
+       "items": []
+      },
+      "expected": {}
+     }
+    ],
+    "time_complexity": "O(n)",
+    "space_complexity": "O(n)",
+    "edge_cases": [
+     "Empty array",
+     "Single item",
+     "All items in same category"
+    ]
+   },
+   "note_type": "Math / Code",
+   "template_kind": "basic",
+   "grading_profile": "math_code"
+  },
+  {
+   "id": "e6eed1278d98459eace6760518f3cc5b",
+   "deck_id": "5b1b316a6691489e96fa07f2c61c5698",
+   "position": 60,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "code",
+    "drill",
+    "generics"
+   ],
+   "field_values": {
+    "Front": "Implement the generic function `firstElement<T>(arr: T[]): T | undefined`. Return the first element of the array, or `undefined` if the array is empty.",
+    "Back": "function firstElement<T>(arr: T[]): T | undefined {\n  return arr.length > 0 ? arr[0] : undefined;\n}",
+    "title": "Drill 5: firstElement<T>(arr)",
+    "language": "typescript",
+    "starter_code": "function firstElement<T>(arr: T[]): T | undefined {\n  // TODO: return first element or undefined\n  return undefined;\n}",
+    "test_cases": [
+     {
+      "input": {
+       "arr": [
+        "alpha",
+        "beta",
+        "gamma"
+       ]
+      },
+      "expected": "alpha"
+     },
+     {
+      "input": {
+       "arr": [
+        42,
+        99
+       ]
+      },
+      "expected": 42
+     },
+     {
+      "input": {
+       "arr": []
+      },
+      "expected": {
+       "$undefined": true
+      }
+     }
+    ],
+    "time_complexity": "O(1)",
+    "space_complexity": "O(1)",
+    "edge_cases": [
+     "Empty array",
+     "Single item array"
+    ]
+   },
+   "note_type": "Math / Code",
+   "template_kind": "basic",
+   "grading_profile": "math_code"
+  },
+  {
+   "id": "eccf3b952ead424c99c5700bed452751",
+   "deck_id": "5b1b316a6691489e96fa07f2c61c5698",
+   "position": 61,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "code",
+    "drill",
+    "generics",
+    "keyof"
+   ],
+   "field_values": {
+    "Front": "Implement `pluck<T, K extends keyof T>(items: T[], key: K): T[K][]`. Return an array containing the property values corresponding to `key` for each item in `items`.",
+    "Back": "function pluck<T, K extends keyof T>(items: T[], key: K): T[K][] {\n  return items.map((item) => item[key]);\n}",
+    "title": "Drill 6: pluck<T, K extends keyof T>(items, key)",
+    "language": "typescript",
+    "starter_code": "function pluck<T, K extends keyof T>(items: T[], key: K): T[K][] {\n  // TODO: return array of item[key]\n  return [];\n}",
+    "test_cases": [
+     {
+      "input": {
+       "items": [
+        {
+         "id": 1,
+         "name": "Ada"
+        },
+        {
+         "id": 2,
+         "name": "Grace"
+        }
+       ],
+       "key": "name"
+      },
+      "expected": [
+       "Ada",
+       "Grace"
+      ]
+     },
+     {
+      "input": {
+       "items": [
+        {
+         "id": 1,
+         "name": "Ada"
+        },
+        {
+         "id": 2,
+         "name": "Grace"
+        }
+       ],
+       "key": "id"
+      },
+      "expected": [
+       1,
+       2
+      ]
+     }
+    ],
+    "time_complexity": "O(n)",
+    "space_complexity": "O(n)",
+    "edge_cases": [
+     "Empty array",
+     "Multiple properties"
+    ]
+   },
+   "note_type": "Math / Code",
+   "template_kind": "basic",
+   "grading_profile": "math_code"
+  },
+  {
+   "id": "dfcd545542984048a550421836d12170",
+   "deck_id": "5c218b3856b3414387772b908dcc41e5",
+   "position": 45,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "discriminated-unions",
+    "state-machine",
+    "architecture"
+   ],
+   "field_values": {
+    "Front": "What is a Discriminated Union (Tagged Union), and why is it considered the best pattern for modeling state?",
+    "Back": "A Discriminated Union is a union of object types where each member shares a common single literal property (the **discriminant tag**) that TypeScript uses to safely narrow each variant.\n\nIt makes **invalid states unrepresentable** in code:\n\n```typescript\ntype RequestState =\n  | { status: \"idle\" }\n  | { status: \"loading\" }\n  | { status: \"success\"; data: string[] }\n  | { status: \"error\"; error: Error };\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "e36756ee442f4bb2995efcb6ee105d40",
+   "deck_id": "5c218b3856b3414387772b908dcc41e5",
+   "position": 46,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "exhaustiveness",
+    "never",
+    "compiler-safety"
+   ],
+   "field_values": {
+    "Front": "How do you implement compile-time Exhaustiveness Checking using the `never` type?",
+    "Back": "Assign the remaining variable in the `default` branch of a switch statement to a variable of type `never`:\n\n```typescript\nfunction handleState(state: RequestState) {\n  switch (state.status) {\n    case \"idle\": return;\n    case \"loading\": return \"...\";\n    case \"success\": return state.data.join(\", \");\n    case \"error\": return state.error.message;\n    default:\n      // If a new status is added to RequestState, this line fails to compile!\n      const _unhandled: never = state;\n      throw new Error(`Unhandled state: ${_unhandled}`);\n  }\n}\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "695cd334b5404a10b0a13ac614ea517f",
+   "deck_id": "65e5b5e5503c4163829e8a2c3ec9070d",
+   "position": 53,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "tsconfig",
+    "strict",
+    "configuration"
+   ],
+   "field_values": {
+    "Front": "What does setting `\"strict\": true` in `tsconfig.json` do, and why is it essential?",
+    "Back": "`\"strict\": true` activates TypeScript's entire suite of strict type-checking flags (including `strictNullChecks`, `noImplicitAny`, and `strictFunctionTypes`), preventing implicit `any` escapes and null dereferencing bugs.\n\nIt is the recommended industry standard for all modern TypeScript projects."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "af45c1899a664e7e9052ce570b001451",
+   "deck_id": "65e5b5e5503c4163829e8a2c3ec9070d",
+   "position": 54,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "tsconfig",
+    "null-checks",
+    "safety"
+   ],
+   "field_values": {
+    "Front": "How does `strictNullChecks` protect code from unexpected null pointer errors?",
+    "Back": "With `strictNullChecks` enabled, `null` and `undefined` are **distinct types** and cannot be assigned to variables of other types without an explicit union (`string | null`).\n\nYou must explicitly check for `null` or `undefined` before accessing properties on nullable values."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "d4021e3fbeda41b084a0cc05cbccec62",
+   "deck_id": "65e5b5e5503c4163829e8a2c3ec9070d",
+   "position": 55,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "declarations",
+    "dts",
+    "types-package"
+   ],
+   "field_values": {
+    "Front": "What is a `.d.ts` Declaration File in TypeScript?",
+    "Back": "A `.d.ts` file contains **pure type signatures without executable code**, describing the types and shapes of an existing JavaScript library to the TypeScript compiler (e.g. `@types/node`, `@types/react`)."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "59ec5042652e48869470ccd24ed5dc16",
+   "deck_id": "66f690a19bc54e34bf3a7add05bf0ee0",
+   "position": 26,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "mental-model",
+    "type-checker",
+    "handbook"
+   ],
+   "field_values": {
+    "Front": "What is TypeScript's fundamental role in relation to JavaScript?",
+    "Back": "TypeScript is a **static type checker** for JavaScript that runs before code execution to find bugs and enforce structural contracts without altering JavaScript's runtime semantics.\n\nEvery valid JavaScript file is valid TypeScript syntax, but TypeScript adds compile-time type verification."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "73a13c54376e46c9b282fbf2852bc974",
+   "deck_id": "66f690a19bc54e34bf3a7add05bf0ee0",
+   "position": 27,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "type-erasure",
+    "compilation",
+    "handbook"
+   ],
+   "field_values": {
+    "Front": "What is 'Type Erasure' in TypeScript, and what is its impact on runtime performance?",
+    "Back": "**Type Erasure** means that all types, interfaces, and annotations are completely deleted by the compiler (`tsc`) during build time, resulting in **zero runtime performance overhead**.\n\n```text\nTypeScript Compilation Pipeline\n[source.ts (Typed)] ──(tsc type checking)──> [No Errors]\n         │\n         └──(type erasure)──> [source.js (Plain JavaScript)]\n                                      │\n                               (Node.js / Browser Runtime)\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "5610802a01d146d094136a8947378a42",
+   "deck_id": "66f690a19bc54e34bf3a7add05bf0ee0",
+   "position": 28,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "runtime",
+    "validation",
+    "mental-model"
+   ],
+   "field_values": {
+    "Front": "Can TypeScript types validate API responses or user input at runtime? Why or why not?",
+    "Back": "No, TypeScript cannot validate runtime data on its own because all type information is erased at compile time.\n\nTo validate external runtime data (such as API payloads), you must use runtime validation libraries (e.g. Zod, ArkType) or write manual type guard functions."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "1fd77c9f5f1f427683774c7d07773bdc",
+   "deck_id": "66f690a19bc54e34bf3a7add05bf0ee0",
+   "position": 29,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "tooling",
+    "playground"
+   ],
+   "field_values": {
+    "Front": "What makes the official TypeScript Playground such an effective tool for learning TypeScript?",
+    "Back": "The Playground shows **TypeScript code on the left** and the **emitted JavaScript on the right** in real time, making type erasure and compiler transformations instantly visible."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "134c87bf65fb44098567004857b60242",
+   "deck_id": "7143c79714024e7baecb925e55b4ef3e",
+   "position": 13,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "objects",
+    "destructuring",
+    "es6"
+   ],
+   "field_values": {
+    "Front": "How does Object Destructuring work with property renaming and default values?",
+    "Back": "Object destructuring extracts properties into variables using `{ prop }`, renames with `{ prop: newName }`, and supplies fallbacks with `{ prop = defaultValue }`.\n\n```javascript\nconst user = { id: 101, username: \"jdoe\" };\n\n// Renaming & default values\nconst { username: handle, role = \"viewer\" } = user;\n// handle -> \"jdoe\"\n// role   -> \"viewer\" (fallback used)\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "8e2e6ba9ca0845fabf48765ed4caf7bf",
+   "deck_id": "7143c79714024e7baecb925e55b4ef3e",
+   "position": 14,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "objects",
+    "spread-operator",
+    "immutability"
+   ],
+   "field_values": {
+    "Front": "What does the Object Spread Operator (`...`) do, and is it deep or shallow?",
+    "Back": "The object spread operator (`{ ...obj }`) performs a **shallow copy** of an object's enumerable own properties into a new object literal.\n\nNested objects or arrays are copied by **reference**, not duplicated. Later properties in the literal overwrite earlier ones with the same key."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "f91b2a51233c404d8b96256b7e9866d3",
+   "deck_id": "7143c79714024e7baecb925e55b4ef3e",
+   "position": 15,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "objects",
+    "prototypes",
+    "inheritance"
+   ],
+   "field_values": {
+    "Front": "How does the Prototype Chain work when accessing a property on a JavaScript object?",
+    "Back": "When reading `obj.prop`, JavaScript checks `obj` directly; if not found, it traverses up the `[[Prototype]]` link step-by-step until the property is found or `null` is reached (returning `undefined`).\n\n```text\nPrototype Delegation Chain\nmyArray (instance: [1, 2, 3])\n  └── [[Prototype]]: Array.prototype (contains map, filter, push)\n        └── [[Prototype]]: Object.prototype (contains toString, hasOwnProperty)\n              └── [[Prototype]]: null (end of chain)\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "f63fe0f8c8e84423ab289567f4829be2",
+   "deck_id": "7143c79714024e7baecb925e55b4ef3e",
+   "position": 16,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "objects",
+    "optional-chaining",
+    "es2020"
+   ],
+   "field_values": {
+    "Front": "How does Optional Chaining (`?.`) prevent runtime exceptions in JavaScript?",
+    "Back": "`?.` short-circuits and safely returns `undefined` if the operand before `?.` is `null` or `undefined`, preventing `TypeError: Cannot read properties of undefined` crashes.\n\n```javascript\nconst street = user?.address?.street;\n// Evaluates to undefined if user or address is null/undefined\n// instead of throwing a TypeError\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "727f9e564c64413e9dab75fff92c3f0e",
+   "deck_id": "72f00c2c1f8d446e86c7bc6020601bd5",
+   "position": 17,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "arrays",
+    "immutability",
+    "methods"
+   ],
+   "field_values": {
+    "Front": "Which common JavaScript array methods mutate the original array, and which return a new array?",
+    "Back": "Mutating methods modify the array in place, while non-mutating methods leave the source array untouched and return a new array.\n\n```text\nArray Method Mutability\n├── Mutating (In-Place Side Effect)\n│   ├── .push(), .pop()\n│   ├── .shift(), .unshift()\n│   ├── .splice()\n│   ├── .sort()\n│   └── .reverse()\n└── Non-Mutating (Pure, Returns New Array)\n    ├── .slice()\n    ├── .concat()\n    ├── .map()\n    ├── .filter()\n    └── .toSorted(), .toReversed() (ES2023)\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "b477852199784affbbf40d07814f04ec",
+   "deck_id": "72f00c2c1f8d446e86c7bc6020601bd5",
+   "position": 18,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "arrays",
+    "functional",
+    "map"
+   ],
+   "field_values": {
+    "Front": "What does `.map()` do, and what invariant does it guarantee regarding array length?",
+    "Back": "`.map(callback)` transforms every element through the callback function and returns a **new array of exactly the same length** as the original array.\n\n```javascript\nconst numbers = [1, 2, 3];\nconst doubled = numbers.map(n => n * 2); // [2, 4, 6]\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "21a0b690eb5e4cfa81bc02d0ec0fb2a0",
+   "deck_id": "72f00c2c1f8d446e86c7bc6020601bd5",
+   "position": 19,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "arrays",
+    "functional",
+    "filter"
+   ],
+   "field_values": {
+    "Front": "How does `.filter()` work, and what determines whether an element is included in the result?",
+    "Back": "`.filter(predicate)` returns a new array containing only those elements for which the callback predicate returns a **truthy** value.\n\n```javascript\nconst scores = [45, 80, 92, 59];\nconst passing = scores.filter(s => s >= 60); // [80, 92]\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "f43b83f446e048abb9c2c2447672af97",
+   "deck_id": "72f00c2c1f8d446e86c7bc6020601bd5",
+   "position": 20,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "arrays",
+    "functional",
+    "reduce"
+   ],
+   "field_values": {
+    "Front": "How does `.reduce()` accumulate values, and why should you always supply an initial value?",
+    "Back": "`.reduce((acc, curr) => ..., initialValue)` iterates through the array, passing the accumulated result into the next step and returning a single final aggregated value.\n\nAlways supplying `initialValue` ensures correct behavior on empty arrays (which otherwise throw a `TypeError`) and establishes a predictable accumulator type."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "2131bf6a53a9477086ee1fb26c83a151",
+   "deck_id": "72f00c2c1f8d446e86c7bc6020601bd5",
+   "position": 21,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "loops",
+    "iteration",
+    "for-of"
+   ],
+   "field_values": {
+    "Front": "What is the crucial difference between `for...of` and `for...in` loops in JavaScript?",
+    "Back": "`for...of` iterates over iterable **values** (like items in an Array or characters in a string), whereas `for...in` iterates over object **enumerable keys** (property names).\n\n```javascript\nconst arr = [\"a\", \"b\", \"c\"];\nfor (const val of arr) console.log(val); // \"a\", \"b\", \"c\" (values)\nfor (const key in arr) console.log(key); // \"0\", \"1\", \"2\" (indices/keys)\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "f76dcaa0215144fcbb8559ad7d9ca1d8",
+   "deck_id": "7df3ab73dc1245b49461125d4643627e",
+   "position": 58,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "code",
+    "drill",
+    "functions",
+    "numbers"
+   ],
+   "field_values": {
+    "Front": "Implement `clamp(value: number, min: number, max: number): number` in TypeScript. Return `min` if `value < min`, `max` if `value > max`, otherwise return `value`.",
+    "Back": "function clamp(value: number, min: number, max: number): number {\n  if (value < min) return min;\n  if (value > max) return max;\n  return value;\n}",
+    "title": "Drill 3: clamp(value, min, max)",
+    "language": "typescript",
+    "starter_code": "function clamp(value: number, min: number, max: number): number {\n  // TODO: return value clamped between min and max\n  return 0;\n}",
+    "test_cases": [
+     {
+      "input": {
+       "value": 5,
+       "min": 0,
+       "max": 10
+      },
+      "expected": 5
+     },
+     {
+      "input": {
+       "value": -5,
+       "min": 0,
+       "max": 10
+      },
+      "expected": 0
+     },
+     {
+      "input": {
+       "value": 15,
+       "min": 0,
+       "max": 10
+      },
+      "expected": 10
+     }
+    ],
+    "time_complexity": "O(1)",
+    "space_complexity": "O(1)",
+    "edge_cases": [
+     "Value below min",
+     "Value above max",
+     "Value equals boundary"
+    ]
+   },
+   "note_type": "Math / Code",
+   "template_kind": "basic",
+   "grading_profile": "math_code"
+  },
+  {
+   "id": "35c9fa5890e4400fbd36918b40ac258b",
+   "deck_id": "7df3ab73dc1245b49461125d4643627e",
+   "position": 59,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "code",
+    "drill",
+    "interfaces",
+    "arrays"
+   ],
+   "field_values": {
+    "Front": "Define an interface `CartItem` with `id: string`, `price: number`, and `quantity: number`. Implement `calculateTotal(items: CartItem[]): number` returning the sum of `price * quantity`.",
+    "Back": "interface CartItem {\n  id: string;\n  price: number;\n  quantity: number;\n}\n\nfunction calculateTotal(items: CartItem[]): number {\n  return items.reduce((sum, item) => sum + item.price * item.quantity, 0);\n}",
+    "title": "Drill 4: calculateTotal(items)",
+    "language": "typescript",
+    "starter_code": "interface CartItem {\n  id: string;\n  price: number;\n  quantity: number;\n}\n\nfunction calculateTotal(items: CartItem[]): number {\n  // TODO: return sum of price * quantity\n  return 0;\n}",
+    "test_cases": [
+     {
+      "input": {
+       "items": [
+        {
+         "id": "a",
+         "price": 10,
+         "quantity": 2
+        },
+        {
+         "id": "b",
+         "price": 5,
+         "quantity": 3
+        }
+       ]
+      },
+      "expected": 35
+     },
+     {
+      "input": {
+       "items": []
+      },
+      "expected": 0
+     }
+    ],
+    "time_complexity": "O(n)",
+    "space_complexity": "O(1)",
+    "edge_cases": [
+     "Empty cart",
+     "Single item",
+     "Zero quantity item"
+    ]
+   },
+   "note_type": "Math / Code",
+   "template_kind": "basic",
+   "grading_profile": "math_code"
+  },
+  {
+   "id": "55381c45dca744e29484819cb179438b",
+   "deck_id": "9c0b036ec55f4c1fa902198d2219f1f5",
+   "position": 30,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "types",
+    "inference",
+    "annotations"
+   ],
+   "field_values": {
+    "Front": "When should you write explicit type annotations, and when should you rely on Type Inference?",
+    "Back": "Rely on **type inference** when variables are immediately initialized with clear values, and write **explicit annotations** when a variable is declared without initialization, for function parameters, or for complex returns.\n\n```typescript\n// Inferred automatically as 'string':\nlet username = \"alex\"; \n\n// Explicit annotation required (declaration without initial value):\nlet score: number;\nscore = 100;\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "48940ae0bb57406bb790f16314692e41",
+   "deck_id": "9c0b036ec55f4c1fa902198d2219f1f5",
+   "position": 31,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "types",
+    "any",
+    "unknown",
+    "safety"
+   ],
+   "field_values": {
+    "Front": "What is the crucial difference between the `any` type and the `unknown` type?",
+    "Back": "`any` disables all type-checking, allowing you to access arbitrary properties and methods; `unknown` is **type-safe** and forces you to narrow or verify the type before performing operations.\n\n```typescript\nlet a: any = \"hello\";\na.nonExistentMethod(); // Compiles! (Crashes at runtime)\n\nlet u: unknown = \"hello\";\nu.nonExistentMethod(); // Error: Object is of type 'unknown'.\nif (typeof u === \"string\") {\n  console.log(u.toUpperCase()); // Safe after narrowing!\n}\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "7d97c66bfb414f7bbca1cb7b849db6a7",
+   "deck_id": "9c0b036ec55f4c1fa902198d2219f1f5",
+   "position": 32,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "types",
+    "never",
+    "exhaustiveness"
+   ],
+   "field_values": {
+    "Front": "What is the `never` type in TypeScript, and what are its two primary use cases?",
+    "Back": "`never` represents values that can never exist. Its two primary uses are:\n\n1. Return type of functions that **never return** (e.g. infinite loops or functions that always throw an exception).\n2. **Exhaustive type checking** in switch/conditional statements to catch unhandled union members."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "a2c75bf764e043e99b7d7628b3283b38",
+   "deck_id": "9c0b036ec55f4c1fa902198d2219f1f5",
+   "position": 33,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "arrays",
+    "tuples",
+    "types"
+   ],
+   "field_values": {
+    "Front": "What is the difference between an Array type (`number[]`) and a Tuple (`[string, number]`) in TypeScript?",
+    "Back": "An Array (`number[]`) has **variable length** and uniform element types, whereas a Tuple (`[string, number]`) has a **fixed length** with specific types assigned to exact positional indices.\n\n```typescript\nconst list: number[] = [1, 2, 3, 4]; // arbitrary length\nconst point: [string, number] = [\"Latitude\", 49.28]; // exactly 2 items\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "bb9d74552f1b472f8149dac067c13f4c",
+   "deck_id": "a6f20bb792a644f8941204ab290cd628",
+   "position": 34,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "interfaces",
+    "objects",
+    "contracts"
+   ],
+   "field_values": {
+    "Front": "How do you define an object contract using a TypeScript `interface`?",
+    "Back": "Use the `interface` keyword followed by the name and property type declarations:\n\n```typescript\ninterface User {\n  id: number;\n  name: string;\n  email: string;\n  isAdmin?: boolean; // optional\n  readonly createdAt: Date; // cannot be reassigned\n}\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "ebef888b280f4b5a8d05de0df771a6d0",
+   "deck_id": "a6f20bb792a644f8941204ab290cd628",
+   "position": 35,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "structural-typing",
+    "duck-typing",
+    "handbook"
+   ],
+   "field_values": {
+    "Front": "What is 'Structural Typing' (Duck Typing) in TypeScript?",
+    "Back": "Structural typing means type compatibility is determined **solely by the shape and properties of a value**, not by explicit class declarations or nominal type names.\n\nIf object `A` has all the properties required by interface `B`, `A` is assignable to `B` regardless of how `A` was constructed."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "7f82fe970831417fa16f229a537b789f",
+   "deck_id": "a6f20bb792a644f8941204ab290cd628",
+   "position": 36,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "interfaces",
+    "excess-properties",
+    "object-literals"
+   ],
+   "field_values": {
+    "Front": "What are Excess Property Checks in TypeScript, and when are they triggered?",
+    "Back": "TypeScript triggers excess property checks when **fresh object literals** are passed directly to functions or assigned to typed variables, raising a compile error if any unrecognized property is present.\n\n```typescript\ninterface Point { x: number; y: number; }\nfunction draw(p: Point) {}\n\n// Error: 'color' does not exist in type 'Point':\ndraw({ x: 10, y: 20, color: \"red\" }); \n\n// Passed via variable: excess property check bypassed:\nconst p2 = { x: 10, y: 20, color: \"red\" };\ndraw(p2); // Allowed! (Structural compatibility)\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "0405fb414ec3443688cd4a1ed6609b09",
+   "deck_id": "ba42a3b72d924b8f8aed4b066584327d",
+   "position": 40,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "functions",
+    "void",
+    "return-types"
+   ],
+   "field_values": {
+    "Front": "What does a `void` return type signify in TypeScript, and how does it differ from `undefined`?",
+    "Back": "`void` signifies that the function returns no meaningful value and its return should be ignored; `undefined` requires an explicit `return undefined;` or `return;` statement.\n\nIn callback definitions, a `void` return type allows the callback to return any value while signaling that the caller will ignore it."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "7ecfe3e311b24f5bbd28e9ac52beb274",
+   "deck_id": "ba42a3b72d924b8f8aed4b066584327d",
+   "position": 41,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "functions",
+    "optional-parameters",
+    "signatures"
+   ],
+   "field_values": {
+    "Front": "What are the rules for Optional Parameters and Default Parameters in TypeScript functions?",
+    "Back": "Optional parameters (`param?: type`) become `type | undefined` and must **always appear after required parameters**; default parameters (`param: type = defaultVal`) automatically infer their type and are inherently optional."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "c69a2811a0c9476a868bbf63b5c4de77",
+   "deck_id": "ba42a3b72d924b8f8aed4b066584327d",
+   "position": 42,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "functions",
+    "overloads",
+    "signatures"
+   ],
+   "field_values": {
+    "Front": "How do Function Overloads work in TypeScript, and what is the relationship between overload signatures and the implementation signature?",
+    "Back": "You declare one or more **overload signatures** (callable headers without bodies) followed by a single **implementation signature** that is compatible with all overloads.\n\nCallers can only call the overload signatures; the implementation signature itself is hidden from outside callers."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "ac40627874d649f1a3c329dd9b9fa57f",
+   "deck_id": "c6f79f8921bf41baa634938b8bcec04f",
+   "position": 50,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "utility-types",
+    "partial",
+    "readonly"
+   ],
+   "field_values": {
+    "Front": "What do `Partial<T>` and `Readonly<T>` do in TypeScript?",
+    "Back": "`Partial<T>` makes every property in `T` **optional** (ideal for update patch payloads), and `Readonly<T>` makes every property **immutable** (preventing property reassignment).\n\n```typescript\ninterface Todo { title: string; completed: boolean; }\n\ntype UpdateTodo = Partial<Todo>; // { title?: string; completed?: boolean; }\ntype FrozenTodo = Readonly<Todo>; // properties cannot be reassigned\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "7c87f5b2e36e459b8aca8a730e8aab05",
+   "deck_id": "c6f79f8921bf41baa634938b8bcec04f",
+   "position": 51,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "utility-types",
+    "pick",
+    "omit"
+   ],
+   "field_values": {
+    "Front": "How do `Pick<T, Keys>` and `Omit<T, Keys>` differ?",
+    "Back": "`Pick<T, Keys>` selects a **whitelist** of specified properties from `T`, while `Omit<T, Keys>` creates a type by **excluding** specified properties from `T`.\n\n```typescript\ninterface User { id: number; name: string; passwordHash: string; }\n\ntype PublicUser = Pick<User, \"id\" | \"name\">;       // Whitelist id & name\ntype SafeUser   = Omit<User, \"passwordHash\">;      // Exclude passwordHash\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "4d7dd14f2f2b4b35a5e01a2e1f6f200b",
+   "deck_id": "c6f79f8921bf41baa634938b8bcec04f",
+   "position": 52,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "utility-types",
+    "record",
+    "dictionaries"
+   ],
+   "field_values": {
+    "Front": "What is `Record<Keys, Value>` used for in TypeScript?",
+    "Back": "`Record<K, V>` defines a typed dictionary or map whose keys are restricted to `K` and whose values are of type `V`.\n\n```typescript\ntype Role = \"admin\" | \"editor\" | \"viewer\";\n\nconst rolePermissions: Record<Role, string[]> = {\n  admin: [\"read\", \"write\", \"delete\"],\n  editor: [\"read\", \"write\"],\n  viewer: [\"read\"],\n};\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "e5cf189507f14516a9152f61dbcad767",
+   "deck_id": "e83e58c7fa8c41dfb9a7846cedbd434c",
+   "position": 43,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "interfaces",
+    "type-aliases",
+    "design"
+   ],
+   "field_values": {
+    "Front": "What are the key technical differences between `type` aliases and `interface` declarations?",
+    "Back": "`interface` declarations are open for **declaration merging** and extend via `extends`; `type` aliases can name **any type** (unions, primitives, tuples) and compose via intersections (`&`).\n\n```text\nInterface vs Type Alias\n├── interface\n│   ├── Object shapes only\n│   ├── Extends via: interface A extends B {}\n│   └── Declaration Merging: YES (multiple definitions merge)\n└── type alias\n    ├── Any type (primitives, unions, tuples, objects)\n    ├── Composes via: type A = B & C (intersections)\n    └── Declaration Merging: NO (duplicate name throws error)\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "7ba2a2442a1a4469852128b82e44ede1",
+   "deck_id": "e83e58c7fa8c41dfb9a7846cedbd434c",
+   "position": 44,
+   "suspended": 0,
+   "tags": [
+    "typescript",
+    "intersections",
+    "types"
+   ],
+   "field_values": {
+    "Front": "What is an Intersection Type (`&`) in TypeScript?",
+    "Back": "An intersection type (`A & B`) combines multiple types into one, requiring an object to have **all properties from both `A` and `B`**.\n\n```typescript\ntype Timestamps = { createdAt: Date; updatedAt: Date };\ntype Article = { id: string; title: string };\n\ntype SavedArticle = Article & Timestamps; // contains all 4 fields\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "93402426c44c4f189bf78cf1c7a0d149",
+   "deck_id": "ea270d5286cc4e1a9ce0db523416aed1",
+   "position": 9,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "functions",
+    "hoisting",
+    "declarations"
+   ],
+   "field_values": {
+    "Front": "What is the key difference between a Function Declaration and a Function Expression?",
+    "Back": "Function declarations are hoisted in their entirety to the top of their scope, allowing them to be called before they appear in code; function expressions are bound to variables and cannot be invoked before assignment.\n\n```javascript\n// Declaration: hoisted\ngreet(); // Works!\nfunction greet() { return \"hello\"; }\n\n// Expression: variable hoisted as undefined (TDZ if let/const)\nsayHi(); // ReferenceError or TypeError\nconst sayHi = function() { return \"hi\"; };\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "d4101ae1c2ef4be384bcde3f9e9d88e4",
+   "deck_id": "ea270d5286cc4e1a9ce0db523416aed1",
+   "position": 10,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "functions",
+    "arrow-functions",
+    "this",
+    "es6"
+   ],
+   "field_values": {
+    "Front": "What are the core differences between traditional functions and Arrow Functions (`() => {}`)?",
+    "Back": "Arrow functions provide a concise syntax and **lexically bind `this`** from their surrounding scope rather than defining their own dynamic `this` context.\n\n- **No dynamic `this`**: Inherits `this` from outer enclosing lexical scope.\n- **No `arguments` object**: Use rest parameters (`...args`) instead.\n- **Cannot be constructors**: Calling `new ArrowFunc()` throws a `TypeError`.\n- **Implicit returns**: Single-expression bodies (`x => x * 2`) return without the `return` keyword."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "52d275a41fc74c1c813e4782686a402f",
+   "deck_id": "ea270d5286cc4e1a9ce0db523416aed1",
+   "position": 11,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "scope",
+    "closures",
+    "memory"
+   ],
+   "field_values": {
+    "Front": "What is a Closure in JavaScript, and what makes it powerful?",
+    "Back": "A closure is a function that retains access to its enclosing lexical scope even after that parent function has finished executing.\n\nClosures enable data privacy (encapsulation) and function factory patterns:\n\n```javascript\nfunction createCounter() {\n  let count = 0; // private enclosed variable\n  return {\n    increment() { count++; return count; },\n    get() { return count; }\n  };\n}\nconst counter = createCounter();\ncounter.increment(); // 1\ncounter.get();       // 1 (count is inaccessible from outside)\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "388a5c48649c4a74b445561cd00050b8",
+   "deck_id": "ea270d5286cc4e1a9ce0db523416aed1",
+   "position": 12,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "functions",
+    "rest-parameters",
+    "es6"
+   ],
+   "field_values": {
+    "Front": "How do Rest Parameters (`...args`) work, and why do they replace the legacy `arguments` object?",
+    "Back": "Rest parameters (`...args`) collect variable arguments into a real, native `Array` instance, supporting array methods like `.map()` and `.reduce()` directly without conversion.\n\n```javascript\nfunction sum(...numbers) {\n  return numbers.reduce((acc, n) => acc + n, 0);\n}\nsum(1, 2, 3, 4); // 10\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "70983b2deeeb44fea1cd45e113977a38",
+   "deck_id": "eb54d8c26aee43e3880d186c4842d9d8",
+   "position": 5,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "equality",
+    "operators",
+    "best-practices"
+   ],
+   "field_values": {
+    "Front": "Why is strict equality (`===`) always preferred over loose equality (`==`) in JavaScript?",
+    "Back": "`===` tests both **value and type** without performing implicit type coercion, eliminating subtle, unpredictable bugs caused by JavaScript's coercive casting rules.\n\n```javascript\n// Loose equality (==) coerces types:\n0 == \"\"       // true (coerces \"\" to 0)\nfalse == \"0\"  // true (coerces both to 0)\nnull == undefined // true\n\n// Strict equality (===) checks value AND type:\n0 === \"\"      // false\nfalse === \"0\" // false\nnull === undefined // false\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "6a1516ac6348452092ef7bb9c783d6b4",
+   "deck_id": "eb54d8c26aee43e3880d186c4842d9d8",
+   "position": 6,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "boolean",
+    "truthy-falsy",
+    "coercion"
+   ],
+   "field_values": {
+    "Front": "What are all the falsy values in JavaScript?",
+    "Back": "There are exactly **8 falsy values** in modern JavaScript that evaluate to `false` in Boolean conditionals:\n\n```text\nJavaScript Falsy Values\n├── false (boolean literal)\n├── 0, -0, 0n (numeric zeros and BigInt zero)\n├── \"\" (empty string)\n├── null\n├── undefined\n└── NaN (Not a Number)\n```\n\n*All other values*, including empty arrays `[]` and empty objects `{}`, are **truthy**."
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "a0dbc2d2523d490c8c2ec6b8361ecbc7",
+   "deck_id": "eb54d8c26aee43e3880d186c4842d9d8",
+   "position": 7,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "operators",
+    "short-circuit",
+    "logical-operators"
+   ],
+   "field_values": {
+    "Front": "How does short-circuit evaluation work for `&&`, `||`, and `??` (Nullish Coalescing)?",
+    "Back": "Logical operators return the actual operand value that determined the outcome, not just a boolean:\n\n- **`a && b`**: Returns `a` if `a` is falsy; otherwise returns `b`.\n- **`a || b`**: Returns `a` if `a` is truthy; otherwise returns `b`.\n- **`a ?? b`**: Returns `b` **only if** `a` is `null` or `undefined` (leaves `0`, `\"\"`, and `false` intact).\n\n```javascript\nconst port = config.port || 3000;   // Bug if port is 0!\nconst safePort = config.port ?? 3000; // Preserves 0, defaults null/undefined\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  },
+  {
+   "id": "f772406fe76c499693806ef8363399f9",
+   "deck_id": "eb54d8c26aee43e3880d186c4842d9d8",
+   "position": 8,
+   "suspended": 0,
+   "tags": [
+    "javascript",
+    "conditionals",
+    "ternary",
+    "syntax"
+   ],
+   "field_values": {
+    "Front": "What is the syntax of the ternary operator, and when should it be used?",
+    "Back": "The syntax is `condition ? exprIfTrue : exprIfFalse`, and it is used to conditionally produce an expression value inline rather than executing conditional statements.\n\n```javascript\nconst access = user.isAdmin ? \"unrestricted\" : \"limited\";\n```"
+   },
+   "note_type": "Basic",
+   "template_kind": "basic",
+   "grading_profile": "short_answer"
+  }
+ ]
+}
