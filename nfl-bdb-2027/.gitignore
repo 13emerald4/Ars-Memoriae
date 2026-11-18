@@ -1,0 +1,16 @@
+# Competition raw data (download via kaggle CLI)
+data/*.csv
+data/*.parquet
+
+# LaTeX temporary build artifacts
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.synctex.gz
+
+# Python cache
+__pycache__/
+*.pyc

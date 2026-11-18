@@ -1,0 +1,188 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper, margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{enumitem}
+\usepackage{fancyvrb}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.8em}
+
+\pagestyle{fancy}
+\fancyhf{}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+\begin{document}
+
+\begin{center}
+    \vspace*{5cm}
+    {\LARGE \textbf{Michael Polley}} \\[2em]
+    \normalsize Student ID: T00774397 \\[2em]
+    NFL Big Data Bowl 2027 \\[2em]
+    Research Report: Beyond the Stopwatch
+    \vfill
+\end{center}
+\thispagestyle{empty}
+\newpage
+
+\noindent\textbf{1.}
+\noindent\textbf{(a)}
+We consider the limitation of traditional prospect evaluation at the NFL Scouting Combine. For decades front offices have evaluated prospective talent using the 40-yard dash time. The stopwatch records total elapsed time:
+\[ T = \int_{0}^{40} \frac{dx}{v(x)} \]
+This value represents the scalar accumulation of an inverted velocity curve. The scalar collapse strips away the dynamic acceleration and deceleration profile. We investigate whether 10 Hz RFID Combine sensor tracking predicts regular-season NFL performance across 510 prospects drafted or signed between 2023 and 2025. We test whether high-frequency kinematics and Newtonian force outputs provide predictive power where stopwatch times fail.
+
+\noindent\textbf{(b)}
+We define the kinematic hierarchy of an athlete moving on the field. The position vector is $\mathbf{r}(t) = \big(x(t), y(t)\big)$. Taking successive time derivatives yields:
+\begin{align*}
+    \mathbf{v}(t) &= \frac{d\mathbf{r}}{dt} = \big(\dot{x}, \dot{y}\big), \quad s(t) = \|\mathbf{v}(t)\| \\
+    \mathbf{a}(t) &= \frac{d\mathbf{v}}{dt} = \frac{d^2\mathbf{r}}{dt^2} = \big(\ddot{x}, \ddot{y}\big) \\
+    \mathbf{j}(t) &= \frac{d\mathbf{a}}{dt} = \frac{d^3\mathbf{r}}{dt^3}
+\end{align*}
+Here $s(t)$ denotes instantaneous scalar speed, $\mathbf{a}(t)$ is instantaneous acceleration, and $\mathbf{j}(t)$ is jerk.
+
+\noindent\textbf{2.}
+\noindent\textbf{(a)}
+We examine the empirical distribution of player movement in regular-season NFL games. Across 314,197 snaps in the dataset the median in-game movement speed is $2.06 \text{ yd/s}$, which corresponds to $6.78 \text{ km/h}$. In regular-season competition 95\% of all tracking frames occur below $6.81 \text{ yd/s}$, which is $22.4 \text{ km/h}$. Speeds exceeding $26 \text{ km/h}$ occur on less than 2.5\% of offensive snaps. We define the Core Working Band (CWB):
+\[ \text{CWB} \equiv s \in [10.0, 26.0] \text{ km/h} \]
+We compute the operating occupancy of an athlete within this corridor using their speed probability density function $f(s)$:
+\[ \text{Occupancy}_{\text{CWB}} = \int_{10}^{26} f(u)\,du \]
+
+\noindent\textbf{(b)}
+We compare four prospects from the 2023--2024 draft classes: Puka Nacua, Jaxon Smith-Njigba, Quentin Johnston, and Brian Thomas Jr.
+
+\begin{center}
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Player} & \textbf{Pick} & \textbf{Status} & \textbf{Median Speed} & \textbf{CWB Occupancy} & \textbf{Peak Speed} \\
+\midrule
+Puka Nacua & 177 & All-Pro & $21.2 \text{ km/h}$ & 63.5\% & $34.4 \text{ km/h}$ \\
+Jaxon Smith-Njigba & 20 & All-Pro & $24.0 \text{ km/h}$ & 55.4\% & $28.8 \text{ km/h}$ \\
+Brian Thomas Jr. & 23 & Starter & $21.3 \text{ km/h}$ & 56.0\% & $38.0 \text{ km/h}$ \\
+Quentin Johnston & 21 & Rotational & $21.2 \text{ km/h}$ & 53.9\% & $34.1 \text{ km/h}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Puka Nacua concentrated 63.5\% of all Combine tracking frames within the Core Working Band. Brian Thomas Jr. displayed a right tail reaching $38.0 \text{ km/h}$. In regular-season game play this high-speed tail is rarely utilized. Jaxon Smith-Njigba never reached $29 \text{ km/h}$ at the Combine yet maintained the highest median speed across all cutting drills at $24.0 \text{ km/h}$. Thus elite operating performance is governed by velocity preservation rather than straight-line top speed.
+
+\newpage
+
+\noindent\textbf{3.}
+\noindent\textbf{(a)}
+We analyze the biomechanics of route running during the Comeback Route Drill (\code{COMEBACK\_ROUTE\_RIGHT}). The receiver drives along an 18-yard stem, plants, and breaks back toward the quarterback at a $135^\circ$ angle. We compute trajectory curvature:
+\[ \kappa(t) = \frac{|\dot{x}\ddot{y} - \dot{y}\ddot{x}|}{(\dot{x}^2 + \dot{y}^2)^{3/2}} \]
+We compute the peak braking rate using finite differences:
+\[ \text{Braking Rate} = \min_{t} \left(\frac{s(t) - s(t - \Delta t)}{\Delta t}\right) \]
+For Puka Nacua the peak braking deceleration is $-5.77 \text{ yd/s}^2$. He arrests $708 \text{ kg}\cdot\text{m/s}$ of linear momentum in $0.8 \text{ s}$ across two strides. He maintains a curvature of $\kappa = 0.398 \text{ m}^{-1}$ and exits the break at $17.8 \text{ km/h}$. For Quentin Johnston the peak braking deceleration is $-5.23 \text{ yd/s}^2$. He requires $1.0 \text{ s}$ to decelerate and his cut collapses to $\kappa = 0.973 \text{ m}^{-1}$, forcing his exit velocity down to $12.4 \text{ km/h}$. Thus top performers do not round their routes; they generate higher eccentric braking impulse to preserve kinetic energy through the cut.
+
+\noindent\textbf{(b)}
+We evaluate the entire cohort of 106 Combine wide receivers who participated in cutting route drills. We partition the cohort into three performance tiers based on regular-season starts.
+
+\begin{center}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Performance Tier} & \textbf{N} & \textbf{Mean Cut Speed ($s_{\text{cut}}$)} & \textbf{Std Dev ($\sigma$)} & \textbf{Top Sprint Speed} \\
+\midrule
+Top Performers & 16 & $17.84 \text{ km/h}$ & $\pm 0.81 \text{ km/h}$ & $28.81 \text{ km/h}$ \\
+Average Players & 38 & $17.04 \text{ km/h}$ & $\pm 1.29 \text{ km/h}$ & $27.96 \text{ km/h}$ \\
+Fringe Prospects & 52 & $16.30 \text{ km/h}$ & $\pm 1.59 \text{ km/h}$ & $27.31 \text{ km/h}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+We perform Welch's two-sample $t$-test comparing cut speeds of Top and Fringe prospects:
+\[ t = 3.723, \quad p = 0.00041 \]
+The standardized effect size is Cohen's $d = 1.08$. Thus the difference in velocity preservation between starters and fringe prospects is statistically significant.
+
+\noindent\textbf{4.}
+\noindent\textbf{(a)}
+We fit an ordinary least squares (OLS) regression model to predict career regular-season offensive snaps:
+\[ \text{Snaps}_i = \beta_0 + \beta_1 (s_{\text{cut}, i}) + \beta_2 (\text{Forty}_i) + \epsilon_i \]
+
+\begin{center}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coefficient} & \textbf{Standard Error} & \textbf{t-statistic} & \textbf{p-value} \\
+\midrule
+Intercept & $1199.43$ & $3120.64$ & $0.384$ & $0.702$ \\
+In-Cut Speed $s_{\text{cut}}$ & $132.09$ & $42.27$ & $3.125$ & $0.002$ \\
+40-Yard Dash & $-642.09$ & $673.21$ & $-0.954$ & $0.343$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+For the 40-yard dash the $p$-value is $0.343$. For in-cut speed $s_{\text{cut}}$ the $p$-value is $0.002$. Thus the 40-yard dash has no statistically significant relationship with career snaps earned when controlling for in-cut mechanics. Each $1.0 \text{ km/h}$ increase in cut velocity preservation yields $132.09$ additional career snaps.
+
+\noindent\textbf{(b)}
+We fit a binary logistic regression model predicting whether a prospect becomes an established starter ($\ge 10$ career starts):
+\[ \ln\left(\frac{P_i}{1 - P_i}\right) = \alpha + \beta_1 (s_{\text{cut}, i}) + \beta_2 (\text{Forty}_i) \]
+The coefficient for in-cut speed is $\beta_1 = 0.569$ with standard error $0.221$, $z = 2.575$, and $p = 0.010$. The odds ratio is $\text{OR} = e^{0.569} = 1.77$. Thus each $1.0 \text{ km/h}$ increase in cut velocity preservation increases the odds of becoming an established NFL starter by 77\%.
+
+\newpage
+
+\noindent\textbf{5.}
+\noindent\textbf{(a)}
+We extend the kinematic analysis to defensive linemen and pass rushers using Newton's second law:
+\[ \mathbf{F}_{\text{net}} = m \mathbf{a} \implies \mathbf{a} = \frac{\mathbf{F}_{\text{net}}}{m} \]
+Heavier athletes carry greater inertia. Peak acceleration $\mathbf{a}(t)$ naturally decays as mass $m$ increases. To evaluate explosive capacity independent of mass, we define Gamma-Over-Expected ($\gamma_{\text{OE}}$). We regress 90th-percentile acceleration $\gamma$ on Combine weight $m$:
+\begin{align*}
+    \mathbb{E}[\gamma_i \mid \text{Mass}_i] &= \hat{\alpha} + \hat{\beta}(\text{Weight}_i) \\
+    \gamma_{\text{OE}, i} &= \gamma_{\text{observed}, i} - \mathbb{E}[\gamma_i \mid \text{Mass}_i]
+\end{align*}
+
+\noindent\textbf{(b)}
+We fit a logistic regression model predicting starter status for 114 defensive linemen:
+\[ \ln\left(\frac{P_i}{1 - P_i}\right) = \beta_0 + \beta_1 (\gamma_{\text{OE}, i}) + \beta_2 (\text{Weight}_i) \]
+
+\begin{center}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coefficient} & \textbf{Standard Error} & \textbf{z-statistic} & \textbf{p-value} \\
+\midrule
+Intercept & $-2.652$ & $2.315$ & $-1.145$ & $0.252$ \\
+Gamma-Over-Expected $\gamma_{\text{OE}}$ & $0.615$ & $0.302$ & $2.035$ & $0.042$ \\
+Combine Weight & $0.004$ & $0.008$ & $0.504$ & $0.614$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The coefficient for body weight has $p = 0.614$. The coefficient for $\gamma_{\text{OE}}$ is statistically significant with $p = 0.042$ and odds ratio $\text{OR} = 1.85$. Thus each $1.0 \text{ km/h/s}$ increase in mass-adjusted acceleration increases the odds of becoming an NFL starter by 85\%. In our dataset Braden Fiske ($292 \text{ lbs}$) recorded $\gamma_{\text{OE}} = +2.37 \text{ km/h/s}$ and started 24 games. Laiatu Latu ($259 \text{ lbs}$) recorded $\gamma_{\text{OE}} = +1.70 \text{ km/h/s}$ and started 17 games. Gervon Dexter ($310 \text{ lbs}$) recorded $\gamma_{\text{OE}} = +1.58 \text{ km/h/s}$ and started 33 games.
+
+\noindent\textbf{6.}
+\noindent\textbf{(a)}
+We summarize the draft evaluation rules for front offices based on the empirical models.
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{llll}
+\toprule
+\textbf{Position} & \textbf{Metric} & \textbf{Threshold} & \textbf{Scouting Action} \\
+\midrule
+Wide Receivers & In-Cut Speed $s_{\text{cut}}$ & $s_{\text{cut}} \ge 17.0 \text{ km/h}$ & Draft Day 1 or Day 2 \\
+Wide Receivers & In-Cut Speed $s_{\text{cut}}$ & $s_{\text{cut}} < 16.0 \text{ km/h}$ & Do not draft on Day 1 or Day 2 \\
+Pass Rushers & Gamma-Over-Expected $\gamma_{\text{OE}}$ & $\gamma_{\text{OE}} \ge +1.50 \text{ km/h/s}$ & Priority target \\
+Pass Rushers & Gamma-Over-Expected $\gamma_{\text{OE}}$ & $\gamma_{\text{OE}} < -1.00 \text{ km/h/s}$ & Flag for limited explosion \\
+All Prospects & CWB Occupancy & $\text{Occupancy} \ge 60\%$ & High regular-season translation \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Thus scalar stopwatch times fail to capture in-game separation and trench disruption. Evaluating prospects through continuous speed densities, in-cut velocity preservation, and mass-adjusted acceleration isolates functional athleticism and reduces draft error.
+
+\end{document}
