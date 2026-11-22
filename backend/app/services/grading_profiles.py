@@ -32,7 +32,7 @@ Use this scale as a guide:
 {rubric}
 {previous_weaknesses_section}
 Respond with ONLY a JSON object of this shape, no prose and no code fences:
-{{"score": 0-100, "confidence": 0.0-1.0,
+{{"score": 100, "confidence": 1.0,
   "matched_points": ["..."], "missed_points": ["..."], "overlooked_phrases": ["exact phrases from reference answer omitted"],
   "weaknesses": ["specific conceptual, syntactic, or algorithmic flaws in this answer"],
   "improvements": ["weaknesses from previous attempts that the user successfully resolved in this answer"],
@@ -278,7 +278,8 @@ commit to typing their real answer now — still without stating the reference a
 yourself.
 
 Respond with ONLY a JSON object, no prose and no code fences:
-{{"message": "one short question or encouragement, 1-3 sentences", "on_track": true|false}}
+{{"message": "one short question or encouragement, 1-3 sentences", "on_track": true}}
+(where on_track is boolean true if student understands, false otherwise)
 """
 
 SOCRATIC_LINE_HINT_PROMPT = """You are an expert Socratic Code Tutor and Computer Science Instructor.

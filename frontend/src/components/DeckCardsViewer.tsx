@@ -8,6 +8,10 @@ import { isCodeCard, extractCleanCode, detectCodeLanguage } from '../utils/codeU
 import { CardAnalyticsModal } from './CardAnalyticsModal'
 import { CompactDeckDistributionBars, CompactCardProgressionBar } from './DeckReviewStatsBar'
 import { storage } from '../utils/storage'
+import { useReorderableSections } from '../hooks/useReorderableSections'
+import { ReorderableSectionFrame } from './ReorderableSectionFrame'
+
+export type DeckViewerPreviewSectionId = 'question' | 'neuroscience' | 'reference'
 
 export interface CardCommentItem {
   id: string
@@ -97,6 +101,28 @@ export function DeckCardsViewer({
   const [filterDifficulty, setFilterDifficulty] = useState<'all' | 'easy' | 'medium' | 'hard'>('all')
   const [copiedCode, setCopiedCode] = useState(false)
   const [showTestsSection, setShowTestsSection] = useState(false)
+
+  // Reorderable Card Preview sections
+  const {
+    sections: previewSections,
+    isCustomized: isPreviewOrderCustomized,
+    draggingId: previewDraggingId,
+    dragOverId: previewDragOverId,
+    dropPosition: previewDropPosition,
+    collapsedMap: previewCollapsedMap,
+    moveSection: movePreviewSection,
+    resetOrder: resetPreviewOrder,
+    toggleCollapse: togglePreviewCollapse,
+    handleDragStart: handlePreviewDragStart,
+    handleDragOver: handlePreviewDragOver,
+    handleDragLeave: handlePreviewDragLeave,
+    handleDrop: handlePreviewDrop,
+    handleDragEnd: handlePreviewDragEnd,
+  } = useReorderableSections<DeckViewerPreviewSectionId>({
+    storageKey: 'memorization.deckViewerPreviewSectionOrder',
+    defaultOrder: ['question', 'neuroscience', 'reference'] as const,
+    collapsedStorageKey: 'memorization.deckViewerCollapsedSections',
+  })
 
   // Active deck state (supports switching decks via dropdown in viewer)
   const [activeDeckId, setActiveDeckId] = useState<string | null>(deckId)
@@ -193,6 +219,9 @@ export function DeckCardsViewer({
   const [editingMnemonic, setEditingMnemonic] = useState('')
   const [savingNeuroProps, setSavingNeuroProps] = useState(false)
   const [generatingMnemonic, setGeneratingMnemonic] = useState(false)
+  const [clearingPalace, setClearingPalace] = useState(false)
+
+  const hasPalaceLoci = useMemo(() => cards.some((c) => Boolean(c.spatial_locus)), [cards])
 
   // Fetch cards when opened
   const loadCards = useCallback(async (id: string) => {
@@ -484,6 +513,26 @@ export function DeckCardsViewer({
     }
   }
 
+  const handleClearPalace = async () => {
+    if (!activeDeckId || activeDeckId === '__root__') return
+    const confirmed = await dialogs.confirm({
+      title: 'Undo Memory Palace & Keep Sequential Order?',
+      message: 'This removes all assigned memory palace rooms/loci and restores pure sequential order for this deck.',
+      confirmLabel: 'Undo Palace',
+    })
+    if (!confirmed) return
+    setClearingPalace(true)
+    try {
+      await api.clearPalace(activeDeckId)
+      await loadCards(activeDeckId)
+      dialogs.notify('Memory palace removed. Cards restored to clean sequential order.')
+    } catch (err: any) {
+      dialogs.error(err, 'Failed to clear memory palace layout.')
+    } finally {
+      setClearingPalace(false)
+    }
+  }
+
   const renderDropdownNode = (node: DropdownDeckNode, depth = 0): React.ReactNode => {
     const isCurrent = node.id === activeDeckId
     const hasKids = node.children && node.children.length > 0
@@ -685,6 +734,17 @@ export function DeckCardsViewer({
                 >
                   <span>{autoPalacing ? 'Palacing…' : 'Auto-Palace'}</span>
                 </button>
+                {hasPalaceLoci && (
+                  <button
+                    type="button"
+                    disabled={clearingPalace}
+                    onClick={handleClearPalace}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-purple-400/50 bg-[#1e1a38] hover:bg-[#2a244d] text-purple-200 transition cursor-pointer shadow-sm disabled:opacity-40"
+                    title="Undo memory palace assignment and keep cards in clean sequential order"
+                  >
+                    <span>{clearingPalace ? 'Clearing…' : 'Undo Palace'}</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setShowDocsModal(true)}
@@ -1232,6 +1292,17 @@ export function DeckCardsViewer({
 
                   {/* Action Buttons */}
                   <div className="flex flex-wrap items-center gap-2">
+                    {isPreviewOrderCustomized && (
+                      <button
+                        type="button"
+                        onClick={resetPreviewOrder}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-sky-300 text-xs font-medium transition cursor-pointer shadow-xs"
+                        title="Reset preview cards to default order"
+                      >
+                        <span>↺ Reset Layout</span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => setAnalyticsCardId(selectedCard.id)}
@@ -1265,263 +1336,367 @@ export function DeckCardsViewer({
                   </div>
                 </div>
 
-                {/* ── Prompt / Front Statement ── */}
-                <div className="rounded-xl border border-ink-line/80 bg-[#161c28] p-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
-                    <span className="flex items-center gap-1.5">
-                      <span>Question</span>
-                    </span>
-                  </div>
-                  <div className="text-xs sm:text-sm text-slate-200 leading-relaxed">
-                    <RichText
-                      text={selectedCard.front || 'No prompt specified'}
-                      deckId={activeDeckId}
-                    />
-                  </div>
-
-                  {selectedCard.edge_cases && selectedCard.edge_cases.length > 0 && (
-                    <div className="pt-2 border-t border-ink-line/50 text-xs flex flex-wrap items-center gap-2">
-                      <span className="text-amber-400 font-medium">Edge Cases:</span>
-                      {selectedCard.edge_cases.map((ec, i) => (
-                        <span
-                          key={i}
-                          className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-200 border border-amber-500/30 text-[0.6875rem]"
+                {/* ── Reorderable Card Preview Sections (User Draggable) ── */}
+                <div className="space-y-4">
+                  {previewSections.map((sectionId, index) => {
+                    if (sectionId === 'question') {
+                      return (
+                        <ReorderableSectionFrame
+                          key="question"
+                          id="question"
+                          isCollapsed={Boolean(previewCollapsedMap.question)}
+                          isFirst={index === 0}
+                          isLast={index === previewSections.length - 1}
+                          isDragging={previewDraggingId === 'question'}
+                          isDropBefore={previewDragOverId === 'question' && previewDropPosition === 'before'}
+                          isDropAfter={previewDragOverId === 'question' && previewDropPosition === 'after'}
+                          onDragStart={handlePreviewDragStart}
+                          onDragOver={handlePreviewDragOver}
+                          onDragLeave={handlePreviewDragLeave}
+                          onDrop={handlePreviewDrop}
+                          onDragEnd={handlePreviewDragEnd}
+                          onMoveUp={() => movePreviewSection('question', 'up')}
+                          onMoveDown={() => movePreviewSection('question', 'down')}
+                          onToggleCollapse={() => togglePreviewCollapse('question')}
+                          className="rounded-xl border border-ink-line/80 bg-[#161c28] overflow-hidden"
+                          renderHeader={({ dragHandle, moveButtons, collapseButton }) => (
+                            <div className={`flex items-center justify-between p-4 ${previewCollapsedMap.question ? '' : 'border-b border-ink-line/70 pb-2.5'}`}>
+                              <div className="flex items-center gap-2">
+                                {dragHandle}
+                                <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                                  <span>Question</span>
+                                </span>
+                                {previewCollapsedMap.question && (
+                                  <span className="text-[0.6875rem] text-slate-500 italic truncate max-w-xs">
+                                    ({selectedCard.front ? selectedCard.front.slice(0, 45) : 'Collapsed'})
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {moveButtons}
+                                {collapseButton}
+                              </div>
+                            </div>
+                          )}
                         >
-                          {ec}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                          <div className="p-4 pt-3 space-y-2">
+                            <div className="text-xs sm:text-sm text-slate-200 leading-relaxed">
+                              <RichText
+                                text={selectedCard.front || 'No prompt specified'}
+                                deckId={activeDeckId}
+                              />
+                            </div>
 
-                {/* ── Neuroscience & Spatial Scaffolding Panel ── */}
-                <div className="rounded-xl border border-purple-500/30 bg-[#141224] p-4 space-y-3.5 shadow-md">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-purple-500/20 pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <div>
-                        <h3 className="text-xs font-bold text-purple-200">
-                          Neuroscience &amp; Memory Palace Scaffolding
-                        </h3>
-                        <p className="text-[0.625rem] text-slate-400">
-                          Hippocampal cognitive mapping, mPFC schema assimilation &amp; dual coding
-                        </p>
-                      </div>
-                    </div>
+                            {selectedCard.edge_cases && selectedCard.edge_cases.length > 0 && (
+                              <div className="pt-2 border-t border-ink-line/50 text-xs flex flex-wrap items-center gap-2">
+                                <span className="text-amber-400 font-medium">Edge Cases:</span>
+                                {selectedCard.edge_cases.map((ec, i) => (
+                                  <span
+                                    key={i}
+                                    className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-200 border border-amber-500/30 text-[0.6875rem]"
+                                  >
+                                    {ec}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </ReorderableSectionFrame>
+                      )
+                    }
 
-                    {/* Schema Checkpoint Toggle */}
-                    <button
-                      type="button"
-                      onClick={handleToggleSchemaCheckpoint}
-                      disabled={savingNeuroProps}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition cursor-pointer disabled:opacity-50 ${
-                        selectedCard.is_schema_checkpoint
-                          ? 'bg-amber-500/25 text-amber-200 border-amber-500/60 shadow-sm'
-                          : 'bg-[#1b1c2e] text-slate-400 border-ink-line/60 hover:text-slate-200 hover:border-slate-500'
-                      }`}
-                      title="Schema Checkpoints represent foundational structural concepts scheduled before leaf nodes"
-                    >
-                      <span>{selectedCard.is_schema_checkpoint ? 'Schema Checkpoint (Active)' : 'Mark as Schema Checkpoint'}</span>
-                    </button>
-                  </div>
-
-                  {/* Memory Palace Locus Input */}
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 items-end">
-                    <div className="sm:col-span-3 space-y-1">
-                      <label className="text-[0.6875rem] font-semibold text-slate-300 flex items-center gap-1">
-                       <span> Memory Palace Locus (Place Cell Anchor)</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={editingLocus}
-                        onChange={(e) => setEditingLocus(e.target.value)}
-                        placeholder="e.g. Grand Vestibule - Stanza 1"
-                        className="w-full text-xs rounded-lg bg-[#0c0d18] border border-purple-500/30 px-2.5 py-1.5 text-purple-100 placeholder-slate-600 focus:outline-none focus:border-purple-400"
-                      />
-                    </div>
-                    <div className="flex items-center">
-                      <button
-                        type="button"
-                        disabled={savingNeuroProps || editingLocus === (selectedCard.spatial_locus || '')}
-                        onClick={handleSaveLocus}
-                        className="w-full px-3 py-1.5 rounded-lg bg-purple-600/80 hover:bg-purple-600 disabled:opacity-40 text-white text-xs font-medium transition cursor-pointer shadow-sm"
-                      >
-                        {savingNeuroProps ? 'Saving…' : 'Save Locus'}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Mnemonic Vignette (Dual Coding & Von Restorff Bizarreness) */}
-                  <div className="space-y-1.5 pt-2 border-t border-purple-500/20">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[0.6875rem] font-semibold text-slate-300 flex items-center gap-1">
-                       <span> Bizarre Mnemonic Vignette (Dual Coding)</span>
-                      </label>
-                      <button
-                        type="button"
-                        disabled={generatingMnemonic}
-                        onClick={handleGenerateMnemonic}
-                        className="text-[0.6875rem] text-amber-300 hover:text-amber-200 flex items-center gap-1 transition cursor-pointer disabled:opacity-40"
-                        title="Synthesize high-vividness multi-sensory mental vignette"
-                      >
-                        <span>{generatingMnemonic ? 'Synthesizing…' : 'Synthesize Vignette'}</span>
-                      </button>
-                    </div>
-                    <textarea
-                      rows={2}
-                      value={editingMnemonic}
-                      onChange={(e) => setEditingMnemonic(e.target.value)}
-                      placeholder="Multi-sensory mental imagery anchor combining exaggerated kinetic action, sound, and spatial locus..."
-                      className="w-full text-xs rounded-lg bg-[#0c0d18] border border-purple-500/30 p-2 text-amber-100 placeholder-slate-600 focus:outline-none focus:border-purple-400 resize-none font-sans"
-                    />
-                    {editingMnemonic !== (selectedCard.mnemonic_vignette || '') && (
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          disabled={savingNeuroProps}
-                          onClick={handleSaveMnemonic}
-                          className="px-3 py-1 rounded bg-amber-600/80 hover:bg-amber-600 text-white text-[0.6875rem] font-medium transition cursor-pointer disabled:opacity-40"
+                    if (sectionId === 'neuroscience') {
+                      return (
+                        <ReorderableSectionFrame
+                          key="neuroscience"
+                          id="neuroscience"
+                          isCollapsed={Boolean(previewCollapsedMap.neuroscience)}
+                          isFirst={index === 0}
+                          isLast={index === previewSections.length - 1}
+                          isDragging={previewDraggingId === 'neuroscience'}
+                          isDropBefore={previewDragOverId === 'neuroscience' && previewDropPosition === 'before'}
+                          isDropAfter={previewDragOverId === 'neuroscience' && previewDropPosition === 'after'}
+                          onDragStart={handlePreviewDragStart}
+                          onDragOver={handlePreviewDragOver}
+                          onDragLeave={handlePreviewDragLeave}
+                          onDrop={handlePreviewDrop}
+                          onDragEnd={handlePreviewDragEnd}
+                          onMoveUp={() => movePreviewSection('neuroscience', 'up')}
+                          onMoveDown={() => movePreviewSection('neuroscience', 'down')}
+                          onToggleCollapse={() => togglePreviewCollapse('neuroscience')}
+                          className="rounded-xl border border-purple-500/30 bg-[#141224] shadow-md overflow-hidden"
+                          renderHeader={({ dragHandle, moveButtons, collapseButton }) => (
+                            <div className={`flex flex-wrap items-center justify-between gap-2 p-4 ${previewCollapsedMap.neuroscience ? '' : 'border-b border-purple-500/20 pb-2.5'}`}>
+                              <div className="flex items-center gap-2">
+                                {dragHandle}
+                                <div>
+                                  <h3 className="text-xs font-bold text-purple-200">
+                                    Neuroscience &amp; Memory Palace Scaffolding
+                                  </h3>
+                                  {!previewCollapsedMap.neuroscience && (
+                                    <p className="text-[0.625rem] text-slate-400">
+                                      Hippocampal cognitive mapping, mPFC schema assimilation &amp; dual coding
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={handleToggleSchemaCheckpoint}
+                                  disabled={savingNeuroProps}
+                                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition cursor-pointer disabled:opacity-50 ${
+                                    selectedCard.is_schema_checkpoint
+                                      ? 'bg-amber-500/25 text-amber-200 border-amber-500/60 shadow-sm'
+                                      : 'bg-[#1b1c2e] text-slate-400 border-ink-line/60 hover:text-slate-200 hover:border-slate-500'
+                                  }`}
+                                  title="Schema Checkpoints represent foundational structural concepts scheduled before leaf nodes"
+                                >
+                                  <span>{selectedCard.is_schema_checkpoint ? 'Schema Checkpoint (Active)' : 'Mark as Schema Checkpoint'}</span>
+                                </button>
+                                {moveButtons}
+                                {collapseButton}
+                              </div>
+                            </div>
+                          )}
                         >
-                          {savingNeuroProps ? 'Saving…' : 'Save Vignette'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                          <div className="p-4 pt-3 space-y-3.5">
+                            {/* Memory Palace Locus Input */}
+                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 items-end">
+                              <div className="sm:col-span-3 space-y-1">
+                                <label className="text-[0.6875rem] font-semibold text-slate-300 flex items-center gap-1">
+                                 <span> Memory Palace Locus (Place Cell Anchor)</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  value={editingLocus}
+                                  onChange={(e) => setEditingLocus(e.target.value)}
+                                  placeholder="e.g. Grand Vestibule - Stanza 1"
+                                  className="w-full text-xs rounded-lg bg-[#0c0d18] border border-purple-500/30 px-2.5 py-1.5 text-purple-100 placeholder-slate-600 focus:outline-none focus:border-purple-400"
+                                />
+                              </div>
+                              <div className="flex items-center">
+                                <button
+                                  type="button"
+                                  disabled={savingNeuroProps || editingLocus === (selectedCard.spatial_locus || '')}
+                                  onClick={handleSaveLocus}
+                                  className="w-full px-3 py-1.5 rounded-lg bg-purple-600/80 hover:bg-purple-600 disabled:opacity-40 text-white text-xs font-medium transition cursor-pointer shadow-sm"
+                                >
+                                  {savingNeuroProps ? 'Saving…' : 'Save Locus'}
+                                </button>
+                              </div>
+                            </div>
 
-                {/* ── Reference Solution ── */}
-                <div className="rounded-xl border border-ink-line/80 bg-[#161c28] overflow-hidden space-y-0">
-                  <div className="flex items-center justify-between px-4 py-2 border-b border-ink-line/70 bg-[#19202e] text-xs font-semibold text-slate-300">
-                    <span className="flex items-center gap-1.5">
-                      <span>Reference</span>
-                    </span>
-                    {selectedCard.time_complexity && (
-                      <span className="font-mono text-[0.625rem] text-sky-300">
-                        Target: {selectedCard.time_complexity}
-                      </span>
-                    )}
-                  </div>
-
-                  {isCodeCard(selectedCard) ? (
-                    <CodeEditor
-                      code={extractCleanCode(selectedCard.back)}
-                      onChange={() => {}}
-                      language={detectCodeLanguage(selectedCard.back, codeLanguage)}
-                      readOnly={true}
-                      height="auto"
-                      hideHeader={true}
-                      borderless={true}
-                      placeholder="// Reference solution"
-                      context={selectedCard.title || selectedCard.front}
-                      deckId={deckId}
-                    />
-                  ) : (
-                    <div className="p-4 text-xs sm:text-sm text-slate-200 leading-relaxed">
-                      <RichText text={selectedCard.back || 'No answer specified'} />
-                    </div>
-                  )}
-                </div>
-
-                {/* ── Starter Tests & Test Cases (Collapsible) ── */}
-                {isCodeCard(selectedCard) && (
-                  <div className="rounded-xl border border-ink-line/80 bg-[#161c28] overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setShowTestsSection((prev) => !prev)}
-                      className="w-full flex items-center justify-between px-4 py-2.5 bg-[#19202e] text-xs font-semibold text-slate-300 hover:bg-[#20293a] transition cursor-pointer"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <span>Unit Tests</span>
-                        {selectedCard.test_cases && selectedCard.test_cases.length > 0 && (
-                          <span className="rounded-full bg-indigo-950/80 px-2 py-0.2 text-[0.625rem] font-mono text-indigo-300 border border-indigo-500/30">
-                            {selectedCard.test_cases.length} cases
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-slate-400 text-xs">
-                        {showTestsSection ? 'Hide' : 'Show'}
-                      </span>
-                    </button>
-
-                    {showTestsSection && (
-                      <div className="p-4 space-y-4 animate-in fade-in duration-150">
-                        {/* Test Cases Table */}
-                        {selectedCard.test_cases && selectedCard.test_cases.length > 0 && (
-                          <div className="space-y-1.5">
-                            <h4 className="text-[0.6875rem] font-semibold text-slate-400 uppercase tracking-wider">
-                              Test Cases
-                            </h4>
-                            <div className="overflow-x-auto rounded-lg border border-ink-line/60">
-                              <table className="w-full text-left text-xs">
-                                <thead className="bg-[#1f2637] text-slate-400 font-mono text-[0.6875rem] border-b border-ink-line/60">
-                                  <tr>
-                                    <th className="px-3 py-1.5">#</th>
-                                    <th className="px-3 py-1.5">Input</th>
-                                    <th className="px-3 py-1.5">Expected</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-ink-line/40 font-mono text-[0.6875rem] bg-[#141924]">
-                                  {selectedCard.test_cases.map((tc, idx) => (
-                                    <tr key={idx} className="hover:bg-[#1a2130]">
-                                      <td className="px-3 py-1.5 text-slate-500 font-bold">{idx + 1}</td>
-                                      <td className="px-3 py-1.5 text-sky-200">
-                                        {typeof tc.input === 'object'
-                                          ? JSON.stringify(tc.input)
-                                          : String(tc.input)}
-                                      </td>
-                                      <td className="px-3 py-1.5 text-emerald-300 font-semibold">
-                                        {JSON.stringify(tc.expected)}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                            {/* Mnemonic Vignette (Dual Coding & Von Restorff Bizarreness) */}
+                            <div className="space-y-1.5 pt-2 border-t border-purple-500/20">
+                              <div className="flex items-center justify-between">
+                                <label className="text-[0.6875rem] font-semibold text-slate-300 flex items-center gap-1">
+                                 <span> Bizarre Mnemonic Vignette (Dual Coding)</span>
+                                </label>
+                                <button
+                                  type="button"
+                                  disabled={generatingMnemonic}
+                                  onClick={handleGenerateMnemonic}
+                                  className="text-[0.6875rem] text-amber-300 hover:text-amber-200 flex items-center gap-1 transition cursor-pointer disabled:opacity-40"
+                                  title="Synthesize high-vividness multi-sensory mental vignette"
+                                >
+                                  <span>{generatingMnemonic ? 'Synthesizing…' : 'Synthesize Vignette'}</span>
+                                </button>
+                              </div>
+                              <textarea
+                                rows={2}
+                                value={editingMnemonic}
+                                onChange={(e) => setEditingMnemonic(e.target.value)}
+                                placeholder="Multi-sensory mental imagery anchor combining exaggerated kinetic action, sound, and spatial locus..."
+                                className="w-full text-xs rounded-lg bg-[#0c0d18] border border-purple-500/30 p-2 text-amber-100 placeholder-slate-600 focus:outline-none focus:border-purple-400 resize-none font-sans"
+                              />
+                              {editingMnemonic !== (selectedCard.mnemonic_vignette || '') && (
+                                <div className="flex justify-end">
+                                  <button
+                                    type="button"
+                                    disabled={savingNeuroProps}
+                                    onClick={handleSaveMnemonic}
+                                    className="px-3 py-1 rounded bg-amber-600/80 hover:bg-amber-600 text-white text-[0.6875rem] font-medium transition cursor-pointer disabled:opacity-40"
+                                  >
+                                    {savingNeuroProps ? 'Saving…' : 'Save Vignette'}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
-                        )}
+                        </ReorderableSectionFrame>
+                      )
+                    }
 
-                        {/* Starter Code */}
-                        {selectedCard.starter_code && (
-                          <div className="space-y-1.5">
-                            <h4 className="text-[0.6875rem] font-semibold text-slate-400 uppercase tracking-wider">
-                              Starter Code
-                            </h4>
-                            <CodeEditor
-                              code={selectedCard.starter_code}
-                              onChange={() => {}}
-                              language={codeLanguage}
-                              readOnly={true}
-                              height="140px"
-                              hideHeader={true}
-                              borderless={true}
-                              context={selectedCard.title || selectedCard.front}
-                              deckId={deckId}
-                            />
-                          </div>
-                        )}
+                    if (sectionId === 'reference') {
+                      return (
+                        <ReorderableSectionFrame
+                          key="reference"
+                          id="reference"
+                          isCollapsed={Boolean(previewCollapsedMap.reference)}
+                          isFirst={index === 0}
+                          isLast={index === previewSections.length - 1}
+                          isDragging={previewDraggingId === 'reference'}
+                          isDropBefore={previewDragOverId === 'reference' && previewDropPosition === 'before'}
+                          isDropAfter={previewDragOverId === 'reference' && previewDropPosition === 'after'}
+                          onDragStart={handlePreviewDragStart}
+                          onDragOver={handlePreviewDragOver}
+                          onDragLeave={handlePreviewDragLeave}
+                          onDrop={handlePreviewDrop}
+                          onDragEnd={handlePreviewDragEnd}
+                          onMoveUp={() => movePreviewSection('reference', 'up')}
+                          onMoveDown={() => movePreviewSection('reference', 'down')}
+                          onToggleCollapse={() => togglePreviewCollapse('reference')}
+                          className="rounded-xl border border-ink-line/80 bg-[#161c28] overflow-hidden"
+                          renderHeader={({ dragHandle, moveButtons, collapseButton }) => (
+                            <div className={`flex items-center justify-between px-4 py-2 border-b border-ink-line/70 bg-[#19202e] text-xs font-semibold text-slate-300 ${previewCollapsedMap.reference ? 'rounded-xl' : ''}`}>
+                              <div className="flex items-center gap-2">
+                                {dragHandle}
+                                <span className="flex items-center gap-1.5">
+                                  <span>Reference</span>
+                                </span>
+                                {selectedCard.time_complexity && (
+                                  <span className="font-mono text-[0.625rem] text-sky-300">
+                                    Target: {selectedCard.time_complexity}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {moveButtons}
+                                {collapseButton}
+                              </div>
+                            </div>
+                          )}
+                        >
+                          <div>
+                            {isCodeCard(selectedCard) ? (
+                              <CodeEditor
+                                code={extractCleanCode(selectedCard.back)}
+                                onChange={() => {}}
+                                language={detectCodeLanguage(selectedCard.back, codeLanguage)}
+                                readOnly={true}
+                                height="auto"
+                                hideHeader={true}
+                                borderless={true}
+                                placeholder="// Reference solution"
+                                context={selectedCard.title || selectedCard.front}
+                                deckId={deckId}
+                              />
+                            ) : (
+                              <div className="p-4 text-xs sm:text-sm text-slate-200 leading-relaxed">
+                                <RichText text={selectedCard.back || 'No answer specified'} />
+                              </div>
+                            )}
 
-                        {/* Starter Tests */}
-                        {selectedCard.starter_tests && (
-                          <div className="space-y-1.5">
-                            <h4 className="text-[0.6875rem] font-semibold text-slate-400 uppercase tracking-wider">
-                              Starter Tests
-                            </h4>
-                            <CodeEditor
-                              code={selectedCard.starter_tests}
-                              onChange={() => {}}
-                              language={codeLanguage}
-                              readOnly={true}
-                              height="160px"
-                              hideHeader={true}
-                              borderless={true}
-                              context={selectedCard.title || selectedCard.front}
-                              deckId={deckId}
-                            />
+                            {/* ── Starter Tests & Test Cases (Collapsible) ── */}
+                            {isCodeCard(selectedCard) && (
+                              <div className="border-t border-ink-line/80 bg-[#161c28]">
+                                <button
+                                  type="button"
+                                  onClick={() => setShowTestsSection((prev) => !prev)}
+                                  className="w-full flex items-center justify-between px-4 py-2.5 bg-[#19202e] text-xs font-semibold text-slate-300 hover:bg-[#20293a] transition cursor-pointer"
+                                >
+                                  <span className="flex items-center gap-1.5">
+                                    <span>Unit Tests</span>
+                                    {selectedCard.test_cases && selectedCard.test_cases.length > 0 && (
+                                      <span className="rounded-full bg-indigo-950/80 px-2 py-0.2 text-[0.625rem] font-mono text-indigo-300 border border-indigo-500/30">
+                                        {selectedCard.test_cases.length} cases
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className="text-slate-400 text-xs">
+                                    {showTestsSection ? 'Hide' : 'Show'}
+                                  </span>
+                                </button>
+
+                                {showTestsSection && (
+                                  <div className="p-4 space-y-4 animate-in fade-in duration-150 border-t border-ink-line/60">
+                                    {/* Test Cases Table */}
+                                    {selectedCard.test_cases && selectedCard.test_cases.length > 0 && (
+                                      <div className="space-y-1.5">
+                                        <h4 className="text-[0.6875rem] font-semibold text-slate-400 uppercase tracking-wider">
+                                          Test Cases
+                                        </h4>
+                                        <div className="overflow-x-auto rounded-lg border border-ink-line/60">
+                                          <table className="w-full text-left text-xs">
+                                            <thead className="bg-[#1f2637] text-slate-400 font-mono text-[0.6875rem] border-b border-ink-line/60">
+                                              <tr>
+                                                <th className="px-3 py-1.5">#</th>
+                                                <th className="px-3 py-1.5">Input</th>
+                                                <th className="px-3 py-1.5">Expected</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-ink-line/40 font-mono text-[0.6875rem] bg-[#141924]">
+                                              {selectedCard.test_cases.map((tc, idx) => (
+                                                <tr key={idx} className="hover:bg-[#1a2130]">
+                                                  <td className="px-3 py-1.5 text-slate-500 font-bold">{idx + 1}</td>
+                                                  <td className="px-3 py-1.5 text-sky-200">
+                                                    {typeof tc.input === 'object'
+                                                      ? JSON.stringify(tc.input)
+                                                      : String(tc.input)}
+                                                  </td>
+                                                  <td className="px-3 py-1.5 text-emerald-300 font-semibold">
+                                                    {JSON.stringify(tc.expected)}
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Starter Code */}
+                                    {selectedCard.starter_code && (
+                                      <div className="space-y-1.5">
+                                        <h4 className="text-[0.6875rem] font-semibold text-slate-400 uppercase tracking-wider">
+                                          Starter Code
+                                        </h4>
+                                        <CodeEditor
+                                          code={selectedCard.starter_code}
+                                          onChange={() => {}}
+                                          language={codeLanguage}
+                                          readOnly={true}
+                                          height="140px"
+                                          hideHeader={true}
+                                          borderless={true}
+                                          context={selectedCard.title || selectedCard.front}
+                                          deckId={deckId}
+                                        />
+                                      </div>
+                                    )}
+
+                                    {/* Starter Tests */}
+                                    {selectedCard.starter_tests && (
+                                      <div className="space-y-1.5">
+                                        <h4 className="text-[0.6875rem] font-semibold text-slate-400 uppercase tracking-wider">
+                                          Starter Tests
+                                        </h4>
+                                        <CodeEditor
+                                          code={selectedCard.starter_tests}
+                                          onChange={() => {}}
+                                          language={codeLanguage}
+                                          readOnly={true}
+                                          height="160px"
+                                          hideHeader={true}
+                                          borderless={true}
+                                          context={selectedCard.title || selectedCard.front}
+                                          deckId={deckId}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
+                        </ReorderableSectionFrame>
+                      )
+                    }
+
+                    return null
+                  })}
+                </div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full p-8 text-center text-slate-500 space-y-2">

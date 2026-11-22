@@ -19,6 +19,7 @@ export function SessionHeader({
   persistProgress,
   allCardsRunActive,
   allCardsRunDeckName,
+  allCardsRunOrder = 'curriculum',
   onExitAllCardsRun,
   allCardsRunProgress,
   onStartAllCardsRun,
@@ -46,6 +47,7 @@ export function SessionHeader({
   persistProgress?: { grasped: number; total: number; round: number }
   allCardsRunActive?: boolean
   allCardsRunDeckName?: string
+  allCardsRunOrder?: 'curriculum' | 'difficulty'
   onExitAllCardsRun?: () => void
   allCardsRunProgress?: { current: number; total: number }
   onStartAllCardsRun?: (deckId: string, deckName?: string) => void
@@ -71,15 +73,17 @@ export function SessionHeader({
     (!persistActive && !allCardsRunActive && decksWithCards > 0 && Boolean(onStartPersist || onStartAllCardsRun)) ||
     Boolean(onStartBlitz && !blitzActive)
 
+  const orderLabel = allCardsRunOrder === 'difficulty' ? 'Easiest → Hardest' : 'Curriculum Order'
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         {allCardsRunActive && (
           <span className="chip border-purple-500/50 bg-purple-500/15 text-purple-200 font-semibold flex items-center gap-1.5 shadow-sm">
-            <span>Run: {allCardsRunDeckName || 'Current Deck'}</span>
+            <span>{allCardsRunOrder === 'curriculum' ? 'Systematic Review' : 'Run'}: {allCardsRunDeckName || 'Current Deck'}</span>
             {allCardsRunProgress && (
               <span className="text-[0.625rem] text-purple-300/90 font-mono">
-                ({allCardsRunProgress.current}/{allCardsRunProgress.total} · Easiest → Hardest)
+                ({allCardsRunProgress.current}/{allCardsRunProgress.total} · {orderLabel})
               </span>
             )}
             {onExitAllCardsRun && (
@@ -87,7 +91,7 @@ export function SessionHeader({
                 type="button"
                 className="ml-1 text-slate-400 hover:text-white underline text-[0.6875rem] cursor-pointer"
                 onClick={onExitAllCardsRun}
-                title="Exit All Cards Run and return to FSRS queue"
+                title="Exit Systematic Review and return to FSRS queue"
               >
                 exit
               </button>

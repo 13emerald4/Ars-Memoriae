@@ -84,6 +84,10 @@ _STOPWORDS = {
 class GradingUnavailable(RuntimeError):
     """Raised when grading cannot complete; callers degrade to manual (§4.3)."""
 
+    def __init__(self, message: str = ""):
+        super().__init__(message)
+        self.message = str(message)
+
 
 class VramExhaustedError(GradingUnavailable):
     """Raised when the local Ollama model ran out of GPU VRAM or host memory."""
@@ -96,6 +100,7 @@ class VramExhaustedError(GradingUnavailable):
         available_models: list[str] | None = None,
     ):
         super().__init__(message)
+        self.message = str(message)
         self.failed_model = failed_model
         self.fallback_model = fallback_model
         self.available_models = available_models or []
@@ -551,9 +556,10 @@ class GradingService:
     ) -> str:
         num_ctx = kwargs.get("num_ctx") or settings.ollama_num_ctx
         keep_alive = kwargs.get("keep_alive") or settings.ollama_keep_alive
+        clean_prompt = sanitize_prompt_for_ollama(prompt)
         payload: dict[str, Any] = {
             "model": model,
-            "prompt": sanitize_prompt_for_ollama(prompt),
+            "prompt": clean_prompt,
             "stream": False,
             "keep_alive": keep_alive,
             "options": {
@@ -563,18 +569,28 @@ class GradingService:
                 # Greedy decoding on every call: Ollama's default temperature
                 # samples, so the same answer could get a different grade.
                 "temperature": 0,
+                # Discourage token repetition loops in local runners
+                "repeat_penalty": 1.1,
             },
         }
-        if schema is not None or kwargs.get("response_schema") is not None:
-            payload["format"] = "json"
+        # Note: We intentionally avoid setting payload["format"] = "json" for Ollama.
+        # Ollama's GBNF grammar constraint engine causes local models (e.g. Qwen 2.5/3.5)
+        # to freeze, loop on tokens, or abort with "prediction aborted, token repeat limit reached".
+        # All prompts already request JSON explicitly, and parse_json() extracts JSON tolerantly.
 
         last_exc = None
         for attempt in range(2):
             try:
+                cur_payload = payload
+                if attempt > 0:
+                    # On retry, introduce a slight temperature and penalty adjustment to break deterministic repetition loops
+                    cur_payload = json.loads(json.dumps(payload))
+                    cur_payload["options"]["temperature"] = 0.2
+                    cur_payload["options"]["repeat_penalty"] = 1.15
                 async with httpx.AsyncClient(timeout=60.0) as client:
                     resp = await client.post(
                         f"{self.base_url}/api/generate",
-                        json=payload,
+                        json=cur_payload,
                     )
                     resp.raise_for_status()
                     data = resp.json()

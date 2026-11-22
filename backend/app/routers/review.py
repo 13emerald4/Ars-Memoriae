@@ -401,14 +401,22 @@ async def submit_answer(
             grade_kwargs["execution_summary"] = execution_summary
         result = await service.grade_with_escalation(**grade_kwargs)
     except VramExhaustedError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=exc.message,
-        ) from exc
+        return _manual(
+            back,
+            reason=f"vram_exhausted: {exc}",
+            latency_note=latency_note,
+            automaticity_exceeded=auto_exceeded,
+            automaticity_threshold_ms=user.automaticity_threshold_ms,
+            automaticity_note=auto_note,
+            vram_constrained=True,
+            failed_model=exc.failed_model,
+            fallback_model=exc.fallback_model,
+            available_fallback_models=exc.available_models,
+        )
     except GradingUnavailable as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
+            detail=getattr(exc, "message", str(exc)),
         ) from exc
 
     if exec_res is not None:
@@ -557,7 +565,7 @@ async def socratic_guide(
     except VramExhaustedError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=exc.message,
+            detail=exc.message or str(exc),
         ) from exc
     except GradingUnavailable as exc:
         raise HTTPException(
@@ -616,7 +624,7 @@ async def card_weakness_hint(
     except VramExhaustedError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=exc.message,
+            detail=exc.message or str(exc),
         ) from exc
     except GradingUnavailable as exc:
         raise HTTPException(
@@ -679,7 +687,7 @@ async def socratic_line_hint(
     except VramExhaustedError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=exc.message,
+            detail=exc.message or str(exc),
         ) from exc
     except GradingUnavailable as exc:
         raise HTTPException(

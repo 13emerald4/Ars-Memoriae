@@ -297,7 +297,8 @@ export const api = {
   deckStats: (id: string) => request<DeckStats>(`/api/decks/${id}/stats`),
   deckPersistItems: (deckId: string, unseenOnly?: boolean) =>
     request<QueueItem[]>(`/api/decks/${deckId}/persist-items${unseenOnly ? '?unseen_only=true' : ''}`),
-  deckAllCardsRunItems: (deckId: string) => request<QueueItem[]>(`/api/decks/${deckId}/all-cards-run-items`),
+  deckAllCardsRunItems: (deckId: string, order: 'curriculum' | 'difficulty' = 'curriculum') =>
+    request<QueueItem[]>(`/api/decks/${deckId}/all-cards-run-items?order=${order}`),
   createDeck: (body: {
     name: string
     default_priority?: number
@@ -613,6 +614,8 @@ export const api = {
     patch<Card>(`/api/decks/cards/${cardId}/neuro-props`, props),
   autoPalace: (deckId: string) =>
     post<Card[]>(`/api/decks/${deckId}/auto-palace`, {}),
+  clearPalace: (deckId: string) =>
+    post<Card[]>(`/api/decks/${deckId}/clear-palace`, {}),
   mutatePrompt: (cardId: string, mutationType: string) =>
     post<MutatePromptResponse>(`/api/review/${cardId}/mutate-prompt`, {
       mutation_type: mutationType,

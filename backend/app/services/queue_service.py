@@ -1067,31 +1067,55 @@ async def compose_deck_persist_queue(
 async def compose_deck_all_cards_run_queue(
     db: AsyncSession,
     user: User,
-    deck_id: uuid.UUID,
+    deck_id: uuid.UUID | None = None,
+    order: str = "curriculum",
 ) -> list[ComposedItem]:
-    """Load all active cards in a deck sorted consecutively from easiest to hardest.
+    """Load all active cards in a deck (or all decks) formatted as ComposedItems for an all-cards run.
 
-    Difficulty scoring:
-    1. Categorical difficulty in note field values:
-       - 'Easy' -> baseline 2.0
-       - 'Medium' -> baseline 5.0
-       - 'Hard' -> baseline 8.0
-       - Unrated -> baseline 4.5
-    2. FSRS difficulty (card.difficulty, 1.0 - 10.0):
-       - If present, incorporates into baseline
-    3. Review log history adjustment:
-       - Latest rating: Easy (-1.5), Good (-0.5), Hard (+1.5), Again (+2.5)
-       - Card lapse count: +0.4 per lapse
-       - Leech flag: +2.5
-
-    Cards are sorted ascending by difficulty score (easiest seen first, hardest seen last).
+    Orders supported:
+    - 'curriculum' (default): Systematic pedagogical order. Subdecks are traversed depth-first
+      ordered by Deck.position, and cards within each deck are ordered by Card.position (1 -> N).
+    - 'difficulty': Sorted ascending by difficulty score (easiest seen first, hardest seen last).
+      Difficulty incorporates categorical difficulty, FSRS card.difficulty, and review history.
     """
-    deck = await db.get(Deck, deck_id)
-    if deck is None or deck.user_id != user.id:
+    all_user_decks = (
+        await db.scalars(select(Deck).where(Deck.user_id == user.id))
+    ).all()
+    children: dict[uuid.UUID, list[Deck]] = defaultdict(list)
+    for d in all_user_decks:
+        if d.parent_id:
+            children[d.parent_id].append(d)
+    for d_list in children.values():
+        d_list.sort(key=lambda d: (d.position if d.position is not None else 999999, str(d.id)))
+
+    target_deck_ids: list[uuid.UUID] = []
+    if deck_id is not None:
+        deck = await db.get(Deck, deck_id)
+        if deck is None or deck.user_id != user.id:
+            return []
+
+        def dfs(d_id: uuid.UUID):
+            target_deck_ids.append(d_id)
+            for ch in children.get(d_id, []):
+                dfs(ch.id)
+
+        dfs(deck.id)
+    else:
+        root_decks = [d for d in all_user_decks if d.parent_id is None]
+        root_decks.sort(key=lambda d: (d.position if d.position is not None else 999999, str(d.id)))
+
+        def dfs(d_id: uuid.UUID):
+            target_deck_ids.append(d_id)
+            for ch in children.get(d_id, []):
+                dfs(ch.id)
+
+        for rd in root_decks:
+            dfs(rd.id)
+
+    if not target_deck_ids:
         return []
 
-    scope = await deck_scope(db, user, deck_id)
-    target_deck_ids = list(scope.deck_ids) if (scope and scope.deck_ids) else [deck.id]
+    deck_order_map: dict[uuid.UUID, int] = {did: idx for idx, did in enumerate(target_deck_ids)}
 
     stmt = (
         select(Card, Note)
@@ -1106,68 +1130,80 @@ async def compose_deck_all_cards_run_queue(
     if not rows:
         return []
 
-    # Only each card's latest grade matters; let SQL pick it (one row per card
-    # via idx_review_logs_card) instead of shipping the deck's whole history.
-    latest = (
-        select(ReviewLog.card_id, func.max(ReviewLog.reviewed_at).label("at"))
-        .join(Card, Card.id == ReviewLog.card_id)
-        .where(Card.deck_id.in_(target_deck_ids))
-        .group_by(ReviewLog.card_id)
-        .subquery()
-    )
-    log_rows = (
-        await db.execute(
-            select(ReviewLog.card_id, ReviewLog.final_grade).join(
-                latest,
-                and_(ReviewLog.card_id == latest.c.card_id, ReviewLog.reviewed_at == latest.c.at),
-            )
+    if order == "curriculum":
+        # Sort systematically: by deck DFS position, then card position, then card ID
+        rows_sorted = sorted(
+            rows,
+            key=lambda r: (
+                deck_order_map.get(r[0].deck_id, 999999),
+                r[0].position if r[0].position is not None else 999999,
+                str(r[0].id),
+            ),
         )
-    ).all()
-    latest_grades: dict[uuid.UUID, str] = dict(log_rows)
+        cards = [c for c, _ in rows_sorted]
+    else:
+        # Only each card's latest grade matters; let SQL pick it (one row per card
+        # via idx_review_logs_card) instead of shipping the deck's whole history.
+        latest = (
+            select(ReviewLog.card_id, func.max(ReviewLog.reviewed_at).label("at"))
+            .join(Card, Card.id == ReviewLog.card_id)
+            .where(Card.deck_id.in_(target_deck_ids))
+            .group_by(ReviewLog.card_id)
+            .subquery()
+        )
+        log_rows = (
+            await db.execute(
+                select(ReviewLog.card_id, ReviewLog.final_grade).join(
+                    latest,
+                    and_(ReviewLog.card_id == latest.c.card_id, ReviewLog.reviewed_at == latest.c.at),
+                )
+            )
+        ).all()
+        latest_grades: dict[uuid.UUID, str] = dict(log_rows)
 
-    scored_cards: list[tuple[float, Card]] = []
-    for card, note in rows:
-        fv = note.field_values or {}
-        raw_diff = fv.get("difficulty") or fv.get("Difficulty") or fv.get("diff")
+        scored_cards: list[tuple[float, Card]] = []
+        for card, note in rows:
+            fv = note.field_values or {}
+            raw_diff = fv.get("difficulty") or fv.get("Difficulty") or fv.get("diff")
 
-        if isinstance(raw_diff, str) and raw_diff.strip():
-            d_lower = raw_diff.strip().lower()
-            if "easy" in d_lower:
-                base_diff = 2.0
-            elif "hard" in d_lower:
-                base_diff = 8.0
-            elif "medium" in d_lower:
-                base_diff = 5.0
+            if isinstance(raw_diff, str) and raw_diff.strip():
+                d_lower = raw_diff.strip().lower()
+                if "easy" in d_lower:
+                    base_diff = 2.0
+                elif "hard" in d_lower:
+                    base_diff = 8.0
+                elif "medium" in d_lower:
+                    base_diff = 5.0
+                else:
+                    base_diff = 4.5
+            elif card.difficulty is not None:
+                base_diff = float(card.difficulty)
             else:
-                base_diff = 4.5
-        elif card.difficulty is not None:
-            base_diff = float(card.difficulty)
-        else:
-            base_diff = 4.0
+                base_diff = 4.0
 
-        if card.difficulty is not None:
-            base_diff = (base_diff + float(card.difficulty)) / 2.0
+            if card.difficulty is not None:
+                base_diff = (base_diff + float(card.difficulty)) / 2.0
 
-        grade = latest_grades.get(card.id)
-        if grade == "easy":
-            base_diff -= 1.5
-        elif grade == "good":
-            base_diff -= 0.5
-        elif grade == "hard":
-            base_diff += 1.5
-        elif grade == "again":
-            base_diff += 2.5
+            grade = latest_grades.get(card.id)
+            if grade == "easy":
+                base_diff -= 1.5
+            elif grade == "good":
+                base_diff -= 0.5
+            elif grade == "hard":
+                base_diff += 1.5
+            elif grade == "again":
+                base_diff += 2.5
 
-        if card.lapse_count:
-            base_diff += min(3.0, card.lapse_count * 0.4)
-        if card.leech_flag:
-            base_diff += 2.5
+            if card.lapse_count:
+                base_diff += min(3.0, card.lapse_count * 0.4)
+            if card.leech_flag:
+                base_diff += 2.5
 
-        scored_cards.append((base_diff, card))
+            scored_cards.append((base_diff, card))
 
-    # Sort ascending: lowest difficulty score first (easiest), highest last (hardest)
-    scored_cards.sort(key=lambda x: (x[0], x[1].id))
-    cards = [c for _, c in scored_cards]
+        # Sort ascending: lowest difficulty score first (easiest), highest last (hardest)
+        scored_cards.sort(key=lambda x: (x[0], x[1].id))
+        cards = [c for _, c in scored_cards]
 
     items = [_card_item(c, float(c.effective_priority), 12.0) for c in cards]
     await attach_references(db, items)

@@ -217,14 +217,16 @@ export default function Review() {
     }
   }, [item, currentDeckInfo, setActiveDeckContext, applyGlossesToCard])
 
-  // All Cards Run Mode: Review every card in deck consecutively, easiest to hardest, then FSRS takes over
+  // All Cards Run / Systematic Review Mode: Review every card in deck consecutively (Curriculum or Difficulty order), then FSRS takes over
   const runParam = params.get('run') === 'all' || params.get('all_cards_run') === '1'
+  const runOrderParam = (params.get('order') as 'curriculum' | 'difficulty') || 'curriculum'
   const [allCardsRunActive, setAllCardsRunActive] = useState<boolean>(false)
   const [allCardsRunDeckId, setAllCardsRunDeckId] = useState<string | null>(null)
   const [allCardsRunDeckName, setAllCardsRunDeckName] = useState<string>('')
   const [allCardsRunCards, setAllCardsRunCards] = useState<QueueItem[]>([])
   const [allCardsRunIndex, setAllCardsRunIndex] = useState<number>(0)
   const [allCardsRunCompleted, setAllCardsRunCompleted] = useState<boolean>(false)
+  const [allCardsRunOrder, setAllCardsRunOrder] = useState<'curriculum' | 'difficulty'>('curriculum')
 
   // LeetCode-Style Split IDE & Code Execution Workbench
   const [layoutMode, setLayoutMode] = useState<'split' | 'classic'>(() => {
@@ -1041,31 +1043,44 @@ export default function Review() {
   }, [load, setParams])
 
   const startAllCardsRun = useCallback(
-    async (deckId: string, deckName?: string, forceStartIndex?: number) => {
+    async (
+      deckId: string = '__root__',
+      deckName?: string,
+      forceStartIndex?: number,
+      order: 'curriculum' | 'difficulty' = runOrderParam,
+    ) => {
       setLoading(true)
       setError(null)
       // Cancel persist mode if running
       setPersistActive(false)
       setAllCardsRunActive(true)
       setAllCardsRunDeckId(deckId)
+      setAllCardsRunOrder(order)
       setAllCardsRunCompleted(false)
 
       setParams((p) => {
         const next = new URLSearchParams(p)
-        next.set('deck', deckId)
+        if (deckId && deckId !== '__root__') {
+          next.set('deck', deckId)
+        } else {
+          next.delete('deck')
+        }
         next.set('run', 'all')
+        next.set('order', order)
         next.delete('persist')
         return next
       })
 
       try {
-        const cards = await api.deckAllCardsRunItems(deckId)
+        const cards = await api.deckAllCardsRunItems(deckId, order)
         setAllCardsRunCards(cards)
         const dName =
-          cards[0]?.deck_name ||
-          deckName ||
-          allDecks.find((d) => d.id === deckId)?.name ||
-          'Selected Deck'
+          deckId === '__root__'
+            ? 'All Decks'
+            : cards[0]?.deck_name ||
+              deckName ||
+              allDecks.find((d) => d.id === deckId)?.name ||
+              'Selected Deck'
         setAllCardsRunDeckName(dName)
 
         if (cards.length === 0) {
@@ -1076,7 +1091,7 @@ export default function Review() {
           if (forceStartIndex !== undefined) {
             targetIndex = forceStartIndex
           } else {
-            const saved = getAllCardsRunProgress(deckId)
+            const saved = getAllCardsRunProgress(deckId, order)
             if (saved && typeof saved.index === 'number' && saved.index > 0 && saved.index < cards.length) {
               targetIndex = saved.index
             }
@@ -1092,12 +1107,14 @@ export default function Review() {
             total: cards.length,
             cardId: cards[targetIndex]?.id,
             updatedAt: Date.now(),
+            order,
           })
 
+          const progressionLabel = order === 'curriculum' ? 'Curriculum Order: 1 → N' : 'Easiest → Hardest'
           if (targetIndex > 0) {
-            setLastOutcome(`All Cards Run resumed — Card ${targetIndex + 1} of ${cards.length} (Easiest → Hardest).`)
+            setLastOutcome(`Systematic Review resumed — Card ${targetIndex + 1} of ${cards.length} (${progressionLabel}).`)
           } else {
-            setLastOutcome(`All Cards Run started — Card 1 of ${cards.length} (Easiest → Hardest).`)
+            setLastOutcome(`Systematic Review started — Card 1 of ${cards.length} (${progressionLabel}).`)
           }
         }
       } catch (err) {
@@ -1107,10 +1124,11 @@ export default function Review() {
         setLoading(false)
       }
     },
-    [allDecks, initCardState, setParams],
+    [allDecks, initCardState, runOrderParam, setParams],
   )
 
   const exitAllCardsRun = useCallback(() => {
+    activeDeckRef.current = null
     setAllCardsRunActive(false)
     setAllCardsRunDeckId(null)
     setAllCardsRunCards([])
@@ -1120,6 +1138,7 @@ export default function Review() {
       const next = new URLSearchParams(p)
       next.delete('run')
       next.delete('all_cards_run')
+      next.delete('order')
       return next
     })
     void load()
@@ -1265,10 +1284,17 @@ export default function Review() {
   }, [])
 
   useEffect(() => {
-    if (runParam && deckParam) {
-      if (activeDeckRef.current !== deckParam || !allCardsRunActive || allCardsRunDeckId !== deckParam) {
-        activeDeckRef.current = deckParam
-        void startAllCardsRun(deckParam)
+    if (runParam) {
+      const targetDeck = deckParam || '__root__'
+      const deckKey = `${targetDeck}:${runOrderParam}`
+      if (
+        activeDeckRef.current !== deckKey ||
+        !allCardsRunActive ||
+        allCardsRunDeckId !== targetDeck ||
+        allCardsRunOrder !== runOrderParam
+      ) {
+        activeDeckRef.current = deckKey
+        void startAllCardsRun(targetDeck, undefined, undefined, runOrderParam)
       }
     } else if (persistParam && deckParam) {
       if (
@@ -1289,6 +1315,7 @@ export default function Review() {
     persistParam,
     unseenParam,
     runParam,
+    runOrderParam,
     load,
     startPersistMode,
     startAllCardsRun,
@@ -1297,6 +1324,7 @@ export default function Review() {
     persistUnseenOnly,
     allCardsRunActive,
     allCardsRunDeckId,
+    allCardsRunOrder,
   ])
 
   const itemId = item?.id ?? null
@@ -1588,11 +1616,12 @@ export default function Review() {
         if (nextIdx >= allCardsRunCards.length) {
           setAllCardsRunCompleted(true)
           if (allCardsRunDeckId) {
-            clearAllCardsRunProgress(allCardsRunDeckId)
+            clearAllCardsRunProgress(allCardsRunDeckId, allCardsRunOrder)
           }
           setItem(null)
+          const orderDesc = allCardsRunOrder === 'curriculum' ? 'in sequential curriculum order (1 → N)' : 'consecutively from easiest to hardest'
           setLastOutcome(
-            `All Cards Run complete! All ${allCardsRunCards.length} cards in this deck reviewed consecutively from easiest to hardest. FSRS algorithm now takes over.`,
+            `Systematic Review complete! All ${allCardsRunCards.length} cards in this deck reviewed ${orderDesc}. FSRS spaced repetition algorithm now takes over.`,
           )
         } else {
           const nextCard = allCardsRunCards[nextIdx]
@@ -1606,10 +1635,12 @@ export default function Review() {
               total: allCardsRunCards.length,
               cardId: nextCard.id,
               updatedAt: Date.now(),
+              order: allCardsRunOrder,
             })
           }
+          const orderDesc = allCardsRunOrder === 'curriculum' ? 'Curriculum Order: 1 → N' : 'Easiest → Hardest'
           setLastOutcome(
-            `${finalGrade} — Card ${nextIdx + 1} of ${allCardsRunCards.length} in run (Easiest → Hardest).`,
+            `${finalGrade} — Card ${nextIdx + 1} of ${allCardsRunCards.length} in run (${orderDesc}).`,
           )
         }
       } else if (persistActive) {
@@ -1709,11 +1740,11 @@ export default function Review() {
       if (nextIdx >= allCardsRunCards.length) {
         setAllCardsRunCompleted(true)
         if (allCardsRunDeckId) {
-          clearAllCardsRunProgress(allCardsRunDeckId)
+          clearAllCardsRunProgress(allCardsRunDeckId, allCardsRunOrder)
         }
         setItem(null)
         setLastOutcome(
-          `All Cards Run complete! All ${allCardsRunCards.length} cards in this deck completed.`,
+          `Systematic Review complete! All ${allCardsRunCards.length} cards in this deck completed.`,
         )
       } else {
         const nextCard = allCardsRunCards[nextIdx]
@@ -1727,6 +1758,7 @@ export default function Review() {
             total: allCardsRunCards.length,
             cardId: nextCard.id,
             updatedAt: Date.now(),
+            order: allCardsRunOrder,
           })
         }
         setLastOutcome(`Card ${nextIdx + 1} of ${allCardsRunCards.length} in run (Unrecorded skip).`)
@@ -2070,6 +2102,7 @@ export default function Review() {
             outcome={lastOutcome}
             allCardsRunActive={allCardsRunActive}
             allCardsRunDeckName={allCardsRunDeckName}
+            allCardsRunOrder={allCardsRunOrder}
             onExitAllCardsRun={exitAllCardsRun}
             learnMode={learnMode}
             onToggleLearnMode={toggleLearnMode}
@@ -2078,17 +2111,21 @@ export default function Review() {
           />
           <div className="rounded-3xl border border-purple-500/40 bg-gradient-to-b from-[#140b24] via-[#0d091a] to-[#0b101b] p-8 sm:p-10 text-center max-w-xl mx-auto space-y-6 shadow-2xl backdrop-blur">
             <div className="inline-flex h-20 px-4 items-center justify-center rounded-3xl bg-purple-500/15 border border-purple-500/30 shadow-inner">
-              <span className="text-xs font-bold uppercase tracking-wider text-purple-300">Run Complete</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-purple-300">
+                {allCardsRunOrder === 'curriculum' ? 'Review Complete' : 'Run Complete'}
+              </span>
             </div>
             <div className="space-y-2">
               <h2 className="text-2xl font-bold text-purple-300">
-                All Cards Run Complete!
+                {allCardsRunOrder === 'curriculum' ? 'Systematic Review Complete!' : 'All Cards Run Complete!'}
               </h2>
               <p className="text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
-                You've successfully reviewed every card in <strong className="text-white">{allCardsRunDeckName}</strong> consecutively from easiest to hardest!
+                You've successfully reviewed every card in <strong className="text-white">{allCardsRunDeckName}</strong>{' '}
+                {allCardsRunOrder === 'curriculum' ? 'in sequential curriculum order (1 → N)' : 'consecutively from easiest to hardest'}!
               </p>
               <p className="text-xs text-purple-200/80 max-w-md mx-auto leading-relaxed">
-                All stability states, recall ratings, and review intervals have been recorded. <strong className="text-white">FSRS spaced repetition algorithm now takes over</strong> for future reviews.
+                All stability states, recall ratings, and review intervals have been recorded.{' '}
+                <strong className="text-white">FSRS spaced repetition algorithm now takes over</strong> for future reviews.
               </p>
             </div>
 
@@ -2099,7 +2136,9 @@ export default function Review() {
               </div>
               <div className="space-y-0.5 border-l border-purple-500/20">
                 <span className="text-slate-400 text-[0.625rem] uppercase">Progression</span>
-                <p className="text-purple-300 font-bold text-base">Easiest → Hardest</p>
+                <p className="text-purple-300 font-bold text-base">
+                  {allCardsRunOrder === 'curriculum' ? 'Curriculum Order (1 → N)' : 'Easiest → Hardest'}
+                </p>
               </div>
             </div>
 
@@ -2110,7 +2149,6 @@ export default function Review() {
                   className="btn btn-primary bg-purple-600 hover:bg-purple-500 text-white font-bold flex items-center justify-center gap-2 py-2.5 px-5 shadow-lg shadow-purple-900/40 cursor-pointer"
                   onClick={exitAllCardsRun}
                 >
-                  
                   <span>Resume Standard FSRS Queue</span>
                 </button>
                 <button
@@ -2118,14 +2156,14 @@ export default function Review() {
                   className="btn border border-ink-line hover:bg-ink-soft text-slate-300 py-2.5 px-4 cursor-pointer"
                   onClick={() => {
                     if (allCardsRunDeckId) {
-                      clearAllCardsRunProgress(allCardsRunDeckId)
-                      void startAllCardsRun(allCardsRunDeckId, allCardsRunDeckName, 0)
+                      clearAllCardsRunProgress(allCardsRunDeckId, allCardsRunOrder)
+                      void startAllCardsRun(allCardsRunDeckId, allCardsRunDeckName, 0, allCardsRunOrder)
                     } else {
                       exitAllCardsRun()
                     }
                   }}
                 >
-                  ↻ Run Again (Easiest → Hardest)
+                  ↻ Run Again ({allCardsRunOrder === 'curriculum' ? 'Curriculum Order' : 'Easiest → Hardest'})
                 </button>
               </div>
             </div>
@@ -2141,6 +2179,7 @@ export default function Review() {
             session={session}
             allCardsRunActive={allCardsRunActive}
             allCardsRunDeckName={allCardsRunDeckName}
+            allCardsRunOrder={allCardsRunOrder}
             onExitAllCardsRun={exitAllCardsRun}
             learnMode={learnMode}
             onToggleLearnMode={toggleLearnMode}
@@ -3774,6 +3813,7 @@ export default function Review() {
           }}
           allCardsRunActive={allCardsRunActive}
           allCardsRunDeckName={allCardsRunDeckName}
+          allCardsRunOrder={allCardsRunOrder}
           onExitAllCardsRun={exitAllCardsRun}
           allCardsRunProgress={{
             current: allCardsRunIndex + 1,

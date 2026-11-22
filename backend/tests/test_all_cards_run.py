@@ -54,8 +54,8 @@ async def test_deck_all_cards_run_items_ordered_by_difficulty(auth_client: Async
         },
     )
 
-    # 4. Fetch all-cards-run items
-    resp = await auth_client.get(f"/api/decks/{deck_id}/all-cards-run-items")
+    # 4. Fetch all-cards-run items in difficulty order
+    resp = await auth_client.get(f"/api/decks/{deck_id}/all-cards-run-items?order=difficulty")
     assert resp.status_code == 200
     items = resp.json()
     assert len(items) == 3
@@ -74,7 +74,7 @@ async def test_deck_all_cards_run_items_ordered_by_difficulty(auth_client: Async
     suspend_resp = await auth_client.post(f"/api/cards/{easy_card_id}/suspend?suspended=true")
     assert suspend_resp.status_code == 200
 
-    resp_after_suspend = await auth_client.get(f"/api/decks/{deck_id}/all-cards-run-items")
+    resp_after_suspend = await auth_client.get(f"/api/decks/{deck_id}/all-cards-run-items?order=difficulty")
     assert resp_after_suspend.status_code == 200
     remaining_items = resp_after_suspend.json()
     assert len(remaining_items) == 2
@@ -141,5 +141,73 @@ async def test_only_the_latest_grade_moves_a_card(auth_client: AsyncClient):
                 )
         await db.commit()
 
-    items = (await auth_client.get(f"/api/decks/{deck_id}/all-cards-run-items")).json()
+    items = (await auth_client.get(f"/api/decks/{deck_id}/all-cards-run-items?order=difficulty")).json()
     assert [i["front"] for i in items] == ["Recovered", "Slipped"]
+
+
+@pytest.mark.asyncio
+async def test_deck_all_cards_run_items_ordered_by_curriculum(auth_client: AsyncClient):
+    """Curriculum order returns items in depth-first deck order and card position order (1 -> N)."""
+    # 1. Root course deck
+    root_resp = await auth_client.post("/api/decks", json={"name": "Course Root", "position": 0})
+    root_id = root_resp.json()["id"]
+
+    # 2. Subdeck 1 (position 0) and Subdeck 2 (position 1)
+    sub1_resp = await auth_client.post("/api/decks", json={"name": "01 Intro", "parent_id": root_id, "position": 0})
+    sub1_id = sub1_resp.json()["id"]
+
+    sub2_resp = await auth_client.post("/api/decks", json={"name": "02 Advanced", "parent_id": root_id, "position": 1})
+    sub2_id = sub2_resp.json()["id"]
+
+    # 3. Add cards to Subdeck 1 with explicit positions
+    note_a1 = (await auth_client.post("/api/notes", json={
+        "deck_id": sub1_id,
+        "template_kind": "basic",
+        "field_values": {"Front": "Card 1.1", "Back": "Answer 1.1"},
+    })).json()
+    card_a1_id = note_a1["cards"][0]["id"]
+    await auth_client.post("/api/cards/reorder", json={"items": [{"id": card_a1_id, "position": 0}]})
+
+    note_a2 = (await auth_client.post("/api/notes", json={
+        "deck_id": sub1_id,
+        "template_kind": "basic",
+        "field_values": {"Front": "Card 1.2", "Back": "Answer 1.2"},
+    })).json()
+    card_a2_id = note_a2["cards"][0]["id"]
+    await auth_client.post("/api/cards/reorder", json={"items": [{"id": card_a2_id, "position": 1}]})
+
+    # 4. Add cards to Subdeck 2 with explicit positions
+    note_b1 = (await auth_client.post("/api/notes", json={
+        "deck_id": sub2_id,
+        "template_kind": "basic",
+        "field_values": {"Front": "Card 2.1", "Back": "Answer 2.1"},
+    })).json()
+    card_b1_id = note_b1["cards"][0]["id"]
+    await auth_client.post("/api/cards/reorder", json={"items": [{"id": card_b1_id, "position": 0}]})
+
+    note_b2 = (await auth_client.post("/api/notes", json={
+        "deck_id": sub2_id,
+        "template_kind": "basic",
+        "field_values": {"Front": "Card 2.2", "Back": "Answer 2.2"},
+    })).json()
+    card_b2_id = note_b2["cards"][0]["id"]
+    await auth_client.post("/api/cards/reorder", json={"items": [{"id": card_b2_id, "position": 1}]})
+
+    # 5. Fetch all-cards-run items for root deck with default order (curriculum)
+    resp = await auth_client.get(f"/api/decks/{root_id}/all-cards-run-items")
+    assert resp.status_code == 200
+    items = resp.json()
+    assert len(items) == 4
+    # Must follow subdeck 1 position 0, 1 then subdeck 2 position 0, 1
+    fronts = [i["front"] for i in items]
+    assert fronts == ["Card 1.1", "Card 1.2", "Card 2.1", "Card 2.2"]
+
+    # 6. Explicit order=curriculum matches
+    resp_curriculum = await auth_client.get(f"/api/decks/{root_id}/all-cards-run-items?order=curriculum")
+    assert resp_curriculum.status_code == 200
+    assert [i["front"] for i in resp_curriculum.json()] == ["Card 1.1", "Card 1.2", "Card 2.1", "Card 2.2"]
+
+    # 7. Subdeck-scoped run only returns that subdeck's cards
+    sub1_run = await auth_client.get(f"/api/decks/{sub1_id}/all-cards-run-items")
+    assert sub1_run.status_code == 200
+    assert [i["front"] for i in sub1_run.json()] == ["Card 1.1", "Card 1.2"]

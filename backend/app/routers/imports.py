@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models import (
+    CardLesson,
     CardReference,
     Deck,
     Import,
@@ -185,6 +186,18 @@ async def import_json(
                     )
                 )
                 citations_created += 1
+
+        lesson_text = (item.socratic_lesson or item.lesson or "").strip()
+        if lesson_text:
+            for card in cards:
+                db.add(
+                    CardLesson(
+                        card_id=card.id,
+                        body=lesson_text,
+                        key_points=item.key_points or [],
+                        model_used="imported",
+                    )
+                )
 
     record = Import(
         user_id=user.id,

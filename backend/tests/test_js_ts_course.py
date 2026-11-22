@@ -201,11 +201,11 @@ async def _run_snippet(card: PredictCard, flags: list[str]) -> str:
             stderr=asyncio.subprocess.PIPE,
         )
         out, err = await asyncio.wait_for(proc.communicate(), timeout=30)
-    lines = out.decode().rstrip("\n").split("\n") if out.strip() else []
+    lines = [line.rstrip("\r") for line in out.decode().rstrip("\r\n").split("\n")] if out.strip() else []
     if proc.returncode != 0:
         thrown = re.search(r"^(\w*Error\b.*)$", err.decode(), re.M)
         lines.append(
-            thrown.group(1) if thrown else f"<exit {proc.returncode}> {err.decode()[:300]}"
+            thrown.group(1).rstrip("\r") if thrown else f"<exit {proc.returncode}> {err.decode()[:300]}"
         )
     return "\n".join(lines)
 

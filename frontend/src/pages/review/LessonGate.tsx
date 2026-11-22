@@ -9,6 +9,10 @@ import { isCodeCard as checkIsCodeCard, looksLikeCode, extractCleanCode, detectC
 import { storage } from '../../utils/storage'
 import { HighlightedText } from './Feedback'
 import { buildStarterTestCode, buildCompletedTestCode } from './helpers'
+import { useReorderableSections } from '../../hooks/useReorderableSections'
+import { ReorderableSectionFrame } from '../../components/ReorderableSectionFrame'
+
+export type LessonSectionId = 'lesson' | 'question' | 'solution_preview'
 
 /** Learn & Practice: the priming gate shown before testing a card's question.
  *
@@ -21,7 +25,7 @@ import { buildStarterTestCode, buildCompletedTestCode } from './helpers'
 export function LessonGate({
   item,
   lesson,
-  loading: _loading,
+  loading = false,
   deckName,
   onContinue,
   onOpenSettings: _onOpenSettings,
@@ -59,6 +63,7 @@ export function LessonGate({
   })
   const [testsTab, setTestsTab] = useState<'all' | 'code' | 'cases'>('all')
   const [showTestsSection, setShowTestsSection] = useState(true)
+  const [showSolutionPreview, setShowSolutionPreview] = useState(false)
   const [copiedAnswer, setCopiedAnswer] = useState(false)
   const [copiedTests, setCopiedTests] = useState(false)
 
@@ -316,6 +321,33 @@ export function LessonGate({
     )
   }
 
+  const hasLesson = Boolean(lesson && lesson.available && lesson.body)
+  const lessonBody = hasLesson
+    ? lesson!.body
+    : (doc || thematic || 'Review the core concepts and mental model for this card before testing.')
+  const lessonKeyPoints = (hasLesson && lesson!.key_points) ? lesson!.key_points : []
+
+  const {
+    sections,
+    isCustomized,
+    draggingId,
+    dragOverId,
+    dropPosition,
+    collapsedMap,
+    moveSection,
+    resetOrder,
+    toggleCollapse,
+    handleDragStart,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    handleDragEnd,
+  } = useReorderableSections<LessonSectionId>({
+    storageKey: 'memorization.learnGateSectionOrder',
+    defaultOrder: ['lesson', 'question', 'solution_preview'] as const,
+    collapsedStorageKey: 'memorization.learnGateCollapsedSections',
+  })
+
   return (
     <div className="card space-y-5">
       {/* ── Top Header Strip ── */}
@@ -341,7 +373,7 @@ export function LessonGate({
               thematicNature: thematic,
             })
           }
-          className="flex items-center gap-1.5 rounded-full border border-sky-400/40 bg-sky-950/70 px-2.5 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-900/80 hover:border-sky-300 transition-all shadow-sm"
+          className="flex items-center gap-1.5 rounded-full border border-sky-400/40 bg-sky-950/70 px-2.5 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-900/80 hover:border-sky-300 transition-all shadow-sm cursor-pointer"
           title="Lexicon lookup"
         >
           <span>Lexicon</span>
@@ -349,173 +381,349 @@ export function LessonGate({
       </div>
 
       {/* Step Indicator Banner */}
-      <div className="rounded-lg bg-sky-500/10 border border-sky-500/25 p-3 text-xs text-sky-200 flex items-center justify-between gap-3">
+      <div className="rounded-lg bg-sky-500/10 border border-sky-500/25 p-3 text-xs text-sky-200 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-sky-300">Priming</span>
-          <span>Review before answering.</span>
+          <span className="font-bold text-sky-300">Learn &amp; Practice</span>
+          <span>Read the Socratic primer below to understand the mental model, then test yourself.</span>
         </div>
-        <kbd className="hidden sm:inline-block px-2 py-0.5 rounded bg-slate-800 text-[0.6875rem] font-mono border border-slate-700 text-sky-300">
-          Enter ↵
-        </kbd>
-      </div>
-
-      {/* ── 1. The Question Asked ── */}
-      <div className="space-y-2 rounded-xl border border-sky-500/30 bg-sky-950/15 p-4">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-sky-300 flex items-center gap-1.5">
-            Question
-          </span>
-          {item.category && (
-            <span className="chip text-[0.625rem] text-slate-400">{item.category}</span>
+        <div className="flex items-center gap-2">
+          {isCustomized && (
+            <button
+              type="button"
+              onClick={resetOrder}
+              className="px-2 py-0.5 rounded bg-slate-800 text-[0.6875rem] border border-slate-700 text-sky-300 hover:text-white hover:bg-slate-700 transition cursor-pointer flex items-center gap-1 shadow-xs"
+              title="Reset sections to default order"
+            >
+              <span>↺ Reset Layout</span>
+            </button>
           )}
+          <kbd className="hidden sm:inline-block px-2 py-0.5 rounded bg-slate-800 text-[0.6875rem] font-mono border border-slate-700 text-sky-300">
+            Enter ↵
+          </kbd>
         </div>
-
-        {item.title && <h3 className="text-base font-bold text-slate-100">{item.title}</h3>}
-
-        {item.occlusion ? (
-          <div className="space-y-2">
-            {item.occlusion.header && (
-              <p className="text-sm font-medium text-slate-200">{item.occlusion.header}</p>
-            )}
-            <OcclusionCard payload={item.occlusion} revealed={false} />
-          </div>
-        ) : (
-          <RichText
-            text={item.front || item.title || 'No prompt specified'}
-            className="text-sm md:text-base font-medium text-slate-100 leading-relaxed"
-            codeLanguage={detectedLang}
-            deckId={item.kind === 'card' ? item.deck_or_source_id : null}
-          />
-        )}
       </div>
 
-      {/* ── 2. The Answer to the Question (Verbatim) & Tests ── */}
-      {item.occlusion ? (
-        <div className="space-y-2 rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4">
-          <span className="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
-            Answer
-          </span>
-          <OcclusionCard payload={item.occlusion} revealed={true} />
-        </div>
-      ) : isCode ? (
-        <div className="space-y-3">
-          {/* Layout Switcher if tests exist */}
-          {hasTests && (
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs px-1">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-400">Layout:</span>
-                <div className="inline-flex rounded-lg bg-[#141822] p-0.5 border border-ink-line/60">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCodeLayout('stacked')
-                      storage.set('memorization.learnGateCodeLayout', 'stacked')
-                    }}
-                    className={`px-2.5 py-0.5 rounded text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
-                      codeLayout === 'stacked'
-                        ? 'bg-slate-700/70 text-white border border-slate-500/50 shadow-sm font-semibold'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                    title="Stacked cards view"
-                  >
-                    <span>Stacked</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCodeLayout('split')
-                      storage.set('memorization.learnGateCodeLayout', 'split')
-                    }}
-                    className={`hidden sm:flex px-2.5 py-0.5 rounded text-xs font-medium transition cursor-pointer items-center gap-1.5 ${
-                      codeLayout === 'split'
-                        ? 'bg-sky-600/40 text-sky-100 border border-sky-500/50 shadow-sm font-semibold'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                    title="Side-by-side solution and tests view"
-                  >
-                    <span>⧉ Side-by-Side</span>
-                  </button>
+      {/* ── Reorderable Sections (User Draggable) ── */}
+      <div className="space-y-4">
+        {sections.map((sectionId, index) => {
+          const isFirst = index === 0
+          const isLast = index === sections.length - 1
+          const isDragging = draggingId === sectionId
+          const isDropBefore = dragOverId === sectionId && dropPosition === 'before'
+          const isDropAfter = dragOverId === sectionId && dropPosition === 'after'
+          const isCollapsed = Boolean(collapsedMap[sectionId])
+
+          if (sectionId === 'lesson') {
+            return (
+              <ReorderableSectionFrame
+                key="lesson"
+                id="lesson"
+                isCollapsed={isCollapsed}
+                isFirst={isFirst}
+                isLast={isLast}
+                isDragging={isDragging}
+                isDropBefore={isDropBefore}
+                isDropAfter={isDropAfter}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onDragEnd={handleDragEnd}
+                onMoveUp={() => moveSection('lesson', 'up')}
+                onMoveDown={() => moveSection('lesson', 'down')}
+                onToggleCollapse={() => toggleCollapse('lesson')}
+                className="rounded-xl border border-sky-500/40 bg-gradient-to-br from-sky-950/25 via-[#0e1422] to-slate-950/60 shadow-md overflow-hidden"
+                renderHeader={({ dragHandle, moveButtons, collapseButton }) => (
+                  <div className={`flex flex-wrap items-center justify-between gap-2 p-4 ${isCollapsed ? '' : 'border-b border-sky-500/20 pb-2.5'}`}>
+                    <div className="flex items-center gap-2">
+                      {dragHandle}
+                      <span className="text-xs font-bold uppercase tracking-wider text-sky-300 flex items-center gap-1.5">
+                        <span>🧠 Socratic Lesson · Mental Model &amp; Intuition</span>
+                      </span>
+                      {lesson?.model_used && (
+                        <span className="chip text-[0.625rem] text-slate-400 border-sky-500/30 bg-sky-500/10">
+                          {lesson.model_used}
+                        </span>
+                      )}
+                      {isCollapsed && (
+                        <span className="text-[0.6875rem] text-slate-500 italic">
+                          (Collapsed — click + to expand)
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {moveButtons}
+                      {collapseButton}
+                    </div>
+                  </div>
+                )}
+              >
+                <div className="p-4 pt-3 space-y-3">
+                  {loading ? (
+                    <div className="py-6 flex justify-center">
+                      <Spinner label="Preparing Socratic primer..." />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <RichText
+                        text={lessonBody}
+                        className="text-sm md:text-base leading-relaxed text-slate-100 whitespace-pre-line"
+                        codeLanguage={detectedLang}
+                        deckId={item.kind === 'card' ? item.deck_or_source_id : null}
+                      />
+
+                      {lessonKeyPoints.length > 0 && (
+                        <div className="mt-3.5 pt-3 border-t border-sky-500/20 space-y-2">
+                          <span className="text-[0.6875rem] font-bold uppercase tracking-wider text-sky-300 block">
+                            Key Principles &amp; Takeaways:
+                          </span>
+                          <ul className="space-y-1.5 text-xs text-slate-200">
+                            {lessonKeyPoints.map((pt, idx) => (
+                              <li key={idx} className="flex items-start gap-2">
+                                <span className="text-emerald-400 font-bold shrink-0 mt-0.5">✓</span>
+                                <span className="leading-normal">{pt}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {(doc || hasReferences) && (
+                        <div className="pt-2 flex flex-wrap items-center gap-2 text-xs">
+                          {hasReferences && (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="text-slate-400 text-[0.6875rem]">Citations:</span>
+                              {item.references.map((ref, idx) => (
+                                <span key={idx} className="chip text-[0.625rem] text-slate-400" title={ref.quote || undefined}>
+                                  {ref.source_title ?? ref.locator ?? 'source'}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
-              <span className="text-[0.6875rem] text-slate-400">
-                Solution and tests primed before practice phase
-              </span>
-            </div>
-          )}
+              </ReorderableSectionFrame>
+            )
+          }
 
-          {codeLayout === 'split' && hasTests ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-              {renderAnswerCard()}
-              {renderTestsCard()}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {renderAnswerCard()}
-              {renderTestsCard()}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-2 rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4">
-          <span className="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
-            Answer
-          </span>
-          <div className="rounded-lg border border-emerald-500/20 bg-slate-950/70 p-3.5">
-            <RichText
-              text={item.back || 'No answer specified'}
-              className="text-xs md:text-sm text-emerald-100 leading-relaxed font-mono whitespace-pre-wrap"
-            />
-          </div>
-          {(item.time_complexity || item.space_complexity) && (
-            <div className="flex items-center gap-3 pt-1 text-xs text-emerald-400/90 font-mono">
-              {item.time_complexity && <span>Time: {item.time_complexity}</span>}
-              {item.space_complexity && <span>Space: {item.space_complexity}</span>}
-            </div>
-          )}
-        </div>
-      )}
+          if (sectionId === 'question') {
+            return (
+              <ReorderableSectionFrame
+                key="question"
+                id="question"
+                isCollapsed={isCollapsed}
+                isFirst={isFirst}
+                isLast={isLast}
+                isDragging={isDragging}
+                isDropBefore={isDropBefore}
+                isDropAfter={isDropAfter}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onDragEnd={handleDragEnd}
+                onMoveUp={() => moveSection('question', 'up')}
+                onMoveDown={() => moveSection('question', 'down')}
+                onToggleCollapse={() => toggleCollapse('question')}
+                className="rounded-xl border border-sky-500/30 bg-sky-950/15 overflow-hidden"
+                renderHeader={({ dragHandle, moveButtons, collapseButton }) => (
+                  <div className={`flex items-center justify-between p-4 ${isCollapsed ? '' : 'border-b border-sky-500/15 pb-2.5'}`}>
+                    <div className="flex items-center gap-2">
+                      {dragHandle}
+                      <span className="text-xs font-bold uppercase tracking-wider text-sky-300 flex items-center gap-1.5">
+                        Question
+                      </span>
+                      {item.category && (
+                        <span className="chip text-[0.625rem] text-slate-400">{item.category}</span>
+                      )}
+                      {isCollapsed && (
+                        <span className="text-[0.6875rem] text-slate-500 italic truncate max-w-xs">
+                          ({item.title || item.front?.slice(0, 40) || 'Collapsed'})
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {moveButtons}
+                      {collapseButton}
+                    </div>
+                  </div>
+                )}
+              >
+                <div className="p-4 pt-3 space-y-2">
+                  {item.title && <h3 className="text-base font-bold text-slate-100">{item.title}</h3>}
 
-      {/* ── 3. Supporting Context / Citations / Lesson Notes ── */}
-      {(doc || hasReferences || (lesson && lesson.body)) && (
-        <details className="rounded-lg border border-ink-line/80 bg-ink/40 p-3 text-xs text-slate-300 group">
-          <summary className="cursor-pointer font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 select-none">
-            <span>References</span>
-          </summary>
-          <div className="mt-3 space-y-3 pt-2 border-t border-ink-line/60">
-            {doc && (
-              <div>
-                <span className="text-slate-400 font-medium block mb-1">Documentation:</span>
-                <RichText text={doc} className="text-xs leading-relaxed text-slate-300" />
-              </div>
-            )}
-            {lesson && lesson.body && lesson.body !== item.back && (
-              <div>
-                <span className="text-slate-400 font-medium block mb-1">Lesson Notes:</span>
-                <RichText text={lesson.body} className="text-xs leading-relaxed text-slate-300" />
-              </div>
-            )}
-            {hasReferences && (
-              <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-slate-400 text-[0.6875rem]">Citations:</span>
-                {item.references.map((ref, idx) => (
-                  <span key={idx} className="chip text-[0.625rem] text-slate-400" title={ref.quote || undefined}>
-                    {ref.source_title ?? ref.locator ?? 'source'}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </details>
-      )}
+                  {item.occlusion ? (
+                    <div className="space-y-2">
+                      {item.occlusion.header && (
+                        <p className="text-sm font-medium text-slate-200">{item.occlusion.header}</p>
+                      )}
+                      <OcclusionCard payload={item.occlusion} revealed={false} />
+                    </div>
+                  ) : (
+                    <RichText
+                      text={item.front || item.title || 'No prompt specified'}
+                      className="text-sm md:text-base font-medium text-slate-100 leading-relaxed"
+                      codeLanguage={detectedLang}
+                      deckId={item.kind === 'card' ? item.deck_or_source_id : null}
+                    />
+                  )}
+                </div>
+              </ReorderableSectionFrame>
+            )
+          }
 
-      {/* ── 4. Call-to-action to enter Practice Phase ── */}
+          if (sectionId === 'solution_preview') {
+            return (
+              <ReorderableSectionFrame
+                key="solution_preview"
+                id="solution_preview"
+                isCollapsed={isCollapsed}
+                isFirst={isFirst}
+                isLast={isLast}
+                isDragging={isDragging}
+                isDropBefore={isDropBefore}
+                isDropAfter={isDropAfter}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onDragEnd={handleDragEnd}
+                onMoveUp={() => moveSection('solution_preview', 'up')}
+                onMoveDown={() => moveSection('solution_preview', 'down')}
+                onToggleCollapse={() => toggleCollapse('solution_preview')}
+                className="rounded-xl border border-ink-line/80 bg-ink/30 overflow-hidden"
+                renderHeader={({ dragHandle, moveButtons, collapseButton }) => (
+                  <div className="flex flex-wrap items-center justify-between gap-2 p-3.5">
+                    <div className="flex items-center gap-2">
+                      {dragHandle}
+                      <div>
+                        <span className="text-xs font-semibold text-slate-300 block">
+                          Solution &amp; Verification Preview
+                        </span>
+                        <span className="text-[0.6875rem] text-slate-400">
+                          {isCollapsed
+                            ? 'Click + to expand preview card'
+                            : 'Solution is hidden by default to support active recall. Click to inspect before starting the quiz.'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!isCollapsed && (
+                        <button
+                          type="button"
+                          onClick={() => setShowSolutionPreview((prev) => !prev)}
+                          className="btn btn-secondary text-xs px-3 py-1 flex items-center gap-1.5 cursor-pointer hover:bg-slate-800 transition"
+                        >
+                          <span>{showSolutionPreview ? 'Hide Solution' : '👁 Preview Solution'}</span>
+                        </button>
+                      )}
+                      {moveButtons}
+                      {collapseButton}
+                    </div>
+                  </div>
+                )}
+              >
+                {showSolutionPreview && (
+                  <div className="p-3.5 pt-0 border-t border-ink-line/60 mt-2 space-y-4">
+                    {item.occlusion ? (
+                      <div className="space-y-2 rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4">
+                        <span className="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+                          Answer
+                        </span>
+                        <OcclusionCard payload={item.occlusion} revealed={true} />
+                      </div>
+                    ) : isCode ? (
+                      <div className="space-y-3">
+                        {hasTests && (
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-xs px-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-400">Layout:</span>
+                              <div className="inline-flex rounded-lg bg-[#141822] p-0.5 border border-ink-line/60">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCodeLayout('stacked')
+                                    storage.set('memorization.learnGateCodeLayout', 'stacked')
+                                  }}
+                                  className={`px-2.5 py-0.5 rounded text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                                    codeLayout === 'stacked'
+                                      ? 'bg-slate-700/70 text-white border border-slate-500/50 shadow-sm font-semibold'
+                                      : 'text-slate-400 hover:text-slate-200'
+                                  }`}
+                                >
+                                  <span>Stacked</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCodeLayout('split')
+                                    storage.set('memorization.learnGateCodeLayout', 'split')
+                                  }}
+                                  className={`hidden sm:flex px-2.5 py-0.5 rounded text-xs font-medium transition cursor-pointer items-center gap-1.5 ${
+                                    codeLayout === 'split'
+                                      ? 'bg-sky-600/40 text-sky-100 border border-sky-500/50 shadow-sm font-semibold'
+                                      : 'text-slate-400 hover:text-slate-200'
+                                  }`}
+                                >
+                                  <span>⧉ Side-by-Side</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {codeLayout === 'split' && hasTests ? (
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                            {renderAnswerCard()}
+                            {renderTestsCard()}
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {renderAnswerCard()}
+                            {renderTestsCard()}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2 rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4">
+                        <span className="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+                          Answer
+                        </span>
+                        <div className="rounded-lg border border-emerald-500/20 bg-slate-950/70 p-3.5">
+                          <RichText
+                            text={item.back || 'No answer specified'}
+                            className="text-xs md:text-sm text-emerald-100 leading-relaxed font-mono whitespace-pre-wrap"
+                          />
+                        </div>
+                        {(item.time_complexity || item.space_complexity) && (
+                          <div className="flex items-center gap-3 pt-1 text-xs text-emerald-400/90 font-mono">
+                            {item.time_complexity && <span>Time: {item.time_complexity}</span>}
+                            {item.space_complexity && <span>Space: {item.space_complexity}</span>}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </ReorderableSectionFrame>
+            )
+          }
+
+          return null
+        })}
+      </div>
+
+      {/* ── 4. Call-to-action to enter Practice / Active Recall Phase ── */}
       <div className="pt-2">
         <button
           type="button"
-          className="btn btn-primary w-full py-3 text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-sky-950/40 hover:scale-[1.01] active:scale-[0.99] transition-all"
+          className="btn btn-primary w-full py-3.5 text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-sky-950/40 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
           onClick={onContinue}
         >
-          <span>Start Quiz</span>
+          <span>Start Quiz · Test Yourself</span>
           <span className="text-xs text-sky-300/80 font-normal">Enter ↵</span>
         </button>
       </div>

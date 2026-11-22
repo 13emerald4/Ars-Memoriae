@@ -522,6 +522,7 @@ def test_migrations_build_the_schema_the_models_describe(tmp_path):
     """
     env = {
         "PATH": __import__("os").environ.get("PATH", ""),
+        "SYSTEMROOT": __import__("os").environ.get("SYSTEMROOT", ""),
         "DATABASE_URL": f"sqlite+aiosqlite:///{(tmp_path / 'migrated.db').as_posix()}",
         "SECRET_KEY": "migration-test-key",
         "ENABLE_BACKGROUND_JOBS": "0",

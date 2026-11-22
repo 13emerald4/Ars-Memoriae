@@ -109,6 +109,27 @@ async def test_auto_palace_generation(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_clear_palace_restores_sequential_order(auth_client):
+    """Test undoing/clearing auto-palace layout and restoring clean sequential order."""
+    deck_id = await _deck(auth_client, "Sequential Test Deck")
+    await _note(auth_client, deck_id, "Card A", "Ans A")
+    await _note(auth_client, deck_id, "Card B", "Ans B")
+
+    palace_resp = await auth_client.post(f"/api/decks/{deck_id}/auto-palace")
+    assert palace_resp.status_code == 200
+    assert all(c["spatial_locus"] is not None for c in palace_resp.json())
+
+    clear_resp = await auth_client.post(f"/api/decks/{deck_id}/clear-palace")
+    assert clear_resp.status_code == 200, clear_resp.text
+    cleared_cards = clear_resp.json()
+    assert len(cleared_cards) == 2
+    for c in cleared_cards:
+        assert c["spatial_locus"] is None
+        assert c["spatial_x"] is None
+        assert c["spatial_y"] is None
+
+
+@pytest.mark.asyncio
 async def test_schema_checkpoint_queue_priority_boost(auth_client):
     """Verify that when enable_schema_checkpoints is True, checkpoint cards receive priority boost."""
     deck_id = await _deck(auth_client, "Hierarchy Deck", priority=50)

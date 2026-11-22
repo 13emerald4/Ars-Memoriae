@@ -143,3 +143,46 @@ async def test_auto_fallback_when_allowed(fake_ollama):
     )
     assert result["score"] == 85
     assert result["model_used"] != "qwen2.5-coder:7b"
+
+
+@pytest.mark.asyncio
+async def test_submit_answer_vram_exhausted_returns_200_with_vram_constrained(
+    auth_client, monkeypatch
+):
+    import app.routers.review as review_router
+
+    async def boom_vram(self, **kwargs):
+        raise VramExhaustedError(
+            message="Out of memory allocating CUDA buffer",
+            failed_model="qwen3.5:4b",
+            fallback_model="qwen2.5-coder:3b",
+            available_models=["qwen2.5-coder:3b", "qwen2.5-coder:1.5b"],
+        )
+
+    monkeypatch.setattr(review_router.GradingService, "grade_with_escalation", boom_vram)
+
+    await auth_client.patch("/api/me", json={"llm_grading_consent": True})
+    deck_id = (await auth_client.post("/api/decks", json={"name": "OOM Deck"})).json()["id"]
+    note = (
+        await auth_client.post(
+            "/api/notes",
+            json={
+                "deck_id": deck_id,
+                "template_kind": "basic",
+                "field_values": {"Front": "q", "Back": "a"},
+            },
+        )
+    ).json()
+
+    resp = await auth_client.post(
+        f"/api/review/{note['cards'][0]['id']}/answer",
+        json={"typed_answer": "my answer", "latency_ms": 150, "model": "qwen3.5:4b"},
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["degraded_to_manual"] is True
+    assert data["vram_constrained"] is True
+    assert data["failed_model"] == "qwen3.5:4b"
+    assert data["fallback_model"] == "qwen2.5-coder:3b"
+    assert "qwen2.5-coder:3b" in data["available_fallback_models"]
+

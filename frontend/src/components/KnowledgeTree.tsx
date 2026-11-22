@@ -28,7 +28,10 @@ interface KnowledgeTreeProps {
   rootTitle?: string
   nodes: KnowledgeTreeNode[]
   onSelectNode?: (node: KnowledgeTreeNode) => void
-  onStudyNode?: (node: KnowledgeTreeNode, mode?: 'standard' | 'unseen' | 'all_run' | 'persist_all') => void
+  onStudyNode?: (
+    node: KnowledgeTreeNode,
+    mode?: 'standard' | 'unseen' | 'all_run' | 'all_run_difficulty' | 'persist_all',
+  ) => void
   onAddChild?: (parent: KnowledgeTreeNode | null) => void
   onRename?: (node: KnowledgeTreeNode) => void
   onDelete?: (node: KnowledgeTreeNode) => void
@@ -371,7 +374,7 @@ export function KnowledgeTree({
 
   const handleStudyAction = (
     targetNode = selectedNode,
-    mode: 'standard' | 'unseen' | 'all_run' | 'persist_all' = 'standard'
+    mode: 'standard' | 'unseen' | 'all_run' | 'all_run_difficulty' | 'persist_all' = 'standard'
   ) => {
     if (onStudyNode) {
       onStudyNode(targetNode, mode)
@@ -385,10 +388,20 @@ export function KnowledgeTree({
           navigate(`/review?branch=${targetNode.id}&persist=1&unseen=1`)
         }
       } else if (mode === 'all_run') {
-        if (targetNode.deckId) {
-          navigate(`/review?deck=${targetNode.deckId}&run=all`)
+        if (targetNode.id === '__root__') {
+          navigate('/review?run=all&order=curriculum')
+        } else if (targetNode.deckId) {
+          navigate(`/review?deck=${targetNode.deckId}&run=all&order=curriculum`)
         } else {
-          navigate('/review?run=all')
+          navigate(`/review?branch=${targetNode.id}&run=all&order=curriculum`)
+        }
+      } else if (mode === 'all_run_difficulty') {
+        if (targetNode.id === '__root__') {
+          navigate('/review?run=all&order=difficulty')
+        } else if (targetNode.deckId) {
+          navigate(`/review?deck=${targetNode.deckId}&run=all&order=difficulty`)
+        } else {
+          navigate(`/review?branch=${targetNode.id}&run=all&order=difficulty`)
         }
       } else if (mode === 'persist_all') {
         if (targetNode.deckId) {
@@ -580,6 +593,18 @@ export function KnowledgeTree({
           >
             {isClassic ? 'Win32' : 'Modern UI'}
           </button>
+
+          {/* Direct Systematic Review All Cards Button */}
+          {selectedNode.elementCount > 0 && (
+            <button
+              type="button"
+              onClick={() => handleStudyAction(selectedNode, 'all_run')}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/40 font-semibold text-xs shadow-xs hover:scale-[1.02] active:scale-95 transition"
+              title={`Systematically review all ${selectedNode.elementCount} cards in ${selectedNode.title} (1 → N)`}
+            >
+              <span>Review All ({selectedNode.elementCount})</span>
+            </button>
+          )}
 
           {/* Direct Unseen Button */}
           {selectedNode.newCount !== undefined && selectedNode.newCount > 0 && (
@@ -874,6 +899,19 @@ export function KnowledgeTree({
               <span>Browse All Cards</span>
             </button>
           )}
+          {selectedNode.elementCount > 0 && (
+            <button
+              type="button"
+              onClick={() => handleStudyAction(selectedNode, 'all_run')}
+              className="flex items-center gap-1.5 rounded-md border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 px-2.5 py-1 text-xs font-semibold text-purple-200 transition shadow-xs cursor-pointer"
+              title={`Systematically review all ${selectedNode.elementCount} cards in ${selectedNode.title} in sequential curriculum order (1 → N)`}
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-purple-300">
+                <path fillRule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10zm0 5.25a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z" clipRule="evenodd" />
+              </svg>
+              <span>Review All Cards ({selectedNode.elementCount})</span>
+            </button>
+          )}
           {selectedNode.newCount !== undefined && selectedNode.newCount > 0 && (
             <button
               type="button"
@@ -930,7 +968,35 @@ export function KnowledgeTree({
             </p>
 
             <div className="space-y-2.5">
-              {/* Option 1: Only Unseen Cards */}
+              {/* Option 1: Systematic All-Cards Review (Curriculum 1 -> N) */}
+              {studyModalNode.elementCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const node = studyModalNode
+                    setStudyModalNode(null)
+                    handleStudyAction(node, 'all_run')
+                  }}
+                  className="w-full text-left p-3.5 rounded-xl border border-purple-500/40 bg-purple-500/15 hover:bg-purple-500/25 hover:border-purple-400 transition group cursor-pointer shadow-xs"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-sm text-purple-200 group-hover:text-purple-100 flex items-center gap-1.5">
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-purple-300">
+                        <path fillRule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10zm0 5.25a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z" clipRule="evenodd" />
+                      </svg>
+                      Systematic All-Cards Review (Sequential 1 → N)
+                    </span>
+                    <span className="rounded-full bg-purple-500/25 px-2 py-0.5 text-[0.625rem] font-mono font-bold text-purple-200">
+                      {studyModalNode.elementCount} cards
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Review all cards in logical curriculum order (subdeck by subdeck, position 1 to N). Ideal for systematically working through an entire course or topic from start to finish.
+                  </p>
+                </button>
+              )}
+
+              {/* Option 2: Only Unseen Cards */}
               {studyModalNode.newCount !== undefined && studyModalNode.newCount > 0 ? (
                 <button
                   type="button"
@@ -955,7 +1021,7 @@ export function KnowledgeTree({
                 </button>
               ) : null}
 
-              {/* Option 2: Standard Review */}
+              {/* Option 3: Standard Review */}
               <button
                 type="button"
                 onClick={() => {
@@ -967,7 +1033,7 @@ export function KnowledgeTree({
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-semibold text-sm text-sky-200 group-hover:text-sky-100">
-                    Standard Review
+                    Standard Spaced Review (FSRS)
                   </span>
                   <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-[0.625rem] font-mono text-sky-300">
                     {studyModalNode.dueCount || 0} due
@@ -978,28 +1044,30 @@ export function KnowledgeTree({
                 </p>
               </button>
 
-              {/* Option 3: All Cards Run */}
-              <button
-                type="button"
-                onClick={() => {
-                  const node = studyModalNode
-                  setStudyModalNode(null)
-                  handleStudyAction(node, 'all_run')
-                }}
-                className="w-full text-left p-3.5 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 hover:border-purple-400 transition group cursor-pointer"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-semibold text-sm text-purple-200 group-hover:text-purple-100">
-                    All Cards Run
-                  </span>
-                  <span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-[0.625rem] font-mono text-purple-300">
-                    {studyModalNode.elementCount} cards
-                  </span>
-                </div>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Review all cards consecutively from easiest to hardest, then FSRS takes over.
-                </p>
-              </button>
+              {/* Option 4: Difficulty-Ordered Run */}
+              {studyModalNode.elementCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const node = studyModalNode
+                    setStudyModalNode(null)
+                    handleStudyAction(node, 'all_run_difficulty')
+                  }}
+                  className="w-full text-left p-3 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 hover:border-indigo-400 transition group cursor-pointer"
+                >
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="font-semibold text-xs text-indigo-200 group-hover:text-indigo-100">
+                      Difficulty-Ordered Run (Easiest → Hardest)
+                    </span>
+                    <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-[0.625rem] font-mono text-indigo-300">
+                      difficulty score
+                    </span>
+                  </div>
+                  <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
+                    Review all cards sorted by baseline difficulty and past review rating lapses.
+                  </p>
+                </button>
+              )}
 
               {/* Option 4: Browse All Cards */}
               {onOpenCards && (

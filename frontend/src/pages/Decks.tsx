@@ -1343,6 +1343,14 @@ function DeckList({
               )}
               <button
                 type="button"
+                onClick={() => navigate('/review?run=all&order=curriculum')}
+                className="btn border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 text-xs font-semibold px-3 py-1.5 shadow-sm transition cursor-pointer flex items-center gap-1.5"
+                title="Systematically review all cards across all decks in curriculum order (1 → N)"
+              >
+                <span>Review All ({totalCollectionCards})</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => navigate('/review')}
                 className="btn btn-primary text-xs font-bold px-3 py-1.5 shadow-sm"
                 title="Study all decks"
@@ -1371,12 +1379,14 @@ function DeckList({
             onStudyNode={(node, mode = 'standard') => {
               if (node.id === '__root__') {
                 if (mode === 'unseen') navigate('/review?persist=1&unseen=1')
-                else if (mode === 'all_run') navigate('/review?run=all')
+                else if (mode === 'all_run') navigate('/review?run=all&order=curriculum')
+                else if (mode === 'all_run_difficulty') navigate('/review?run=all&order=difficulty')
                 else if (mode === 'persist_all') navigate('/review?persist=1')
                 else navigate('/review')
               } else if (node.deckId) {
                 if (mode === 'unseen') navigate(`/review?deck=${node.deckId}&persist=1&unseen=1`)
-                else if (mode === 'all_run') navigate(`/review?deck=${node.deckId}&run=all`)
+                else if (mode === 'all_run') navigate(`/review?deck=${node.deckId}&run=all&order=curriculum`)
+                else if (mode === 'all_run_difficulty') navigate(`/review?deck=${node.deckId}&run=all&order=difficulty`)
                 else if (mode === 'persist_all') navigate(`/review?deck=${node.deckId}&persist=1`)
                 else navigate(`/review?deck=${node.deckId}`)
               }
@@ -1602,17 +1612,17 @@ function DeckList({
                   </button>
                 )}
 
-                {d.card_count > 0 && (
+                {((d.total_card_count ?? d.card_count) > 0) && (
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation()
-                      navigate(`/review?deck=${d.id}&run=all`)
+                      navigate(`/review?deck=${d.id}&run=all&order=curriculum`)
                     }}
                     className="flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-500/10 px-2.5 py-1 text-xs font-semibold text-purple-200 hover:bg-purple-500/20 hover:border-purple-400 transition shadow-sm"
-                    title={`Run all cards in ${d.name} consecutively, easiest to hardest. Thereafter, FSRS takes over.`}
+                    title={`Systematically review all ${d.total_card_count ?? d.card_count} cards in ${d.name} sequentially (1 → N)`}
                   >
-                    <span>All Cards Run</span>
+                    <span>Review All ({d.total_card_count ?? d.card_count})</span>
                   </button>
                 )}
 
@@ -2419,6 +2429,31 @@ function Browser({
           >
             <span>Auto-Palace</span>
           </button>
+          {cards.some((c) => Boolean(c.spatial_locus)) && (
+            <button
+              type="button"
+              onClick={async () => {
+                const ok = await dialogs.confirm({
+                  title: 'Undo Memory Palace & Keep Sequential Order?',
+                  message: 'This removes all assigned memory palace rooms/loci and restores pure sequential order for this deck.',
+                  confirmLabel: 'Undo Palace',
+                })
+                if (!ok) return
+                try {
+                  await api.clearPalace(deckId)
+                  await load()
+                  onChange()
+                  dialogs.notify('Memory palace removed. Cards restored to clean sequential order.')
+                } catch (err: any) {
+                  dialogs.error(err, 'Failed to clear memory palace.')
+                }
+              }}
+              className="btn text-xs px-2.5 py-1.5 border border-purple-400/50 text-purple-200 bg-[#1e1a38] hover:bg-[#2a244d] flex items-center gap-1.5 font-medium transition cursor-pointer"
+              title="Undo memory palace assignment and keep cards in clean sequential order"
+            >
+              <span>Undo Palace</span>
+            </button>
+          )}
           <input
             className="input w-56"
             placeholder="Search…"

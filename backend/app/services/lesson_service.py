@@ -87,41 +87,14 @@ def _fallback_body(citations: list[dict]) -> str:
 
 async def get_lesson(db: AsyncSession, user: User, card: Card) -> dict:
     """The lesson for one card, generating and caching it on first request."""
-    citations = await _citations(db, card)
-    if not citations:
-        return {
-            "available": False,
-            "reason": "no_citations",
-            "body": "",
-            "key_points": [],
-            "generated": False,
-            "model_used": None,
-            "cached": False,
-            "citations": [],
-        }
-
+    # 1. First, check if a lesson is already cached for this model or was pre-seeded/imported
     cached = await db.get(CardLesson, card.id)
+    citations = await _citations(db, card)
+
     service = GradingService.for_user(user)
     model = service.model
 
-    def source_only(reason: str | None) -> dict:
-        return {
-            "available": True,
-            "reason": reason,
-            "body": _fallback_body(citations),
-            "key_points": [],
-            "generated": False,
-            "model_used": None,
-            "cached": False,
-            "citations": citations,
-        }
-
-    # If consent is off, return source-only excerpts when no cached lesson exists
-    # for the active state.
-    if not user.llm_grading_consent:
-        return source_only("consent_not_given")
-
-    if cached is not None and cached.model_used == model:
+    if cached is not None and cached.body and cached.body.strip() and cached.model_used in (model, "imported", "preseeded"):
         return {
             "available": True,
             "reason": None,
@@ -134,13 +107,71 @@ async def get_lesson(db: AsyncSession, user: User, card: Card) -> dict:
         }
 
     note = card.note
+    field_values = note.field_values or {}
+    why = (field_values.get("why") or "").strip()
+    doc = (field_values.get("documentation") or "").strip()
+    thematic = (field_values.get("thematic_nature") or "").strip()
+
     front, back = render(
-        note.note_type.template_kind, note.field_values or {}, card.template_slot
+        note.note_type.template_kind, field_values, card.template_slot
     )
+
+    passages = _teaching_text(citations)
+    if not passages:
+        # Fallback to note context (why, documentation, back) when citations are missing
+        note_excerpts = [p for p in [why, doc, thematic] if p]
+        if note_excerpts:
+            passages = note_excerpts
+        elif back and back.strip():
+            passages = [back.strip()]
+
+    service = GradingService.for_user(user)
+    model = service.model
+
+    def source_only(reason: str | None) -> dict:
+        fallback_body = _fallback_body(citations) if citations else (why or doc or back)
+        return {
+            "available": bool(fallback_body.strip()),
+            "reason": reason,
+            "body": fallback_body,
+            "key_points": [],
+            "generated": False,
+            "model_used": None,
+            "cached": False,
+            "citations": citations,
+        }
+
+    # If consent is off, return source-only / context excerpt
+    if not user.llm_grading_consent:
+        if citations or why or doc:
+            return source_only("consent_not_given")
+        return {
+            "available": False,
+            "reason": "no_citations",
+            "body": "",
+            "key_points": [],
+            "generated": False,
+            "model_used": None,
+            "cached": False,
+            "citations": [],
+        }
+
+    if not passages:
+        return {
+            "available": False,
+            "reason": "no_citations",
+            "body": "",
+            "key_points": [],
+            "generated": False,
+            "model_used": None,
+            "cached": False,
+            "citations": [],
+        }
+
     result = await service.generate_lesson(
         front=front,
         back=back,
-        passages=_teaching_text(citations),
+        passages=passages,
         max_words=LESSON_MAX_WORDS,
         model=model,
     )

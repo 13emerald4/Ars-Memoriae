@@ -14,11 +14,12 @@ from dataclasses import dataclass
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Card, CardReference, Deck, KnowledgeNode, Note, ReviewLog, User
+from app.models import Card, CardLesson, CardReference, Deck, KnowledgeNode, Note, ReviewLog, User
 from app.services import tree_service
 from app.services.note_service import default_note_type, sync_cards
 
 from . import COURSE, ROOT_NAME, ROOT_SUMMARY
+from .lessons import get_socratic_lesson
 from .model import CodeCard, Source, Subdeck
 from .render import card_fields, card_tags
 
@@ -178,6 +179,16 @@ async def install_course(db: AsyncSession, user: User, *, force: bool = False) -
                             )
                         )
                         citations += 1
+                    lesson_body, key_points = get_socratic_lesson(item.key)
+                    if lesson_body:
+                        db.add(
+                            CardLesson(
+                                card_id=card.id,
+                                body=lesson_body,
+                                key_points=key_points,
+                                model_used="socratic-curriculum",
+                            )
+                        )
                 cards_created += len(created)
 
     await db.flush()

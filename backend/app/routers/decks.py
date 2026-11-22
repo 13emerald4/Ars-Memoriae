@@ -776,15 +776,20 @@ async def deck_persist_items(
 @router.get("/decks/{deck_id}/all-cards-run-items", response_model=list[QueueItem])
 async def deck_all_cards_run_items(
     deck_id: str,
+    order: str = Query(default="curriculum", pattern="^(curriculum|difficulty)$"),
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[QueueItem]:
-    """Return all active cards in a deck formatted as QueueItems, ordered consecutively from easiest to hardest."""
-    deck = await _owned_deck(db, user, parse_uuid(deck_id))
+    """Return all active cards in a deck formatted as QueueItems, ordered consecutively (by curriculum position or difficulty)."""
     from app.routers.queue import to_schema
     from app.services.queue_service import compose_deck_all_cards_run_queue
 
-    items = await compose_deck_all_cards_run_queue(db, user, deck.id)
+    if deck_id in ("__root__", "all"):
+        items = await compose_deck_all_cards_run_queue(db, user, None, order=order)
+        return [to_schema(i) for i in items]
+
+    deck = await _owned_deck(db, user, parse_uuid(deck_id))
+    items = await compose_deck_all_cards_run_queue(db, user, deck.id, order=order)
     return [to_schema(i) for i in items]
 
 
@@ -1646,5 +1651,42 @@ async def auto_generate_memory_palace(
     for c in cards:
         await db.refresh(c)
     return [card_out(c) for c in cards]
+
+
+@router.post("/decks/{deck_id}/clear-palace", response_model=list[CardOut])
+@router.post("/{deck_id}/clear-palace", response_model=list[CardOut])
+@router.delete("/decks/{deck_id}/auto-palace", response_model=list[CardOut])
+@router.delete("/{deck_id}/auto-palace", response_model=list[CardOut])
+async def clear_memory_palace(
+    deck_id: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[CardOut]:
+    """Clears memory palace loci and coordinates for all cards in this deck, restoring clean sequential order."""
+    deck = await _owned_deck(db, user, parse_uuid(deck_id))
+    cards = list(
+        (
+            await db.scalars(
+                select(Card)
+                .where(Card.deck_id == deck.id)
+                .order_by(Card.position, Card.id)
+            )
+        ).all()
+    )
+    if not cards:
+        return []
+
+    for idx, card in enumerate(cards):
+        card.spatial_locus = None
+        card.spatial_x = None
+        card.spatial_y = None
+        if card.position is None:
+            card.position = idx
+
+    await db.commit()
+    for c in cards:
+        await db.refresh(c)
+    return [card_out(c) for c in cards]
+
 
 

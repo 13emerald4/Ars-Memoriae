@@ -263,6 +263,28 @@ async def test_no_quote_means_no_citation_and_no_learn_and_practice(auth_client)
     assert lesson["reason"] == "no_citations"
 
 
+async def test_json_import_with_socratic_lesson(auth_client):
+    resp = await auth_client.post(
+        "/api/import/json",
+        json={
+            "deck": "Socratic Deck",
+            "notes": [{
+                "front": "What does typeof null evaluate to?",
+                "back": "object",
+                "socratic_lesson": "Consider the internal representation of pointers in the original JS engine...",
+                "key_points": ["typeof null is object due to a legacy bug", "Test for null with === null"],
+            }],
+        },
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    cards = (await auth_client.get(f"/api/cards?deck_id={body['deck_id']}")).json()
+    lesson = (await auth_client.get(f"/api/review/{cards[0]['id']}/lesson")).json()
+    assert lesson["available"] is True
+    assert "internal representation" in lesson["body"]
+    assert len(lesson["key_points"]) == 2
+
+
 async def test_a_blank_quote_is_treated_as_no_citation(auth_client):
     resp = await auth_client.post(
         "/api/import/json",

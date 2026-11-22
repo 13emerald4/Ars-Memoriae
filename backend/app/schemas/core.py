@@ -502,6 +502,10 @@ class JsonImportNote(BaseModel):
     quote: str | None = Field(default=None, max_length=4000)
     locator: str | None = Field(default=None, max_length=200)
     source_title: str | None = Field(default=None, max_length=300)
+    # Learn & Practice: Socratic lesson and key takeaways
+    socratic_lesson: str | None = Field(default=None, max_length=10_000)
+    lesson: str | None = Field(default=None, max_length=10_000)
+    key_points: list[str] = Field(default_factory=list)
 
     @model_validator(mode="before")
     @classmethod

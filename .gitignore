@@ -49,3 +49,17 @@ scratch/
 ch2_full_text.txt
 transcript_*.txt
 
+# Data & BDB
+data/
+*.zip
+*.parquet
+
+# Graphify cache
+graphify-out/cache/
+
+# Local duplicates
+backend/backend/
+
+
+
+
