@@ -73,12 +73,6 @@ export function GradeReasoning({
           second look before you accept it.
         </p>
       )}
-
-      {result.automaticity_exceeded && (
-        <p className="mt-3 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-          {result.automaticity_note || 'Reaction latency exceeded target automaticity threshold.'}
-        </p>
-      )}
     </div>
   )
 }

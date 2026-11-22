@@ -159,14 +159,6 @@ function isNightNow(): boolean {
   return hours >= 20 || hours < 6
 }
 
-/** "#0b1320" -> "11 19 32", the form `rgb(var(--x) / <alpha>)` expects. */
-function hexToChannels(hex: string): string {
-  const h = hex.replace('#', '')
-  const full = h.length === 3 ? h.replace(/./g, (c) => c + c) : h
-  const n = Number.parseInt(full, 16)
-  return `${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255}`
-}
-
 interface ThemeContextValue {
   themeMode: ThemeMode
   setThemeMode: (mode: ThemeMode) => void
@@ -328,10 +320,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty('--theme-bg-canvas', bgCanvas)
     root.style.setProperty('--theme-bg-card', bgCard)
     root.style.setProperty('--theme-border', border)
-    // Channel form of the same colours, for Tailwind's opacity modifiers.
-    root.style.setProperty('--theme-bg-canvas-rgb', hexToChannels(bgCanvas))
-    root.style.setProperty('--theme-bg-card-rgb', hexToChannels(bgCard))
-    root.style.setProperty('--theme-border-rgb', hexToChannels(border))
     root.style.setProperty('--theme-accent', meta.primaryColor)
     root.style.setProperty('--theme-accent-secondary', meta.secondaryColor)
   }, [activeTheme, enableOledBlack, enableGreyscaleFriendly, simulateGreyscale, fontSize])

@@ -19,9 +19,6 @@ Ars Memoriae structures cards according to **Piotr Wozniak’s Minimum Informati
    - **Context Anchors:** When a card tests a specific atomic node, include a mini-tree on the back highlighting `[ESTA CARTA]` or `[THIS CARD]` to show where it fits into the broader framework.
    - **Macro vs. Micro Testing:** Test top branches first on a Macro card; test sub-branches on separate Micro cards.
 7. **No Category Bleed & Technical Vocabulary:** Preserve precise domain terms without mixing distinct historical eras, categories, or modern vs. ancient concepts.
-8. **Learn & Practice Socratic Priming (`socratic_lesson` & `key_points`):** Every card powers a two-stage "Learn & Practice" cycle:
-   - **Stage 1 (Learn):** The user receives a concise Socratic lesson (80–160 words) establishing the mental model, intuition, and diagnostic questions (e.g., *"How does the runtime/engine differentiate X from Y?"*), along with 2–4 crisp `key_points`.
-   - **Stage 2 (Practice):** The user enters the testing phase to actively recall and answer the question from memory without seeing the solution beforehand.
 
 ---
 
@@ -29,7 +26,7 @@ Ars Memoriae structures cards according to **Piotr Wozniak’s Minimum Informati
 
 ```
 You are an expert in cognitive science, spaced repetition (Anki/SuperMemo), and high-yield active recall.
-Your task is to generate high-retrieval flashcards from the provided study material. The user reviews cards in a Learn & Practice workflow: first receiving a concise Socratic lesson on the concept, and then being tested on the card via active recall.
+Your task is to generate high-retrieval flashcards from the provided study material. The user types a full answer from memory, so cards must have one clear, checkable answer with essential terminology.
 
 Output ONLY a JSON array, no prose before or after. Each element is one card formatted as follows:
 
@@ -38,26 +35,10 @@ Basic (question/answer):
   "front": "<Atomic question testing 1-2 facts directly>",
   "image": "<Optional image URL: https://... or /media/...>",
   "back": "<Sentence 1: Direct answer. Sentence 2+: Essential context or optional ASCII tree>",
-  "socratic_lesson": "<80-160 word concise Socratic lesson teaching the mental model, intuition, and questions to ask yourself before testing>",
-  "key_points": ["<Key takeaway 1>", "<Key takeaway 2>", "<Key takeaway 3>"],
   "quote": "<1-4 sentence verbatim excerpt from the source explaining this concept>",
   "locator": "<Slide, chapter, or page reference>",
   "source_title": "<Title of the source material>",
   "tags": ["<topic>", "<subtopic>"]
-}
-
-Code (programming / coding challenges):
-{
-  "kind": "code",
-  "title": "<Function or concept title, e.g. describeType(value)>",
-  "front": "<Problem statement and requirements>",
-  "starter_code": "<Starter code scaffold for the learner>",
-  "back": "<Complete solution code>",
-  "socratic_lesson": "<80-160 word concise Socratic lesson explaining how the engine, types, and logic work together>",
-  "key_points": ["<Key takeaway 1>", "<Key takeaway 2>"],
-  "test_cases": [{"input": ..., "expected": ...}],
-  "language": "typescript",
-  "tags": ["<topic>", "code"]
 }
 
 Cloze (fill-in-the-blank, for terms/definitions embedded in a sentence or 4+ item lists):
@@ -66,8 +47,6 @@ Cloze (fill-in-the-blank, for terms/definitions embedded in a sentence or 4+ ite
   "cloze_text": "<Sentence with the key term wrapped like {{c1::term}}>",
   "image": "<Optional image URL: https://... or /media/...>",
   "back": "<Extra context or hierarchical mini-tree shown after grading, optional>",
-  "socratic_lesson": "<80-160 word concise Socratic lesson teaching the underlying concept>",
-  "key_points": ["<Key takeaway 1>", "<Key takeaway 2>"],
   "quote": "<1-4 sentence verbatim excerpt from the source>",
   "locator": "<Slide, chapter, or page reference>",
   "source_title": "<Title of the source material>",
@@ -87,7 +66,6 @@ Strict Formatting & Cognitive Rules:
    1. Qué es (What it is) -> 2. Dónde y Cuándo (Where & When) -> 3. Qué vemos (Visual Features) -> 4. Función / Significado (Significance/Function).
 6. ASCII CONTEXT ANCHORS: When testing a specific sub-branch, you may include a 2-3 level ASCII tree on the back marking [THIS CARD] to maintain spatial context.
 7. QUOTE IS MANDATORY: Every card MUST carry a verbatim 1-4 sentence excerpt in "quote" to power Ars Memoriae's Pre-Answer Primer reading mode.
-8. SOCRATIC LESSON FOR LEARN & PRACTICE: Every card must include "socratic_lesson" (80-160 words) and "key_points" (2-4 items). Teach the mental model, inquiry process, and diagnostic questions so the learner understands the principles before the quiz tests them. Do NOT simply repeat the back verbatim; teach the concept!
 
 Generate cards from the material below:
 

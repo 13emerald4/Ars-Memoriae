@@ -1,7 +1,8 @@
 import { dialogs } from '../components/dialogs'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, ApiError, API_BASE } from '../api/client'
+import { getErrorMessage } from '../utils/errors'
 import { KnowledgeTree, type KnowledgeTreeNode } from '../components/KnowledgeTree'
 import {
   ALL_GENERATION_MODEL_OPTIONS,
@@ -197,10 +198,10 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
   const [editing, setEditing] = useState(false)
   const [thematicNature, setThematicNature] = useState(deck.thematic_nature || '')
   const [documentation, setDocumentation] = useState(deck.documentation || '')
-  const formatDocString = (d: any): string => {
+  const formatDocString = (d: unknown): string => {
     if (typeof d === 'string') {
       try {
-        const parsed = JSON.parse(d)
+        const parsed: unknown = JSON.parse(d)
         if (typeof parsed === 'object' && parsed !== null) return formatDocString(parsed)
       } catch {
         return d
@@ -208,8 +209,9 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
       return d
     }
     if (typeof d === 'object' && d !== null) {
-      const name = d.title || d.name || d.filename || 'Document'
-      const pages = d.pages ? ` (pp. ${d.pages})` : ''
+      const obj = d as Record<string, unknown>
+      const name = String(obj.title || obj.name || obj.filename || 'Document')
+      const pages = obj.pages ? ` (pp. ${String(obj.pages)})` : ''
       return `${name}${pages}`
     }
     return String(d)
@@ -257,8 +259,8 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
       setDeckDocs((prev) => [res, ...prev])
       setSelectedFile(null)
       setDocTitle('')
-    } catch (err: any) {
-      setDocUploadError(err?.message || 'Failed to upload document.')
+    } catch (err: unknown) {
+      setDocUploadError(getErrorMessage(err, 'Failed to upload document.'))
     } finally {
       setUploadingDoc(false)
     }
@@ -275,7 +277,7 @@ function DeckDocumentationPanel({ deck, onChange }: { deck: Deck; onChange: () =
     try {
       await api.deleteDeckDocument(deck.id, docId)
       setDeckDocs((prev) => prev.filter((d) => d.id !== docId && d.source_id !== docId))
-    } catch (err: any) {
+    } catch (err: unknown) {
       dialogs.error(err, 'Failed to delete document.')
     } finally {
       setDeletingDocId(null)
@@ -1099,7 +1101,7 @@ function DeckList({
         onSelect('')
       }
       onChange()
-    } catch (err: any) {
+    } catch (err: unknown) {
       dialogs.error(err, 'Failed to delete deck.')
     } finally {
       setBusy(false)
@@ -1343,14 +1345,6 @@ function DeckList({
               )}
               <button
                 type="button"
-                onClick={() => navigate('/review?run=all&order=curriculum')}
-                className="btn border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 text-xs font-semibold px-3 py-1.5 shadow-sm transition cursor-pointer flex items-center gap-1.5"
-                title="Systematically review all cards across all decks in curriculum order (1 → N)"
-              >
-                <span>Review All ({totalCollectionCards})</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => navigate('/review')}
                 className="btn btn-primary text-xs font-bold px-3 py-1.5 shadow-sm"
                 title="Study all decks"
@@ -1379,14 +1373,12 @@ function DeckList({
             onStudyNode={(node, mode = 'standard') => {
               if (node.id === '__root__') {
                 if (mode === 'unseen') navigate('/review?persist=1&unseen=1')
-                else if (mode === 'all_run') navigate('/review?run=all&order=curriculum')
-                else if (mode === 'all_run_difficulty') navigate('/review?run=all&order=difficulty')
+                else if (mode === 'all_run') navigate('/review?run=all')
                 else if (mode === 'persist_all') navigate('/review?persist=1')
                 else navigate('/review')
               } else if (node.deckId) {
                 if (mode === 'unseen') navigate(`/review?deck=${node.deckId}&persist=1&unseen=1`)
-                else if (mode === 'all_run') navigate(`/review?deck=${node.deckId}&run=all&order=curriculum`)
-                else if (mode === 'all_run_difficulty') navigate(`/review?deck=${node.deckId}&run=all&order=difficulty`)
+                else if (mode === 'all_run') navigate(`/review?deck=${node.deckId}&run=all`)
                 else if (mode === 'persist_all') navigate(`/review?deck=${node.deckId}&persist=1`)
                 else navigate(`/review?deck=${node.deckId}`)
               }
@@ -1612,17 +1604,17 @@ function DeckList({
                   </button>
                 )}
 
-                {((d.total_card_count ?? d.card_count) > 0) && (
+                {d.card_count > 0 && (
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation()
-                      navigate(`/review?deck=${d.id}&run=all&order=curriculum`)
+                      navigate(`/review?deck=${d.id}&run=all`)
                     }}
                     className="flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-500/10 px-2.5 py-1 text-xs font-semibold text-purple-200 hover:bg-purple-500/20 hover:border-purple-400 transition shadow-sm"
-                    title={`Systematically review all ${d.total_card_count ?? d.card_count} cards in ${d.name} sequentially (1 → N)`}
+                    title={`Run all cards in ${d.name} consecutively, easiest to hardest. Thereafter, FSRS takes over.`}
                   >
-                    <span>Review All ({d.total_card_count ?? d.card_count})</span>
+                    <span>All Cards Run</span>
                   </button>
                 )}
 
@@ -2323,6 +2315,7 @@ function Browser({
 }) {
   const [cards, setCards] = useState<Card[]>([])
   const [search, setSearch] = useState('')
+  const deferredSearch = useDeferredValue(search)
   const [filterType, setFilterType] = useState<'both' | 'code' | 'qa'>('both')
   const [loading, setLoading] = useState(true)
   const [selectedCardForAnalytics, setSelectedCardForAnalytics] = useState<string | null>(null)
@@ -2343,8 +2336,8 @@ function Browser({
   const shown = cards.filter((c) => {
     if (filterType === 'code' && !isCodeCard(c)) return false
     if (filterType === 'qa' && isCodeCard(c)) return false
-    if (!search) return true
-    const q = search.toLowerCase()
+    if (!deferredSearch) return true
+    const q = deferredSearch.toLowerCase()
     return c.front.toLowerCase().includes(q) || c.back.toLowerCase().includes(q)
   })
 
@@ -2420,7 +2413,7 @@ function Browser({
                 await api.autoPalace(deckId)
                 await load()
                 onChange()
-              } catch (err: any) {
+              } catch (err: unknown) {
                 dialogs.error(err, 'Failed to auto-palace deck.')
               }
             }}
@@ -2429,31 +2422,6 @@ function Browser({
           >
             <span>Auto-Palace</span>
           </button>
-          {cards.some((c) => Boolean(c.spatial_locus)) && (
-            <button
-              type="button"
-              onClick={async () => {
-                const ok = await dialogs.confirm({
-                  title: 'Undo Memory Palace & Keep Sequential Order?',
-                  message: 'This removes all assigned memory palace rooms/loci and restores pure sequential order for this deck.',
-                  confirmLabel: 'Undo Palace',
-                })
-                if (!ok) return
-                try {
-                  await api.clearPalace(deckId)
-                  await load()
-                  onChange()
-                  dialogs.notify('Memory palace removed. Cards restored to clean sequential order.')
-                } catch (err: any) {
-                  dialogs.error(err, 'Failed to clear memory palace.')
-                }
-              }}
-              className="btn text-xs px-2.5 py-1.5 border border-purple-400/50 text-purple-200 bg-[#1e1a38] hover:bg-[#2a244d] flex items-center gap-1.5 font-medium transition cursor-pointer"
-              title="Undo memory palace assignment and keep cards in clean sequential order"
-            >
-              <span>Undo Palace</span>
-            </button>
-          )}
           <input
             className="input w-56"
             placeholder="Search…"

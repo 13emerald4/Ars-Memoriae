@@ -1,5 +1,5 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { useDialogA11y } from '../hooks/useDialogA11y'
+import { useEffect, useId, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { NativeDialog } from './NativeDialog'
 
 /** In-app replacements for `window.confirm`, `window.prompt` and
  *  `window.alert`.
@@ -114,30 +114,38 @@ const TOAST_STYLE: Record<ToastKind, string> = {
   error: 'border-rose-500/50 bg-[#1f0f14] text-rose-100',
 }
 
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
+function getSnapshot(): Store {
+  return store
+}
+
 export function DialogHost() {
-  const [, force] = useState(0)
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
   useEffect(() => {
     hostMounted = true
-    const listener = () => force((n) => n + 1)
-    listeners.add(listener)
     return () => {
-      listeners.delete(listener)
       hostMounted = listeners.size > 0
     }
   }, [])
 
-  const current = store.queue[0]
+  const current = snapshot.queue[0]
 
   return (
     <>
-      {current && <DialogPanel key={store.queue.length + current.options.title} pending={current} />}
+      {current && <DialogPanel key={snapshot.queue.length + current.options.title} pending={current} />}
       <div
         className="pointer-events-none fixed bottom-4 right-4 z-[120] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2"
         role="status"
         aria-live="polite"
       >
-        {store.toasts.map((t) => (
+        {snapshot.toasts.map((t) => (
           <div
             key={t.id}
             role={t.kind === 'error' ? 'alert' : undefined}
@@ -160,7 +168,6 @@ export function DialogHost() {
 }
 
 function DialogPanel({ pending }: { pending: Pending }) {
-  const panelRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const bodyId = useId()
   const isPrompt = pending.kind === 'prompt'
@@ -169,7 +176,6 @@ function DialogPanel({ pending }: { pending: Pending }) {
   const [text, setText] = useState(promptOptions?.defaultValue ?? '')
 
   const cancel = () => settle(pending, isPrompt ? null : false)
-  useDialogA11y(panelRef, cancel)
 
   const requireText = confirmOptions?.requireText
   const canConfirm = isPrompt ? text.trim().length > 0 : !requireText || text.trim() === requireText
@@ -181,21 +187,15 @@ function DialogPanel({ pending }: { pending: Pending }) {
   const hasInput = isPrompt || Boolean(requireText)
 
   return (
-    <div
-      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) cancel()
-      }}
+    <NativeDialog
+      open={true}
+      onClose={cancel}
+      role={danger ? 'alertdialog' : 'dialog'}
+      ariaLabelledBy={titleId}
+      ariaDescribedBy={bodyId}
+      className="w-full max-w-md"
     >
-      <div
-        ref={panelRef}
-        role={danger ? 'alertdialog' : 'dialog'}
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={bodyId}
-        tabIndex={-1}
-        className="w-full max-w-md rounded-2xl border border-ink-line bg-ink-soft p-5 shadow-2xl outline-none animate-in fade-in zoom-in-95"
-      >
+      <div className="w-full rounded-2xl border border-ink-line bg-ink-soft p-5 shadow-2xl outline-none">
         <h2 id={titleId} className="text-base font-semibold text-slate-100">
           {pending.options.title}
         </h2>
@@ -262,6 +262,6 @@ function DialogPanel({ pending }: { pending: Pending }) {
           </div>
         </form>
       </div>
-    </div>
+    </NativeDialog>
   )
 }

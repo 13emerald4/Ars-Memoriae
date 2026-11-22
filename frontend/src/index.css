@@ -1,6 +1,30 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-sans: 'Verdana', 'Geneva', Tahoma, sans-serif;
+
+  /* Native CSS custom properties with Tailwind v4 OKLab color-mix() opacity support —
+     eliminates the old hex + RGB-triplet duplication. */
+  --color-ink: var(--theme-bg-canvas);
+  --color-ink-soft: var(--theme-bg-card);
+  --color-ink-line: var(--theme-border);
+
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.25);
+
+  --animate-fade-in: fade-in 180ms ease-out both;
+  --animate-fadeIn: fade-in 180ms ease-out both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 
 :root {
   --theme-bg-canvas: #0f1117;
@@ -8,12 +32,8 @@
   --theme-border: #252938;
   --theme-accent: #0ea5e9;
   --theme-accent-secondary: #10b981;
-  /* The same three surfaces as space-separated channels, which is the form
-     Tailwind needs to build `bg-ink/90`-style translucent colours. Always set
-     together with the hex above (see ThemeContext). */
-  --theme-bg-canvas-rgb: 15 17 23;
-  --theme-bg-card-rgb: 23 26 35;
-  --theme-border-rgb: 37 41 56;
+  /* Enable smooth height transitions to/from auto for disclosures and collapsible sections */
+  interpolate-size: allow-keywords;
 }
 
 /* The per-theme palettes live in components/ThemeContext.tsx (THEME_REGISTRY),
@@ -25,9 +45,6 @@ html[data-oled='true'] {
   --theme-bg-canvas: #000000 !important;
   --theme-bg-card: #090a0f !important;
   --theme-border: #1a1d27 !important;
-  --theme-bg-canvas-rgb: 0 0 0 !important;
-  --theme-bg-card-rgb: 9 10 15 !important;
-  --theme-border-rgb: 26 29 39 !important;
 }
 
 @layer base {
@@ -41,10 +58,14 @@ html[data-oled='true'] {
   }
   body {
     @apply bg-ink text-slate-200 antialiased;
-    font-family: 'Verdana', 'Geneva', Tahoma, sans-serif;
+    font-family: var(--font-sans);
     font-size: var(--app-font-size, 16px);
     background-color: var(--theme-bg-canvas, #0f1117);
     transition: background-color 0.35s ease, border-color 0.35s ease, font-size 0.2s ease;
+  }
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
   }
   ::selection {
     @apply bg-sky-500/30;
@@ -87,11 +108,130 @@ html[data-oled='true'] {
     @apply inline-flex items-center gap-1 rounded-full border border-ink-line bg-ink px-2.5
            py-0.5 text-xs text-slate-400;
   }
+
+  /* Modern CSS utilities: auto-growing inputs & jitter-free scrollbars */
+  .field-autosize {
+    field-sizing: content;
+  }
+  .scroll-stable {
+    scrollbar-gutter: stable;
+  }
 }
 
-/* Session timer: the clock flashes through the spectrum when time is up.
-   hue-rotate cycles the hue continuously (a smoother rainbow than stepping
-   through discrete colour stops) while the opacity pulse supplies the flash. */
+/* ==========================================================================
+   Native <dialog> (Top Layer) & HTML Popover API Transitions
+   Uses @starting-style + transition-behavior: allow-discrete for smooth
+   enter animations with native browser backdrop & focus management.
+   ========================================================================== */
+@layer components {
+  dialog.native-dialog {
+    margin: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    max-width: calc(100vw - 1.5rem);
+    max-height: calc(100dvh - 1.5rem);
+    overflow: visible;
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+    transition:
+      opacity 160ms ease-out,
+      transform 160ms ease-out,
+      overlay 160ms ease-out allow-discrete,
+      display 160ms ease-out allow-discrete;
+  }
+
+  dialog.native-dialog[open] {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  dialog.native-dialog.native-dialog--palette {
+    margin: 12vh auto auto;
+  }
+
+  dialog.native-dialog.native-dialog--drawer {
+    margin: 0 0 0 auto;
+    height: 100dvh;
+    max-height: 100dvh;
+    max-width: 100vw;
+    transform: translateX(100%);
+  }
+
+  dialog.native-dialog.native-dialog--drawer[open] {
+    transform: translateX(0);
+  }
+
+  @starting-style {
+    dialog.native-dialog[open] {
+      opacity: 0;
+      transform: translateY(6px) scale(0.985);
+    }
+    dialog.native-dialog.native-dialog--drawer[open] {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+  }
+
+  dialog.native-dialog::backdrop {
+    background: color-mix(in oklch, var(--theme-bg-canvas, #090b10) 76%, transparent);
+    backdrop-filter: blur(5px);
+    opacity: 0;
+    transition:
+      opacity 160ms ease-out,
+      overlay 160ms ease-out allow-discrete,
+      display 160ms ease-out allow-discrete;
+  }
+
+  dialog.native-dialog[open]::backdrop {
+    opacity: 1;
+  }
+
+  @starting-style {
+    dialog.native-dialog[open]::backdrop {
+      opacity: 0;
+    }
+  }
+
+  /* Native Popover API panels */
+  .native-popover {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    overflow: visible;
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+    transition:
+      opacity 140ms ease-out,
+      transform 140ms ease-out,
+      overlay 140ms ease-out allow-discrete,
+      display 140ms ease-out allow-discrete;
+  }
+
+  .native-popover:popover-open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  @starting-style {
+    .native-popover:popover-open {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+  }
+}
+
+/* Smooth View Transitions for workspace presets & card/viewer navigation */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 150ms;
+  animation-timing-function: ease-out;
+}
+
+/* Session timer: the clock flashes through the spectrum when time is up. */
 @keyframes timer-rainbow {
   from {
     filter: hue-rotate(0deg);
@@ -118,13 +258,19 @@ html[data-oled='true'] {
     timer-flash 0.85s ease-in-out infinite;
 }
 
-/* A full-screen flashing clock is exactly what a vestibular or photosensitivity
-   trigger looks like. Honour the OS setting: keep the colour change, drop the
-   motion. */
 @media (prefers-reduced-motion: reduce) {
   .timer-finished {
     animation: none;
     color: #ff3b6b;
+  }
+  dialog.native-dialog,
+  dialog.native-dialog::backdrop,
+  .native-popover {
+    transition: none;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0ms;
   }
 }
 
@@ -134,17 +280,14 @@ html[data-oled='true'] {
    and high-contrast accessibility.
    ========================================================================== */
 
-/* In-browser greyscale preview simulation */
 html[data-simulate-greyscale='true'] {
   filter: grayscale(100%);
 }
 
 html[data-greyscale='true'] {
   --theme-border: #64748b !important;
-  --theme-border-rgb: 100 116 139 !important;
 }
 
-/* Elevated border visibility on cards and containers */
 html[data-greyscale='true'] .card {
   border-color: #64748b !important;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
@@ -160,7 +303,6 @@ html[data-greyscale='true'] .border-ink-line\/40 {
   border-color: #52525b !important;
 }
 
-/* Elevated text contrast for secondary, muted, and slate text */
 html[data-greyscale='true'] .text-slate-500 {
   color: #cbd5e1 !important;
 }
@@ -169,8 +311,6 @@ html[data-greyscale='true'] .text-slate-400 {
   color: #e2e8f0 !important;
 }
 
-/* Distinct Solid vs Dashed Underline Patterns for Token Diffs */
-/* Recalled / Matched: Solid high-contrast white underline with clear background and bold checkmark */
 html[data-greyscale='true'] mark[title='Recalled'],
 html[data-greyscale='true'] mark[title='Matches reference'] {
   background-color: rgba(255, 255, 255, 0.22) !important;
@@ -187,7 +327,6 @@ html[data-greyscale='true'] mark[title='Matches reference']::before {
   opacity: 0.9;
 }
 
-/* Missing / Unmatched: Distinctive Dashed underline with dark textured background and cross prefix */
 html[data-greyscale='true'] mark[title='Missing'],
 html[data-greyscale='true'] mark[title='Missing from your answer'],
 html[data-greyscale='true'] mark[title='Not in reference'] {
@@ -206,7 +345,6 @@ html[data-greyscale='true'] mark[title='Not in reference']::before {
   opacity: 0.8;
 }
 
-/* Code Diff Segments in CodeEditor */
 html[data-greyscale='true'] .diff-segment-matched {
   background-color: rgba(255, 255, 255, 0.22) !important;
   color: #ffffff !important;
@@ -221,7 +359,6 @@ html[data-greyscale='true'] .diff-segment-missing {
   font-weight: normal !important;
 }
 
-/* High-contrast active tab and button states */
 html[data-greyscale='true'] .btn-primary {
   border-color: #ffffff !important;
   background-color: rgba(255, 255, 255, 0.25) !important;
@@ -233,7 +370,6 @@ html[data-greyscale='true'] .btn {
   border-color: #64748b !important;
 }
 
-/* Status Dots & Badge Indicators */
 html[data-greyscale='true'] .bg-emerald-400 {
   background-color: #ffffff !important;
   border: 1.5px solid #ffffff !important;
@@ -256,10 +392,6 @@ html[data-greyscale='true'] .text-amber-300 {
 
 /* ==========================================================================
    Readable muted text
-   Tailwind's slate-500 / slate-600 on these backgrounds measure 3.3-4.0:1 and
-   1.9-2.5:1, below the 4.5:1 WCAG AA needs for body-size text, and they carry
-   most of the app's secondary copy. Same hues, lifted until they pass on every
-   theme's canvas and card colour. Unlayered so they follow the utilities.
    ========================================================================== */
 .text-slate-500,
 .label {
@@ -308,9 +440,7 @@ html[data-greyscale='true'] .text-amber-300 {
   display: none;
 }
 
-/* Entrance transitions. The markup uses the tailwindcss-animate vocabulary
-   (animate-in + fade-in / zoom-in-95 / slide-in-from-*); these are the few it
-   actually needs, without the plugin. */
+/* Entrance transitions for inline panels and banners */
 @keyframes am-enter {
   from {
     opacity: var(--am-enter-opacity, 1);
@@ -347,9 +477,7 @@ html[data-greyscale='true'] .text-amber-300 {
   }
 }
 
-/* Touch screens: a finger needs more than a 16px-high hit area. Only applied
-   where the primary pointer is coarse, so the dense desktop toolbars keep
-   their size. Switches keep their own fixed track. */
+/* Touch screens: generous tap targets on coarse pointers. */
 @media (pointer: coarse) {
   button:not([role='switch']),
   select,
@@ -369,16 +497,15 @@ html[data-greyscale='true'] .text-amber-300 {
   }
 }
 
-/* The grade buttons stay reachable while a long answer or diff scrolls above
-   them: grading is the one action every card ends with. */
+/* Sticky grade bar using OKLCH color-mix() for uniform theme surface blending */
 .review-grade-bar {
   position: sticky;
   bottom: 0;
   z-index: 5;
   margin: 0.75rem -0.5rem 0;
   padding: 0.625rem 0.5rem;
-  border-top: 1px solid rgb(var(--theme-border-rgb, 37 41 56) / 0.8);
+  border-top: 1px solid color-mix(in oklch, var(--theme-border, #252938) 80%, transparent);
   border-radius: 0 0 0.5rem 0.5rem;
-  background: rgb(var(--theme-bg-card-rgb, 23 26 35) / 0.96);
+  background: color-mix(in oklch, var(--theme-bg-card, #171a23) 94%, transparent);
   backdrop-filter: blur(6px);
 }

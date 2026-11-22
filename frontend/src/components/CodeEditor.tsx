@@ -41,6 +41,7 @@ export interface CodeEditorProps {
   submitting?: boolean
   hideHeader?: boolean
   hideFooter?: boolean
+  hideRunButtons?: boolean
   borderless?: boolean
   placeholder?: string
   // Context for LLM explanations (e.g. card title or problem prompt)
@@ -201,7 +202,7 @@ function escapeHtml(str: string): string {
 
 function highlightLeetCode(code: string): string {
   const regex =
-    /(#[^\n]*|\/\/[^\n]*|"""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b\d+(?:\.\d+)?\b|\b[a-zA-Z_]\w*\b|->|==|!=|<=|>=|[()\[\]{}:,.<>=+\-*/%&|^~!]|\s+|[^\s\w]+)/g
+    /(#[^\n]*|\/\/[^\n]*|"""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b(?:0[xXbBoO][\da-fA-F_]+|\d[\d_]*(?:\.[\d_]+)?(?:[eE][+-]?\d+)?n?)\b|\b[a-zA-Z_$][\w$]*\b|->|=>|===|!==|==|!=|<=|>=|[()\[\]{}:,.<>=+\-*/%&|^~!]|\s+|[^\s\w]+|.)/g
 
   const tokens: string[] = []
   let m: RegExpExecArray | null
@@ -537,6 +538,7 @@ export function CodeEditor({
   submitting = false,
   hideHeader = false,
   hideFooter = false,
+  hideRunButtons = false,
   borderless = false,
   placeholder = '# Write your solution here...',
   // Context & grounding
@@ -2229,7 +2231,7 @@ export function CodeEditor({
                   <span className="text-[0.625rem] text-emerald-300/70 font-mono hidden md:inline">(Alt+G)</span>
                 </button>
               )}
-              {onRun && (
+              {onRun && !hideRunButtons && (
                 <button
                   onClick={onRun}
                   disabled={running || submitting}
@@ -2238,7 +2240,7 @@ export function CodeEditor({
                   {running ? 'Running…' : '▶ Run'}
                 </button>
               )}
-              {onSubmit && (
+              {onSubmit && !hideRunButtons && (
                 <button
                   onClick={onSubmit}
                   disabled={running || submitting}

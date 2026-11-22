@@ -31,6 +31,8 @@ import { MarginLexiconPanel } from '../components/MarginLexiconPanel'
 import { useTheme } from '../components/ThemeContext'
 import { FullscreenButton } from '../components/FullscreenContext'
 import { DeckReviewStatsBar } from '../components/DeckReviewStatsBar'
+import { useWorkspace } from '../components/WorkspaceContext'
+import { getCanvasMaxWidthClass } from '../utils/workspaceModules'
 import { CopyLearningSummaryButton } from '../components/CopyLearningSummaryButton'
 import { AnswerComparison, computeTokenDiff } from '../components/AnswerComparison'
 import {
@@ -55,8 +57,17 @@ import { storage } from '../utils/storage'
 import { StuckBanner, BreakOverlay, SocraticGuide, ExtractCard, BlitzScorecardModal } from './review/Panels'
 import { LessonGate, ReferenceReadings, ThematicDocumentationCard, PrimerDrawer } from './review/LessonGate'
 import { VramConstraintPrompt, DiscreteModelSelector } from './review/ModelControls'
+import { LiveGradingStatusStrip, LlmErrorDiagnosticBanner } from './review/LlmActivityBanner'
+import { LlmDiagnosticsModal } from '../components/LlmDiagnosticsModal'
+import { useLlmTraces } from '../utils/llmDiagnostics'
 import { GradeReasoning, OverlookedAnalysisCard } from './review/Feedback'
 import { SessionHeader } from './review/SessionHeader'
+import { useReviewDeckViewer } from './review/useReviewDeckViewer'
+import {
+  advancePersistQueue,
+  buildChronologicalPersistQueue,
+  sortCardsChronologically,
+} from '../utils/persistQueue'
 import {
   GRADE_BAND,
   GRADE_STYLE,
@@ -73,6 +84,7 @@ const LEARN_MODE_KEY = 'memorization.learnMode'
  *  so this page routes on `kind` rather than the user picking a mode. */
 export default function Review() {
   const { user, refresh } = useAuth()
+  const { config: wsConfig, applyPreset, toggleReviewModule, setCustomizerOpen } = useWorkspace()
   const navigate = useNavigate()
   // `?branch=<node id>` restricts the session to one knowledge-tree branch.
   const [params, setParams] = useSearchParams()
@@ -105,6 +117,11 @@ export default function Review() {
   )
   const [installedModels, setInstalledModels] = useState<string[]>([])
   const gradingAbortRef = useRef<AbortController | null>(null)
+  const [gradingStartedAt, setGradingStartedAt] = useState<number | null>(null)
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
+  const [diagnosticsTraceId, setDiagnosticsTraceId] = useState<string | null>(null)
+  const llmTraces = useLlmTraces()
+  const hasRecentLlmIssue = Boolean(llmTraces.lastFailure || llmTraces.lastSlow)
   // One confirm in flight at a time: a double click or key repeat would
   // otherwise schedule the card twice and log two reviews.
   const confirmingRef = useRef(false)
@@ -217,16 +234,16 @@ export default function Review() {
     }
   }, [item, currentDeckInfo, setActiveDeckContext, applyGlossesToCard])
 
-  // All Cards Run / Systematic Review Mode: Review every card in deck consecutively (Curriculum or Difficulty order), then FSRS takes over
+  // All Cards Run Mode: Review every card in deck consecutively (Curriculum or Difficulty order), then FSRS takes over
   const runParam = params.get('run') === 'all' || params.get('all_cards_run') === '1'
   const runOrderParam = (params.get('order') as 'curriculum' | 'difficulty') || 'curriculum'
   const [allCardsRunActive, setAllCardsRunActive] = useState<boolean>(false)
   const [allCardsRunDeckId, setAllCardsRunDeckId] = useState<string | null>(null)
+  const [allCardsRunOrder, setAllCardsRunOrder] = useState<'curriculum' | 'difficulty'>('curriculum')
   const [allCardsRunDeckName, setAllCardsRunDeckName] = useState<string>('')
   const [allCardsRunCards, setAllCardsRunCards] = useState<QueueItem[]>([])
   const [allCardsRunIndex, setAllCardsRunIndex] = useState<number>(0)
   const [allCardsRunCompleted, setAllCardsRunCompleted] = useState<boolean>(false)
-  const [allCardsRunOrder, setAllCardsRunOrder] = useState<'curriculum' | 'difficulty'>('curriculum')
 
   // LeetCode-Style Split IDE & Code Execution Workbench
   const [layoutMode, setLayoutMode] = useState<'split' | 'classic'>(() => {
@@ -658,32 +675,21 @@ export default function Review() {
     )
   }
 
-  // Deck Cards Quick Browser Drawer (§Feature)
-  const [deckViewerOpen, setDeckViewerOpen] = useState(false)
-  // Return to All Cards viewer when a single card was studied via "Study now"
-  const [returnToDeckViewerOnComplete, setReturnToDeckViewerOnComplete] = useState<boolean>(() => {
-    try {
-      const params = new URLSearchParams(window.location.search)
-      return Boolean(params.get('card') || params.get('card_id') || params.get('from_viewer'))
-    } catch {
-      return false
-    }
-  })
-  const [lastStudiedCardId, setLastStudiedCardId] = useState<string | null>(() => {
-    try {
-      const params = new URLSearchParams(window.location.search)
-      return params.get('card') || params.get('card_id') || null
-    } catch {
-      return null
-    }
-  })
-  const [lastStudiedDeckId, setLastStudiedDeckId] = useState<string | null>(() => {
-    try {
-      const params = new URLSearchParams(window.location.search)
-      return params.get('deck') || null
-    } catch {
-      return null
-    }
+  // Deck Cards Quick Browser Drawer (§Feature — modular hook with View Transitions)
+  const {
+    deckViewerOpen,
+    openedFromDeckViewer,
+    lastStudiedCardId,
+    lastStudiedDeckId,
+    openDeckViewer,
+    closeDeckViewer,
+    toggleDeckViewer,
+    markStudiedFromViewer,
+  } = useReviewDeckViewer({
+    item,
+    deckParam,
+    persistDeckId,
+    allDecks,
   })
 
   // Saved for Later Shelf Drawer (§Feature)
@@ -924,25 +930,6 @@ export default function Review() {
     setDeckStatsTrigger((prev) => prev + 1)
   }, [])
 
-  const handleJumpToCard = useCallback(
-    (selectedCard: QueueItem) => {
-      setItem(selectedCard)
-      initCardState(selectedCard)
-      setRevealed(false)
-      setSkipReviewRecording(false)
-      setResult(null)
-      setLastOutcome(`Switched to card: ${selectedCard.title || 'Selected card'}`)
-      if (persistActive) {
-        setPersistPendingQueue((prev) => [selectedCard.id, ...prev.filter((id) => id !== selectedCard.id)])
-      }
-      setLastStudiedCardId(selectedCard.id)
-      setLastStudiedDeckId(selectedCard.deck_or_source_id || deckParam || persistDeckId || null)
-      setReturnToDeckViewerOnComplete(true)
-      setDeckViewerOpen(false)
-    },
-    [initCardState, persistActive, deckParam, persistDeckId],
-  )
-
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -963,7 +950,13 @@ export default function Review() {
   }, [branch, deckParam, persistParam, runParam, initCardState])
 
   const startPersistMode = useCallback(
-    async (deckId: string, deckName?: string, unseenOnly: boolean = false) => {
+    async (
+      deckId: string,
+      deckName?: string,
+      unseenOnly: boolean = false,
+      explicitStartCardId?: string | null,
+    ) => {
+      activeDeckRef.current = deckId
       setLoading(true)
       setError(null)
       setPersistActive(true)
@@ -989,7 +982,8 @@ export default function Review() {
       })
 
       try {
-        const cards = await api.deckPersistItems(deckId, unseenOnly)
+        const rawCards = await api.deckPersistItems(deckId, unseenOnly)
+        const cards = sortCardsChronologically(rawCards)
         setPersistCards(cards)
         const dName =
           cards[0]?.deck_name ||
@@ -1002,12 +996,11 @@ export default function Review() {
           setPersistPendingQueue([])
           setItem(null)
         } else {
-          // Read from the address bar: this callback does not re-create when
-          // the query string changes.
+          // Read from the address bar when no explicit start card was passed.
           const urlParams = new URLSearchParams(window.location.search)
-          const cardParam = urlParams.get('card') || urlParams.get('card_id')
-          const targetCard = (cardParam && cards.find((c) => c.id === cardParam)) || cards[0]
-          const queue = [targetCard.id, ...cards.filter((c) => c.id !== targetCard.id).map((c) => c.id)]
+          const cardParam = explicitStartCardId ?? (urlParams.get('card') || urlParams.get('card_id'))
+          const queue = buildChronologicalPersistQueue(cards, cardParam)
+          const targetCard = cards.find((c) => c.id === queue[0]) || cards[0]
           setPersistPendingQueue(queue)
           setItem(targetCard)
           initCardState(targetCard)
@@ -1020,6 +1013,56 @@ export default function Review() {
       }
     },
     [allDecks, initCardState, setParams],
+  )
+
+  const handleJumpToCard = useCallback(
+    (selectedCard: QueueItem) => {
+      setRevealed(false)
+      setSkipReviewRecording(false)
+      setResult(null)
+      markStudiedFromViewer(selectedCard)
+
+      if (persistActive) {
+        const inCurrentPersistDeck = persistCards.some((c) => c.id === selectedCard.id)
+        if (inCurrentPersistDeck) {
+          const nextGrasped = new Set(persistGraspedIds)
+          nextGrasped.delete(selectedCard.id)
+          setPersistGraspedIds(nextGrasped)
+          setPersistCompleted(false)
+          const nextQueue = buildChronologicalPersistQueue(
+            persistCards,
+            selectedCard.id,
+            nextGrasped,
+          )
+          setPersistPendingQueue(nextQueue)
+          setItem(selectedCard)
+          initCardState(selectedCard)
+          setLastOutcome(`Switched to card: ${selectedCard.title || 'Selected card'}`)
+          return
+        }
+        if (selectedCard.deck_or_source_id) {
+          void startPersistMode(
+            selectedCard.deck_or_source_id,
+            selectedCard.deck_name || undefined,
+            false,
+            selectedCard.id,
+          )
+          return
+        }
+      }
+
+      setItem(selectedCard)
+      initCardState(selectedCard)
+      setLastOutcome(`Switched to card: ${selectedCard.title || 'Selected card'}`)
+    },
+    [
+      initCardState,
+      persistActive,
+      persistCards,
+      persistGraspedIds,
+      markStudiedFromViewer,
+      startPersistMode,
+    ],
   )
 
   const exitPersistMode = useCallback(() => {
@@ -1110,11 +1153,11 @@ export default function Review() {
             order,
           })
 
-          const progressionLabel = order === 'curriculum' ? 'Curriculum Order: 1 → N' : 'Easiest → Hardest'
+          const orderDesc = order === 'difficulty' ? 'Easiest → Hardest' : 'Curriculum Order'
           if (targetIndex > 0) {
-            setLastOutcome(`Systematic Review resumed — Card ${targetIndex + 1} of ${cards.length} (${progressionLabel}).`)
+            setLastOutcome(`All Cards Run resumed — Card ${targetIndex + 1} of ${cards.length} (${orderDesc}).`)
           } else {
-            setLastOutcome(`Systematic Review started — Card 1 of ${cards.length} (${progressionLabel}).`)
+            setLastOutcome(`All Cards Run started — Card 1 of ${cards.length} (${orderDesc}).`)
           }
         }
       } catch (err) {
@@ -1124,11 +1167,10 @@ export default function Review() {
         setLoading(false)
       }
     },
-    [allDecks, initCardState, runOrderParam, setParams],
+    [allDecks, initCardState, setParams],
   )
 
   const exitAllCardsRun = useCallback(() => {
-    activeDeckRef.current = null
     setAllCardsRunActive(false)
     setAllCardsRunDeckId(null)
     setAllCardsRunCards([])
@@ -1138,7 +1180,6 @@ export default function Review() {
       const next = new URLSearchParams(p)
       next.delete('run')
       next.delete('all_cards_run')
-      next.delete('order')
       return next
     })
     void load()
@@ -1284,17 +1325,10 @@ export default function Review() {
   }, [])
 
   useEffect(() => {
-    if (runParam) {
-      const targetDeck = deckParam || '__root__'
-      const deckKey = `${targetDeck}:${runOrderParam}`
-      if (
-        activeDeckRef.current !== deckKey ||
-        !allCardsRunActive ||
-        allCardsRunDeckId !== targetDeck ||
-        allCardsRunOrder !== runOrderParam
-      ) {
-        activeDeckRef.current = deckKey
-        void startAllCardsRun(targetDeck, undefined, undefined, runOrderParam)
+    if (runParam && deckParam) {
+      if (activeDeckRef.current !== deckParam || !allCardsRunActive || allCardsRunDeckId !== deckParam) {
+        activeDeckRef.current = deckParam
+        void startAllCardsRun(deckParam)
       }
     } else if (persistParam && deckParam) {
       if (
@@ -1315,7 +1349,6 @@ export default function Review() {
     persistParam,
     unseenParam,
     runParam,
-    runOrderParam,
     load,
     startPersistMode,
     startAllCardsRun,
@@ -1324,7 +1357,6 @@ export default function Review() {
     persistUnseenOnly,
     allCardsRunActive,
     allCardsRunDeckId,
-    allCardsRunOrder,
   ])
 
   const itemId = item?.id ?? null
@@ -1425,6 +1457,7 @@ export default function Review() {
     const modelToUse = targetModel || activeModel || user?.grading_model
     const latency = Date.now() - shownAt.current
     setGrading(true)
+    setGradingStartedAt(Date.now())
     setError(null)
     setVramDismissed(false)
     try {
@@ -1453,8 +1486,23 @@ export default function Review() {
     } finally {
       if (!abortController.signal.aborted) {
         setGrading(false)
+        setGradingStartedAt(null)
       }
     }
+  }
+
+  function cancelGrading() {
+    if (gradingAbortRef.current) {
+      gradingAbortRef.current.abort()
+      gradingAbortRef.current = null
+    }
+    setGrading(false)
+    setGradingStartedAt(null)
+  }
+
+  function openDiagnostics(traceId?: string | null) {
+    setDiagnosticsTraceId(traceId ?? null)
+    setDiagnosticsOpen(true)
   }
 
   function reveal() {
@@ -1462,6 +1510,7 @@ export default function Review() {
       gradingAbortRef.current.abort()
     }
     setGrading(false)
+    setGradingStartedAt(null)
     setRevealed(true)
     setResult(null)
   }
@@ -1650,12 +1699,12 @@ export default function Review() {
           [item.id]: (prev[item.id] || 0) + 1,
         }))
 
+        const nextQueue = advancePersistQueue(persistPendingQueue, item.id, finalGrade)
+
         if (finalGrade === 'easy') {
           const nextGrasped = new Set(persistGraspedIds)
           nextGrasped.add(item.id)
           setPersistGraspedIds(nextGrasped)
-
-          const nextQueue = persistPendingQueue.filter((id) => id !== item.id)
           setPersistPendingQueue(nextQueue)
 
           if (nextQueue.length === 0) {
@@ -1673,11 +1722,9 @@ export default function Review() {
             setLastOutcome(`Easy — card grasped! ${nextQueue.length} remaining in rotation.`)
           }
         } else {
-          // 'again', 'hard', 'good': not yet easy, keep in rotation
-          if (persistPendingQueue.length > 1) {
-            const rest = persistPendingQueue.filter((id) => id !== item.id)
-            const nextQueue = [...rest, item.id]
-            setPersistPendingQueue(nextQueue)
+          // 'again', 'hard', 'good': not yet easy, move to back of chronological rotation
+          setPersistPendingQueue(nextQueue)
+          if (nextQueue.length > 0 && nextQueue[0] !== item.id) {
             const nextCard = persistCards.find((c) => c.id === nextQueue[0]) || null
             setItem(nextCard)
             initCardState(nextCard)
@@ -1700,20 +1747,6 @@ export default function Review() {
         }
         await load()
       }
-
-      if (returnToDeckViewerOnComplete) {
-        setReturnToDeckViewerOnComplete(false)
-        setLastStudiedCardId(item.id)
-        setLastStudiedDeckId(item.deck_or_source_id || deckParam || persistDeckId || null)
-        setDeckViewerOpen(true)
-        setParams((p) => {
-          const next = new URLSearchParams(p)
-          next.delete('card')
-          next.delete('card_id')
-          next.delete('from_viewer')
-          return next
-        }, { replace: true })
-      }
     } catch (err) {
       setError(err)
     } finally {
@@ -1724,8 +1757,6 @@ export default function Review() {
 
   const advanceWithoutReview = useCallback(async () => {
     if (!item || item.kind !== 'card') return
-    const currentCardId = item.id
-    const currentDeckId = item.deck_or_source_id || deckParam || persistDeckId || null
     setPreviousCard(item)
     removeDraft(item.id)
     setSavedCount(getSavedDraftsCount())
@@ -1764,10 +1795,9 @@ export default function Review() {
         setLastOutcome(`Card ${nextIdx + 1} of ${allCardsRunCards.length} in run (Unrecorded skip).`)
       }
     } else if (persistActive) {
-      if (persistPendingQueue.length > 1) {
-        const rest = persistPendingQueue.filter((id) => id !== item.id)
-        const nextQueue = [...rest, item.id]
-        setPersistPendingQueue(nextQueue)
+      const nextQueue = advancePersistQueue(persistPendingQueue, item.id, 'good')
+      setPersistPendingQueue(nextQueue)
+      if (nextQueue.length > 0 && nextQueue[0] !== item.id) {
         const nextCard = persistCards.find((c) => c.id === nextQueue[0]) || null
         setItem(nextCard)
         initCardState(nextCard)
@@ -1782,26 +1812,8 @@ export default function Review() {
       }
       await load()
     }
-
-    if (returnToDeckViewerOnComplete) {
-      setReturnToDeckViewerOnComplete(false)
-      setLastStudiedCardId(currentCardId)
-      setLastStudiedDeckId(currentDeckId)
-      setDeckViewerOpen(true)
-      setParams((p) => {
-        const next = new URLSearchParams(p)
-        next.delete('card')
-        next.delete('card_id')
-        next.delete('from_viewer')
-        return next
-      }, { replace: true })
-    }
   }, [
     item,
-    deckParam,
-    persistDeckId,
-    returnToDeckViewerOnComplete,
-    setParams,
     allCardsRunActive,
     allCardsRunIndex,
     allCardsRunCards,
@@ -2040,7 +2052,7 @@ export default function Review() {
       }
       if (altKey('KeyD')) {
         e.preventDefault()
-        setDeckViewerOpen((prev) => !prev)
+        toggleDeckViewer()
       }
       if (altKey('KeyL')) {
         e.preventDefault()
@@ -2531,6 +2543,8 @@ export default function Review() {
             allDecks={allDecks}
             savedCount={savedCount}
             onOpenSavedDrawer={() => setSavedDrawerOpen(true)}
+            onOpenDeckViewer={openDeckViewer}
+            fromViewer={openedFromDeckViewer}
           />
           <div className="flex flex-col xl:flex-row items-start justify-center gap-6 max-w-[1750px] mx-auto px-2 sm:px-4">
             <div className="flex-1 w-full max-w-4xl min-w-0 xl:min-w-[500px]">
@@ -3754,7 +3768,17 @@ export default function Review() {
           <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden bg-[#121212]">
             {Boolean(error) && (
               <div className="px-3 pt-2 shrink-0">
-                <ErrorNote error={error} />
+                <LlmErrorDiagnosticBanner
+                  error={error}
+                  activeModel={activeModel}
+                  canRetry={Boolean(item && item.kind === 'card' && !revealed && answer.trim())}
+                  canReveal={Boolean(item && item.kind === 'card' && !revealed)}
+                  onRetry={() => void grade()}
+                  onSwitchAndRetry={(m) => void handleGradeWithModel(m)}
+                  onReveal={reveal}
+                  onInspect={openDiagnostics}
+                  onDismiss={() => setError(null)}
+                />
               </div>
             )}
             {workbenchContent}
@@ -3789,44 +3813,151 @@ export default function Review() {
     )
   }
 
+    const renderTopModule = (barId: 'sessionTimer' | 'queueSummary' | 'deckStatsBar') => {
+      if (!wsConfig.reviewModules[barId]) return null
+      if (barId === 'sessionTimer') {
+        return <SessionTimer key="sessionTimer" />
+      }
+      if (barId === 'queueSummary') {
+        return (
+          <SessionHeader
+            key="queueSummary"
+            session={session}
+            outcome={lastOutcome}
+            branchActive={Boolean(branch)}
+            deckActive={deckActive}
+            deckName={activeDeckName}
+            onClearBranch={clearBranch}
+            learnMode={learnMode}
+            onToggleLearnMode={toggleLearnMode}
+            blitzActive={blitzActive}
+            onStartBlitz={startBlitz}
+            persistActive={persistActive}
+            persistDeckName={persistDeckName}
+            persistUnseenOnly={persistUnseenOnly}
+            onExitPersist={exitPersistMode}
+            persistProgress={{
+              grasped: persistGraspedIds.size,
+              total: persistCards.length,
+              round: persistRound,
+            }}
+            allCardsRunActive={allCardsRunActive}
+            allCardsRunDeckName={allCardsRunDeckName}
+            allCardsRunOrder={allCardsRunOrder}
+            onExitAllCardsRun={exitAllCardsRun}
+            allCardsRunProgress={{
+              current: allCardsRunIndex + 1,
+              total: allCardsRunCards.length,
+            }}
+            onStartAllCardsRun={startAllCardsRun}
+            allDecks={allDecks}
+            onStartPersist={startPersistMode}
+            savedCount={savedCount}
+            onOpenSavedDrawer={() => setSavedDrawerOpen(true)}
+            previousCard={previousCard}
+            onRetryPreviousCard={handleRetryPreviousCard}
+            onOpenDeckViewer={openDeckViewer}
+            fromViewer={openedFromDeckViewer}
+          />
+        )
+      }
+      if (barId === 'deckStatsBar' && item && item.kind === 'card' && item.deck_or_source_id) {
+        return (
+          <DeckReviewStatsBar
+            key="deckStatsBar"
+            deckId={item.deck_or_source_id}
+            deckName={item.deck_name}
+            lastUpdated={deckStatsTrigger}
+            onStartPersist={(id, unseenOnly) => startPersistMode(id, item.deck_name || undefined, unseenOnly)}
+            isPersistActive={persistActive}
+            onOpenDeckViewer={openDeckViewer}
+            onStartAllCardsRun={(id) => void startAllCardsRun(id, item.deck_name || undefined)}
+            onExitAllCardsRun={exitAllCardsRun}
+            isAllCardsRunActive={allCardsRunActive}
+          />
+        )
+      }
+      return null
+    }
+
     return (
-      <div className="space-y-6">
-        <SessionHeader
-          session={session}
-          outcome={lastOutcome}
-          branchActive={Boolean(branch)}
-          deckActive={deckActive}
-          deckName={activeDeckName}
-          onClearBranch={clearBranch}
-          learnMode={learnMode}
-          onToggleLearnMode={toggleLearnMode}
-          blitzActive={blitzActive}
-          onStartBlitz={startBlitz}
-          persistActive={persistActive}
-          persistDeckName={persistDeckName}
-          persistUnseenOnly={persistUnseenOnly}
-          onExitPersist={exitPersistMode}
-          persistProgress={{
-            grasped: persistGraspedIds.size,
-            total: persistCards.length,
-            round: persistRound,
-          }}
-          allCardsRunActive={allCardsRunActive}
-          allCardsRunDeckName={allCardsRunDeckName}
-          allCardsRunOrder={allCardsRunOrder}
-          onExitAllCardsRun={exitAllCardsRun}
-          allCardsRunProgress={{
-            current: allCardsRunIndex + 1,
-            total: allCardsRunCards.length,
-          }}
-          onStartAllCardsRun={startAllCardsRun}
-          allDecks={allDecks}
-          onStartPersist={startPersistMode}
-          savedCount={savedCount}
-          onOpenSavedDrawer={() => setSavedDrawerOpen(true)}
-          previousCard={previousCard}
-          onRetryPreviousCard={handleRetryPreviousCard}
-        />
+      <div className="space-y-4">
+        {/* Compact modular workspace preset strip */}
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            {!wsConfig.reviewModules.queueSummary && (
+              <button
+                type="button"
+                onClick={openDeckViewer}
+                className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
+                  openedFromDeckViewer
+                    ? 'border-sky-400/55 bg-sky-500/15 text-sky-100 hover:bg-sky-500/25 hover:border-sky-300'
+                    : 'border-ink-line bg-ink-soft/70 text-slate-200 hover:border-sky-500/45 hover:text-sky-100'
+                }`}
+                title="Return to All Cards viewer"
+              >
+                <span aria-hidden="true">←</span>
+                <span>{openedFromDeckViewer ? 'Back to All Cards' : 'All Cards'}</span>
+              </button>
+            )}
+            <div className="inline-flex items-center gap-1 rounded-lg border border-ink-line bg-ink-soft/70 p-0.5">
+            {(
+              [
+                ['focus', 'Focus'],
+                ['standard', 'Standard'],
+                ['research', 'Research'],
+              ] as const
+            ).map(([presetId, label]) => {
+              const active = wsConfig.preset === presetId
+              return (
+                <button
+                  key={presetId}
+                  type="button"
+                  onClick={() => applyPreset(presetId)}
+                  aria-pressed={active}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                    active
+                      ? 'bg-sky-500/20 text-sky-100'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              )
+            })}
+            {wsConfig.preset === 'custom' && (
+              <span className="px-2 py-1 text-[0.6875rem] font-medium text-sky-300 whitespace-nowrap">
+                Custom
+              </span>
+            )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 text-slate-400">
+            <button
+              type="button"
+              onClick={() => toggleReviewModule('lexiconMargin')}
+              className={`text-xs transition-colors whitespace-nowrap cursor-pointer ${
+                wsConfig.reviewModules.lexiconMargin
+                  ? 'text-sky-300 hover:text-sky-200'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {wsConfig.reviewModules.lexiconMargin ? 'Hide Lexicon Panel' : 'Show Lexicon Panel'}
+            </button>
+            <span aria-hidden="true" className="text-slate-700">·</span>
+            <button
+              type="button"
+              onClick={() => setCustomizerOpen(true)}
+              className="text-xs text-slate-400 hover:text-slate-100 transition-colors whitespace-nowrap cursor-pointer"
+            >
+              Customize modules
+            </button>
+          </div>
+        </div>
+
+        {/* User-ordered modular top strips */}
+        {wsConfig.reviewTopOrder.map((barId) => renderTopModule(barId))}
 
         {/* Prompt to study unseen cards if reviewing a deck with unintroduced material */}
         {deckParam &&
@@ -4004,7 +4135,7 @@ export default function Review() {
                     </span>
                   </div>
                   <p className="text-[0.6875rem] text-slate-400 mt-0.5">
-                    Reviewing every card in this deck consecutively in ascending difficulty order. Progress is automatically saved.
+                    Reviewing every card in this deck consecutively {allCardsRunOrder === 'curriculum' ? 'in sequential curriculum order (1 → N)' : 'in ascending difficulty order'}. Progress is automatically saved.
                   </p>
                 </div>
               </div>
@@ -4015,12 +4146,12 @@ export default function Review() {
                     type="button"
                     onClick={() => {
                       if (allCardsRunDeckId) {
-                        clearAllCardsRunProgress(allCardsRunDeckId)
-                        void startAllCardsRun(allCardsRunDeckId, allCardsRunDeckName, 0)
+                        clearAllCardsRunProgress(allCardsRunDeckId, allCardsRunOrder)
+                        void startAllCardsRun(allCardsRunDeckId, allCardsRunDeckName, 0, allCardsRunOrder)
                       }
                     }}
                     className="rounded-md border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-xs text-purple-300 hover:bg-purple-500/20 transition cursor-pointer"
-                    title="Restart All Cards Run from Card 1"
+                    title="Restart Systematic Review from Card 1"
                   >
                     Restart Run
                   </button>
@@ -4067,20 +4198,7 @@ export default function Review() {
           </div>
         )}
 
-        {/* Live Deck Progress & Difficulty Distribution Stats Bar */}
-        {item && item.kind === 'card' && item.deck_or_source_id && (
-          <DeckReviewStatsBar
-            deckId={item.deck_or_source_id}
-            deckName={item.deck_name}
-            lastUpdated={deckStatsTrigger}
-            onStartPersist={(id, unseenOnly) => startPersistMode(id, item.deck_name || undefined, unseenOnly)}
-            isPersistActive={persistActive}
-            onOpenDeckViewer={() => setDeckViewerOpen(true)}
-            onStartAllCardsRun={(id) => void startAllCardsRun(id, item.deck_name || undefined)}
-            onExitAllCardsRun={exitAllCardsRun}
-            isAllCardsRunActive={allCardsRunActive}
-          />
-        )}
+        {/* DeckReviewStatsBar is now rendered via modular reviewTopOrder above */}
 
         {draftRestoredNotice && (
           <div className="flex items-center justify-between rounded-lg border border-indigo-500/40 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-200 shadow-sm animate-in fade-in duration-200">
@@ -4162,9 +4280,9 @@ export default function Review() {
                 style={
                   workbenchLayout.isStacked ? undefined : { width: `${workbenchLayout.leftWidthPercent}%` }
                 }
-                className={`card space-y-4 min-w-[260px] flex-shrink-0 ${
+                className={`@container card space-y-4 min-w-[260px] flex-shrink-0 ${
                   workbenchLayout.columnsSwapped ? 'order-3' : 'order-1'
-                } ${workbenchLayout.isStacked ? 'w-full' : 'overflow-y-auto max-h-[calc(100vh-140px)]'}`}
+                } ${workbenchLayout.isStacked ? 'w-full' : 'overflow-y-auto scroll-stable max-h-[calc(100vh-140px)]'}`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -4172,7 +4290,7 @@ export default function Review() {
                     {(item.deck_or_source_id || deckParam) && (
                       <button
                         type="button"
-                        onClick={() => setDeckViewerOpen(true)}
+                        onClick={openDeckViewer}
                         className="chip bg-sky-950/60 border-sky-500/40 text-sky-300 hover:bg-sky-900/60 hover:text-white transition cursor-pointer flex items-center gap-1 font-semibold"
                         title="Cards (Alt+D)"
                       >
@@ -4344,7 +4462,11 @@ export default function Review() {
                   {item.edge_cases && item.edge_cases.length > 0 && (
                     <div className="pt-1 border-t border-ink-line/50">
                       <span className="text-slate-400 font-medium">Critical Edge Cases: </span>
-                      <span className="text-amber-200/90 italic">{item.edge_cases.join(', ')}</span>
+                      <RichText
+                        text={item.edge_cases.join(' · ')}
+                        inline
+                        className="text-amber-200/90"
+                      />
                     </div>
                   )}
                 </div>
@@ -4376,7 +4498,7 @@ export default function Review() {
                     </div>
                   )}
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink-line/60 pt-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {llmEnabled && (
                         <DiscreteModelSelector
                           activeModel={activeModel}
@@ -4385,6 +4507,8 @@ export default function Review() {
                           hasAnswer={Boolean(answer.trim())}
                           onSelectModel={(m) => void handleSwitchModel(m)}
                           onGradeWithModel={(m) => void handleGradeWithModel(m)}
+                          onOpenDiagnostics={() => openDiagnostics()}
+                          hasRecentIssue={hasRecentLlmIssue}
                         />
                       )}
                       {llmEnabled ? (
@@ -4405,7 +4529,11 @@ export default function Review() {
                       >
                         <span>{skipReviewRecording ? 'Skip card (Unrecorded)' : 'Skip grading'}</span>
                       </button>
-                      <button className="btn" onClick={reveal} disabled={grading}>
+                      <button
+                        className="btn"
+                        onClick={reveal}
+                        title="Show reference solution immediately (cancels any active grading)"
+                      >
                         {llmEnabled ? 'Show Reference Solution' : 'Show solution'}
                       </button>
                       <button
@@ -4420,6 +4548,14 @@ export default function Review() {
                     </div>
                     <span className="text-xs text-slate-500 font-mono">Cmd/Ctrl + Enter</span>
                   </div>
+                  {grading && (
+                    <LiveGradingStatusStrip
+                      activeModel={activeModel}
+                      startedAt={gradingStartedAt}
+                      onCancel={cancelGrading}
+                      onInspect={() => openDiagnostics()}
+                    />
+                  )}
 
                   {/* Longitudinal Weakness Hint Box */}
                   {showWeaknessHint && (
@@ -4791,195 +4927,238 @@ export default function Review() {
           </div>
         ) : (
           /* ════════════════════════════════════════════════════════════════════
-             CLASSIC CARD VIEW WITH MARGIN CONCORDANCE & LEXICON
+             MODULAR CLASSIC CARD VIEW WITH OPTIONAL DOCKABLE LEXICON MARGIN
              ════════════════════════════════════════════════════════════════════ */
-          <div className="flex flex-col xl:flex-row items-start justify-center gap-6 max-w-[1750px] mx-auto px-2 sm:px-4">
-            <div className="flex-1 w-full max-w-4xl min-w-0 xl:min-w-[500px]">
+          <div
+            className={`flex flex-col ${
+              wsConfig.lexiconDockSide === 'left' ? 'xl:flex-row-reverse' : 'xl:flex-row'
+            } items-start justify-center gap-6 max-w-[1750px] mx-auto px-1 sm:px-2`}
+          >
+            <div
+              className={`flex-1 w-full min-w-0 ${getCanvasMaxWidthClass(
+                wsConfig.canvasWidth,
+                wsConfig.reviewModules.lexiconMargin && wsConfig.lexiconDockSide !== 'hidden',
+              )}`}
+            >
               <div className={`card ${isCodeCard && tiledTabs ? 'max-w-6xl' : 'w-full'} mx-auto`}>
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="chip">{item.deck_name}</span>
-                {(item.deck_or_source_id || deckParam) && (
-                  <button
-                    type="button"
-                    onClick={() => setDeckViewerOpen(true)}
-                    className="chip bg-sky-950/60 border-sky-500/40 text-sky-300 hover:bg-sky-900/60 hover:text-white transition cursor-pointer flex items-center gap-1 font-semibold"
-                    title="Cards (Alt+D)"
-                  >
-                    
-                    <span>Cards</span>
-                  </button>
-                )}
-                {savedCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setSavedDrawerOpen(true)}
-                    className="chip bg-indigo-950/60 border-indigo-500/40 text-indigo-300 hover:bg-indigo-900/60 hover:text-white transition cursor-pointer flex items-center gap-1 font-semibold"
-                    title="Saved (Alt+Shift+S)"
-                  >
-                    
-                    <span>Saved ({savedCount})</span>
-                  </button>
-                )}
-                <span className="chip">{item.state}</span>
-                {item.difficulty && (
-                  <span
-                    className={`chip font-semibold ${
-                      item.difficulty === 'Easy'
-                        ? 'border-emerald-500/40 text-emerald-300'
-                        : item.difficulty === 'Medium'
-                        ? 'border-amber-500/40 text-amber-300'
-                        : 'border-rose-500/40 text-rose-300'
-                    }`}
-                  >
-                    {item.difficulty}
-                  </span>
-                )}
-                {item.category && <span className="chip text-sky-300">{item.category}</span>}
-                {item.grading_profile && <span className="chip">{item.grading_profile}</span>}
-                <span className="chip">priority {item.priority}</span>
-                {isCodeCard && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={toggleLayoutMode}
-                      className="chip cursor-pointer border-sky-500/40 text-sky-300 hover:bg-sky-500/10 transition-colors"
-                      title="Split IDE"
-                    >
-                      Split IDE
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handlePopOutIde}
-                      className="chip cursor-pointer border-sky-500/50 bg-sky-950/40 text-sky-300 hover:bg-sky-900/50 hover:text-white transition-colors flex items-center gap-1 font-semibold"
-                      title="Expand IDE into a separate window (Alt+P)"
-                    >
-                      <span>⧉</span>
-                      <span>Pop Out IDE</span>
-                    </button>
-                  </>
-                )}
-                {!revealed && (
-                  <button
-                    type="button"
-                    onClick={togglePrimer}
-                    className={`chip cursor-pointer transition-colors flex items-center gap-1.5 font-medium ${
-                      showPrimer
-                        ? 'border-sky-500/60 bg-sky-500/20 text-sky-200'
-                        : 'border-ink-line text-slate-300 hover:text-slate-100 hover:border-slate-500'
-                    }`}
-                    title="Primer"
-                  >
-                    
-                    <span>{showPrimer ? 'Hide Primer' : 'Primer'}</span>
-                  </button>
-                )}
-                {currentFailureReminder ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (dismissedReminderCardId === item.id) {
-                        setDismissedReminderCardId(null)
-                        setFailureReminderEnabled(true)
-                      } else {
-                        setFailureReminderEnabled((prev) => !prev)
-                      }
-                    }}
-                    className={`chip cursor-pointer transition-colors flex items-center gap-1 font-medium ${
-                      failureReminderEnabled && dismissedReminderCardId !== item.id
-                        ? 'border-amber-500/50 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30'
-                        : 'border-ink-line text-slate-400 hover:text-amber-300 hover:border-amber-500/40'
-                    }`}
-                    title={currentFailureReminder}
-                  >
-                    <span>{failureReminderEnabled && dismissedReminderCardId !== item.id ? 'Prior Mistake' : 'Show Past Mistake'}</span>
-                  </button>
-                ) : item.active_weaknesses && item.active_weaknesses.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!weaknessHint) void handleRequestWeaknessHint()
-                      else setShowWeaknessHint((v) => !v)
-                    }}
-                    className="chip cursor-pointer border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition-colors font-medium"
-                    title={item.active_weaknesses.join('; ')}
-                  >
-                    {item.active_weaknesses.length} prior {item.active_weaknesses.length === 1 ? 'mistake' : 'mistakes'}
-                  </button>
-                ) : null}
+                {/* Clean unboxed typographic metadata + compact action strip */}
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-ink-line pb-3 text-xs">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-slate-400">
+                    <span className="font-medium text-slate-200">{item.deck_name}</span>
+                    <span aria-hidden="true" className="text-slate-600">·</span>
+                    <span className="capitalize">{item.state}</span>
+                    {item.difficulty && (
+                      <>
+                        <span aria-hidden="true" className="text-slate-600">·</span>
+                        <span
+                          className={
+                            item.difficulty === 'Easy'
+                              ? 'text-emerald-300 font-medium'
+                              : item.difficulty === 'Medium'
+                                ? 'text-amber-300 font-medium'
+                                : 'text-rose-300 font-medium'
+                          }
+                        >
+                          {item.difficulty}
+                        </span>
+                      </>
+                    )}
+                    {item.category && (
+                      <>
+                        <span aria-hidden="true" className="text-slate-600">·</span>
+                        <span className="text-sky-300">{item.category}</span>
+                      </>
+                    )}
+                    {item.grading_profile && (
+                      <>
+                        <span aria-hidden="true" className="text-slate-600">·</span>
+                        <span className="capitalize">{item.grading_profile}</span>
+                      </>
+                    )}
+                    <span aria-hidden="true" className="text-slate-600">·</span>
+                    <span className="tabular-nums">Priority {item.priority}</span>
+                    {item.is_schema_checkpoint && (
+                      <>
+                        <span aria-hidden="true" className="text-slate-600">·</span>
+                        <span
+                          className="font-medium text-amber-300"
+                          title="Neocortical Schema Checkpoint: Foundational Mental Model Anchor"
+                        >
+                          Schema Anchor
+                        </span>
+                      </>
+                    )}
+                  </div>
 
-                {/* ── Neuroscience Enhancements Badges & Controls ── */}
-                {item.is_schema_checkpoint && (
-                  <span
-                    className="chip border-amber-500/60 bg-amber-500/15 text-amber-300 font-bold flex items-center gap-1 shadow-sm"
-                    title="Neocortical Schema Checkpoint: Foundational Mental Model Anchor"
-                  >
-                     Schema Checkpoint
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {(item.deck_or_source_id || deckParam) && (
+                      <button
+                        type="button"
+                        onClick={openDeckViewer}
+                        className="rounded-md border border-ink-line bg-ink-soft px-2.5 py-1 text-xs font-medium text-slate-200 hover:border-sky-500/50 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+                        title="Browse deck cards (Alt+D)"
+                      >
+                        Cards
+                      </button>
+                    )}
+                    {savedCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSavedDrawerOpen(true)}
+                        className="rounded-md border border-indigo-500/40 bg-indigo-950/40 px-2.5 py-1 text-xs font-medium text-indigo-200 hover:bg-indigo-900/50 transition-colors cursor-pointer whitespace-nowrap"
+                        title="Saved drafts (Alt+Shift+S)"
+                      >
+                        Saved ({savedCount})
+                      </button>
+                    )}
+                    {isCodeCard && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={toggleLayoutMode}
+                          className="rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-1 text-xs font-medium text-sky-200 hover:bg-sky-500/20 transition-colors cursor-pointer whitespace-nowrap"
+                          title="Switch to Split IDE layout"
+                        >
+                          Split IDE
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handlePopOutIde}
+                          className="rounded-md border border-ink-line bg-ink-soft px-2.5 py-1 text-xs font-medium text-slate-200 hover:border-sky-500/50 transition-colors cursor-pointer whitespace-nowrap"
+                          title="Expand IDE into a separate window (Alt+P)"
+                        >
+                          Pop Out IDE
+                        </button>
+                      </>
+                    )}
+                    {!revealed && (
+                      <button
+                        type="button"
+                        onClick={togglePrimer}
+                        className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
+                          showPrimer
+                            ? 'border-sky-500/60 bg-sky-500/15 text-sky-200'
+                            : 'border-ink-line bg-ink-soft text-slate-300 hover:border-slate-500 hover:text-slate-100'
+                        }`}
+                        title="Review lesson primer before answering"
+                      >
+                        {showPrimer ? 'Hide Primer' : 'Primer'}
+                      </button>
+                    )}
+                    {currentFailureReminder ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (dismissedReminderCardId === item.id) {
+                            setDismissedReminderCardId(null)
+                            setFailureReminderEnabled(true)
+                          } else {
+                            setFailureReminderEnabled((prev) => !prev)
+                          }
+                        }}
+                        className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
+                          failureReminderEnabled && dismissedReminderCardId !== item.id
+                            ? 'border-amber-500/50 bg-amber-500/15 text-amber-200'
+                            : 'border-ink-line bg-ink-soft text-slate-400 hover:text-amber-200'
+                        }`}
+                        title={currentFailureReminder}
+                      >
+                        {failureReminderEnabled && dismissedReminderCardId !== item.id ? 'Prior Mistake' : 'Past Mistake'}
+                      </button>
+                    ) : item.active_weaknesses && item.active_weaknesses.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!weaknessHint) void handleRequestWeaknessHint()
+                          else setShowWeaknessHint((v) => !v)
+                        }}
+                        className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-200 hover:bg-amber-500/20 transition-colors cursor-pointer whitespace-nowrap"
+                        title={item.active_weaknesses.join('; ')}
+                      >
+                        {item.active_weaknesses.length} prior {item.active_weaknesses.length === 1 ? 'mistake' : 'mistakes'}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => toggleReviewModule('neuroToolbar')}
+                      aria-expanded={wsConfig.reviewModules.neuroToolbar}
+                      className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
+                        wsConfig.reviewModules.neuroToolbar
+                          ? 'border-sky-500/60 bg-sky-500/15 text-sky-200'
+                          : 'border-ink-line bg-ink-soft text-slate-300 hover:border-slate-500 hover:text-slate-100'
+                      }`}
+                      title="Toggle Memory Palace, Mutate Prompt, Associative & Hypothesis tools"
+                    >
+                      {wsConfig.reviewModules.neuroToolbar ? 'Hide Tools' : 'Memory Tools'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Optional Modular Neuro & Memory Toolbar */}
+                {wsConfig.reviewModules.neuroToolbar && (
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ink-line bg-ink-soft/60 px-3 py-2 text-xs">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleToggleMnemonic}
+                        className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                          showMnemonic
+                            ? 'border-purple-500/60 bg-purple-500/20 text-purple-200'
+                            : 'border-ink-line bg-ink text-slate-300 hover:border-purple-500/40 hover:text-purple-200'
+                        }`}
+                        title="View or generate Memory Palace visual mnemonic"
+                      >
+                        Mnemonic
+                      </button>
+                      {!revealed && (
+                        <button
+                          type="button"
+                          onClick={() => void handleMutatePrompt()}
+                          disabled={mutationLoading}
+                          className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                            mutatedPrompt
+                              ? 'border-cyan-500/60 bg-cyan-500/20 text-cyan-200'
+                              : 'border-ink-line bg-ink text-slate-300 hover:border-cyan-500/40 hover:text-cyan-200'
+                          }`}
+                          title="Test core invariant from an orthogonal angle"
+                        >
+                          {mutationLoading ? 'Mutating…' : mutatedPrompt ? 'Mutated Angle' : 'Mutate Prompt'}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleToggleAssociative}
+                        className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                          showAssociative
+                            ? 'border-indigo-500/60 bg-indigo-500/20 text-indigo-200'
+                            : 'border-ink-line bg-ink text-slate-300 hover:border-indigo-500/40 hover:text-indigo-200'
+                        }`}
+                        title="Explore semantic concept connections"
+                      >
+                        Associative
+                      </button>
+                      {!revealed && (
+                        <button
+                          type="button"
+                          onClick={() => setShowPretest((v) => !v)}
+                          className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                            showPretest
+                              ? 'border-emerald-500/60 bg-emerald-500/20 text-emerald-200'
+                              : 'border-ink-line bg-ink text-slate-300 hover:border-emerald-500/40 hover:text-emerald-200'
+                          }`}
+                          title="Pre-test hypothesis before answering"
+                        >
+                          {showPretest ? 'Hide Hypothesis' : 'Hypothesize'}
+                        </button>
+                      )}
+                    </div>
+                    {item.spatial_locus && (
+                      <span className="text-[0.6875rem] text-emerald-300" title="Memory Palace Spatial Locus">
+                        Locus: {item.spatial_locus}
+                      </span>
+                    )}
+                  </div>
                 )}
-                {item.spatial_locus && (
-                  <span
-                    className="chip border-emerald-500/40 bg-emerald-950/40 text-emerald-300 font-medium flex items-center gap-1"
-                    title="Memory Palace Spatial Locus"
-                  >
-                     {item.spatial_locus}
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={handleToggleMnemonic}
-                  className={`chip cursor-pointer transition-colors flex items-center gap-1 font-medium ${
-                    showMnemonic
-                      ? 'border-purple-500/60 bg-purple-500/20 text-purple-200'
-                      : 'border-ink-line text-slate-300 hover:text-purple-300 hover:border-purple-500/40'
-                  }`}
-                  title="View or generate bizarre Memory Palace visual mnemonic (Dual-Coding / Von Restorff)"
-                >
-                  <span>Mnemonic</span>
-                </button>
-                {!revealed && (
-                  <button
-                    type="button"
-                    onClick={() => void handleMutatePrompt()}
-                    disabled={mutationLoading}
-                    className={`chip cursor-pointer transition-colors flex items-center gap-1 font-medium ${
-                      mutatedPrompt
-                        ? 'border-cyan-500/60 bg-cyan-500/20 text-cyan-200'
-                        : 'border-ink-line text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40'
-                    }`}
-                    title="Reconsolidation: Test core invariant from an orthogonal angle"
-                  >
-                    <span>{mutationLoading ? 'Mutating…' : mutatedPrompt ? 'Mutated Angle' : 'Mutate Prompt'}</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={handleToggleAssociative}
-                  className={`chip cursor-pointer transition-colors flex items-center gap-1 font-medium ${
-                    showAssociative
-                      ? 'border-indigo-500/60 bg-indigo-500/20 text-indigo-200'
-                      : 'border-ink-line text-slate-300 hover:text-indigo-300 hover:border-indigo-500/40'
-                  }`}
-                  title="Spreading activation: explore primed semantic connections"
-                >
-                  <span>Associative</span>
-                </button>
-                {!revealed && (
-                  <button
-                    type="button"
-                    onClick={() => setShowPretest((v) => !v)}
-                    className={`chip cursor-pointer transition-colors flex items-center gap-1 font-medium ${
-                      showPretest
-                        ? 'border-emerald-500/60 bg-emerald-500/20 text-emerald-200'
-                        : 'border-ink-line text-slate-300 hover:text-emerald-300 hover:border-emerald-500/40'
-                    }`}
-                    title="Pre-test hypothesis generation: guess before revealing to prime dopaminergic RPE"
-                  >
-                    <span>{showPretest ? 'Hide Hypothesis' : 'Hypothesize'}</span>
-                  </button>
-                )}
-              </div>
-            </div>
 
             {/* Related Content Drawer / Primer */}
             {!revealed && showPrimer && (
@@ -5181,7 +5360,7 @@ export default function Review() {
                     onChange={(e) => setPretestPrediction(e.target.value)}
                     placeholder="What do you predict is the core mechanism, reason, or answer?"
                     rows={2}
-                    className="w-full text-xs bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="field-autosize min-h-[3.5rem] max-h-48 w-full text-xs bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                   />
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
@@ -5251,7 +5430,7 @@ export default function Review() {
             )}
 
             {/* Thematic Context & Documentation */}
-            {user?.show_thematic_context !== false && (
+            {user?.show_thematic_context !== false && wsConfig.reviewModules.thematicDocs && (
               <div className="mt-3">
                 <ThematicDocumentationCard item={item} />
               </div>
@@ -5263,29 +5442,31 @@ export default function Review() {
                   <label className="label mb-0" htmlFor="answer">
                     {llmEnabled ? 'Type your answer' : 'Type your answer (optional — grading is manual)'}
                   </label>
-                  <div className="flex items-center gap-1 text-xs">
-                    <span className="mr-1 text-slate-500">Confidence:</span>
-                    {[
-                      { lvl: 1, label: '1: Guess', color: 'border-rose-500/40 text-rose-300' },
-                      { lvl: 2, label: '2: Unsure', color: 'border-amber-500/40 text-amber-300' },
-                      { lvl: 3, label: '3: Likely', color: 'border-sky-500/40 text-sky-300' },
-                      { lvl: 4, label: '4: Solid', color: 'border-emerald-500/40 text-emerald-300' },
-                    ].map(({ lvl, label, color }) => (
-                      <button
-                        key={lvl}
-                        type="button"
-                        onClick={() => setConfidence(confidence === lvl ? null : lvl)}
-                        className={`rounded border px-2 py-0.5 text-[0.6875rem] transition-all ${
-                          confidence === lvl
-                            ? `${color} bg-white/10 font-medium ring-1 ring-inset ring-current`
-                            : 'border-ink-line text-slate-400 hover:text-slate-200'
-                        }`}
-                        title={`Metacognitive Judgment of Learning: ${label}`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
+                  {wsConfig.reviewModules.confidenceScale && (
+                    <div className="flex items-center gap-1 text-xs">
+                      <span className="mr-1 text-slate-500">Confidence:</span>
+                      {[
+                        { lvl: 1, label: '1: Guess', color: 'border-rose-500/40 text-rose-300' },
+                        { lvl: 2, label: '2: Unsure', color: 'border-amber-500/40 text-amber-300' },
+                        { lvl: 3, label: '3: Likely', color: 'border-sky-500/40 text-sky-300' },
+                        { lvl: 4, label: '4: Solid', color: 'border-emerald-500/40 text-emerald-300' },
+                      ].map(({ lvl, label, color }) => (
+                        <button
+                          key={lvl}
+                          type="button"
+                          onClick={() => setConfidence(confidence === lvl ? null : lvl)}
+                          className={`rounded border px-2 py-0.5 text-[0.6875rem] transition-all cursor-pointer ${
+                            confidence === lvl
+                              ? `${color} bg-white/10 font-medium ring-1 ring-inset ring-current`
+                              : 'border-ink-line text-slate-400 hover:text-slate-200'
+                          }`}
+                          title={`Metacognitive Judgment of Learning: ${label}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 {isCodeCard ? (
                   <div className="my-2 space-y-4">
@@ -5954,7 +6135,7 @@ export default function Review() {
                     <textarea
                       id="answer"
                       ref={inputRef}
-                      className="input min-h-[7rem] resize-y"
+                      className="input field-autosize min-h-[7rem] max-h-[26rem] resize-y"
                       value={answer}
                       onChange={(e) => setAnswer(e.target.value)}
                       placeholder="Type your answer…"
@@ -5970,6 +6151,8 @@ export default function Review() {
                       hasAnswer={Boolean(answer.trim())}
                       onSelectModel={(m) => void handleSwitchModel(m)}
                       onGradeWithModel={(m) => void handleGradeWithModel(m)}
+                      onOpenDiagnostics={() => openDiagnostics()}
+                      hasRecentIssue={hasRecentLlmIssue}
                     />
                   )}
                   {llmEnabled ? (
@@ -5991,7 +6174,11 @@ export default function Review() {
                   >
                     <span>{skipReviewRecording ? 'Skip card (Unrecorded)' : 'Skip grading'}</span>
                   </button>
-                  <button className="btn" onClick={reveal} disabled={grading} title="Show reference answer immediately">
+                  <button
+                    className="btn"
+                    onClick={reveal}
+                    title="Show reference answer immediately (cancels any active grading)"
+                  >
                     Show answer
                   </button>
                   <button
@@ -6022,6 +6209,15 @@ export default function Review() {
                   )}
                   <span className="text-xs text-slate-600">Cmd/Ctrl + Enter</span>
                 </div>
+
+                {grading && (
+                  <LiveGradingStatusStrip
+                    activeModel={activeModel}
+                    startedAt={gradingStartedAt}
+                    onCancel={cancelGrading}
+                    onInspect={() => openDiagnostics()}
+                  />
+                )}
 
                 {/* Longitudinal Weakness Hint Box */}
                 {showWeaknessHint && (
@@ -6282,31 +6478,42 @@ export default function Review() {
               </div>
             </div>
 
-            {/* Right Margin: Concordance, Lexicon & Persistent Card Memory */}
-            <aside className="w-full xl:w-80 2xl:w-96 shrink-0 xl:sticky xl:top-16">
-              <MarginLexiconPanel
-                cardId={item.id}
-                deckId={item.kind === 'card' ? item.deck_or_source_id : null}
-                deckName={item.deck_name}
-                thematicNature={item.card_thematic_nature || item.deck_thematic_nature}
-                cardFront={item.front}
-                cardBack={item.back}
-                initialGlosses={item.lexicon_glosses}
-                onGlossesUpdated={(updatedGlosses) => applyGlossesToCard(item.id, updatedGlosses)}
-                codeLanguage={codeLanguage}
-              />
-            </aside>
+            {/* Optional Dockable Margin: Concordance, Lexicon & Persistent Card Memory */}
+            {wsConfig.reviewModules.lexiconMargin && wsConfig.lexiconDockSide !== 'hidden' && (
+              <aside className="w-full xl:w-80 2xl:w-96 shrink-0 xl:sticky xl:top-16">
+                <MarginLexiconPanel
+                  cardId={item.id}
+                  deckId={item.kind === 'card' ? item.deck_or_source_id : null}
+                  deckName={item.deck_name}
+                  thematicNature={item.card_thematic_nature || item.deck_thematic_nature}
+                  cardFront={item.front}
+                  cardBack={item.back}
+                  initialGlosses={item.lexicon_glosses}
+                  onGlossesUpdated={(updatedGlosses) => applyGlossesToCard(item.id, updatedGlosses)}
+                  codeLanguage={codeLanguage}
+                />
+              </aside>
+            )}
           </div>
         )}
 
-        <ErrorNote error={error} />
+        <LlmErrorDiagnosticBanner
+          error={error}
+          activeModel={activeModel}
+          canRetry={Boolean(item && item.kind === 'card' && !revealed && answer.trim())}
+          canReveal={Boolean(item && item.kind === 'card' && !revealed)}
+          onRetry={() => void grade()}
+          onSwitchAndRetry={(m) => void handleGradeWithModel(m)}
+          onReveal={reveal}
+          onInspect={openDiagnostics}
+          onDismiss={() => setError(null)}
+        />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <SessionTimer />
       {stuckAlert && !breakUntil && (
         <StuckBanner
           alert={stuckAlert}
@@ -6334,12 +6541,15 @@ export default function Review() {
 
       <DeckCardsViewer
         isOpen={deckViewerOpen}
-        onClose={() => {
-          setDeckViewerOpen(false)
-          setLastStudiedCardId(null)
-          setLastStudiedDeckId(null)
-        }}
-        deckId={lastStudiedDeckId || item?.deck_or_source_id || deckParam || null}
+        onClose={closeDeckViewer}
+        deckId={
+          lastStudiedDeckId ||
+          item?.deck_or_source_id ||
+          deckParam ||
+          persistDeckId ||
+          allDecks.find((d) => d.card_count > 0)?.id ||
+          null
+        }
         deckName={item?.deck_name || persistDeckName || null}
         currentCardId={lastStudiedCardId || item?.id || null}
         onSelectCard={handleJumpToCard}
@@ -6352,6 +6562,14 @@ export default function Review() {
         onClose={() => setSavedDrawerOpen(false)}
         onResumeCard={handleResumeSavedDraft}
         currentCardId={item?.id || null}
+      />
+
+      <LlmDiagnosticsModal
+        isOpen={diagnosticsOpen}
+        onClose={() => setDiagnosticsOpen(false)}
+        activeModel={activeModel}
+        initialFocusTraceId={diagnosticsTraceId}
+        onSelectModel={(m) => void handleSwitchModel(m)}
       />
     </div>
   )

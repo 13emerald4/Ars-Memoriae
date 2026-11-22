@@ -4,6 +4,7 @@ import { api } from '../api/client'
 import type { CardAnalytics } from '../api/types'
 import { RichText } from './RichText'
 import { Spinner, ErrorNote } from './ui'
+import { NativeDialog } from './NativeDialog'
 
 export interface CardAnalyticsModalProps {
   cardId: string | null
@@ -68,31 +69,6 @@ export function CardAnalyticsModal({
     }
   }, [isOpen, cardId, loadAnalytics])
 
-  // Close on Escape key
-  useEffect(() => {
-    if (!isOpen) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
-
-  // Prevent background scrolling while modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isOpen])
-
   async function handleSaveMemoryNote() {
     if (!data) return
     setIsSavingNote(true)
@@ -144,11 +120,14 @@ export function CardAnalyticsModal({
     }
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-6 overflow-y-auto">
-      <div className="relative flex flex-col w-full max-w-4xl max-h-[92vh] rounded-2xl border border-ink-line bg-[#0e131f] shadow-2xl overflow-hidden text-slate-100">
+    <NativeDialog
+      open={isOpen}
+      onClose={onClose}
+      ariaLabel="Card analytics and memory dynamics"
+      className="w-full max-w-4xl"
+    >
+      <div className="relative flex flex-col w-full max-h-[92vh] rounded-2xl border border-ink-line bg-[#0e131f] shadow-2xl overflow-hidden text-slate-100">
         {/* ── Top Header ── */}
         <div className="flex flex-wrap items-center justify-between border-b border-ink-line/80 bg-[#141a27] px-5 py-4 gap-3">
           <div className="min-w-0 flex-1">
@@ -798,6 +777,6 @@ export function CardAnalyticsModal({
           </div>
         </div>
       </div>
-    </div>
+    </NativeDialog>
   )
 }

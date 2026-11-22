@@ -24,6 +24,7 @@ import { FullscreenButton, useFullscreen } from '../components/FullscreenContext
 
 import { useTheme, THEME_REGISTRY, FONT_SIZES, type CognitiveTheme, type FontSize } from '../components/ThemeContext'
 import InteractiveTutorialModal from '../components/InteractiveTutorialModal'
+import { LlmDiagnosticsModal } from '../components/LlmDiagnosticsModal'
 import { storage } from '../utils/storage'
 
 export default function Settings() {
@@ -244,6 +245,7 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
   const [status, setStatus] = useState<LlmEngineStatusResponse | null>(null)
   const [hardware, setHardware] = useState<HardwareProfile | null>(null)
   const [checking, setChecking] = useState(false)
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
   const [error, setError] = useState<unknown>(null)
 
   const checkStatus = useCallback(async () => {
@@ -415,8 +417,22 @@ function QwenCoderPanel({ user, onChange }: { user: User; onChange: () => Promis
               >
                 {checking ? 'Testing…' : '↻ Test'}
               </button>
+              <button
+                type="button"
+                className="btn text-xs py-1.5 px-3 border-sky-500/40 text-sky-200 hover:bg-sky-500/15"
+                onClick={() => setDiagnosticsOpen(true)}
+              >
+                Diagnostics
+              </button>
             </div>
           </div>
+
+          <LlmDiagnosticsModal
+            isOpen={diagnosticsOpen}
+            onClose={() => setDiagnosticsOpen(false)}
+            activeModel={activeModelId}
+            onSelectModel={(m) => void activateModel(m)}
+          />
 
           {/* Status Diagnostic Callout */}
           {status && (

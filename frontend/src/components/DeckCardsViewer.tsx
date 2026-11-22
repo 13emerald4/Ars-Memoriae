@@ -1,13 +1,17 @@
 import { dialogs } from './dialogs'
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef, useDeferredValue, useOptimistic, useTransition } from 'react'
 import { api } from '../api/client'
-import type { Deck, DeckDocumentOut, DeckStats, QueueItem } from '../api/types'
+import type { Deck, DeckDocumentOut, DeckStats, Lesson, QueueItem } from '../api/types'
 import { CodeEditor } from './CodeEditor'
 import { RichText } from './RichText'
+import { Spinner } from './ui'
+import { SocraticLessonPanel } from '../pages/review/LessonGate'
 import { isCodeCard, extractCleanCode, detectCodeLanguage } from '../utils/codeUtils'
 import { CardAnalyticsModal } from './CardAnalyticsModal'
 import { CompactDeckDistributionBars, CompactCardProgressionBar } from './DeckReviewStatsBar'
 import { storage } from '../utils/storage'
+import { NativeDialog } from './NativeDialog'
+import { getErrorMessage } from '../utils/errors'
 import { useReorderableSections } from '../hooks/useReorderableSections'
 import { ReorderableSectionFrame } from './ReorderableSectionFrame'
 
@@ -92,26 +96,33 @@ export function DeckCardsViewer({
   allDecks: propDecks,
 }: DeckCardsViewerProps) {
   const [cards, setCards] = useState<QueueItem[]>([])
+  const [optimisticCards, applyOptimisticCards] = useOptimistic<
+    QueueItem[],
+    (prev: QueueItem[]) => QueueItem[]
+  >(cards, (state, updater) => updater(state))
+  const [, startCardTransition] = useTransition()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [analyticsCardId, setAnalyticsCardId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const deferredSearchQuery = useDeferredValue(searchQuery)
   const [filterType, setFilterType] = useState<'both' | 'code' | 'qa'>('both')
   const [filterDifficulty, setFilterDifficulty] = useState<'all' | 'easy' | 'medium' | 'hard'>('all')
   const [copiedCode, setCopiedCode] = useState(false)
   const [showTestsSection, setShowTestsSection] = useState(false)
+  const [showLessonSection, setShowLessonSection] = useState(true)
+  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
+  const [lessonLoading, setLessonLoading] = useState(false)
+  const lessonCacheRef = useRef<Map<string, Lesson>>(new Map())
 
-  // Reorderable Card Preview sections
   const {
     sections: previewSections,
-    isCustomized: isPreviewOrderCustomized,
     draggingId: previewDraggingId,
     dragOverId: previewDragOverId,
     dropPosition: previewDropPosition,
     collapsedMap: previewCollapsedMap,
     moveSection: movePreviewSection,
-    resetOrder: resetPreviewOrder,
     toggleCollapse: togglePreviewCollapse,
     handleDragStart: handlePreviewDragStart,
     handleDragOver: handlePreviewDragOver,
@@ -130,8 +141,10 @@ export function DeckCardsViewer({
   const [allDecks, setAllDecks] = useState<Deck[]>(propDecks || [])
   const [showDeckDropdown, setShowDeckDropdown] = useState(false)
   const [deckSearchQuery, setDeckSearchQuery] = useState('')
+  const deferredDeckSearchQuery = useDeferredValue(deckSearchQuery)
   const [expandedDeckIds, setExpandedDeckIds] = useState<Set<string>>(new Set())
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const previewScrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setActiveDeckId(deckId)
@@ -215,12 +228,11 @@ export function DeckCardsViewer({
 
   // Neuroscience & Memory Palace state
   const [autoPalacing, setAutoPalacing] = useState(false)
+  const [clearingPalace, setClearingPalace] = useState(false)
   const [editingLocus, setEditingLocus] = useState('')
   const [editingMnemonic, setEditingMnemonic] = useState('')
   const [savingNeuroProps, setSavingNeuroProps] = useState(false)
   const [generatingMnemonic, setGeneratingMnemonic] = useState(false)
-  const [clearingPalace, setClearingPalace] = useState(false)
-
   const hasPalaceLoci = useMemo(() => cards.some((c) => Boolean(c.spatial_locus)), [cards])
 
   // Fetch cards when opened
@@ -253,14 +265,14 @@ export function DeckCardsViewer({
     }
   }, [currentCardId])
 
-  const handleMoveCard = async (e: React.MouseEvent, cardId: string, direction: 'up' | 'down') => {
+  const handleMoveCard = (e: React.MouseEvent, cardId: string, direction: 'up' | 'down') => {
     e.stopPropagation()
-    const index = cards.findIndex((c) => c.id === cardId)
+    const index = optimisticCards.findIndex((c) => c.id === cardId)
     if (index === -1) return
     const targetIndex = direction === 'up' ? index - 1 : index + 1
-    if (targetIndex < 0 || targetIndex >= cards.length) return
+    if (targetIndex < 0 || targetIndex >= optimisticCards.length) return
 
-    const newCards = [...cards]
+    const newCards = [...optimisticCards]
     const [moved] = newCards.splice(index, 1)
     newCards.splice(targetIndex, 0, moved)
 
@@ -268,19 +280,22 @@ export function DeckCardsViewer({
       ...c,
       position: i + 1,
     }))
-    setCards(reorderedItems)
 
-    try {
-      await api.reorderCards(
-        reorderedItems.map((c) => ({
-          id: c.id,
-          position: c.position!,
-          deck_id: c.deck_or_source_id,
-        })),
-      )
-    } catch {
-      // ignore
-    }
+    startCardTransition(async () => {
+      applyOptimisticCards(() => reorderedItems)
+      try {
+        await api.reorderCards(
+          reorderedItems.map((c) => ({
+            id: c.id,
+            position: c.position!,
+            deck_id: c.deck_or_source_id,
+          })),
+        )
+        setCards(reorderedItems)
+      } catch (err: unknown) {
+        dialogs.error(err, 'Failed to reorder cards.')
+      }
+    })
   }
 
   // Fetch deck documentation
@@ -301,9 +316,11 @@ export function DeckCardsViewer({
   }, [isOpen, activeDeckId, loadCards, loadDeckDocs])
 
   const handleSelectDeckFromDropdown = (id: string, name: string) => {
-    setActiveDeckId(id)
-    setActiveDeckName(name)
     setShowDeckDropdown(false)
+    startCardTransition(() => {
+      setActiveDeckId(id)
+      setActiveDeckName(name)
+    })
     void loadCards(id)
     void loadDeckDocs(id)
   }
@@ -318,8 +335,8 @@ export function DeckCardsViewer({
       setDeckDocs((prev) => [res, ...prev])
       setSelectedFile(null)
       setDocTitle('')
-    } catch (err: any) {
-      setDocUploadError(err?.message || 'Failed to upload document.')
+    } catch (err: unknown) {
+      setDocUploadError(getErrorMessage(err, 'Failed to upload document.'))
     } finally {
       setUploadingDoc(false)
     }
@@ -331,30 +348,17 @@ export function DeckCardsViewer({
     try {
       await api.deleteDeckDocument(activeDeckId, docId)
       setDeckDocs((prev) => prev.filter((d) => d.id !== docId && d.source_id !== docId))
-    } catch (err: any) {
+    } catch (err: unknown) {
       dialogs.error(err, 'Failed to delete document.')
     } finally {
       setDeletingDocId(null)
     }
   }
 
-  // Close on Escape key
-  useEffect(() => {
-    if (!isOpen) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
-
-  // Filter cards based on search query and filter pills
+  // Filter cards based on deferred search query and filter pills
   const filteredCards = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim()
-    return cards.filter((c) => {
+    const q = deferredSearchQuery.toLowerCase().trim()
+    return optimisticCards.filter((c) => {
       // Filter Type: Coding, Q&A, or Both
       if (filterType === 'code' && !isCodeCard(c)) return false
       if (filterType === 'qa' && isCodeCard(c)) return false
@@ -377,11 +381,71 @@ export function DeckCardsViewer({
 
       return true
     })
-  }, [cards, searchQuery, filterType, filterDifficulty])
+  }, [optimisticCards, deferredSearchQuery, filterType, filterDifficulty])
 
   const selectedCard = useMemo(() => {
     return filteredCards.find((c) => c.id === selectedCardId) || filteredCards[0] || null
   }, [selectedCardId, filteredCards])
+
+  const selectedCardIndex = useMemo(() => {
+    if (!selectedCard) return -1
+    return filteredCards.findIndex((c) => c.id === selectedCard.id)
+  }, [filteredCards, selectedCard])
+
+  const hasPrevCard = selectedCardIndex > 0
+  const hasNextCard = selectedCardIndex >= 0 && selectedCardIndex < filteredCards.length - 1
+
+  const handleSelectCardByIndex = useCallback(
+    (nextIndex: number) => {
+      const nextCard = filteredCards[nextIndex]
+      if (!nextCard) return
+      startCardTransition(() => {
+        setSelectedCardId(nextCard.id)
+        setShowCommentsPopover(false)
+      })
+      previewScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+    },
+    [filteredCards],
+  )
+
+  const handlePrevCard = useCallback(() => {
+    if (selectedCardIndex > 0) {
+      handleSelectCardByIndex(selectedCardIndex - 1)
+    }
+  }, [selectedCardIndex, handleSelectCardByIndex])
+
+  const handleNextCard = useCallback(() => {
+    if (selectedCardIndex >= 0 && selectedCardIndex < filteredCards.length - 1) {
+      handleSelectCardByIndex(selectedCardIndex + 1)
+    }
+  }, [selectedCardIndex, filteredCards.length, handleSelectCardByIndex])
+
+  // Keyboard navigation between cards with Left/Right arrows when not typing
+  useEffect(() => {
+    if (!isOpen || showDocsModal || Boolean(analyticsCardId)) return
+    const handleArrowNav = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+      const target = e.target as HTMLElement | null
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return
+      }
+      if (e.key === 'ArrowRight' && hasNextCard) {
+        e.preventDefault()
+        handleNextCard()
+      } else if (e.key === 'ArrowLeft' && hasPrevCard) {
+        e.preventDefault()
+        handlePrevCard()
+      }
+    }
+    window.addEventListener('keydown', handleArrowNav)
+    return () => window.removeEventListener('keydown', handleArrowNav)
+  }, [isOpen, showDocsModal, analyticsCardId, hasNextCard, hasPrevCard, handleNextCard, handlePrevCard])
 
   // Card comments state
   const [commentsVersion, setCommentsVersion] = useState(0)
@@ -426,28 +490,73 @@ export function DeckCardsViewer({
     }
   }
 
+  const selectedCardIdForSync = selectedCard?.id
+  const selectedCardLocus = selectedCard?.spatial_locus
+  const selectedCardMnemonic = selectedCard?.mnemonic_vignette
+
   // Synchronize editing fields with the currently selected card
   useEffect(() => {
-    if (selectedCard) {
-      setEditingLocus(selectedCard.spatial_locus || '')
-      setEditingMnemonic(selectedCard.mnemonic_vignette || '')
+    if (selectedCardIdForSync) {
+      setEditingLocus(selectedCardLocus || '')
+      setEditingMnemonic(selectedCardMnemonic || '')
     }
-  }, [selectedCard?.id, selectedCard?.spatial_locus, selectedCard?.mnemonic_vignette])
+  }, [selectedCardIdForSync, selectedCardLocus, selectedCardMnemonic])
 
-  const handleToggleSchemaCheckpoint = async () => {
-    if (!selectedCard) return
-    setSavingNeuroProps(true)
-    try {
-      const nextVal = !selectedCard.is_schema_checkpoint
-      await api.updateCardNeuroProps(selectedCard.id, { is_schema_checkpoint: nextVal })
-      setCards((prev) =>
-        prev.map((c) => (c.id === selectedCard.id ? { ...c, is_schema_checkpoint: nextVal } : c)),
-      )
-    } catch (err: any) {
-      dialogs.error(err, 'Failed to update schema checkpoint status.')
-    } finally {
-      setSavingNeuroProps(false)
+  // Fetch Socratic lesson for the selected card (cached per card ID)
+  useEffect(() => {
+    if (!isOpen || !selectedCard?.id) {
+      setSelectedLesson(null)
+      setLessonLoading(false)
+      return
     }
+    const cardId = selectedCard.id
+    const cached = lessonCacheRef.current.get(cardId)
+    if (cached) {
+      setSelectedLesson(cached)
+      setLessonLoading(false)
+      return
+    }
+    let cancelled = false
+    setLessonLoading(true)
+    setSelectedLesson(null)
+    api
+      .lesson(cardId)
+      .then((data) => {
+        if (cancelled) return
+        lessonCacheRef.current.set(cardId, data)
+        setSelectedLesson(data)
+      })
+      .catch(() => {
+        if (!cancelled) setSelectedLesson(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLessonLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen, selectedCard?.id])
+
+  const handleToggleSchemaCheckpoint = () => {
+    if (!selectedCard) return
+    const targetId = selectedCard.id
+    const nextVal = !selectedCard.is_schema_checkpoint
+    setSavingNeuroProps(true)
+    startCardTransition(async () => {
+      applyOptimisticCards((prev) =>
+        prev.map((c) => (c.id === targetId ? { ...c, is_schema_checkpoint: nextVal } : c)),
+      )
+      try {
+        await api.updateCardNeuroProps(targetId, { is_schema_checkpoint: nextVal })
+        setCards((prev) =>
+          prev.map((c) => (c.id === targetId ? { ...c, is_schema_checkpoint: nextVal } : c)),
+        )
+      } catch (err: unknown) {
+        dialogs.error(err, 'Failed to update schema checkpoint status.')
+      } finally {
+        setSavingNeuroProps(false)
+      }
+    })
   }
 
   const handleSaveLocus = async () => {
@@ -459,7 +568,7 @@ export function DeckCardsViewer({
       setCards((prev) =>
         prev.map((c) => (c.id === selectedCard.id ? { ...c, spatial_locus: val || undefined } : c)),
       )
-    } catch (err: any) {
+    } catch (err: unknown) {
       dialogs.error(err, 'Failed to update spatial locus.')
     } finally {
       setSavingNeuroProps(false)
@@ -475,7 +584,7 @@ export function DeckCardsViewer({
       setCards((prev) =>
         prev.map((c) => (c.id === selectedCard.id ? { ...c, mnemonic_vignette: val || undefined } : c)),
       )
-    } catch (err: any) {
+    } catch (err: unknown) {
       dialogs.error(err, 'Failed to update mnemonic vignette.')
     } finally {
       setSavingNeuroProps(false)
@@ -493,7 +602,7 @@ export function DeckCardsViewer({
           c.id === selectedCard.id ? { ...c, mnemonic_vignette: res.mnemonic_vignette } : c,
         ),
       )
-    } catch (err: any) {
+    } catch (err: unknown) {
       dialogs.error(err, 'Failed to generate mnemonic vignette.')
     } finally {
       setGeneratingMnemonic(false)
@@ -506,7 +615,7 @@ export function DeckCardsViewer({
     try {
       await api.autoPalace(activeDeckId)
       await loadCards(activeDeckId)
-    } catch (err: any) {
+    } catch (err: unknown) {
       dialogs.error(err, 'Failed to auto-generate memory palace layout.')
     } finally {
       setAutoPalacing(false)
@@ -526,7 +635,7 @@ export function DeckCardsViewer({
       await api.clearPalace(activeDeckId)
       await loadCards(activeDeckId)
       dialogs.notify('Memory palace removed. Cards restored to clean sequential order.')
-    } catch (err: any) {
+    } catch (err: unknown) {
       dialogs.error(err, 'Failed to clear memory palace layout.')
     } finally {
       setClearingPalace(false)
@@ -538,8 +647,8 @@ export function DeckCardsViewer({
     const hasKids = node.children && node.children.length > 0
     const isExpanded = expandedDeckIds.has(node.id)
 
-    // Filter check: matches search query or has matching descendant
-    const query = deckSearchQuery.trim().toLowerCase()
+    // Filter check: matches deferred search query or has matching descendant
+    const query = deferredDeckSearchQuery.trim().toLowerCase()
     const matchesQuery = !query || node.title.toLowerCase().includes(query)
     const hasMatchingChild = (children: DropdownDeckNode[]): boolean => {
       return children.some((c) => c.title.toLowerCase().includes(query) || hasMatchingChild(c.children))
@@ -620,16 +729,14 @@ export function DeckCardsViewer({
     )
   }
 
-  if (!isOpen) return null
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Deck cards browser"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+    <NativeDialog
+      open={isOpen}
+      onClose={onClose}
+      ariaLabel="Deck cards browser"
+      className="w-full max-w-7xl"
     >
-      <div className="flex flex-col w-full max-w-7xl h-[92vh] max-h-[920px] rounded-2xl border border-sky-500/30 bg-[#12161f] shadow-2xl overflow-hidden text-slate-200">
+      <div className="flex flex-col w-full h-[92vh] max-h-[920px] rounded-2xl border border-sky-500/30 bg-[#12161f] shadow-2xl overflow-hidden text-slate-200">
         {/* ── Top Header Bar ── */}
         <div className="flex flex-wrap items-center justify-between border-b border-ink-line/80 bg-[#181e2b] px-4 py-3 gap-3">
           <div className="flex items-center gap-3">
@@ -791,7 +898,7 @@ export function DeckCardsViewer({
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search cards..."
               className="w-full rounded-lg border border-ink-line/80 bg-[#1b2233] px-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition"
-              autoFocus
+              data-autofocus
             />
             {searchQuery && (
               <button
@@ -906,7 +1013,7 @@ export function DeckCardsViewer({
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto divide-y divide-ink-line/40 p-1.5 space-y-1">
+            <div className="flex-1 overflow-y-auto scroll-stable divide-y divide-ink-line/40 p-1.5 space-y-1">
               {error && (
                 <div className="p-4 text-xs text-rose-300 bg-rose-950/30 border border-rose-500/30 rounded-lg">
                   Failed to load deck cards: {error}
@@ -1131,18 +1238,21 @@ export function DeckCardsViewer({
           </div>
 
           {/* ── Right Column: Selected Card Detail Preview ── */}
-          <div className="md:col-span-7 lg:col-span-8 flex flex-col h-full bg-[#121620] min-h-0 overflow-y-auto">
+          <div
+            ref={previewScrollRef}
+            className="@container md:col-span-7 lg:col-span-8 flex flex-col h-full bg-[#121620] min-h-0 overflow-y-auto scroll-stable"
+          >
             {selectedCard ? (
               <div className="p-4 sm:p-6 space-y-5">
-                {/* ── Preview Header & Action Bar ── */}
-                <div className="flex flex-wrap items-start justify-between gap-3 pb-3 border-b border-ink-line/60">
-                  <div className="space-y-1 max-w-xl">
-                    <div className="flex flex-wrap items-center gap-2">
+                {/* ── Preview Header & Action Bar (adapts to pane width via @container) ── */}
+                <div className="flex flex-wrap @[44rem]:flex-nowrap items-center justify-between gap-3 pb-3 border-b border-ink-line/60">
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <span className="rounded bg-sky-950/80 border border-sky-500/40 px-2 py-0.5 text-xs font-mono text-sky-200">
                         {isCodeCard(selectedCard) ? 'Coding' : 'Q&A'}
                       </span>
                       {selectedCard.category && (
-                        <span className="rounded bg-slate-800 border border-slate-700 px-2 py-0.5 text-xs text-slate-300">
+                        <span className="rounded bg-slate-800 border border-slate-700 px-2 py-0.5 text-xs text-slate-300 truncate max-w-[180px]" title={selectedCard.category}>
                           {selectedCard.category}
                         </span>
                       )}
@@ -1171,8 +1281,8 @@ export function DeckCardsViewer({
                       )}
                       <CompactCardProgressionBar card={selectedCard} />
                     </div>
-                    <div className="flex flex-wrap items-center gap-2.5 relative">
-                      <h2 className="text-base sm:text-lg font-bold text-white">
+                    <div className="flex flex-wrap items-center gap-2 relative">
+                      <h2 className="text-base sm:text-lg font-bold text-white leading-snug">
                         {selectedCard.title || 'Card Preview'}
                       </h2>
 
@@ -1234,7 +1344,7 @@ export function DeckCardsViewer({
                                 onChange={(e) => setNewCommentText(e.target.value)}
                                 placeholder="Write a comment or note for this card..."
                                 rows={2}
-                                className="w-full text-xs rounded-lg bg-[#0d131d] border border-ink-line/80 text-slate-100 placeholder-slate-500 p-2 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 resize-none font-sans"
+                                className="field-autosize min-h-[3.5rem] max-h-40 w-full text-xs rounded-lg bg-[#0d131d] border border-ink-line/80 text-slate-100 placeholder-slate-500 p-2 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 resize-none font-sans"
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                                     e.preventDefault()
@@ -1290,23 +1400,40 @@ export function DeckCardsViewer({
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    {isPreviewOrderCustomized && (
-                      <button
-                        type="button"
-                        onClick={resetPreviewOrder}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-sky-300 text-xs font-medium transition cursor-pointer shadow-xs"
-                        title="Reset preview cards to default order"
-                      >
-                        <span>↺ Reset Layout</span>
-                      </button>
+                  {/* Action Buttons & Next Card Stepper */}
+                  <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                    {filteredCards.length > 0 && (
+                      <div className="inline-flex items-center rounded-lg border border-sky-500/35 bg-[#161e2e] p-0.5 shadow-sm">
+                        <button
+                          type="button"
+                          onClick={handlePrevCard}
+                          disabled={!hasPrevCard}
+                          aria-label="Previous card"
+                          title="Previous card (←)"
+                          className="px-1.5 py-1 rounded-md text-xs font-medium text-slate-300 hover:bg-slate-800/80 hover:text-white disabled:opacity-35 disabled:cursor-not-allowed transition cursor-pointer"
+                        >
+                          ←
+                        </button>
+                        <span className="px-1.5 text-[0.6875rem] font-mono tabular-nums text-slate-400 select-none">
+                          {selectedCardIndex + 1}/{filteredCards.length}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleNextCard}
+                          disabled={!hasNextCard}
+                          title="Next card (→)"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-sky-500/20 hover:bg-sky-500/30 text-sky-100 hover:text-white text-xs font-semibold whitespace-nowrap disabled:opacity-35 disabled:bg-transparent disabled:text-slate-500 disabled:cursor-not-allowed transition cursor-pointer"
+                        >
+                          <span>Next Card</span>
+                          <span aria-hidden="true">→</span>
+                        </button>
+                      </div>
                     )}
 
                     <button
                       type="button"
                       onClick={() => setAnalyticsCardId(selectedCard.id)}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-sky-500/40 bg-sky-500/15 hover:bg-sky-500/25 text-sky-200 text-xs font-semibold transition cursor-pointer"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-sky-500/40 bg-sky-500/15 hover:bg-sky-500/25 text-sky-200 text-xs font-semibold whitespace-nowrap transition cursor-pointer"
                       title="View card analytics, memory retention dynamics, and weak points"
                     >
                       <span>Analytics</span>
@@ -1316,7 +1443,7 @@ export function DeckCardsViewer({
                       <button
                         type="button"
                         onClick={() => onSelectCard(selectedCard)}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white text-xs font-semibold shadow-md transition cursor-pointer"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white text-xs font-semibold whitespace-nowrap shadow-md transition cursor-pointer"
                         title="Study now"
                       >
                         <span>Study Now</span>
@@ -1327,7 +1454,7 @@ export function DeckCardsViewer({
                       <button
                         type="button"
                         onClick={() => void handleCopyCode(extractCleanCode(selectedCard.back))}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-ink-line bg-[#1c2333] hover:bg-[#252f44] text-slate-200 text-xs font-medium transition cursor-pointer"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-ink-line bg-[#1c2333] hover:bg-[#252f44] text-slate-200 text-xs font-medium whitespace-nowrap transition cursor-pointer"
                         title="Copy"
                       >
                         <span>{copiedCode ? 'Copied' : 'Copy'}</span>
@@ -1336,7 +1463,6 @@ export function DeckCardsViewer({
                   </div>
                 </div>
 
-                {/* ── Reorderable Card Preview Sections (User Draggable) ── */}
                 <div className="space-y-4">
                   {previewSections.map((sectionId, index) => {
                     if (sectionId === 'question') {
@@ -1379,7 +1505,7 @@ export function DeckCardsViewer({
                             </div>
                           )}
                         >
-                          <div className="p-4 pt-3 space-y-2">
+                          <div className="p-4 pt-3 space-y-3">
                             <div className="text-xs sm:text-sm text-slate-200 leading-relaxed">
                               <RichText
                                 text={selectedCard.front || 'No prompt specified'}
@@ -1395,11 +1521,57 @@ export function DeckCardsViewer({
                                     key={i}
                                     className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-200 border border-amber-500/30 text-[0.6875rem]"
                                   >
-                                    {ec}
+                                    <RichText text={ec} inline className="text-[0.6875rem] text-amber-200" />
                                   </span>
                                 ))}
                               </div>
                             )}
+
+                            {/* ── Socratic Lesson (Study Guide Primer) ── */}
+                            <div className="rounded-xl border border-indigo-500/35 bg-[#121626] overflow-hidden">
+                              <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-indigo-500/20 bg-[#171d31] text-xs">
+                                <div className="flex flex-wrap items-center gap-2 min-w-0">
+                                  <span className="font-semibold text-indigo-200">Socratic Lesson</span>
+                                  {selectedLesson?.socratic?.chapter_title && (
+                                    <span className="truncate text-[0.6875rem] text-slate-400">
+                                      · {selectedLesson.socratic.chapter_title}
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowLessonSection((prev) => !prev)}
+                                  aria-expanded={showLessonSection}
+                                  className="shrink-0 rounded border border-ink-line/70 bg-[#111522] hover:bg-[#1c2336] px-2 py-0.5 text-[0.6875rem] text-slate-300 hover:text-white transition cursor-pointer"
+                                >
+                                  {showLessonSection ? 'Hide' : 'Show'}
+                                </button>
+                              </div>
+
+                              {showLessonSection && (
+                                <div className="p-3.5">
+                                  {lessonLoading ? (
+                                    <div className="py-3">
+                                      <Spinner label="Loading Socratic lesson…" />
+                                    </div>
+                                  ) : selectedLesson && selectedLesson.available ? (
+                                    <SocraticLessonPanel
+                                      lesson={selectedLesson}
+                                      codeLanguage={detectCodeLanguage(
+                                        selectedCard.back || selectedCard.starter_code || selectedCard.front || '',
+                                        codeLanguage,
+                                      )}
+                                      deckId={activeDeckId}
+                                      compact={true}
+                                    />
+                                  ) : (
+                                    <p className="text-xs text-slate-400">
+                                      No Socratic lesson is available for this card yet.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </ReorderableSectionFrame>
                       )
@@ -1465,7 +1637,7 @@ export function DeckCardsViewer({
                             <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 items-end">
                               <div className="sm:col-span-3 space-y-1">
                                 <label className="text-[0.6875rem] font-semibold text-slate-300 flex items-center gap-1">
-                                 <span> Memory Palace Locus (Place Cell Anchor)</span>
+                                  <span>Memory Palace Locus (Place Cell Anchor)</span>
                                 </label>
                                 <input
                                   type="text"
@@ -1491,7 +1663,7 @@ export function DeckCardsViewer({
                             <div className="space-y-1.5 pt-2 border-t border-purple-500/20">
                               <div className="flex items-center justify-between">
                                 <label className="text-[0.6875rem] font-semibold text-slate-300 flex items-center gap-1">
-                                 <span> Bizarre Mnemonic Vignette (Dual Coding)</span>
+                                  <span>Bizarre Mnemonic Vignette (Dual Coding)</span>
                                 </label>
                                 <button
                                   type="button"
@@ -1508,7 +1680,7 @@ export function DeckCardsViewer({
                                 value={editingMnemonic}
                                 onChange={(e) => setEditingMnemonic(e.target.value)}
                                 placeholder="Multi-sensory mental imagery anchor combining exaggerated kinetic action, sound, and spatial locus..."
-                                className="w-full text-xs rounded-lg bg-[#0c0d18] border border-purple-500/30 p-2 text-amber-100 placeholder-slate-600 focus:outline-none focus:border-purple-400 resize-none font-sans"
+                                className="field-autosize min-h-[3.5rem] max-h-48 w-full text-xs rounded-lg bg-[#0c0d18] border border-purple-500/30 p-2 text-amber-100 placeholder-slate-600 focus:outline-none focus:border-purple-400 resize-none font-sans"
                               />
                               {editingMnemonic !== (selectedCard.mnemonic_vignette || '') && (
                                 <div className="flex justify-end">
@@ -1580,7 +1752,7 @@ export function DeckCardsViewer({
                                 borderless={true}
                                 placeholder="// Reference solution"
                                 context={selectedCard.title || selectedCard.front}
-                                deckId={deckId}
+                                deckId={activeDeckId}
                               />
                             ) : (
                               <div className="p-4 text-xs sm:text-sm text-slate-200 leading-relaxed">
@@ -1661,7 +1833,7 @@ export function DeckCardsViewer({
                                           hideHeader={true}
                                           borderless={true}
                                           context={selectedCard.title || selectedCard.front}
-                                          deckId={deckId}
+                                          deckId={activeDeckId}
                                         />
                                       </div>
                                     )}
@@ -1681,7 +1853,7 @@ export function DeckCardsViewer({
                                           hideHeader={true}
                                           borderless={true}
                                           context={selectedCard.title || selectedCard.front}
-                                          deckId={deckId}
+                                          deckId={activeDeckId}
                                         />
                                       </div>
                                     )}
@@ -1707,10 +1879,19 @@ export function DeckCardsViewer({
         </div>
       </div>
 
-      {/* Deck Documentation Modal */}
-      {showDocsModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="relative flex flex-col w-full max-w-2xl max-h-[85vh] rounded-2xl border border-emerald-500/40 bg-[#0f1728] text-slate-100 shadow-2xl overflow-hidden">
+      {/* Deck Documentation Modal (nested Top Layer <dialog>) */}
+      <NativeDialog
+        open={showDocsModal}
+        onClose={() => {
+          setShowDocsModal(false)
+          setDocUploadError(null)
+          setSelectedFile(null)
+          setDocTitle('')
+        }}
+        ariaLabel="Deck documentation"
+        className="w-full max-w-2xl"
+      >
+        <div className="relative flex flex-col w-full max-h-[85vh] rounded-2xl border border-emerald-500/40 bg-[#0f1728] text-slate-100 shadow-2xl overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-ink-line/80 bg-[#142034] px-5 py-3.5">
               <div className="flex items-center gap-2">
@@ -1890,8 +2071,7 @@ export function DeckCardsViewer({
               </button>
             </div>
           </div>
-        </div>
-      )}
+      </NativeDialog>
 
       <CardAnalyticsModal
         cardId={analyticsCardId}
@@ -1901,7 +2081,7 @@ export function DeckCardsViewer({
           if (deckId) void loadCards(deckId)
         }}
       />
-    </div>
+    </NativeDialog>
   )
 }
 export default DeckCardsViewer

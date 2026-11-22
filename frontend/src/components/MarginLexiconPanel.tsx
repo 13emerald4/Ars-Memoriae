@@ -293,7 +293,7 @@ export function MarginLexiconPanel({
         setActiveTab('card_glosses')
       }
     })
-  }, [registerPopulateListener, onGlossesUpdated, persistGlosses])
+  }, [registerPopulateListener, onGlossesUpdated, persistGlosses, cardId, syncCardGlosses])
 
   const handleAutoExtractTerms = useCallback(async () => {
     if (extractingTerms || (!cardFront && !cardBack)) return
@@ -450,8 +450,8 @@ export function MarginLexiconPanel({
     <div
       className={
         embedded
-          ? 'w-full h-full flex flex-col min-h-0 rounded-none border-0 bg-[#111318] text-slate-100 font-sans overflow-hidden'
-          : 'w-full rounded-2xl border border-sky-500/25 bg-[#0b101b]/95 shadow-xl backdrop-blur-md text-slate-100 font-sans overflow-hidden transition-all duration-200'
+          ? '@container w-full h-full flex flex-col min-h-0 rounded-none border-0 bg-[#111318] text-slate-100 font-sans overflow-hidden'
+          : '@container w-full rounded-2xl border border-sky-500/25 bg-[#0b101b]/95 shadow-xl backdrop-blur-md text-slate-100 font-sans overflow-hidden transition-all duration-200'
       }
     >
       {/* Header Bar */}
@@ -590,8 +590,8 @@ export function MarginLexiconPanel({
             <div
               className={
                 embedded
-                  ? 'space-y-2.5 flex-1 min-h-0 overflow-y-auto pr-1'
-                  : 'space-y-2.5 max-h-[600px] overflow-y-auto pr-1'
+                  ? 'space-y-2.5 flex-1 min-h-0 overflow-y-auto scroll-stable pr-1'
+                  : 'space-y-2.5 max-h-[600px] overflow-y-auto scroll-stable pr-1'
               }
             >
               <div className="flex items-center justify-between text-[0.6875rem] text-slate-400">
@@ -705,8 +705,8 @@ export function MarginLexiconPanel({
             <div
               className={
                 embedded
-                  ? 'space-y-3 flex-1 min-h-0 overflow-y-auto pr-1'
-                  : 'space-y-3 max-h-[520px] overflow-y-auto pr-1'
+                  ? 'space-y-3 flex-1 min-h-0 overflow-y-auto scroll-stable pr-1'
+                  : 'space-y-3 max-h-[520px] overflow-y-auto scroll-stable pr-1'
               }
             >
               {lookupError && !searching && (
@@ -873,8 +873,8 @@ export function MarginLexiconPanel({
             <div
               className={
                 embedded
-                  ? 'space-y-2 flex-1 min-h-0 overflow-y-auto pr-1'
-                  : 'space-y-2 max-h-[520px] overflow-y-auto pr-1'
+                  ? 'space-y-2 flex-1 min-h-0 overflow-y-auto scroll-stable pr-1'
+                  : 'space-y-2 max-h-[520px] overflow-y-auto scroll-stable pr-1'
               }
             >
               <div className="flex items-center justify-between text-[0.6875rem] text-slate-400">

@@ -1,0 +1,30 @@
+{
+  "name": "ars-memoriae",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "node server.ts",
+    "start": "node server.ts",
+    "build": "npm --workspace=frontend run build && tsc --noEmit -p tsconfig.server.json",
+    "lint": "npm --workspace=frontend run lint",
+    "typecheck": "npm --workspace=frontend run typecheck && tsc --noEmit -p tsconfig.server.json"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "typescript": "^5.6.2"
+  }
+}

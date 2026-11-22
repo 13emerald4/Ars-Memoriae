@@ -1,16 +1,28 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
 // The dev server proxies everything the backend owns, so the app talks to its
 // own origin in development exactly as it does in production (where FastAPI
 // serves the build). That keeps it working from a phone on the LAN too.
-const backend = 'http://127.0.0.1:8000'
+const backend = 'http://127.0.0.1:3000'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    tailwindcss(),
+    react({
+      babel: {
+        plugins: [['babel-plugin-react-compiler', { target: '19' }]],
+      },
+    }),
+  ],
+  test: {
+    include: ['src/__tests__/**/*.test.ts'],
+  },
   server: {
     host: '0.0.0.0',
-    port: 5173,
+    port: 3000,
+    allowedHosts: true,
     proxy: {
       '/api': {
         target: backend,

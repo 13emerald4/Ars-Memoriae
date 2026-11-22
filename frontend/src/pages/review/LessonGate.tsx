@@ -25,7 +25,7 @@ export type LessonSectionId = 'lesson' | 'question' | 'solution_preview'
 export function LessonGate({
   item,
   lesson,
-  loading = false,
+  loading: _loading,
   deckName,
   onContinue,
   onOpenSettings: _onOpenSettings,
@@ -63,9 +63,14 @@ export function LessonGate({
   })
   const [testsTab, setTestsTab] = useState<'all' | 'code' | 'cases'>('all')
   const [showTestsSection, setShowTestsSection] = useState(true)
-  const [showSolutionPreview, setShowSolutionPreview] = useState(false)
+  const [showSolutionPeek, setShowSolutionPeek] = useState(false)
   const [copiedAnswer, setCopiedAnswer] = useState(false)
   const [copiedTests, setCopiedTests] = useState(false)
+
+  // Reset solution peek when moving to a different card
+  useEffect(() => {
+    setShowSolutionPeek(false)
+  }, [item.id])
 
   const handleCopyAnswer = async () => {
     if (!cleanCode) return
@@ -310,7 +315,9 @@ export function LessonGate({
                 </span>
                 <ul className="list-disc list-inside space-y-0.5 text-slate-300 text-[0.6875rem]">
                   {edgeCases.map((ec, i) => (
-                    <li key={i}>{ec}</li>
+                    <li key={i}>
+                      <RichText text={ec} inline className="text-[0.6875rem] text-slate-300" />
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -321,11 +328,29 @@ export function LessonGate({
     )
   }
 
-  const hasLesson = Boolean(lesson && lesson.available && lesson.body)
-  const lessonBody = hasLesson
-    ? lesson!.body
-    : (doc || thematic || 'Review the core concepts and mental model for this card before testing.')
-  const lessonKeyPoints = (hasLesson && lesson!.key_points) ? lesson!.key_points : []
+  const hasStructuredSocratic = Boolean(
+    lesson?.available &&
+      lesson.socratic &&
+      (lesson.socratic.readings.length > 0 ||
+        lesson.socratic.core_idea ||
+        lesson.socratic.trap ||
+        lesson.socratic.invariants),
+  )
+
+  const shouldRenderTitleHeading = useMemo(() => {
+    if (!item.title) return false
+    const cleanTitle = item.title.trim().toLowerCase()
+    const frontStart = (item.front || '')
+      .trim()
+      .replace(/^\*\*|\*\*$|^#+\s*/g, '')
+      .toLowerCase()
+    if (!frontStart) return true
+    if (frontStart.startsWith(cleanTitle)) return false
+    // Also skip generic duplicate headings like "What does this print? (js01-typeof)" when front starts with "What does this print?"
+    const baseTitle = cleanTitle.replace(/\s*\([^)]*\)\s*$/, '').trim()
+    if (baseTitle.length >= 8 && frontStart.startsWith(baseTitle)) return false
+    return true
+  }, [item.title, item.front])
 
   const {
     sections,
@@ -353,14 +378,14 @@ export function LessonGate({
       {/* ── Top Header Strip ── */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-line pb-3 text-xs">
         <div className="flex flex-wrap items-center gap-2">
-          {deckName && <span className="chip font-semibold text-slate-300">{deckName}</span>}
-          <span className="chip border-sky-500/40 bg-sky-500/15 text-sky-200 font-semibold">
-            Learn &amp; Practice
-          </span>
-          {thematic && (
-            <span className="chip border-sky-400/30 text-sky-300">
-              {thematic}
-            </span>
+          {deckName && <span className="font-semibold text-slate-200">{deckName}</span>}
+          <span className="text-slate-600">·</span>
+          <span className="font-medium text-sky-300">Learn &amp; Practice</span>
+          {item.difficulty && (
+            <>
+              <span className="text-slate-600">·</span>
+              <span className="text-slate-400">{item.difficulty}</span>
+            </>
           )}
         </div>
 
@@ -373,7 +398,7 @@ export function LessonGate({
               thematicNature: thematic,
             })
           }
-          className="flex items-center gap-1.5 rounded-full border border-sky-400/40 bg-sky-950/70 px-2.5 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-900/80 hover:border-sky-300 transition-all shadow-sm cursor-pointer"
+          className="flex items-center gap-1.5 rounded-md border border-sky-400/35 bg-sky-950/60 px-2.5 py-1 text-xs font-medium text-sky-200 hover:bg-sky-900/70 hover:border-sky-300 transition-colors cursor-pointer"
           title="Lexicon lookup"
         >
           <span>Lexicon</span>
@@ -381,10 +406,12 @@ export function LessonGate({
       </div>
 
       {/* Step Indicator Banner */}
-      <div className="rounded-lg bg-sky-500/10 border border-sky-500/25 p-3 text-xs text-sky-200 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-sky-300">Learn &amp; Practice</span>
-          <span>Read the Socratic primer below to understand the mental model, then test yourself.</span>
+      <div className="rounded-lg bg-sky-500/10 border border-sky-500/25 px-3.5 py-2.5 text-xs text-sky-200 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-sky-300">Socratic Primer</span>
+          <span className="text-slate-300">
+            Build the mental model from the study guide below, then test your recall.
+          </span>
         </div>
         <div className="flex items-center gap-2">
           {isCustomized && (
@@ -397,7 +424,7 @@ export function LessonGate({
               <span>↺ Reset Layout</span>
             </button>
           )}
-          <kbd className="hidden sm:inline-block px-2 py-0.5 rounded bg-slate-800 text-[0.6875rem] font-mono border border-slate-700 text-sky-300">
+          <kbd className="hidden sm:inline-block shrink-0 px-2 py-0.5 rounded bg-slate-900 text-[0.6875rem] font-mono border border-slate-700 text-sky-300">
             Enter ↵
           </kbd>
         </div>
@@ -458,50 +485,24 @@ export function LessonGate({
                   </div>
                 )}
               >
-                <div className="p-4 pt-3 space-y-3">
-                  {loading ? (
-                    <div className="py-6 flex justify-center">
-                      <Spinner label="Preparing Socratic primer..." />
+                <div className="p-4 pt-3">
+                  {_loading ? (
+                    <div className="py-4">
+                      <Spinner label="Loading Socratic lesson…" />
                     </div>
+                  ) : lesson && lesson.available ? (
+                    <SocraticLessonPanel
+                      lesson={lesson}
+                      codeLanguage={detectedLang}
+                      deckId={item.kind === 'card' ? item.deck_or_source_id : null}
+                    />
                   ) : (
-                    <div className="space-y-3">
+                    <div className="text-xs text-slate-300 leading-relaxed">
                       <RichText
-                        text={lessonBody}
-                        className="text-sm md:text-base leading-relaxed text-slate-100 whitespace-pre-line"
+                        text={doc || thematic || 'Review the core concepts and mental model for this card before testing.'}
                         codeLanguage={detectedLang}
                         deckId={item.kind === 'card' ? item.deck_or_source_id : null}
                       />
-
-                      {lessonKeyPoints.length > 0 && (
-                        <div className="mt-3.5 pt-3 border-t border-sky-500/20 space-y-2">
-                          <span className="text-[0.6875rem] font-bold uppercase tracking-wider text-sky-300 block">
-                            Key Principles &amp; Takeaways:
-                          </span>
-                          <ul className="space-y-1.5 text-xs text-slate-200">
-                            {lessonKeyPoints.map((pt, idx) => (
-                              <li key={idx} className="flex items-start gap-2">
-                                <span className="text-emerald-400 font-bold shrink-0 mt-0.5">✓</span>
-                                <span className="leading-normal">{pt}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {(doc || hasReferences) && (
-                        <div className="pt-2 flex flex-wrap items-center gap-2 text-xs">
-                          {hasReferences && (
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="text-slate-400 text-[0.6875rem]">Citations:</span>
-                              {item.references.map((ref, idx) => (
-                                <span key={idx} className="chip text-[0.625rem] text-slate-400" title={ref.quote || undefined}>
-                                  {ref.source_title ?? ref.locator ?? 'source'}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -552,8 +553,10 @@ export function LessonGate({
                   </div>
                 )}
               >
-                <div className="p-4 pt-3 space-y-2">
-                  {item.title && <h3 className="text-base font-bold text-slate-100">{item.title}</h3>}
+                <div className="p-4 pt-3 space-y-2.5">
+                  {shouldRenderTitleHeading && item.title && (
+                    <h3 className="text-base font-bold text-slate-100">{item.title}</h3>
+                  )}
 
                   {item.occlusion ? (
                     <div className="space-y-2">
@@ -611,13 +614,13 @@ export function LessonGate({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {!isCollapsed && (
+                      {!isCollapsed && hasStructuredSocratic && (
                         <button
                           type="button"
-                          onClick={() => setShowSolutionPreview((prev) => !prev)}
+                          onClick={() => setShowSolutionPeek((prev) => !prev)}
                           className="btn btn-secondary text-xs px-3 py-1 flex items-center gap-1.5 cursor-pointer hover:bg-slate-800 transition"
                         >
-                          <span>{showSolutionPreview ? 'Hide Solution' : '👁 Preview Solution'}</span>
+                          <span>{showSolutionPeek ? 'Hide Solution' : '👁 Peek Solution'}</span>
                         </button>
                       )}
                       {moveButtons}
@@ -626,7 +629,7 @@ export function LessonGate({
                   </div>
                 )}
               >
-                {showSolutionPreview && (
+                {(!hasStructuredSocratic || showSolutionPeek) && (
                   <div className="p-3.5 pt-0 border-t border-ink-line/60 mt-2 space-y-4">
                     {item.occlusion ? (
                       <div className="space-y-2 rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4">
@@ -716,18 +719,305 @@ export function LessonGate({
         })}
       </div>
 
-      {/* ── 4. Call-to-action to enter Practice / Active Recall Phase ── */}
+      {/* ── 4. Supporting Context / Deck Documentation ── */}
+      {(doc || hasReferences) && (
+        <details className="rounded-lg border border-ink-line/80 bg-ink/40 p-3 text-xs text-slate-300 group">
+          <summary className="cursor-pointer font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 select-none">
+            <span>Deck Documentation &amp; References</span>
+          </summary>
+          <div className="mt-3 space-y-3 pt-2 border-t border-ink-line/60">
+            {doc && (
+              <div>
+                <span className="text-slate-400 font-medium block mb-1">Documentation:</span>
+                <RichText text={doc} className="text-xs leading-relaxed text-slate-300" />
+              </div>
+            )}
+            {hasReferences && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-slate-400 text-[0.6875rem]">Citations:</span>
+                {item.references.map((ref, idx) => (
+                  <span key={idx} className="chip text-[0.625rem] text-slate-400" title={ref.quote || undefined}>
+                    {ref.source_title ?? ref.locator ?? 'source'}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </details>
+      )}
+
+      {/* ── 5. Call-to-action to enter Practice Phase ── */}
       <div className="pt-2">
         <button
           type="button"
-          className="btn btn-primary w-full py-3.5 text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-sky-950/40 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+          className="btn btn-primary w-full py-3 text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-sky-950/40 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
           onClick={onContinue}
         >
-          <span>Start Quiz · Test Yourself</span>
+          <span>Start Quiz</span>
           <span className="text-xs text-sky-300/80 font-normal">Enter ↵</span>
         </button>
       </div>
     </div>
+  )
+}
+
+/** Structured, non-spoiling Socratic Lesson renderer shared by Learn & Practice and PrimerDrawer. */
+export function SocraticLessonPanel({
+  lesson,
+  codeLanguage = 'javascript',
+  deckId = null,
+  compact = false,
+}: {
+  lesson: Lesson
+  codeLanguage?: string
+  deckId?: string | null
+  compact?: boolean
+}) {
+  const s = lesson.socratic
+
+  if (!s) {
+    return (
+      <div className="rounded-xl border border-indigo-500/30 bg-[#101522] p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2 border-b border-ink-line/70 pb-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">
+            Socratic Lesson
+          </span>
+          {lesson.model_used && (
+            <span className="text-[0.6875rem] font-mono text-slate-400">{lesson.model_used}</span>
+          )}
+        </div>
+        <RichText
+          text={lesson.body}
+          className="text-sm leading-relaxed text-slate-200"
+          codeLanguage={codeLanguage}
+          deckId={deckId}
+        />
+        {lesson.key_points && lesson.key_points.length > 0 && (
+          <div className="pt-2 border-t border-ink-line/60 space-y-1.5">
+            <p className="text-[0.6875rem] font-bold uppercase tracking-wider text-sky-300">
+              Key Principles &amp; Takeaways
+            </p>
+            <ul className="space-y-1.5 text-xs text-slate-200">
+              {lesson.key_points.map((p, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className="text-emerald-400 mt-0.5 shrink-0">✓</span>
+                  <div className="min-w-0 flex-1">
+                    <RichText text={p} className="text-xs leading-relaxed text-slate-200" codeLanguage={codeLanguage} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const hasMentalModelGrid = Boolean(s.invariants || s.types || s.memory_model || s.trap || s.failure_mode)
+
+  return (
+    <section
+      aria-label="Socratic Lesson"
+      className={`rounded-xl border border-indigo-500/30 bg-[#0e1320] ${compact ? 'p-3.5 space-y-3.5' : 'p-5 space-y-4'}`}
+    >
+      {/* Lesson Header */}
+      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-ink-line/70 pb-3">
+        <div className="space-y-0.5 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 text-[0.6875rem] font-semibold uppercase tracking-wider text-indigo-300">
+            <span>Socratic Lesson</span>
+            {s.chapter_number !== null && (
+              <>
+                <span className="text-slate-600">·</span>
+                <span className="text-slate-300">Ch. {s.chapter_number}</span>
+              </>
+            )}
+            <span className="text-slate-600">·</span>
+            <span className="text-slate-400 font-normal normal-case tracking-normal">{s.source_guide}</span>
+          </div>
+          {s.chapter_title && (
+            <h2 className={`${compact ? 'text-sm' : 'text-base'} font-semibold text-slate-100 leading-snug`}>
+              {s.chapter_title}
+            </h2>
+          )}
+        </div>
+
+        {s.doc_links.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {s.doc_links.map((dl, idx) => (
+              <a
+                key={idx}
+                href={dl.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-sky-300 hover:text-sky-200 underline underline-offset-2 decoration-sky-500/50 transition-colors"
+              >
+                {dl.label} ↗
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Core Idea */}
+      {s.core_idea && (
+        <div className="rounded-lg border-l-2 border-sky-400 bg-sky-950/25 px-3.5 py-2.5">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-sky-300 mb-1">
+            Core Mental Model
+          </p>
+          <RichText
+            text={s.core_idea}
+            className="text-sm text-slate-100 leading-relaxed"
+            codeLanguage={codeLanguage}
+            deckId={deckId}
+          />
+        </div>
+      )}
+
+      {/* From the Readings (Targeted Q&A with runnable examples) */}
+      {s.readings.length > 0 && (
+        <div className="space-y-4">
+          {s.readings.map((block, bIdx) => (
+            <div key={bIdx} className="space-y-3">
+              {block.sections.map((sec, sIdx) => (
+                <div
+                  key={sIdx}
+                  className="rounded-lg border border-ink-line/70 bg-[#121827] p-3.5 space-y-2"
+                >
+                  {sec.question && (
+                    <h3 className="text-sm font-semibold text-sky-200 leading-snug">
+                      {sec.question}
+                    </h3>
+                  )}
+                  <RichText
+                    text={sec.body}
+                    className="text-sm leading-relaxed text-slate-200"
+                    codeLanguage={codeLanguage}
+                    deckId={deckId}
+                    codeBlockLabel="Worked Example"
+                  />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Key Terms & Analogies */}
+      {s.terms.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-400">
+            Key Terms &amp; Analogies
+          </p>
+          <dl className={`grid gap-2 ${s.terms.length > 1 && !compact ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+            {s.terms.map((t, idx) => (
+              <div
+                key={idx}
+                className="rounded-lg border border-ink-line/60 bg-ink/50 px-3 py-2 text-xs leading-relaxed"
+              >
+                <dt className="font-semibold text-indigo-200 mb-0.5">{t.term}</dt>
+                <dd className="text-slate-300">
+                  <RichText text={t.definition} inline className="text-xs leading-relaxed text-slate-300" codeLanguage={codeLanguage} />
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
+
+      {/* Invariants & Common Trap Grid */}
+      {hasMentalModelGrid && (
+        <div className={`grid gap-3 ${!compact ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+          {(s.invariants || s.types || s.memory_model) && (
+            <div className="rounded-lg border border-emerald-500/25 bg-emerald-950/15 p-3 space-y-2">
+              <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-emerald-300">
+                Invariants &amp; Mechanics
+              </p>
+              {s.invariants && (
+                <div className="text-xs leading-relaxed text-slate-200">
+                  <span className="font-semibold text-emerald-200">Invariant: </span>
+                  <RichText text={s.invariants} inline className="text-xs text-slate-200" codeLanguage={codeLanguage} />
+                </div>
+              )}
+              {s.types && (
+                <div className="text-xs leading-relaxed text-slate-300">
+                  <span className="font-semibold text-slate-200">Types: </span>
+                  <RichText text={s.types} inline className="text-xs text-slate-300" codeLanguage={codeLanguage} />
+                </div>
+              )}
+              {s.memory_model && (
+                <div className="text-xs leading-relaxed text-slate-300">
+                  <span className="font-semibold text-slate-200">Memory: </span>
+                  <RichText text={s.memory_model} inline className="text-xs text-slate-300" codeLanguage={codeLanguage} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {(s.trap || s.failure_mode) && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-950/15 p-3 space-y-2">
+              <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-amber-300">
+                Watch Out · Common Trap
+              </p>
+              {s.trap && (
+                <div className="text-xs leading-relaxed text-amber-100">
+                  <RichText text={s.trap} inline className="text-xs text-amber-100" codeLanguage={codeLanguage} />
+                </div>
+              )}
+              {s.failure_mode && (
+                <div className="text-xs leading-relaxed text-slate-300 border-t border-amber-500/20 pt-1.5">
+                  <span className="font-semibold text-amber-200/90">Typical mistake: </span>
+                  <RichText text={s.failure_mode} inline className="text-xs text-slate-300" codeLanguage={codeLanguage} />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Think It Through (Socratic reflection prompt) */}
+      {(s.think_it_through || s.rule) && (
+        <div className="rounded-lg border border-indigo-400/25 bg-indigo-950/20 px-3.5 py-2.5 space-y-1.5">
+          {s.think_it_through && (
+            <div>
+              <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-indigo-300 mb-0.5">
+                Think It Through
+              </p>
+              <RichText
+                text={s.think_it_through}
+                className="text-xs md:text-sm text-indigo-100 leading-relaxed"
+                codeLanguage={codeLanguage}
+                deckId={deckId}
+              />
+            </div>
+          )}
+          {s.rule && (
+            <div className="text-xs leading-relaxed text-slate-300 border-t border-indigo-400/15 pt-1.5">
+              <span className="font-semibold text-sky-300">Rule of thumb: </span>
+              <RichText text={s.rule} inline className="text-xs text-slate-200" codeLanguage={codeLanguage} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Fallback Key Points (rendered with RichText so inline code never shows raw backticks) */}
+      {s.readings.length === 0 && !hasMentalModelGrid && lesson.key_points.length > 0 && (
+        <div className="pt-1 space-y-1.5">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-sky-300">
+            Key Takeaways
+          </p>
+          <ul className="space-y-1.5 text-xs text-slate-200">
+            {lesson.key_points.map((p, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className="text-emerald-400 mt-0.5 shrink-0">✓</span>
+                <div className="min-w-0 flex-1">
+                  <RichText text={p} className="text-xs leading-relaxed text-slate-200" codeLanguage={codeLanguage} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -913,19 +1203,20 @@ export function PrimerDrawer({
   onReady: () => void
 }) {
   const hasReferences = Boolean(item.references && item.references.length > 0)
-  const hasLessonBody = Boolean(lesson && lesson.available && lesson.body)
+  const hasLesson = Boolean(lesson && lesson.available && (lesson.socratic || lesson.body))
+  const detectedLang = detectCodeLanguage(item.starter_code || item.front || '', 'javascript')
 
   return (
-    <div className="mb-5 rounded-lg border border-sky-500/30 bg-sky-950/20 p-4 transition-all">
+    <div className="mb-5 rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 transition-all">
       <div className="mb-3 flex items-center justify-between gap-2 border-b border-sky-500/20 pb-2.5">
         <div className="flex items-center gap-2 text-xs font-semibold text-sky-300">
-          <span>Primer</span>
-          <span className="chip border-sky-500/30 text-[0.625rem] text-sky-200">Pre-review</span>
+          <span>Socratic Primer</span>
+          <span className="text-[0.6875rem] font-normal text-slate-400">Pre-recall mental model</span>
         </div>
         <button
           type="button"
           onClick={onReady}
-          className="text-xs text-slate-400 underline hover:text-slate-200"
+          className="text-xs text-slate-400 underline hover:text-slate-200 cursor-pointer"
         >
           Dismiss
         </button>
@@ -935,20 +1226,13 @@ export function PrimerDrawer({
         <Spinner label="Loading primer…" />
       ) : (
         <div className="space-y-3">
-          {hasLessonBody ? (
-            <div className="space-y-2">
-              <RichText text={lesson!.body} className="text-sm leading-relaxed text-slate-200" />
-              {lesson!.key_points && lesson!.key_points.length > 0 && (
-                <div className="pt-2">
-                  <p className="text-xs font-medium text-sky-300">Key Points:</p>
-                  <ul className="mt-1 space-y-1 text-xs text-slate-300">
-                    {lesson!.key_points.map((p, i) => (
-                      <li key={i}>• {p}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
+          {hasLesson ? (
+            <SocraticLessonPanel
+              lesson={lesson!}
+              codeLanguage={detectedLang}
+              deckId={item.kind === 'card' ? item.deck_or_source_id : null}
+              compact={true}
+            />
           ) : hasReferences ? (
             <div className="space-y-2">
               <p className="text-xs font-medium text-sky-300">Citations:</p>
@@ -986,7 +1270,7 @@ export function PrimerDrawer({
             <button
               type="button"
               onClick={onReady}
-              className="btn btn-primary flex items-center gap-1.5 px-3 py-1 text-xs font-semibold"
+              className="btn btn-primary flex items-center gap-1.5 px-3 py-1 text-xs font-semibold cursor-pointer"
             >
               <span>Answer</span>
               <span>&rarr;</span>

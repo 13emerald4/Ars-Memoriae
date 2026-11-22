@@ -142,6 +142,8 @@ export interface DiscreteModelSelectorProps {
   isRevealed?: boolean
   onSelectModel: (model: string) => void
   onGradeWithModel: (model: string) => void
+  onOpenDiagnostics?: () => void
+  hasRecentIssue?: boolean
   className?: string
 }
 
@@ -156,6 +158,8 @@ export function DiscreteModelSelector({
   isRevealed = false,
   onSelectModel,
   onGradeWithModel,
+  onOpenDiagnostics,
+  hasRecentIssue = false,
   className = '',
 }: DiscreteModelSelectorProps) {
   const { user } = useAuth()
@@ -218,6 +222,12 @@ export function DiscreteModelSelector({
           {isAgyActive ? 'AGY' : isFast ? 'Fast' : 'AI'}
         </span>
         <span className="font-mono text-[0.6875rem] font-semibold tracking-tight">{currentInfo.short}</span>
+        {hasRecentIssue && !grading && (
+          <span
+            className="h-1.5 w-1.5 rounded-full bg-amber-400"
+            title="Recent slow or failed local LLM call — click to inspect diagnostics"
+          />
+        )}
         <span
           className={`text-[0.5625rem] text-slate-400 transition-transform duration-150 ${
             open ? 'rotate-180 text-sky-400' : 'group-hover:text-slate-200'
@@ -380,7 +390,7 @@ export function DiscreteModelSelector({
             })}
           </div>
 
-          <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[0.6875rem]">
+          <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[0.6875rem]">
             <span className="text-slate-400">
               {grading ? (
                 <span className="text-amber-300 flex items-center gap-1">
@@ -392,19 +402,37 @@ export function DiscreteModelSelector({
                 <span>Click model to set as active grader</span>
               )}
             </span>
-            {grading && (
-              <button
-                type="button"
-                className="text-amber-400 hover:text-amber-200 underline font-medium cursor-pointer"
-                onClick={() => {
-                  const alt = models.find((m) => m !== activeModel) || activeModel
-                  onGradeWithModel(alt)
-                  setOpen(false)
-                }}
-              >
-                Cancel &amp; retry
-              </button>
-            )}
+            <div className="flex items-center gap-2.5 ml-auto">
+              {onOpenDiagnostics && (
+                <button
+                  type="button"
+                  className={`underline font-medium cursor-pointer ${
+                    hasRecentIssue
+                      ? 'text-amber-300 hover:text-amber-100'
+                      : 'text-sky-400 hover:text-sky-200'
+                  }`}
+                  onClick={() => {
+                    setOpen(false)
+                    onOpenDiagnostics()
+                  }}
+                >
+                  {hasRecentIssue ? 'Inspect slow/failed LLM' : 'LLM Diagnostics'}
+                </button>
+              )}
+              {grading && (
+                <button
+                  type="button"
+                  className="text-amber-400 hover:text-amber-200 underline font-medium cursor-pointer"
+                  onClick={() => {
+                    const alt = models.find((m) => m !== activeModel) || activeModel
+                    onGradeWithModel(alt)
+                    setOpen(false)
+                  }}
+                >
+                  Cancel &amp; retry
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

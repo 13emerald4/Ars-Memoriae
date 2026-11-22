@@ -12,6 +12,7 @@ export interface CodeTestConsoleProps {
   onToggleCollapse?: () => void
   flush?: boolean
   heightPx?: number
+  hideActions?: boolean
 }
 
 export function CodeTestConsole({
@@ -25,6 +26,7 @@ export function CodeTestConsole({
   onToggleCollapse,
   flush = false,
   heightPx,
+  hideActions = false,
 }: CodeTestConsoleProps) {
   const [activeTab, setActiveTab] = useState<'cases' | 'result'>('cases')
   const [selectedCaseIdx, setSelectedCaseIdx] = useState(0)
@@ -97,47 +99,53 @@ export function CodeTestConsole({
         </div>
 
         {/* Action Run & Submit Buttons + Collapse */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleRunClick}
-            disabled={running || submitting}
-            className="btn btn-secondary px-3 py-1.5 text-xs font-semibold cursor-pointer"
-          >
-            {running ? (
-              <span className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded-full border-2 border-slate-300 border-t-transparent animate-spin" />
-                Running…
-              </span>
-            ) : (
-              'Run'
+        {(!hideActions || onToggleCollapse) && (
+          <div className="flex items-center gap-2">
+            {!hideActions && (
+              <>
+                <button
+                  onClick={handleRunClick}
+                  disabled={running || submitting}
+                  className="btn btn-secondary px-3 py-1.5 text-xs font-semibold cursor-pointer"
+                >
+                  {running ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-3 w-3 rounded-full border-2 border-slate-300 border-t-transparent animate-spin" />
+                      Running…
+                    </span>
+                  ) : (
+                    'Run'
+                  )}
+                </button>
+
+                <button
+                  onClick={onSubmit}
+                  disabled={running || submitting}
+                  className="btn btn-primary px-4 py-1.5 text-xs font-bold shadow-lg cursor-pointer"
+                >
+                  {submitting ? 'Submitting…' : 'Submit'}
+                </button>
+              </>
             )}
-          </button>
 
-          <button
-            onClick={onSubmit}
-            disabled={running || submitting}
-            className="btn btn-primary px-4 py-1.5 text-xs font-bold shadow-lg cursor-pointer"
-          >
-            {submitting ? 'Submitting…' : 'Submit'}
-          </button>
-
-          {onToggleCollapse && (
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              className="rounded p-1 text-slate-400 hover:text-slate-200 hover:bg-[#333] transition cursor-pointer ml-1"
-              title={dockPosition === 'right' ? 'Collapse console to side' : 'Collapse console to bottom'}
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                {dockPosition === 'right' ? (
-                  <polyline points="9 18 15 12 9 6" />
-                ) : (
-                  <polyline points="6 9 12 15 18 9" />
-                )}
-              </svg>
-            </button>
-          )}
-        </div>
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="rounded p-1 text-slate-400 hover:text-slate-200 hover:bg-[#333] transition cursor-pointer ml-1"
+                title={dockPosition === 'right' ? 'Collapse console to side' : 'Collapse console to bottom'}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  {dockPosition === 'right' ? (
+                    <polyline points="9 18 15 12 9 6" />
+                  ) : (
+                    <polyline points="6 9 12 15 18 9" />
+                  )}
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Console Content Area */}

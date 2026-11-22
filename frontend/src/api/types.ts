@@ -45,6 +45,47 @@ export interface CardReference {
   passage: string | null
 }
 
+export interface SocraticTerm {
+  term: string
+  definition: string
+}
+
+export interface SocraticDocLink {
+  label: string
+  url: string
+}
+
+export interface SocraticReadingSection {
+  question: string
+  body: string
+}
+
+export interface SocraticReadingBlock {
+  chapterTitle: string
+  coreIdea: string
+  sections: SocraticReadingSection[]
+}
+
+export interface SocraticLessonData {
+  source_guide: string
+  chapter_number: number | null
+  chapter_title: string | null
+  deck_name: string | null
+  card_kind: string | null
+  card_slug: string | null
+  core_idea: string | null
+  rule: string | null
+  readings: SocraticReadingBlock[]
+  terms: SocraticTerm[]
+  invariants: string | null
+  types: string | null
+  memory_model: string | null
+  trap: string | null
+  failure_mode: string | null
+  think_it_through: string | null
+  doc_links: SocraticDocLink[]
+}
+
 /** Learn & Practice: what to teach before a card's question. */
 export interface Lesson {
   /** False when the card has no citations to teach from. */
@@ -58,6 +99,8 @@ export interface Lesson {
   model_used: string | null
   cached: boolean
   citations: CardReference[]
+  /** Structured non-spoiling Socratic lesson payload grounded in the study guides. */
+  socratic?: SocraticLessonData | null
 }
 
 export interface SocraticTurn {
@@ -1166,6 +1209,58 @@ export interface LlmEngineStatusResponse {
   error?: string | null
   vram?: VramMetrics | null
   providers?: LlmProvidersBreakdown
+}
+
+export interface OllamaLoadedModel {
+  name: string
+  size_bytes: number
+  size_vram_bytes: number
+  gpu_offload_pct: number
+  expires_at: string | null
+}
+
+export interface LlmServerEvent {
+  id: string
+  timestamp: string
+  operation: string
+  model: string
+  duration_ms: number
+  status: 'ok' | 'slow' | 'error'
+  detail: string | null
+}
+
+export interface LlmDiagnosticsResponse {
+  checked_at: string
+  backend_mode: 'ollama' | 'heuristic' | 'external'
+  active_model: string
+  ollama: {
+    reachable: boolean
+    base_url: string
+    version: string | null
+    latency_ms: number | null
+    error: string | null
+    loaded_models: OllamaLoadedModel[]
+    installed_models: string[]
+  }
+  host: {
+    platform: string
+    cpu_cores: number
+    total_ram_gb: number
+    free_ram_gb: number
+  }
+  recent_events: LlmServerEvent[]
+  hints: string[]
+}
+
+export interface LlmPingResponse {
+  ok: boolean
+  mode: 'ollama' | 'heuristic'
+  model: string
+  latency_ms: number
+  ollama_version: string | null
+  model_loaded: boolean
+  gpu_offload_pct: number | null
+  message: string
 }
 
 export interface HardwareModelOption {

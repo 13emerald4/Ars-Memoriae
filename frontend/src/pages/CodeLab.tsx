@@ -15,8 +15,8 @@ import { CodeSocraticTutor } from '../components/CodeSocraticTutor'
 import { CodeTestConsole } from '../components/CodeTestConsole'
 import { RichText } from '../components/RichText'
 import { Empty, ErrorNote, Section, Spinner } from '../components/ui'
-import { FullscreenButton } from '../components/FullscreenContext'
 import { useTheme } from '../components/ThemeContext'
+import { useWorkspace } from '../components/WorkspaceContext'
 import { useAuth } from '../hooks/useAuth'
 
 const BLIND75_CATEGORIES = [
@@ -65,6 +65,7 @@ export default function CodeLab() {
   const [exportMsg, setExportMsg] = useState<string | null>(null)
 
   const { setCognitiveContext } = useTheme()
+  const { config: wsConfig, toggleCodeLabModule } = useWorkspace()
 
   useEffect(() => {
     if (
@@ -369,7 +370,7 @@ export default function CodeLab() {
                 setSelectedSlug(e.target.value)
                 setViewMode('workbench')
               }}
-              className="rounded-lg border border-[#333333] bg-[#262626] px-3 py-1.5 text-xs font-bold text-[#eff1f6] focus:border-[#2cbb5d] focus:outline-none max-w-[min(280px,70vw)] sm:max-w-[320px] cursor-pointer truncate"
+              className="rounded-lg border border-[#333333] bg-[#262626] px-2.5 py-1.5 text-xs font-bold text-[#eff1f6] focus:border-[#2cbb5d] focus:outline-none max-w-[min(210px,62vw)] lg:max-w-[230px] xl:max-w-[260px] cursor-pointer truncate"
             >
               {groupedCategories.map((group) => (
                 <optgroup
@@ -446,20 +447,23 @@ export default function CodeLab() {
             <span>{submitting ? 'Submitting…' : 'Submit'}</span>
           </button>
 
-          {/* Reflex Timer */}
-          <div className="hidden md:flex items-center gap-1.5 rounded-lg border border-[#2d2d2d] bg-[#1e1e1e] px-2.5 py-1 text-xs font-mono text-[#a3a3a3]">
-            <svg className="w-3 h-3 text-[#a3a3a3]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
-            <span className="font-bold text-[#eff1f6]">{formatTimer(timerSec)}</span>
-            <button
-              onClick={() => setTimerActive((a) => !a)}
-              className="text-[0.625rem] font-bold text-[#a3a3a3] hover:text-[#eff1f6] ml-0.5"
-            >
-              {timerActive ? 'Pause' : 'Start'}
-            </button>
-          </div>
+          {/* Reflex Timer (modular) */}
+          {wsConfig.codeLabModules.studioTimer && (
+            <div className="hidden md:flex items-center gap-1.5 rounded-lg border border-[#2d2d2d] bg-[#1e1e1e] px-2.5 py-1 text-xs font-mono text-[#a3a3a3]">
+              <svg className="w-3 h-3 text-[#a3a3a3]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <span className="font-bold text-[#eff1f6] tabular-nums">{formatTimer(timerSec)}</span>
+              <button
+                type="button"
+                onClick={() => setTimerActive((a) => !a)}
+                className="text-[0.625rem] font-bold text-[#a3a3a3] hover:text-[#eff1f6] ml-0.5 cursor-pointer"
+              >
+                {timerActive ? 'Pause' : 'Start'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Right: View switcher & AI Tools */}
@@ -527,13 +531,26 @@ export default function CodeLab() {
           </div>
 
           <button
+            type="button"
+            onClick={() => toggleCodeLabModule('testConsole')}
+            aria-pressed={wsConfig.codeLabModules.testConsole}
+            className={`hidden md:flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium whitespace-nowrap transition cursor-pointer ${
+              wsConfig.codeLabModules.testConsole
+                ? 'border-[#3a3a3a] bg-[#262626] text-[#eff1f6]'
+                : 'border-[#2d2d2d] bg-[#1e1e1e] text-[#a3a3a3] hover:text-[#eff1f6]'
+            }`}
+            title="Show or hide testcase console"
+          >
+            Console
+          </button>
+
+          <button
             onClick={() => setForgeOpen(true)}
-            className="hidden sm:flex items-center gap-1 rounded-lg border border-[#333333] bg-[#262626] px-2.5 py-1 text-xs font-semibold text-[#ffa116] hover:bg-[#333333] transition"
+            className="hidden sm:flex items-center gap-1 rounded-lg border border-[#333333] bg-[#262626] px-2.5 py-1 text-xs font-semibold text-[#ffa116] hover:bg-[#333333] whitespace-nowrap transition cursor-pointer"
             title="Forge custom challenge with AI"
           >
             Forge
           </button>
-          <FullscreenButton size="sm" />
         </div>
       </header>
 
@@ -599,23 +616,25 @@ export default function CodeLab() {
                     )}
                   </div>
 
-                  {/* Metadata Chips: Difficulty, Topics, Hints */}
-                  <div className="flex flex-wrap items-center gap-2">
+                  {/* Metadata & Disclosures: Difficulty, Topics, Hints */}
+                  <div className="flex flex-wrap items-center gap-2.5">
                     <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      className={`text-xs font-semibold ${
                         problemDetail.difficulty === 'Easy'
-                          ? 'text-[#00b8a3] bg-[#00b8a3]/10 border border-[#00b8a3]/30'
+                          ? 'text-[#00b8a3]'
                           : problemDetail.difficulty === 'Medium'
-                          ? 'text-[#ffc01e] bg-[#ffc01e]/10 border border-[#ffc01e]/30'
-                          : 'text-[#ff375f] bg-[#ff375f]/10 border border-[#ff375f]/30'
+                          ? 'text-[#ffc01e]'
+                          : 'text-[#ff375f]'
                       }`}
                     >
                       {problemDetail.difficulty}
                     </span>
 
+                    <span aria-hidden="true" className="text-[#4a4a4a]">·</span>
+
                     <button
                       onClick={() => setShowTopics((s) => !s)}
-                      className="rounded-full bg-[#282828] hover:bg-[#333333] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#a3a3a3] hover:text-[#eff1f6] transition flex items-center gap-1"
+                      className="rounded-md bg-[#262626] hover:bg-[#333333] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#a3a3a3] hover:text-[#eff1f6] transition flex items-center gap-1 cursor-pointer"
                     >
                       <span>Topics</span>
                       <span className="text-[0.5625rem]">{showTopics ? '▲' : '▼'}</span>
@@ -624,7 +643,7 @@ export default function CodeLab() {
                     {problemDetail.hints.length > 0 && (
                       <button
                         onClick={() => setShowHints((h) => !h)}
-                        className="rounded-full bg-[#282828] hover:bg-[#333333] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#a3a3a3] hover:text-[#eff1f6] transition flex items-center gap-1"
+                        className="rounded-md bg-[#262626] hover:bg-[#333333] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#a3a3a3] hover:text-[#eff1f6] transition flex items-center gap-1 cursor-pointer"
                       >
                         <span>Hint</span>
                         <span className="text-[0.5625rem]">{showHints ? '▲' : '▼'}</span>
@@ -637,7 +656,7 @@ export default function CodeLab() {
                           if (e.target.value) handleExportCard(e.target.value)
                         }}
                         defaultValue=""
-                        className="rounded-full bg-[#282828] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#a3a3a3] focus:outline-none cursor-pointer"
+                        className="rounded-md bg-[#262626] border border-[#3a3a3a] px-2.5 py-0.5 text-xs text-[#a3a3a3] focus:outline-none cursor-pointer"
                       >
                         <option value="" disabled>
                           + Add to Deck…
@@ -829,9 +848,11 @@ export default function CodeLab() {
                   onLanguageChange={(lang) => setLanguage(lang)}
                   onRun={handleRun}
                   onSubmit={handleSubmit}
+                  hideRunButtons
+                  hideFooter={!wsConfig.codeLabModules.editorFooterHints}
                   running={running}
                   submitting={submitting}
-                  height="420px"
+                  height={wsConfig.codeLabModules.testConsole ? '420px' : '640px'}
                   activeModel={user?.grading_model}
                   onActiveModelChange={(m) => {
                     void api.updateMe({ grading_model: m }).then(() => refresh())
@@ -839,17 +860,21 @@ export default function CodeLab() {
                 />
               </div>
 
-              {/* Test Console Container */}
-              <div>
-                <CodeTestConsole
-                  testCases={problemDetail.test_cases || []}
-                  runResult={runResult}
-                  running={running}
-                  onRun={handleRun}
-                  onSubmit={handleSubmit}
-                  submitting={submitting}
-                />
-              </div>
+              {/* Test Console Container (modular) */}
+              {wsConfig.codeLabModules.testConsole && (
+                <div>
+                  <CodeTestConsole
+                    testCases={problemDetail.test_cases || []}
+                    runResult={runResult}
+                    running={running}
+                    onRun={handleRun}
+                    onSubmit={handleSubmit}
+                    submitting={submitting}
+                    hideActions
+                    onToggleCollapse={() => toggleCodeLabModule('testConsole')}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>

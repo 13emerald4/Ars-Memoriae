@@ -29,6 +29,8 @@ export function SessionHeader({
   onOpenSavedDrawer,
   previousCard,
   onRetryPreviousCard,
+  onOpenDeckViewer,
+  fromViewer,
 }: {
   session: SessionSummary | null
   outcome?: string | null
@@ -57,13 +59,15 @@ export function SessionHeader({
   onOpenSavedDrawer?: () => void
   previousCard?: QueueItem | null
   onRetryPreviousCard?: () => void
+  onOpenDeckViewer?: () => void
+  fromViewer?: boolean
 }) {
   const [quickPersistUnseenOnly, setQuickPersistUnseenOnly] = useState(false)
   // Hooks stay above the early return: one declared after it is skipped on
   // the renders that return null, and React then loses track of which state
   // belongs to which hook.
   const [modesOpen, setModesOpen] = useState(false)
-  if (!session && !persistActive && !allCardsRunActive) return null
+  if (!session && !persistActive && !allCardsRunActive && !onOpenDeckViewer) return null
   const counts = session?.counts
   const caps = session?.caps
   const planned = ((counts?.review ?? 0) + (counts?.new ?? 0) + (counts?.ir ?? 0))
@@ -78,6 +82,22 @@ export function SessionHeader({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-xs">
+        {onOpenDeckViewer && (
+          <button
+            type="button"
+            onClick={onOpenDeckViewer}
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 text-xs font-medium transition cursor-pointer ${
+              fromViewer
+                ? 'border-sky-400/55 bg-sky-500/15 text-sky-100 hover:bg-sky-500/25 hover:border-sky-300'
+                : 'border-ink-line bg-ink-soft/70 text-slate-200 hover:border-sky-500/45 hover:text-sky-100'
+            }`}
+            title="Return to All Cards viewer"
+          >
+            <span aria-hidden="true">←</span>
+            <span>{fromViewer ? 'Back to All Cards' : 'All Cards'}</span>
+          </button>
+        )}
+
         {allCardsRunActive && (
           <span className="chip border-purple-500/50 bg-purple-500/15 text-purple-200 font-semibold flex items-center gap-1.5 shadow-sm">
             <span>{allCardsRunOrder === 'curriculum' ? 'Systematic Review' : 'Run'}: {allCardsRunDeckName || 'Current Deck'}</span>
@@ -148,22 +168,36 @@ export function SessionHeader({
         )}
 
         {!branchActive && !deckActive && !persistActive && !allCardsRunActive && (
-          <span className="chip border-emerald-500/40 bg-emerald-500/10 text-emerald-200 font-medium">
-            Collection: All Decks
-          </span>
+          <span className="font-medium text-emerald-300">All Decks</span>
         )}
 
         {session && (
-          <>
-            <span className="chip">{counts?.review ?? 0} reviews</span>
-            <span className="chip">{counts?.new ?? 0} new</span>
-            <span className="chip">{counts?.ir ?? 0} reading</span>
-            <span className="chip">~{Math.round(session.budget_seconds / 60)} min budget</span>
-            {caps && caps.reviews_done_today > 0 && (
-              <span className="chip">{caps.reviews_done_today} done today</span>
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-slate-400 tabular-nums">
+            <span aria-hidden="true" className="text-slate-700">·</span>
+            <span>{counts?.review ?? 0} reviews</span>
+            <span aria-hidden="true" className="text-slate-700">·</span>
+            <span>{counts?.new ?? 0} new</span>
+            {(counts?.ir ?? 0) > 0 && (
+              <>
+                <span aria-hidden="true" className="text-slate-700">·</span>
+                <span>{counts?.ir ?? 0} reading</span>
+              </>
             )}
-            {planned === 0 && <span className="chip">queue clear</span>}
-          </>
+            <span aria-hidden="true" className="text-slate-700">·</span>
+            <span>~{Math.round(session.budget_seconds / 60)}m budget</span>
+            {caps && caps.reviews_done_today > 0 && (
+              <>
+                <span aria-hidden="true" className="text-slate-700">·</span>
+                <span>{caps.reviews_done_today} done</span>
+              </>
+            )}
+            {planned === 0 && (
+              <>
+                <span aria-hidden="true" className="text-slate-700">·</span>
+                <span className="text-emerald-300">queue clear</span>
+              </>
+            )}
+          </span>
         )}
 
         {/* Persist, All Cards Run and Blitz are ways to *start* a different kind
@@ -172,8 +206,10 @@ export function SessionHeader({
         {hasModeLaunchers && (
           <button
             type="button"
-            className={`chip transition cursor-pointer ${
-              modesOpen ? 'border-sky-500/50 text-sky-200' : 'hover:text-slate-200'
+            className={`rounded-md border px-2 py-0.5 text-xs transition cursor-pointer ${
+              modesOpen
+                ? 'border-sky-500/50 bg-sky-500/10 text-sky-200'
+                : 'border-ink-line bg-ink-soft/60 text-slate-300 hover:border-slate-500 hover:text-slate-100'
             }`}
             aria-expanded={modesOpen}
             aria-controls="review-study-modes"
@@ -312,8 +348,11 @@ export function SessionHeader({
 
         {onToggleLearnMode && (
           <button
-            className={`chip ml-auto transition ${
-              learnMode ? 'border-sky-500/40 text-sky-300' : 'hover:text-slate-300'
+            type="button"
+            className={`ml-auto rounded-md border px-2 py-0.5 text-xs transition cursor-pointer ${
+              learnMode
+                ? 'border-sky-500/50 bg-sky-500/10 text-sky-200'
+                : 'border-ink-line bg-ink-soft/60 text-slate-400 hover:border-slate-500 hover:text-slate-200'
             }`}
             onClick={onToggleLearnMode}
             title="Read a short lesson from the card's source before each question"

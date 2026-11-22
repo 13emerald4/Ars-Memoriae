@@ -34,7 +34,9 @@ import type {
   Lesson,
   LexiconEntry,
   LexiconGlossItem,
+  LlmDiagnosticsResponse,
   LlmEngineStatusResponse,
+  LlmPingResponse,
   LlmProvidersBreakdown,
   NoteType,
   QueueConfig,
@@ -73,6 +75,7 @@ import type {
   SpreadingActivationResponse,
 } from './types'
 import { storage } from '../utils/storage'
+import { finishLlmTrace, startLlmTrace } from '../utils/llmDiagnostics'
 
 // Where the API lives. Empty means "this origin": in production FastAPI serves
 // the built app itself, and in development Vite proxies /api and /media to it.
@@ -101,50 +104,133 @@ export const token = {
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string,
+    public traceId?: string,
+    public durationMs?: number,
+  ) {
     super(message)
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const headers = new Headers(init.headers)
+interface RequestOptions extends RequestInit {
+  trace?: {
+    operation: string
+    model?: string | null
+  }
+}
+
+async function request<T>(path: string, init: RequestOptions = {}): Promise<T> {
+  const { trace, ...fetchInit } = init
+  const headers = new Headers(fetchInit.headers)
   const t = token.get()
   if (t) headers.set('Authorization', `Bearer ${t}`)
-  if (init.body && !(init.body instanceof FormData)) {
+  if (fetchInit.body && !(fetchInit.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json')
   }
 
-  const resp = await fetch(`${BASE}${path}`, { ...init, headers })
+  const startedAt = Date.now()
+  const traceId = trace
+    ? startLlmTrace({
+        operation: trace.operation,
+        endpoint: path,
+        model: trace.model ?? null,
+      })
+    : undefined
+
+  let resp: Response
+  try {
+    resp = await fetch(`${BASE}${path}`, { ...fetchInit, headers })
+  } catch (err: unknown) {
+    const isAbort =
+      (err instanceof DOMException && err.name === 'AbortError') ||
+      (err instanceof Error && err.name === 'AbortError')
+    const isTimeout =
+      (err instanceof DOMException && err.name === 'TimeoutError') ||
+      (err instanceof Error && err.name === 'TimeoutError')
+    if (traceId) {
+      finishLlmTrace(traceId, {
+        status: isAbort ? 'aborted' : isTimeout ? 'timeout' : 'error',
+        errorMessage: err instanceof Error ? err.message : String(err),
+        rawDetail: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
+      })
+    }
+    throw err
+  }
 
   // A 401 on a request that carried a token means the session is over. A 401
   // without one is just a failed sign-in, and should say what the server said.
   if (resp.status === 401 && t) {
+    if (traceId) {
+      finishLlmTrace(traceId, {
+        status: 'error',
+        httpStatus: 401,
+        errorMessage: 'Session expired. Please sign in again.',
+      })
+    }
     token.clear()
     window.dispatchEvent(new Event(UNAUTHORIZED_EVENT))
-    throw new ApiError(401, 'Session expired. Please sign in again.')
+    throw new ApiError(401, 'Session expired. Please sign in again.', traceId, Date.now() - startedAt)
   }
-  if (resp.status === 204) return null as T
+  if (resp.status === 204) {
+    if (traceId) finishLlmTrace(traceId, { status: 'ok', httpStatus: 204 })
+    return null as T
+  }
   if (!resp.ok) {
+    const durationMs = Date.now() - startedAt
     let detail = `${resp.status} ${resp.statusText}`
+    let rawSnippet = ''
     try {
-      const body = await resp.json()
-      if (typeof body.detail === 'string') detail = body.detail
-      else if (Array.isArray(body.detail)) {
-        detail = body.detail
-          .map((d: { msg?: string }) => d.msg ?? '')
-          .filter(Boolean)
-          .join('; ')
+      const rawText = await resp.text()
+      rawSnippet = rawText.slice(0, 600)
+      if (rawText) {
+        const body = JSON.parse(rawText) as { detail?: unknown; error?: unknown; message?: unknown }
+        if (typeof body.detail === 'string' && body.detail.trim()) detail = body.detail
+        else if (Array.isArray(body.detail)) {
+          const joined = body.detail
+            .map((d: { msg?: string }) => d.msg ?? '')
+            .filter(Boolean)
+            .join('; ')
+          if (joined) detail = joined
+        } else if (typeof body.error === 'string' && body.error.trim()) {
+          detail = body.error
+        } else if (typeof body.message === 'string' && body.message.trim()) {
+          detail = body.message
+        }
       }
     } catch {
-      /* keep the status line */
+      if (rawSnippet.trim()) {
+        detail = rawSnippet.trim().slice(0, 240)
+      }
     }
-    throw new ApiError(resp.status, detail)
+    if (traceId) {
+      finishLlmTrace(traceId, {
+        status: resp.status === 408 || resp.status === 504 ? 'timeout' : 'error',
+        httpStatus: resp.status,
+        errorMessage: detail,
+        rawDetail: rawSnippet || detail,
+      })
+    }
+    throw new ApiError(resp.status, detail, traceId, durationMs)
   }
   const text = await resp.text()
-  return (text ? JSON.parse(text) : null) as T
+  const parsed = (text ? JSON.parse(text) : null) as T
+  if (traceId) {
+    const obj = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null
+    const responseModelUsed = typeof obj?.model_used === 'string' ? obj.model_used : null
+    const degradedReason = typeof obj?.degraded_reason === 'string' ? obj.degraded_reason : null
+    finishLlmTrace(traceId, {
+      status: 'ok',
+      httpStatus: resp.status,
+      responseModelUsed,
+      degradedReason,
+    })
+  }
+  return parsed
 }
 
-const post = <T,>(path: string, body?: unknown, init: RequestInit = {}) =>
+const post = <T,>(path: string, body?: unknown, init: RequestOptions = {}) =>
   request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body), ...init })
 const patch = <T,>(path: string, body: unknown) =>
   request<T>(path, { method: 'PATCH', body: JSON.stringify(body) })
@@ -176,6 +262,13 @@ export const api = {
       error?: string | null
     }>('/api/models'),
   llmStatus: () => request<LlmEngineStatusResponse>('/api/llm/status'),
+  llmDiagnostics: () => request<LlmDiagnosticsResponse>('/api/llm/diagnostics'),
+  llmPing: (model?: string, warmup = false) =>
+    post<LlmPingResponse>(
+      '/api/llm/ping',
+      { model, warmup },
+      { trace: { operation: warmup ? 'Model Warmup' : 'Ollama Ping', model: model ?? null } },
+    ),
   vramStatus: (model?: string) =>
     request<VramMetrics>(`/api/llm/vram${model ? `?model=${encodeURIComponent(model)}` : ''}`),
   hardwareSpecs: () => request<HardwareProfile>('/api/llm/hardware'),
@@ -218,7 +311,10 @@ export const api = {
   // ── review (§7.1) ───────────────────────────────────────────────────────
   // Learn & Practice — fetched on demand, since the mode is opt-in and each
   // lesson may cost a generation.
-  lesson: (cardId: string) => request<Lesson>(`/api/review/${cardId}/lesson`),
+  lesson: (cardId: string) =>
+    request<Lesson>(`/api/review/${cardId}/lesson`, {
+      trace: { operation: 'Socratic Lesson' },
+    }),
   // Socratic AI Guide — one diagnostic question at a time, never the answer.
   // Stateless: the full turn history goes up with every message.
   guide: (
@@ -233,19 +329,29 @@ export const api = {
       execution_summary?: string | null
     },
   ) =>
-    post<SocraticResponse>(`/api/review/${cardId}/guide`, {
-      history,
-      message,
-      model: options?.model,
-      allow_smaller_model: options?.allow_smaller_model ?? true,
-      user_code: options?.user_code,
-      test_code: options?.test_code,
-      execution_summary: options?.execution_summary,
-    }),
+    post<SocraticResponse>(
+      `/api/review/${cardId}/guide`,
+      {
+        history,
+        message,
+        model: options?.model,
+        allow_smaller_model: options?.allow_smaller_model ?? true,
+        user_code: options?.user_code,
+        test_code: options?.test_code,
+        execution_summary: options?.execution_summary,
+      },
+      { trace: { operation: 'Socratic Guide', model: options?.model ?? null } },
+    ),
   weaknessHint: (cardId: string) =>
-    post<WeaknessHintResponse>(`/api/review/${cardId}/weakness-hint`, {}),
+    post<WeaknessHintResponse>(
+      `/api/review/${cardId}/weakness-hint`,
+      {},
+      { trace: { operation: 'Weakness Hint' } },
+    ),
   socraticLineHint: (cardId: string, body: SocraticLineHintRequest) =>
-    post<SocraticLineHintResponse>(`/api/review/${cardId}/line-hint`, body),
+    post<SocraticLineHintResponse>(`/api/review/${cardId}/line-hint`, body, {
+      trace: { operation: 'Line Hint', model: body.model ?? null },
+    }),
   submitAnswer: (
     cardId: string,
     typed_answer: string,
@@ -263,7 +369,10 @@ export const api = {
         model: options?.model,
         allow_smaller_model: options?.allow_smaller_model,
       },
-      options?.signal ? { signal: options.signal } : {},
+      {
+        ...(options?.signal ? { signal: options.signal } : {}),
+        trace: { operation: 'Grade Answer', model: options?.model ?? null },
+      },
     ),
   runReviewCode: (
     cardId: string,
@@ -545,9 +654,13 @@ export const api = {
     body: { code: string; language?: string; hint_type?: string; model?: string },
   ) => post<SocraticCodeResponse>(`/api/code/problems/${idOrSlug}/socratic`, body),
   explainCodeSelection: (body: ExplainCodeSelectionRequest) =>
-    post<ExplainCodeSelectionResponse>('/api/code/explain-selection', body),
+    post<ExplainCodeSelectionResponse>('/api/code/explain-selection', body, {
+      trace: { operation: 'Explain Code' },
+    }),
   askDeckQuestion: (body: AskDeckQuestionRequest) =>
-    post<AskDeckQuestionResponse>('/api/code/ask-docs', body),
+    post<AskDeckQuestionResponse>('/api/code/ask-docs', body, {
+      trace: { operation: 'Ask Deck Docs' },
+    }),
   uploadDeckDocument: (deckId: string, file: File, title?: string) => {
     const form = new FormData()
     form.append('file', file)
@@ -565,9 +678,13 @@ export const api = {
       { method: 'DELETE' },
     ),
   queryDeckDocs: (deckId: string, body: QueryDeckDocsRequest) =>
-    post<QueryDeckDocsResponse>(`/api/decks/${deckId}/query-docs`, body),
+    post<QueryDeckDocsResponse>(`/api/decks/${deckId}/query-docs`, body, {
+      trace: { operation: 'Query Deck Docs' },
+    }),
   forgeProblem: (body: { topic: string; difficulty?: string; target_language?: string }) =>
-    post<CodeProblemOut>('/api/code/problems/forge', body),
+    post<CodeProblemOut>('/api/code/problems/forge', body, {
+      trace: { operation: 'Forge Problem' },
+    }),
   exportProblemToCard: (idOrSlug: string, deckId: string) =>
     post<{ note_id: string; card_id?: string; message: string }>(
       `/api/code/problems/${idOrSlug}/export-card`,
@@ -584,13 +701,17 @@ export const api = {
     cardId?: string | null,
     options?: { deckName?: string | null; thematicNature?: string | null },
   ) =>
-    post<LexiconEntry>('/api/lexicon/lookup', {
-      term,
-      context,
-      card_id: cardId,
-      deck_name: options?.deckName,
-      thematic_nature: options?.thematicNature,
-    }),
+    post<LexiconEntry>(
+      '/api/lexicon/lookup',
+      {
+        term,
+        context,
+        card_id: cardId,
+        deck_name: options?.deckName,
+        thematic_nature: options?.thematicNature,
+      },
+      { trace: { operation: 'Lexicon Lookup' } },
+    ),
   getRecentLexicon: () => request<RecentLexiconItem[]>('/api/lexicon/recent'),
   syncStatus: () => request<SyncStatus>('/api/sync/status'),
   // ── Neuroscience Enhancements ──────────────────────────────────────────────

@@ -1,21 +1,40 @@
-import { useEffect, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { ErrorNote } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
 import { storage } from '../utils/storage'
+
+interface AuthActionState {
+  error: unknown
+  mode: 'in' | 'up'
+}
 
 export default function Login() {
   const { signIn, signUp } = useAuth()
   const [mode, setMode] = useState<'in' | 'up'>('in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<unknown>(null)
-  const [busy, setBusy] = useState(false)
-  // Whether this instance accepts new accounts. Sign-up closes once the first
-  // account exists (unless the operator opens it), so offering "Create an
-  // account" unconditionally led to a form that could only fail. Unknown
-  // (null) while loading or if the check fails: the link stays hidden.
   const [canRegister, setCanRegister] = useState<boolean | null>(null)
+
+  const [actionState, formAction, isPending] = useActionState<AuthActionState, FormData>(
+    async (_prev, formData) => {
+      const submittedMode = formData.get('mode') === 'up' ? 'up' : 'in'
+      const submittedEmail = String(formData.get('email') ?? '')
+      const submittedPassword = String(formData.get('password') ?? '')
+      try {
+        if (submittedMode === 'in') {
+          await signIn(submittedEmail, submittedPassword)
+        } else {
+          storage.set('prompt_new_user_tutorial', 'true')
+          await signUp(submittedEmail, submittedPassword)
+        }
+        return { error: null, mode: submittedMode }
+      } catch (err: unknown) {
+        return { error: err, mode: submittedMode }
+      }
+    },
+    { error: null, mode: 'in' },
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -36,23 +55,7 @@ export default function Login() {
     document.title = 'Sign in · Ars Memoriae'
   }, [])
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    setBusy(true)
-    setError(null)
-    try {
-      if (mode === 'in') {
-        await signIn(email, password)
-      } else {
-        storage.set('prompt_new_user_tutorial', 'true')
-        await signUp(email, password)
-      }
-    } catch (err) {
-      setError(err)
-    } finally {
-      setBusy(false)
-    }
-  }
+  const visibleError = actionState.mode === mode ? actionState.error : null
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
@@ -61,7 +64,8 @@ export default function Login() {
         Active recall, FSRS scheduling, and AI-assisted reviews.
       </p>
 
-      <form onSubmit={submit} className="card mt-8 space-y-4">
+      <form action={formAction} className="card mt-8 space-y-4">
+        <input type="hidden" name="mode" value={mode} />
         <h2 className="text-sm font-semibold text-slate-200">
           {mode === 'in' ? 'Sign in' : 'Create your account'}
         </h2>
@@ -71,6 +75,7 @@ export default function Login() {
           </label>
           <input
             id="email"
+            name="email"
             type="email"
             required
             className="input"
@@ -85,6 +90,7 @@ export default function Login() {
           </label>
           <input
             id="password"
+            name="password"
             type="password"
             required
             minLength={mode === 'up' ? 8 : undefined}
@@ -101,20 +107,17 @@ export default function Login() {
           )}
         </div>
 
-        <ErrorNote error={error} />
+        <ErrorNote error={visibleError} />
 
-        <button type="submit" className="btn btn-primary w-full" disabled={busy}>
-          {busy ? 'Working…' : mode === 'in' ? 'Sign in' : 'Create account'}
+        <button type="submit" className="btn btn-primary w-full" disabled={isPending}>
+          {isPending ? 'Working…' : mode === 'in' ? 'Sign in' : 'Create account'}
         </button>
 
         {mode === 'up' ? (
           <button
             type="button"
             className="w-full text-center text-xs text-slate-500 underline hover:text-slate-300"
-            onClick={() => {
-              setMode('in')
-              setError(null)
-            }}
+            onClick={() => setMode('in')}
           >
             Sign in to an existing account
           </button>
@@ -122,10 +125,7 @@ export default function Login() {
           <button
             type="button"
             className="w-full text-center text-xs text-slate-500 underline hover:text-slate-300"
-            onClick={() => {
-              setMode('up')
-              setError(null)
-            }}
+            onClick={() => setMode('up')}
           >
             Create an account
           </button>

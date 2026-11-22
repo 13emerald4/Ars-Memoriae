@@ -40,12 +40,14 @@ function QuestionCodeIdeBlock({
   deckId,
   fullContext,
   compact,
+  codeBlockLabel = 'Question Code',
 }: {
   code: string
   language: string
   deckId?: string | null
   fullContext?: string
   compact?: boolean
+  codeBlockLabel?: string
 }) {
   const [copied, setCopied] = useState(false)
   const cleanCode = code.replace(/\n+$/, '')
@@ -56,8 +58,8 @@ function QuestionCodeIdeBlock({
   const firstLine = cleanCode.split('\n')[0]?.trim() || ''
   const titleLabel =
     firstLine.startsWith('//') && firstLine.length <= 64
-      ? firstLine.replace(/^\/\/\s*-*\s*/, '').replace(/\s*-*$/, '') || 'Question Code'
-      : 'Question Code'
+      ? firstLine.replace(/^\/\/\s*-*\s*/, '').replace(/\s*-*$/, '') || codeBlockLabel
+      : codeBlockLabel
 
   return (
     <div
@@ -110,7 +112,8 @@ function QuestionCodeIdeBlock({
 
 function renderInlineMarkdown(text: string, keyPrefix: string): ReactNode[] {
   const nodes: ReactNode[] = []
-  const tokenRegex = /(`[^`\n]+`|\*\*[^*\n]+\*\*|(?<=^|[\s(])_[^_\n]+_(?=$|[\s.,;:)!?]))/g
+  const tokenRegex =
+    /(``[^`\n]+``|`[^`\n]+`|\[[^\]\n]+\]\(https?:\/\/[^)\s]+\)|\*\*[^*\n]+\*\*|(?<!\*)\*(?!\s)[^*\n]+(?<!\s)\*(?!\*)|(?<=^|[\s(])_[^_\n]+_(?=$|[\s.,;:)!?]))/g
   let lastIdx = 0
   let match: RegExpExecArray | null
   let idx = 0
@@ -120,7 +123,16 @@ function renderInlineMarkdown(text: string, keyPrefix: string): ReactNode[] {
       nodes.push(<span key={`${keyPrefix}-t-${idx++}`}>{text.slice(lastIdx, match.index)}</span>)
     }
     const token = match[0]
-    if (token.startsWith('`') && token.endsWith('`') && token.length >= 2) {
+    if (token.startsWith('``') && token.endsWith('``') && token.length >= 4) {
+      nodes.push(
+        <code
+          key={`${keyPrefix}-c2-${idx++}`}
+          className="mx-0.5 rounded bg-slate-900/90 border border-slate-700/70 px-1.5 py-0.5 font-mono text-[0.86em] text-sky-200 break-words"
+        >
+          {token.slice(2, -2).trim()}
+        </code>,
+      )
+    } else if (token.startsWith('`') && token.endsWith('`') && token.length >= 2) {
       nodes.push(
         <code
           key={`${keyPrefix}-c-${idx++}`}
@@ -129,13 +141,33 @@ function renderInlineMarkdown(text: string, keyPrefix: string): ReactNode[] {
           {token.slice(1, -1)}
         </code>,
       )
+    } else if (token.startsWith('[')) {
+      const linkMatch = token.match(/^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/)
+      if (linkMatch) {
+        nodes.push(
+          <a
+            key={`${keyPrefix}-a-${idx++}`}
+            href={linkMatch[2]}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sky-300 underline underline-offset-2 decoration-sky-500/50 hover:text-sky-200"
+          >
+            {linkMatch[1]}
+          </a>,
+        )
+      } else {
+        nodes.push(<span key={`${keyPrefix}-rl-${idx++}`}>{token}</span>)
+      }
     } else if (token.startsWith('**') && token.endsWith('**') && token.length >= 4) {
       nodes.push(
         <strong key={`${keyPrefix}-b-${idx++}`} className="font-semibold text-white">
           {renderInlineMarkdown(token.slice(2, -2), `${keyPrefix}-bi-${idx}`)}
         </strong>,
       )
-    } else if (token.startsWith('_') && token.endsWith('_') && token.length >= 2) {
+    } else if (
+      (token.startsWith('*') && token.endsWith('*') && token.length >= 3) ||
+      (token.startsWith('_') && token.endsWith('_') && token.length >= 3)
+    ) {
       nodes.push(
         <em key={`${keyPrefix}-i-${idx++}`} className="italic text-slate-300">
           {renderInlineMarkdown(token.slice(1, -1), `${keyPrefix}-ii-${idx}`)}
@@ -240,14 +272,22 @@ export function RichText({
   codeLanguage,
   deckId,
   compactCode = false,
+  codeBlockLabel = 'Question Code',
+  inline = false,
 }: {
   text: string
   className?: string
   codeLanguage?: string
   deckId?: string | null
   compactCode?: boolean
+  codeBlockLabel?: string
+  inline?: boolean
 }) {
   if (!text) return null
+
+  if (inline) {
+    return <span className={`break-words ${className}`}>{renderInlineMarkdown(text, 'inline')}</span>
+  }
 
   const segments: Array<{ type: 'prose'; content: string } | { type: 'code'; lang: string; content: string }> = []
   const fenceRegex = /```([a-zA-Z0-9_+#.-]*)[ \t]*\r?\n([\s\S]*?)(?:\r?\n?```|$)/g
@@ -288,6 +328,7 @@ export function RichText({
             deckId={deckId}
             fullContext={text}
             compact={compactCode}
+            codeBlockLabel={codeBlockLabel}
           />
         ) : (
           <div key={`prose-${idx}`}>{renderMarkdownProse(seg.content, `seg-${idx}`)}</div>

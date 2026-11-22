@@ -1,0 +1,1063 @@
+[
+  {
+    "slug": "py-basics-type-casting",
+    "title": "Type Casting, Truthiness & Float Tolerance",
+    "kind": "fundamental",
+    "track": "track_0_python_basics",
+    "difficulty": "Easy",
+    "category": "Python Basics & Numerics",
+    "tags": ["types", "truthiness", "ieee754", "mit-6.0001"],
+    "description": "Write a function `approx_equal(a, b, eps=1e-9)` that returns `True` if two numeric inputs (which may arrive as numeric strings, ints, or floats) are within `eps` of each other, and `False` otherwise.",
+    "examples": [
+      { "input": "a=0.3, b=0.1+0.2, eps=1e-9", "output": "True", "explanation": "|0.3 - 0.30000000000000004| < 1e-9" },
+      { "input": "a='3.14', b=3.1401, eps=1e-4", "output": "False", "explanation": "Difference 0.0001 is not strictly less than 1e-4" }
+    ],
+    "constraints": ["Convert inputs via float()", "Use abs(float(a) - float(b)) < eps"],
+    "starter_codes": {
+      "python": "def approx_equal(a, b, eps=1e-9):\n    # Convert a and b to floats and compare within eps\n    pass\n",
+      "typescript": "export function approx_equal(a: number | string, b: number | string, eps = 1e-9): boolean {\n  // Convert inputs and compare within eps\n  return false;\n}\n"
+    },
+    "solutions": {
+      "python": "def approx_equal(a, b, eps=1e-9):\n    return abs(float(a) - float(b)) < eps\n",
+      "typescript": "export function approx_equal(a: number | string, b: number | string, eps = 1e-9): boolean {\n  return Math.abs(Number(a) - Number(b)) < eps;\n}\n"
+    },
+    "editorial": "## Core Concept\nPython is **strongly typed** (objects know their type and reject nonsensical operations like `3 + '4'`) and **dynamically typed** (variable names are merely bindings to heap objects).\n\n## IEEE 754 Floating-Point Precision\nBinary floating-point cannot represent `0.1` or `0.2` exactly. Never compare floats with `==`; always check `abs(a - b) < eps`.\n\n## Truthiness\nEmpty containers (`''`, `[]`, `{}`), `0`, `0.0`, and `None` evaluate to `False`. Non-empty strings like `'False'` or `'0'` evaluate to `True`.",
+    "test_cases": [
+      { "input": { "a": 0.3, "b": 0.30000000000000004, "eps": 1e-9 }, "expected": true },
+      { "input": { "a": "2.5", "b": 2.5, "eps": 1e-9 }, "expected": true },
+      { "input": { "a": 1.0, "b": 1.1, "eps": 0.01 }, "expected": false }
+    ],
+    "hints": ["Cast both arguments with float() first.", "Compare abs(x - y) < eps rather than ==."]
+  },
+  {
+    "slug": "py-basics-floor-div-modulo",
+    "title": "Floor Division & Euclidean Modulo Invariant",
+    "kind": "fundamental",
+    "track": "track_0_python_basics",
+    "difficulty": "Easy",
+    "category": "Python Basics & Numerics",
+    "tags": ["arithmetic", "modulo", "floor-division"],
+    "description": "Write `wrap_index(index, length)` that wraps any integer `index` (positive or negative) into the valid range `[0, length - 1]` using Python's Euclidean modulo semantics.",
+    "examples": [
+      { "input": "index=-1, length=5", "output": "4", "explanation": "-1 % 5 == 4 in Python" },
+      { "input": "index=7, length=5", "output": "2" }
+    ],
+    "constraints": ["length > 0"],
+    "starter_codes": {
+      "python": "def wrap_index(index, length):\n    pass\n",
+      "typescript": "export function wrap_index(index: number, length: number): number {\n  return 0;\n}\n"
+    },
+    "solutions": {
+      "python": "def wrap_index(index, length):\n    return index % length\n",
+      "typescript": "export function wrap_index(index: number, length: number): number {\n  return ((index % length) + length) % length;\n}\n"
+    },
+    "editorial": "## The Division Invariant\nIn Python, for every integer `a` and non-zero `b`: `a == (a // b) * b + (a % b)`.\n\n## Floor vs Truncation\nPython's `//` rounds toward `-infinity`, guaranteeing `a % b` always has the sign of `b`. In C/Java/JS, `%` keeps the sign of the dividend, requiring `((a % b) + b) % b` for circular buffers.",
+    "test_cases": [
+      { "input": { "index": -1, "length": 5 }, "expected": 4 },
+      { "input": { "index": 7, "length": 5 }, "expected": 2 },
+      { "input": { "index": -12, "length": 5 }, "expected": 3 }
+    ],
+    "hints": ["Python's % operator already wraps negative numbers into [0, length - 1]."]
+  },
+  {
+    "slug": "py-basics-bisection-sqrt",
+    "title": "Bisection Search Square Root",
+    "kind": "fundamental",
+    "track": "track_0_python_basics",
+    "difficulty": "Easy",
+    "category": "Python Basics & Numerics",
+    "tags": ["bisection", "binary-search", "numerics"],
+    "description": "Compute the integer square root `isqrt_bisect(x)` (floor of √x) for non-negative integer `x` using bisection search in O(log x) time without `math.sqrt`.",
+    "examples": [
+      { "input": "x=8", "output": "2", "explanation": "sqrt(8) ≈ 2.828, floor is 2" },
+      { "input": "x=16", "output": "4" }
+    ],
+    "constraints": ["0 <= x <= 10^9", "O(log x) time"],
+    "starter_codes": {
+      "python": "def isqrt_bisect(x):\n    pass\n",
+      "typescript": "export function isqrt_bisect(x: number): number {\n  return 0;\n}\n"
+    },
+    "solutions": {
+      "python": "def isqrt_bisect(x):\n    if x < 2:\n        return x\n    lo, hi = 1, x // 2\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        sq = mid * mid\n        if sq == x:\n            return mid\n        if sq < x:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return hi\n",
+      "typescript": "export function isqrt_bisect(x: number): number {\n  if (x < 2) return x;\n  let lo = 1, hi = Math.floor(x / 2);\n  while (lo <= hi) {\n    const mid = Math.floor((lo + hi) / 2);\n    const sq = mid * mid;\n    if (sq === x) return mid;\n    if (sq < x) lo = mid + 1;\n    else hi = mid - 1;\n  }\n  return hi;\n}\n"
+    },
+    "editorial": "## Monotonicity & Bisection\nBecause `f(y) = y^2` is strictly increasing for `y >= 0`, halving `[lo, hi]` guarantees convergence in `O(log x)` iterations.\n\n## Edge Case for Continuous Bisection\nFor real `0 < x < 1`, `sqrt(x) > x`, so the upper bound must be `max(1.0, x)` rather than `x`.",
+    "test_cases": [
+      { "input": { "x": 0 }, "expected": 0 },
+      { "input": { "x": 8 }, "expected": 2 },
+      { "input": { "x": 16 }, "expected": 4 },
+      { "input": { "x": 10000 }, "expected": 100 }
+    ],
+    "hints": ["Track lo and hi bounds and test mid * mid against x.", "When the loop exits, hi holds the floor."]
+  },
+  {
+    "slug": "py-basics-newton-raphson",
+    "title": "Newton-Raphson Root Finding",
+    "kind": "fundamental",
+    "track": "track_0_python_basics",
+    "difficulty": "Medium",
+    "category": "Python Basics & Numerics",
+    "tags": ["newton-raphson", "calculus", "numerics"],
+    "description": "Implement `newton_sqrt(k, eps=1e-6)` returning √k rounded to 4 decimal places using Newton-Raphson iteration `g = g - (g*g - k) / (2*g)`.",
+    "examples": [
+      { "input": "k=25", "output": "5.0" },
+      { "input": "k=2", "output": "1.4142" }
+    ],
+    "constraints": ["k >= 0"],
+    "starter_codes": {
+      "python": "def newton_sqrt(k, eps=1e-6):\n    pass\n",
+      "typescript": "export function newton_sqrt(k: number, eps = 1e-6): number {\n  return 0;\n}\n"
+    },
+    "solutions": {
+      "python": "def newton_sqrt(k, eps=1e-6):\n    if k == 0:\n        return 0.0\n    g = k / 2.0 if k >= 1 else 1.0\n    while abs(g * g - k) >= eps:\n        g = g - (g * g - k) / (2.0 * g)\n    return round(g, 4)\n",
+      "typescript": "export function newton_sqrt(k: number, eps = 1e-6): number {\n  if (k === 0) return 0;\n  let g = k >= 1 ? k / 2 : 1;\n  while (Math.abs(g * g - k) >= eps) {\n    g = g - (g * g - k) / (2 * g);\n  }\n  return Number(g.toFixed(4));\n}\n"
+    },
+    "editorial": "## Quadratic Convergence\nNewton-Raphson finds roots of `f(y) = y^2 - k` by jumping to the x-intercept of the tangent line: `y_next = y - f(y)/f'(y) = (y + k/y) / 2`. Near a simple root, the number of accurate decimal digits roughly doubles each iteration.",
+    "test_cases": [
+      { "input": { "k": 25 }, "expected": 5.0 },
+      { "input": { "k": 2 }, "expected": 1.4142 },
+      { "input": { "k": 0 }, "expected": 0.0 }
+    ],
+    "hints": ["Handle k == 0 separately to avoid dividing by zero.", "Loop while abs(g*g - k) >= eps."]
+  },
+  {
+    "slug": "py-basics-nonlocal-scope",
+    "title": "LEGB Scope & Closures with nonlocal",
+    "kind": "fundamental",
+    "track": "track_0_python_basics",
+    "difficulty": "Easy",
+    "category": "Python Basics & Numerics",
+    "tags": ["scope", "closures", "nonlocal"],
+    "description": "Write `accumulate_steps(steps)` that uses an inner helper function with a `nonlocal` running total to return the list of cumulative sums after each step.",
+    "examples": [
+      { "input": "steps=[1, 2, 3]", "output": "[1, 3, 6]" }
+    ],
+    "constraints": ["Must use an enclosed running total"],
+    "starter_codes": {
+      "python": "def accumulate_steps(steps):\n    total = 0\n    def add(x):\n        nonlocal total\n        total += x\n        return total\n    return [add(s) for s in steps]\n",
+      "typescript": "export function accumulate_steps(steps: number[]): number[] {\n  let total = 0;\n  const add = (x: number) => {\n    total += x;\n    return total;\n  };\n  return steps.map(add);\n}\n"
+    },
+    "solutions": {
+      "python": "def accumulate_steps(steps):\n    total = 0\n    def add(x):\n        nonlocal total\n        total += x\n        return total\n    return [add(s) for s in steps]\n",
+      "typescript": "export function accumulate_steps(steps: number[]): number[] {\n  let total = 0;\n  return steps.map((s) => (total += s));\n}\n"
+    },
+    "editorial": "## The LEGB Rule\nPython resolves names in **Local → Enclosing → Global → Built-in** order. Any assignment to a name inside a function binds it locally at compile time unless declared `nonlocal` (for an enclosing function) or `global`.",
+    "test_cases": [
+      { "input": { "steps": [1, 2, 3] }, "expected": [1, 3, 6] },
+      { "input": { "steps": [5, -2, 4] }, "expected": [5, 3, 7] },
+      { "input": { "steps": [] }, "expected": [] }
+    ],
+    "hints": ["Declare nonlocal total inside the nested function before modifying it."]
+  },
+  {
+    "slug": "py-basics-loops-range",
+    "title": "Lazy range() & O(√n) Primality Check",
+    "kind": "fundamental",
+    "track": "track_0_python_basics",
+    "difficulty": "Easy",
+    "category": "Python Basics & Numerics",
+    "tags": ["loops", "range", "primes"],
+    "description": "Write `is_prime(n)` that returns `True` if integer `n` is prime and `False` otherwise, testing only odd divisors up to `int(n ** 0.5)`.",
+    "examples": [
+      { "input": "n=29", "output": "True" },
+      { "input": "n=1", "output": "False" }
+    ],
+    "constraints": ["O(sqrt(n)) time", "O(1) space"],
+    "starter_codes": {
+      "python": "def is_prime(n):\n    pass\n",
+      "typescript": "export function is_prime(n: number): boolean {\n  return false;\n}\n"
+    },
+    "solutions": {
+      "python": "def is_prime(n):\n    if n < 2:\n        return False\n    if n == 2:\n        return True\n    if n % 2 == 0:\n        return False\n    d = 3\n    while d * d <= n:\n        if n % d == 0:\n            return False\n        d += 2\n    return True\n",
+      "typescript": "export function is_prime(n: number): boolean {\n  if (n < 2) return false;\n  if (n === 2) return true;\n  if (n % 2 === 0) return false;\n  for (let d = 3; d * d <= n; d += 2) {\n    if (n % d === 0) return false;\n  }\n  return true;\n}\n"
+    },
+    "editorial": "## Lazy Sequences & Factor Symmetry\n`range(start, stop, step)` stores only three integers (`O(1)` memory). If `n = a * b`, at least one factor satisfies `<= sqrt(n)`, cutting primality testing from `O(n)` to `O(sqrt(n))`.",
+    "test_cases": [
+      { "input": { "n": 1 }, "expected": false },
+      { "input": { "n": 2 }, "expected": true },
+      { "input": { "n": 29 }, "expected": true },
+      { "input": { "n": 49 }, "expected": false }
+    ],
+    "hints": ["Handle n < 2 and even numbers first, then loop d = 3, 5, 7... while d * d <= n."]
+  },
+  {
+    "slug": "py-basics-string-indexing-slicing",
+    "title": "Half-Open String Slicing & Reverse Stride",
+    "kind": "fundamental",
+    "track": "track_0_python_basics",
+    "difficulty": "Easy",
+    "category": "Python Basics & Numerics",
+    "tags": ["strings", "slicing", "stride"],
+    "description": "Write `rotate_and_reverse(s, k)` that rotates string `s` left by `k` positions (modulo `len(s)`) and returns the reversed result.",
+    "examples": [
+      { "input": "s='abcdef', k=2", "output": "'baefdc'", "explanation": "Rotate left by 2 -> 'cdefab', reverse -> 'bafedc'" }
+    ],
+    "constraints": ["Handle empty string and k > len(s)"],
+    "starter_codes": {
+      "python": "def rotate_and_reverse(s, k):\n    pass\n",
+      "typescript": "export function rotate_and_reverse(s: string, k: number): string {\n  return '';\n}\n"
+    },
+    "solutions": {
+      "python": "def rotate_and_reverse(s, k):\n    if not s:\n        return ''\n    k %= len(s)\n    rotated = s[k:] + s[:k]\n    return rotated[::-1]\n",
+      "typescript": "export function rotate_and_reverse(s: string, k: number): string {\n  if (!s.length) return '';\n  const shift = ((k % s.length) + s.length) % s.length;\n  const rotated = s.slice(shift) + s.slice(0, shift);\n  return rotated.split('').reverse().join('');\n}\n"
+    },
+    "editorial": "## Half-Open Intervals `[start, stop)`\nPython slices include `start` and exclude `stop`, so `len(s[a:b]) == b - a` and `s[:k] + s[k:] == s`. Negative stride `s[::-1]` copies the sequence in reverse in `O(n)` time and space.",
+    "test_cases": [
+      { "input": { "s": "abcdef", "k": 2 }, "expected": "bafedc" },
+      { "input": { "s": "abc", "k": 4 }, "expected": "acb" },
+      { "input": { "s": "", "k": 3 }, "expected": "" }
+    ],
+    "hints": ["Normalize k with k % len(s) before slicing s[k:] + s[:k]."]
+  },
+  {
+    "slug": "py-fluency-mutability-aliasing",
+    "title": "Mutability, Aliasing & Safe Iteration",
+    "kind": "fundamental",
+    "track": "track_1_pythonic_fluency",
+    "difficulty": "Easy",
+    "category": "Structured Types & Aliasing",
+    "tags": ["aliasing", "lists", "copying"],
+    "description": "Write `remove_shared(a, b)` that returns a new list containing elements of `a` not present in `b`, without mutating `a` or skipping adjacent elements.",
+    "examples": [
+      { "input": "a=[1, 2, 2, 3, 4], b=[2, 4]", "output": "[1, 3]" }
+    ],
+    "constraints": ["Do not mutate input lists"],
+    "starter_codes": {
+      "python": "def remove_shared(a, b):\n    pass\n",
+      "typescript": "export function remove_shared(a: number[], b: number[]): number[] {\n  return [];\n}\n"
+    },
+    "solutions": {
+      "python": "def remove_shared(a, b):\n    banned = set(b)\n    return [x for x in a if x not in banned]\n",
+      "typescript": "export function remove_shared(a: number[], b: number[]): number[] {\n  const banned = new Set(b);\n  return a.filter((x) => !banned.has(x));\n}\n"
+    },
+    "editorial": "## Aliasing Pitfall\nMutating a list while iterating over it shifts indices left while Python's internal counter increments, causing adjacent matching elements to be silently skipped. Clone first (`a[:]`) or construct a new list with a comprehension.",
+    "test_cases": [
+      { "input": { "a": [1, 2, 2, 3, 4], "b": [2, 4] }, "expected": [1, 3] },
+      { "input": { "a": [5, 5, 5], "b": [5] }, "expected": [] }
+    ],
+    "hints": ["Convert b to a set for O(1) membership checks and return a new filtered list."]
+  },
+  {
+    "slug": "py-fluency-higher-order-functions",
+    "title": "First-Class & Higher-Order Functions",
+    "kind": "fundamental",
+    "track": "track_1_pythonic_fluency",
+    "difficulty": "Easy",
+    "category": "Structured Types & Aliasing",
+    "tags": ["hof", "map", "filter", "lambda"],
+    "description": "Write `apply_pipeline(nums)` that filters positive numbers, squares them, and returns the resulting list.",
+    "examples": [
+      { "input": "nums=[-3, 0, 2, 5, -1]", "output": "[4, 25]" }
+    ],
+    "constraints": ["Preserve input order"],
+    "starter_codes": {
+      "python": "def apply_pipeline(nums):\n    pass\n",
+      "typescript": "export function apply_pipeline(nums: number[]): number[] {\n  return [];\n}\n"
+    },
+    "solutions": {
+      "python": "def apply_pipeline(nums):\n    return list(map(lambda x: x * x, filter(lambda x: x > 0, nums)))\n",
+      "typescript": "export function apply_pipeline(nums: number[]): number[] {\n  return nums.filter((x) => x > 0).map((x) => x * x);\n}\n"
+    },
+    "editorial": "## Functions as First-Class Objects\nIn Python, functions can be passed as arguments, stored in data structures, and returned from other functions. Higher-order combinators separate **how** we traverse from **what** we compute on each element.",
+    "test_cases": [
+      { "input": { "nums": [-3, 0, 2, 5, -1] }, "expected": [4, 25] },
+      { "input": { "nums": [-1, -2] }, "expected": [] }
+    ],
+    "hints": ["Filter x > 0 then map x * x."]
+  },
+  {
+    "slug": "py-fluency-2d-matrix-init",
+    "title": "Safe 2D Matrix Allocation (No Row Aliasing)",
+    "kind": "fundamental",
+    "track": "track_1_pythonic_fluency",
+    "difficulty": "Easy",
+    "category": "Structured Types & Aliasing",
+    "tags": ["matrix", "aliasing", "comprehension"],
+    "description": "Write `make_diagonal_matrix(n, val)` that creates an `n x n` matrix of zeros with `val` placed strictly on the main diagonal `grid[i][i]`, verifying no row aliasing occurs.",
+    "examples": [
+      { "input": "n=3, val=1", "output": "[[1,0,0],[0,1,0],[0,0,1]]" }
+    ],
+    "constraints": ["0 <= n <= 20"],
+    "starter_codes": {
+      "python": "def make_diagonal_matrix(n, val):\n    pass\n",
+      "typescript": "export function make_diagonal_matrix(n: number, val: number): number[][] {\n  return [];\n}\n"
+    },
+    "solutions": {
+      "python": "def make_diagonal_matrix(n, val):\n    grid = [[0 for _ in range(n)] for _ in range(n)]\n    for i in range(n):\n        grid[i][i] = val\n    return grid\n",
+      "typescript": "export function make_diagonal_matrix(n: number, val: number): number[][] {\n  const grid = Array.from({ length: n }, () => Array(n).fill(0));\n  for (let i = 0; i < n; i++) grid[i][i] = val;\n  return grid;\n}\n"
+    },
+    "editorial": "## Why `[[0]*n]*n` Fails\nList repetition duplicates **references**, not sublists. Setting `grid[0][0] = 1` mutates column 0 of every row! Always use `[[0] * cols for _ in range(rows)]` so each row is a distinct heap object.",
+    "test_cases": [
+      { "input": { "n": 3, "val": 1 }, "expected": [[1, 0, 0], [0, 1, 0], [0, 0, 1]] },
+      { "input": { "n": 2, "val": 5 }, "expected": [[5, 0], [0, 5]] }
+    ],
+    "hints": ["Allocate each row inside a comprehension: [[0] * n for _ in range(n)]."]
+  },
+  {
+    "slug": "py-fluency-mutable-default-arg",
+    "title": "Avoiding Mutable Default Arguments",
+    "kind": "fundamental",
+    "track": "track_1_pythonic_fluency",
+    "difficulty": "Easy",
+    "category": "Structured Types & Aliasing",
+    "tags": ["functions", "defaults", "mutability"],
+    "description": "Write `safe_append(item, bucket=None)` that creates a fresh list when `bucket` is `None`, appends `item`, and returns the list.",
+    "examples": [
+      { "input": "item=10", "output": "[10]" }
+    ],
+    "constraints": ["Repeated calls without bucket must not share state"],
+    "starter_codes": {
+      "python": "def safe_append(item, bucket=None):\n    pass\n",
+      "typescript": "export function safe_append<T>(item: T, bucket?: T[]): T[] {\n  return [];\n}\n"
+    },
+    "solutions": {
+      "python": "def safe_append(item, bucket=None):\n    if bucket is None:\n        bucket = []\n    bucket.append(item)\n    return bucket\n",
+      "typescript": "export function safe_append<T>(item: T, bucket?: T[]): T[] {\n  const target = bucket ?? [];\n  target.push(item);\n  return target;\n}\n"
+    },
+    "editorial": "## Definition-Time Evaluation\nPython evaluates default parameter expressions **once** when `def` runs, not on each call. A default `bucket=[]` persists mutations across every caller. Use `bucket=None` and initialize inside the function body.",
+    "test_cases": [
+      { "input": { "item": 10 }, "expected": [10] },
+      { "input": { "item": 20, "bucket": [1, 2] }, "expected": [1, 2, 20] }
+    ],
+    "hints": ["Check `if bucket is None: bucket = []` inside the function."]
+  },
+  {
+    "slug": "py-fluency-string-immutability",
+    "title": "O(n) String Construction with join()",
+    "kind": "fundamental",
+    "track": "track_1_pythonic_fluency",
+    "difficulty": "Easy",
+    "category": "Structured Types & Aliasing",
+    "tags": ["strings", "immutability", "performance"],
+    "description": "Write `run_length_encode(s)` that compresses consecutive identical characters using `O(n)` list accumulation and `''.join(...)` (e.g. `'aaabbc'` → `'a3b2c1'`).",
+    "examples": [
+      { "input": "s='aaabbc'", "output": "'a3b2c1'" }
+    ],
+    "constraints": ["Return '' for empty input", "O(n) time"],
+    "starter_codes": {
+      "python": "def run_length_encode(s):\n    pass\n",
+      "typescript": "export function run_length_encode(s: string): string {\n  return '';\n}\n"
+    },
+    "solutions": {
+      "python": "def run_length_encode(s):\n    if not s:\n        return ''\n    out = []\n    prev, count = s[0], 1\n    for ch in s[1:]:\n        if ch == prev:\n            count += 1\n        else:\n            out.append(f'{prev}{count}')\n            prev, count = ch, 1\n    out.append(f'{prev}{count}')\n    return ''.join(out)\n",
+      "typescript": "export function run_length_encode(s: string): string {\n  if (!s.length) return '';\n  const out: string[] = [];\n  let prev = s[0], count = 1;\n  for (let i = 1; i < s.length; i++) {\n    if (s[i] === prev) count++;\n    else { out.push(`${prev}${count}`); prev = s[i]; count = 1; }\n  }\n  out.push(`${prev}${count}`);\n  return out.join('');\n}\n"
+    },
+    "editorial": "## Immutability & Quadratic Concatenation\nBecause strings are immutable, `res += ch` inside a loop can copy the entire string on every step (`O(n^2)`). Collect fragments in a list and combine once with `''.join(parts)` in `O(n)`.",
+    "test_cases": [
+      { "input": { "s": "aaabbc" }, "expected": "a3b2c1" },
+      { "input": { "s": "x" }, "expected": "x1" },
+      { "input": { "s": "" }, "expected": "" }
+    ],
+    "hints": ["Track current character and run count; append formatted chunks to a list."]
+  },
+  {
+    "slug": "py-fluency-tuples-multiple-assign",
+    "title": "Tuple Unpacking & Parallel Assignment",
+    "kind": "fundamental",
+    "track": "track_1_pythonic_fluency",
+    "difficulty": "Easy",
+    "category": "Structured Types & Aliasing",
+    "tags": ["tuples", "unpacking", "fibonacci"],
+    "description": "Write `fib_pair(n)` that returns `[F(n), F(n+1)]` using simultaneous tuple assignment `a, b = b, a + b` in `O(n)` time and `O(1)` space.",
+    "examples": [
+      { "input": "n=5", "output": "[5, 8]" }
+    ],
+    "constraints": ["n >= 0"],
+    "starter_codes": {
+      "python": "def fib_pair(n):\n    pass\n",
+      "typescript": "export function fib_pair(n: number): number[] {\n  return [0, 1];\n}\n"
+    },
+    "solutions": {
+      "python": "def fib_pair(n):\n    a, b = 0, 1\n    for _ in range(n):\n        a, b = b, a + b\n    return [a, b]\n",
+      "typescript": "export function fib_pair(n: number): number[] {\n  let a = 0, b = 1;\n  for (let i = 0; i < n; i++) [a, b] = [b, a + b];\n  return [a, b];\n}\n"
+    },
+    "editorial": "## Simultaneous Binding\n`a, b = b, a + b` evaluates the entire right-hand tuple before binding names on the left, eliminating temporary variables and ordering bugs.",
+    "test_cases": [
+      { "input": { "n": 0 }, "expected": [0, 1] },
+      { "input": { "n": 5 }, "expected": [5, 8] },
+      { "input": { "n": 7 }, "expected": [13, 21] }
+    ],
+    "hints": ["Start with a, b = 0, 1 and update n times with a, b = b, a + b."]
+  },
+  {
+    "slug": "py-fluency-sets-dicts",
+    "title": "Hash Tables: Set Algebra & Frequency Maps",
+    "kind": "fundamental",
+    "track": "track_1_pythonic_fluency",
+    "difficulty": "Easy",
+    "category": "Structured Types & Aliasing",
+    "tags": ["sets", "dicts", "hashing"],
+    "description": "Write `common_sorted(a, b)` that returns the sorted list of unique elements present in both lists `a` and `b` using set intersection.",
+    "examples": [
+      { "input": "a=[3, 1, 2, 2], b=[2, 4, 3]", "output": "[2, 3]" }
+    ],
+    "constraints": ["O(n + m + k log k) time"],
+    "starter_codes": {
+      "python": "def common_sorted(a, b):\n    pass\n",
+      "typescript": "export function common_sorted(a: number[], b: number[]): number[] {\n  return [];\n}\n"
+    },
+    "solutions": {
+      "python": "def common_sorted(a, b):\n    return sorted(set(a) & set(b))\n",
+      "typescript": "export function common_sorted(a: number[], b: number[]): number[] {\n  const sb = new Set(b);\n  return [...new Set(a.filter((x) => sb.has(x)))].sort((x, y) => x - y);\n}\n"
+    },
+    "editorial": "## O(1) Membership via Hashing\nPython `set` and `dict` are backed by open-addressed hash tables. Converting a list to a `set` lets you compute unions (`|`), intersections (`&`), and differences (`-`) in linear average time.",
+    "test_cases": [
+      { "input": { "a": [3, 1, 2, 2], "b": [2, 4, 3] }, "expected": [2, 3] },
+      { "input": { "a": [1, 2], "b": [3, 4] }, "expected": [] }
+    ],
+    "hints": ["Use set(a) & set(b) and sort the result."]
+  },
+  {
+    "slug": "py-ds-custom-intset-adt",
+    "title": "Abstract Data Types: Custom IntSet",
+    "kind": "fundamental",
+    "track": "track_2_data_structures",
+    "difficulty": "Easy",
+    "category": "ADTs, Hash Tables & OOP",
+    "tags": ["adt", "oop", "invariants"],
+    "description": "Write `apply_intset_ops(ops)` where each op is `['insert', x]` or `['remove', x]` (ignore removing absent elements), maintaining a duplicate-free `IntSet` and returning the final sorted elements.",
+    "examples": [
+      { "input": "ops=[['insert',3],['insert',1],['insert',3],['remove',1]]", "output": "[3]" }
+    ],
+    "constraints": ["Maintain duplicate-free invariant"],
+    "starter_codes": {
+      "python": "def apply_intset_ops(ops):\n    pass\n",
+      "typescript": "export function apply_intset_ops(ops: [string, number][]): number[] {\n  return [];\n}\n"
+    },
+    "solutions": {
+      "python": "class IntSet:\n    def __init__(self):\n        self._vals = []\n    def insert(self, e):\n        if e not in self._vals:\n            self._vals.append(e)\n    def remove(self, e):\n        if e in self._vals:\n            self._vals.remove(e)\n    def members(self):\n        return sorted(self._vals)\n\ndef apply_intset_ops(ops):\n    s = IntSet()\n    for cmd, val in ops:\n        if cmd == 'insert':\n            s.insert(val)\n        elif cmd == 'remove':\n            s.remove(val)\n    return s.members()\n",
+      "typescript": "export function apply_intset_ops(ops: [string, number][]): number[] {\n  const s = new Set<number>();\n  for (const [cmd, val] of ops) {\n    if (cmd === 'insert') s.add(val);\n    else if (cmd === 'remove') s.delete(val);\n  }\n  return [...s].sort((a, b) => a - b);\n}\n"
+    },
+    "editorial": "## Representation Independence\nAn **Abstract Data Type (ADT)** exposes a specification (operations and invariants) while hiding internal representation (`_vals`). Clients never depend on whether elements live in a list, balanced tree, or hash table.",
+    "test_cases": [
+      { "input": { "ops": [["insert", 3], ["insert", 1], ["insert", 3], ["remove", 1]] }, "expected": [3] },
+      { "input": { "ops": [["remove", 9], ["insert", 5], ["insert", 2]] }, "expected": [2, 5] }
+    ],
+    "hints": ["Guard insert against duplicates and remove against missing values."]
+  },
+  {
+    "slug": "py-ds-deque-fifo",
+    "title": "O(1) FIFO Queue with collections.deque",
+    "kind": "fundamental",
+    "track": "track_2_data_structures",
+    "difficulty": "Easy",
+    "category": "ADTs, Hash Tables & OOP",
+    "tags": ["deque", "queue", "fifo"],
+    "description": "Write `moving_average(nums, k)` using a fixed-capacity sliding window queue (`collections.deque`) returning the rounded (2 decimal places) moving average for each window of size `k`.",
+    "examples": [
+      { "input": "nums=[1, 3, 5, 7], k=2", "output": "[2.0, 4.0, 6.0]" }
+    ],
+    "constraints": ["1 <= k <= len(nums)"],
+    "starter_codes": {
+      "python": "from collections import deque\n\ndef moving_average(nums, k):\n    pass\n",
+      "typescript": "export function moving_average(nums: number[], k: number): number[] {\n  return [];\n}\n"
+    },
+    "solutions": {
+      "python": "from collections import deque\n\ndef moving_average(nums, k):\n    q = deque()\n    total = 0\n    out = []\n    for x in nums:\n        q.append(x)\n        total += x\n        if len(q) > k:\n            total -= q.popleft()\n        if len(q) == k:\n            out.append(round(total / k, 2))\n    return out\n",
+      "typescript": "export function moving_average(nums: number[], k: number): number[] {\n  let total = 0;\n  const out: number[] = [];\n  for (let i = 0; i < nums.length; i++) {\n    total += nums[i];\n    if (i >= k) total -= nums[i - k];\n    if (i >= k - 1) out.push(Number((total / k).toFixed(2)));\n  }\n  return out;\n}\n"
+    },
+    "editorial": "## Why `list.pop(0)` Hurts\n`list.pop(0)` shifts all `n - 1` remaining pointers left (`O(n)`). `collections.deque` uses doubly-linked fixed blocks, giving `O(1)` `append` and `popleft` for BFS and sliding windows.",
+    "test_cases": [
+      { "input": { "nums": [1, 3, 5, 7], "k": 2 }, "expected": [2.0, 4.0, 6.0] },
+      { "input": { "nums": [10, 20, 30], "k": 3 }, "expected": [20.0] }
+    ],
+    "hints": ["Maintain a running sum alongside the deque so each step is O(1)."]
+  },
+  {
+    "slug": "py-ds-hash-table-dict",
+    "title": "Hash Table Buckets & Collision Resolution",
+    "kind": "fundamental",
+    "track": "track_2_data_structures",
+    "difficulty": "Medium",
+    "category": "ADTs, Hash Tables & OOP",
+    "tags": ["hash-table", "collisions", "chaining"],
+    "description": "Write `group_by_key(pairs)` taking `[key, value]` pairs and returning a dictionary mapping each key to the list of values seen for that key in insertion order.",
+    "examples": [
+      { "input": "pairs=[['a',1],['b',2],['a',3]]", "output": "{'a':[1,3],'b':[2]}" }
+    ],
+    "constraints": ["O(n) average time"],
+    "starter_codes": {
+      "python": "def group_by_key(pairs):\n    pass\n",
+      "typescript": "export function group_by_key(pairs: [string, number][]): Record<string, number[]> {\n  return {};\n}\n"
+    },
+    "solutions": {
+      "python": "def group_by_key(pairs):\n    buckets = {}\n    for k, v in pairs:\n        buckets.setdefault(k, []).append(v)\n    return buckets\n",
+      "typescript": "export function group_by_key(pairs: [string, number][]): Record<string, number[]> {\n  const buckets: Record<string, number[]> = {};\n  for (const [k, v] of pairs) {\n    if (!buckets[k]) buckets[k] = [];\n    buckets[k].push(v);\n  }\n  return buckets;\n}\n"
+    },
+    "editorial": "## The Hash-Equality Contract\nIf `a == b`, then `hash(a) == hash(b)` must hold. Separate chaining stores colliding entries in per-bucket lists, while CPython's `dict` uses open addressing with perturbation probing for cache locality.",
+    "test_cases": [
+      { "input": { "pairs": [["a", 1], ["b", 2], ["a", 3]] }, "expected": { "a": [1, 3], "b": [2] } },
+      { "input": { "pairs": [] }, "expected": {} }
+    ],
+    "hints": ["Use dict.setdefault(k, []).append(v) or defaultdict(list)."]
+  },
+  {
+    "slug": "py-ds-magic-methods-ordering",
+    "title": "Dunder Methods & Custom Object Ordering",
+    "kind": "fundamental",
+    "track": "track_2_data_structures",
+    "difficulty": "Easy",
+    "category": "ADTs, Hash Tables & OOP",
+    "tags": ["dunder", "oop", "sorting"],
+    "description": "Write `sort_tasks(tasks)` where each task is `[name, priority]` (lower priority number runs first; break ties alphabetically by `name`) and return the ordered list of task names.",
+    "examples": [
+      { "input": "tasks=[['write',2],['read',1],['alpha',2]]", "output": "['read','alpha','write']" }
+    ],
+    "constraints": ["Tie-break ascending by name"],
+    "starter_codes": {
+      "python": "def sort_tasks(tasks):\n    pass\n",
+      "typescript": "export function sort_tasks(tasks: [string, number][]): string[] {\n  return [];\n}\n"
+    },
+    "solutions": {
+      "python": "class Task:\n    def __init__(self, name, prio):\n        self.name = name\n        self.prio = prio\n    def __lt__(self, other):\n        return (self.prio, self.name) < (other.prio, other.name)\n\ndef sort_tasks(tasks):\n    objs = sorted(Task(n, p) for n, p in tasks)\n    return [t.name for t in objs]\n",
+      "typescript": "export function sort_tasks(tasks: [string, number][]): string[] {\n  return [...tasks]\n    .sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]))\n    .map(([name]) => name);\n}\n"
+    },
+    "editorial": "## Python's Data Model\nImplementing `__lt__` lets custom objects plug directly into `sorted()`, `min()`, `max()`, and `heapq`. `__repr__` targets unambiguous debugging while `__str__` targets end-user display.",
+    "test_cases": [
+      { "input": { "tasks": [["write", 2], ["read", 1], ["alpha", 2]] }, "expected": ["read", "alpha", "write"] }
+    ],
+    "hints": ["Compare tuples (priority, name) inside __lt__ or a sort key."]
+  },
+  {
+    "slug": "py-ds-inheritance-substitution",
+    "title": "Inheritance, super() & Liskov Substitution",
+    "kind": "fundamental",
+    "track": "track_2_data_structures",
+    "difficulty": "Easy",
+    "category": "ADTs, Hash Tables & OOP",
+    "tags": ["inheritance", "lsp", "oop"],
+    "description": "Write `total_payroll(records)` where each record is `['salaried', monthly]` or `['hourly', rate, hours]`. Return the total payroll across all polymorphic employee records.",
+    "examples": [
+      { "input": "records=[['salaried',3000],['hourly',50,20]]", "output": "4000" }
+    ],
+    "constraints": ["Return numeric total"],
+    "starter_codes": {
+      "python": "def total_payroll(records):\n    pass\n",
+      "typescript": "export function total_payroll(records: (string | number)[][]): number {\n  return 0;\n}\n"
+    },
+    "solutions": {
+      "python": "class Employee:\n    def pay(self):\n        raise NotImplementedError\n\nclass Salaried(Employee):\n    def __init__(self, monthly):\n        self.monthly = monthly\n    def pay(self):\n        return self.monthly\n\nclass Hourly(Employee):\n    def __init__(self, rate, hours):\n        self.rate = rate\n        self.hours = hours\n    def pay(self):\n        return self.rate * self.hours\n\ndef total_payroll(records):\n    staff = [\n        Salaried(r[1]) if r[0] == 'salaried' else Hourly(r[1], r[2])\n        for r in records\n    ]\n    return sum(e.pay() for e in staff)\n",
+      "typescript": "export function total_payroll(records: (string | number)[][]): number {\n  return records.reduce((acc, r) => {\n    if (r[0] === 'salaried') return acc + Number(r[1]);\n    return acc + Number(r[1]) * Number(r[2]);\n  }, 0);\n}\n"
+    },
+    "editorial": "## Liskov Substitution Principle\nAny subclass must honor the behavioral contract of its base class so callers can invoke `e.pay()` uniformly without type-checking. Prefer composition when sharing helper behavior without an is-a relationship.",
+    "test_cases": [
+      { "input": { "records": [["salaried", 3000], ["hourly", 50, 20]] }, "expected": 4000 },
+      { "input": { "records": [] }, "expected": 0 }
+    ],
+    "hints": ["Give each subclass a common pay() method and sum e.pay() over the collection."]
+  },
+  {
+    "slug": "py-scaffold-inductive-palindrome",
+    "title": "Inductive Recursion: Palindrome Verification",
+    "kind": "fundamental",
+    "track": "track_3_algorithmic_scaffolds",
+    "difficulty": "Easy",
+    "category": "Recursion & Scaffolds",
+    "tags": ["recursion", "induction", "palindrome"],
+    "description": "Write `is_palindrome(s)` that ignores non-alphanumeric characters and case, and returns `True` if the cleaned string reads identically forwards and backwards.",
+    "examples": [
+      { "input": "s='Able was I, ere I saw Elba'", "output": "True" },
+      { "input": "s='race a car'", "output": "False" }
+    ],
+    "constraints": ["Case-insensitive, alphanumeric only"],
+    "starter_codes": {
+      "python": "def is_palindrome(s):\n    pass\n",
+      "typescript": "export function is_palindrome(s: string): boolean {\n  return false;\n}\n"
+    },
+    "solutions": {
+      "python": "def is_palindrome(s):\n    clean = [c.lower() for c in s if c.isalnum()]\n    def helper(l, r):\n        if l >= r:\n            return True\n        return clean[l] == clean[r] and helper(l + 1, r - 1)\n    return helper(0, len(clean) - 1)\n",
+      "typescript": "export function is_palindrome(s: string): boolean {\n  const clean = s.toLowerCase().replace(/[^a-z0-9]/g, '');\n  const helper = (l: number, r: number): boolean => {\n    if (l >= r) return true;\n    return clean[l] === clean[r] && helper(l + 1, r - 1);\n  };\n  return helper(0, clean.length - 1);\n}\n"
+    },
+    "editorial": "## Mathematical Induction in Code\nBase case: strings of length `0` or `1` are palindromes. Inductive step: `s` is a palindrome iff `s[0] == s[-1]` and `s[1:-1]` is a palindrome. Passing indices `(l, r)` avoids `O(n^2)` substring slice copying.",
+    "test_cases": [
+      { "input": { "s": "Able was I, ere I saw Elba" }, "expected": true },
+      { "input": { "s": "race a car" }, "expected": false },
+      { "input": { "s": "" }, "expected": true }
+    ],
+    "hints": ["Strip non-alphanumeric chars first, then compare outer pointers l and r inward."]
+  },
+  {
+    "slug": "py-scaffold-fibonacci-memoization",
+    "title": "Top-Down Memoization: Linear Fibonacci",
+    "kind": "fundamental",
+    "track": "track_3_algorithmic_scaffolds",
+    "difficulty": "Easy",
+    "category": "Recursion & Scaffolds",
+    "tags": ["memoization", "dp", "recursion"],
+    "description": "Write `fib_memo(n)` returning the `n`-th Fibonacci number (`fib(0)=0, fib(1)=1`) in `O(n)` time using memoization so `n=35` finishes instantaneously.",
+    "examples": [
+      { "input": "n=10", "output": "55" },
+      { "input": "n=35", "output": "9227465" }
+    ],
+    "constraints": ["0 <= n <= 60"],
+    "starter_codes": {
+      "python": "def fib_memo(n):\n    pass\n",
+      "typescript": "export function fib_memo(n: number): number {\n  return 0;\n}\n"
+    },
+    "solutions": {
+      "python": "def fib_memo(n):\n    memo = {0: 0, 1: 1}\n    def solve(k):\n        if k not in memo:\n            memo[k] = solve(k - 1) + solve(k - 2)\n        return memo[k]\n    return solve(n)\n",
+      "typescript": "export function fib_memo(n: number): number {\n  const memo = new Map<number, number>([[0, 0], [1, 1]]);\n  const solve = (k: number): number => {\n    if (!memo.has(k)) memo.set(k, solve(k - 1) + solve(k - 2));\n    return memo.get(k)!;\n  };\n  return solve(n);\n}\n"
+    },
+    "editorial": "## Collapsing the Call Tree\nNaive recursion recomputes `fib(k)` exponentially (`O(phi^n)`). Caching results in a dictionary reduces the recursion tree into a DAG of `n + 1` unique states, running in `O(n)` time and `O(n)` space.",
+    "test_cases": [
+      { "input": { "n": 0 }, "expected": 0 },
+      { "input": { "n": 10 }, "expected": 55 },
+      { "input": { "n": 35 }, "expected": 9227465 }
+    ],
+    "hints": ["Store computed results in a dict keyed by k before returning."]
+  },
+  {
+    "slug": "py-scaffold-binary-search",
+    "title": "Binary Search & Wrapper Pattern",
+    "kind": "fundamental",
+    "track": "track_3_algorithmic_scaffolds",
+    "difficulty": "Easy",
+    "category": "Recursion & Scaffolds",
+    "tags": ["binary-search", "divide-and-conquer"],
+    "description": "Write `binary_search(nums, target)` that returns the index of `target` in sorted ascending list `nums`, or `-1` if absent, in `O(log n)` time.",
+    "examples": [
+      { "input": "nums=[1,3,5,7,9], target=7", "output": "3" },
+      { "input": "nums=[1,3,5,7,9], target=4", "output": "-1" }
+    ],
+    "constraints": ["nums is strictly increasing"],
+    "starter_codes": {
+      "python": "def binary_search(nums, target):\n    pass\n",
+      "typescript": "export function binary_search(nums: number[], target: number): number {\n  return -1;\n}\n"
+    },
+    "solutions": {
+      "python": "def binary_search(nums, target):\n    lo, hi = 0, len(nums) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if nums[mid] == target:\n            return mid\n        if nums[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1\n",
+      "typescript": "export function binary_search(nums: number[], target: number): number {\n  let lo = 0, hi = nums.length - 1;\n  while (lo <= hi) {\n    const mid = Math.floor((lo + hi) / 2);\n    if (nums[mid] === target) return mid;\n    if (nums[mid] < target) lo = mid + 1;\n    else hi = mid - 1;\n  }\n  return -1;\n}\n"
+    },
+    "editorial": "## Decrementing Function\nThe search interval width `hi - lo + 1` halves on every step and strictly decreases because `lo = mid + 1` or `hi = mid - 1`, proving termination in `<= floor(log2(n)) + 1` comparisons.",
+    "test_cases": [
+      { "input": { "nums": [1, 3, 5, 7, 9], "target": 7 }, "expected": 3 },
+      { "input": { "nums": [1, 3, 5, 7, 9], "target": 4 }, "expected": -1 },
+      { "input": { "nums": [], "target": 1 }, "expected": -1 }
+    ],
+    "hints": ["Use while lo <= hi and advance lo = mid + 1 or hi = mid - 1."]
+  },
+  {
+    "slug": "py-scaffold-knapsack-01-memo",
+    "title": "0/1 Knapsack with Memoization",
+    "kind": "fundamental",
+    "track": "track_3_algorithmic_scaffolds",
+    "difficulty": "Medium",
+    "category": "Recursion & Scaffolds",
+    "tags": ["knapsack", "dp", "memoization"],
+    "description": "Write `knapsack_01(weights, values, capacity)` returning the maximum total value achievable without exceeding `capacity`, choosing each item at most once.",
+    "examples": [
+      { "input": "weights=[2,3,4], values=[3,4,5], capacity=5", "output": "7" }
+    ],
+    "constraints": ["len(weights) == len(values) <= 50"],
+    "starter_codes": {
+      "python": "def knapsack_01(weights, values, capacity):\n    pass\n",
+      "typescript": "export function knapsack_01(weights: number[], values: number[], capacity: number): number {\n  return 0;\n}\n"
+    },
+    "solutions": {
+      "python": "def knapsack_01(weights, values, capacity):\n    memo = {}\n    def dp(i, rem):\n        if i == len(weights) or rem == 0:\n            return 0\n        key = (i, rem)\n        if key in memo:\n            return memo[key]\n        best = dp(i + 1, rem)\n        if weights[i] <= rem:\n            best = max(best, values[i] + dp(i + 1, rem - weights[i]))\n        memo[key] = best\n        return best\n    return dp(0, capacity)\n",
+      "typescript": "export function knapsack_01(weights: number[], values: number[], capacity: number): number {\n  const memo = new Map<string, number>();\n  const dp = (i: number, rem: number): number => {\n    if (i === weights.length || rem === 0) return 0;\n    const key = `${i},${rem}`;\n    if (memo.has(key)) return memo.get(key)!;\n    let best = dp(i + 1, rem);\n    if (weights[i] <= rem) best = Math.max(best, values[i] + dp(i + 1, rem - weights[i]));\n    memo.set(key, best);\n    return best;\n  };\n  return dp(0, capacity);\n}\n"
+    },
+    "editorial": "## Optimal Substructure\nAt item `i` with remaining capacity `rem`, we either skip it (`dp(i+1, rem)`) or take it (`values[i] + dp(i+1, rem - weights[i])`). Memoizing `(i, rem)` yields `O(n * capacity)` pseudo-polynomial runtime.",
+    "test_cases": [
+      { "input": { "weights": [2, 3, 4], "values": [3, 4, 5], "capacity": 5 }, "expected": 7 },
+      { "input": { "weights": [6, 3, 4, 2], "values": [30, 14, 16, 9], "capacity": 10 }, "expected": 46 }
+    ],
+    "hints": ["Key the memo table by (item_index, remaining_capacity)."]
+  },
+  {
+    "slug": "py-scaffold-recursive-factorial",
+    "title": "Recursion Frames vs Iterative Space",
+    "kind": "fundamental",
+    "track": "track_3_algorithmic_scaffolds",
+    "difficulty": "Easy",
+    "category": "Recursion & Scaffolds",
+    "tags": ["recursion", "call-stack", "factorial"],
+    "description": "Write `factorial(n)` returning `n!` for non-negative integer `n` (`0! = 1`).",
+    "examples": [
+      { "input": "n=5", "output": "120" }
+    ],
+    "constraints": ["0 <= n <= 20"],
+    "starter_codes": {
+      "python": "def factorial(n):\n    pass\n",
+      "typescript": "export function factorial(n: number): number {\n  return 1;\n}\n"
+    },
+    "solutions": {
+      "python": "def factorial(n):\n    if n <= 1:\n        return 1\n    return n * factorial(n - 1)\n",
+      "typescript": "export function factorial(n: number): number {\n  if (n <= 1) return 1;\n  return n * factorial(n - 1);\n}\n"
+    },
+    "editorial": "## Call Stack Depth\nEvery recursive call pushes a stack frame holding local bindings and return address (`O(n)` space). Because Python does not perform tail-call optimization, recursion beyond ~1000 frames raises `RecursionError`.",
+    "test_cases": [
+      { "input": { "n": 0 }, "expected": 1 },
+      { "input": { "n": 5 }, "expected": 120 },
+      { "input": { "n": 7 }, "expected": 5040 }
+    ],
+    "hints": ["Base case: return 1 when n <= 1; recursive step: n * factorial(n - 1)."]
+  },
+  {
+    "slug": "py-sort-merge-sort",
+    "title": "Stable Divide-and-Conquer Merge Sort",
+    "kind": "fundamental",
+    "track": "track_4_custom_sorting",
+    "difficulty": "Medium",
+    "category": "Divide-and-Conquer Sorting",
+    "tags": ["merge-sort", "divide-and-conquer", "stability"],
+    "description": "Implement `merge_sort(nums)` returning a new sorted list in `O(n log n)` worst-case time without calling built-in `sort()` or `sorted()`.",
+    "examples": [
+      { "input": "nums=[5, 2, 4, 1, 3]", "output": "[1, 2, 3, 4, 5]" }
+    ],
+    "constraints": ["O(n log n) time, O(n) auxiliary space"],
+    "starter_codes": {
+      "python": "def merge_sort(nums):\n    pass\n",
+      "typescript": "export function merge_sort(nums: number[]): number[] {\n  return [];\n}\n"
+    },
+    "solutions": {
+      "python": "def merge_sort(nums):\n    if len(nums) <= 1:\n        return list(nums)\n    mid = len(nums) // 2\n    left = merge_sort(nums[:mid])\n    right = merge_sort(nums[mid:])\n    out = []\n    i = j = 0\n    while i < len(left) and j < len(right):\n        if left[i] <= right[j]:\n            out.append(left[i]); i += 1\n        else:\n            out.append(right[j]); j += 1\n    out.extend(left[i:])\n    out.extend(right[j:])\n    return out\n",
+      "typescript": "export function merge_sort(nums: number[]): number[] {\n  if (nums.length <= 1) return [...nums];\n  const mid = Math.floor(nums.length / 2);\n  const left = merge_sort(nums.slice(0, mid));\n  const right = merge_sort(nums.slice(mid));\n  const out: number[] = [];\n  let i = 0, j = 0;\n  while (i < left.length && j < right.length) {\n    if (left[i] <= right[j]) out.push(left[i++]);\n    else out.push(right[j++]);\n  }\n  return out.concat(left.slice(i), right.slice(j));\n}\n"
+    },
+    "editorial": "## Recurrence & Stability\n`T(n) = 2T(n/2) + O(n) = Theta(n log n)` across `log2(n)` recursion levels each doing `O(n)` merge work. Using `<=` when comparing `left[i]` and `right[j]` guarantees **stability**.",
+    "test_cases": [
+      { "input": { "nums": [5, 2, 4, 1, 3] }, "expected": [1, 2, 3, 4, 5] },
+      { "input": { "nums": [3, -1, 0, 3] }, "expected": [-1, 0, 3, 3] },
+      { "input": { "nums": [] }, "expected": [] }
+    ],
+    "hints": ["Split at mid = len(nums)//2, recursively sort halves, and merge with two pointers."]
+  },
+  {
+    "slug": "py-sort-multi-key-lambda",
+    "title": "Multi-Key Tuple Sorting & TimSort Stability",
+    "kind": "fundamental",
+    "track": "track_4_custom_sorting",
+    "difficulty": "Easy",
+    "category": "Divide-and-Conquer Sorting",
+    "tags": ["sorting", "lambda", "timsort"],
+    "description": "Write `rank_students(students)` where each entry is `[name, score]`. Sort by `score` descending, breaking ties by `name` ascending, and return the ordered list of names.",
+    "examples": [
+      { "input": "students=[['Bob',90],['Alice',95],['Cara',90]]", "output": "['Alice','Bob','Cara']" }
+    ],
+    "constraints": ["Use composite sort key (-score, name)"],
+    "starter_codes": {
+      "python": "def rank_students(students):\n    pass\n",
+      "typescript": "export function rank_students(students: [string, number][]): string[] {\n  return [];\n}\n"
+    },
+    "solutions": {
+      "python": "def rank_students(students):\n    return [name for name, _ in sorted(students, key=lambda x: (-x[1], x[0]))]\n",
+      "typescript": "export function rank_students(students: [string, number][]): string[] {\n  return [...students]\n    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))\n    .map(([name]) => name);\n}\n"
+    },
+    "editorial": "## Decorate-Sort-Undecorate\nPython's `sorted(items, key=fn)` computes `fn(item)` once per element (`O(n)` key calls) and leverages TimSort's stability so tuple keys like `(-score, name)` cleanly mix descending numeric and ascending lexicographic order.",
+    "test_cases": [
+      { "input": { "students": [["Bob", 90], ["Alice", 95], ["Cara", 90]] }, "expected": ["Alice", "Bob", "Cara"] }
+    ],
+    "hints": ["Use key=lambda x: (-x[1], x[0]) to negate the numeric score."]
+  },
+  {
+    "slug": "py-bit-check-set-clear",
+    "title": "Bitmask Primitives: Check, Set & Clear",
+    "kind": "fundamental",
+    "track": "track_5_bit_manipulation",
+    "difficulty": "Easy",
+    "category": "Binary Encodings & Bits",
+    "tags": ["bitmask", "bitwise"],
+    "description": "Write `bit_ops(n, k)` returning `[is_set, with_set, with_cleared]` for bit index `k` (0-indexed from LSB), where `is_set` is a boolean.",
+    "examples": [
+      { "input": "n=5, k=1", "output": "[False, 7, 5]", "explanation": "5 is 101b; bit 1 is 0; setting gives 111b (7); clearing keeps 101b (5)" }
+    ],
+    "constraints": ["n >= 0, k >= 0"],
+    "starter_codes": {
+      "python": "def bit_ops(n, k):\n    pass\n",
+      "typescript": "export function bit_ops(n: number, k: number): [boolean, number, number] {\n  return [false, n, n];\n}\n"
+    },
+    "solutions": {
+      "python": "def bit_ops(n, k):\n    mask = 1 << k\n    return [bool(n & mask), n | mask, n & ~mask]\n",
+      "typescript": "export function bit_ops(n: number, k: number): [boolean, number, number] {\n  const mask = 1 << k;\n  return [Boolean(n & mask), n | mask, n & ~mask];\n}\n"
+    },
+    "editorial": "## O(1) Bitmasks\nLet `mask = 1 << k`. Check with `(n & mask) != 0`, set with `n | mask`, clear with `n & ~mask`, and toggle with `n ^ mask`.",
+    "test_cases": [
+      { "input": { "n": 5, "k": 1 }, "expected": [false, 7, 5] },
+      { "input": { "n": 5, "k": 2 }, "expected": [true, 5, 1] }
+    ],
+    "hints": ["Build mask = 1 << k, then apply &, |, and & ~mask."]
+  },
+  {
+    "slug": "py-bit-kernighan-set-bits",
+    "title": "Brian Kernighan's Set-Bit Counter",
+    "kind": "fundamental",
+    "track": "track_5_bit_manipulation",
+    "difficulty": "Easy",
+    "category": "Binary Encodings & Bits",
+    "tags": ["bitwise", "kernighan", "hamming-weight"],
+    "description": "Write `count_set_bits(n)` that counts the number of `1` bits in non-negative integer `n` using `n &= (n - 1)` in `O(popcount(n))` iterations.",
+    "examples": [
+      { "input": "n=11", "output": "3", "explanation": "11 is 1011b -> 3 set bits" }
+    ],
+    "constraints": ["n >= 0"],
+    "starter_codes": {
+      "python": "def count_set_bits(n):\n    pass\n",
+      "typescript": "export function count_set_bits(n: number): number {\n  return 0;\n}\n"
+    },
+    "solutions": {
+      "python": "def count_set_bits(n):\n    count = 0\n    while n:\n        n &= n - 1\n        count += 1\n    return count\n",
+      "typescript": "export function count_set_bits(n: number): number {\n  let count = 0;\n  let x = n >>> 0;\n  while (x) {\n    x &= x - 1;\n    count++;\n  }\n  return count;\n}\n"
+    },
+    "editorial": "## Clearing the Lowest Set Bit\nSubtracting `1` flips the rightmost `1` bit to `0` and all trailing `0`s to `1`. ANDing with `n` clears exclusively that lowest `1` bit. As a corollary, `n > 0 and (n & (n - 1)) == 0` tests powers of two in `O(1)`.",
+    "test_cases": [
+      { "input": { "n": 0 }, "expected": 0 },
+      { "input": { "n": 11 }, "expected": 3 },
+      { "input": { "n": 255 }, "expected": 8 }
+    ],
+    "hints": ["Repeat n &= (n - 1) and increment count while n > 0."]
+  },
+  {
+    "slug": "py-math-asymptotic-complexity",
+    "title": "Eliminating O(n²) with O(n) Hash Lookup",
+    "kind": "fundamental",
+    "track": "track_6_complexity_math",
+    "difficulty": "Easy",
+    "category": "Asymptotic Complexity",
+    "tags": ["big-o", "hashing", "complexity"],
+    "description": "Write `has_pair_with_sum(nums, target)` that returns `True` if two distinct indices sum to `target`, achieving `O(n)` average time instead of `O(n^2)` nested loops.",
+    "examples": [
+      { "input": "nums=[2, 7, 11, 15], target=9", "output": "True" },
+      { "input": "nums=[3, 3], target=6", "output": "True" }
+    ],
+    "constraints": ["O(n) average time"],
+    "starter_codes": {
+      "python": "def has_pair_with_sum(nums, target):\n    pass\n",
+      "typescript": "export function has_pair_with_sum(nums: number[], target: number): boolean {\n  return false;\n}\n"
+    },
+    "solutions": {
+      "python": "def has_pair_with_sum(nums, target):\n    seen = set()\n    for x in nums:\n        if target - x in seen:\n            return True\n        seen.add(x)\n    return False\n",
+      "typescript": "export function has_pair_with_sum(nums: number[], target: number): boolean {\n  const seen = new Set<number>();\n  for (const x of nums) {\n    if (seen.has(target - x)) return true;\n    seen.add(x);\n  }\n  return false;\n}\n"
+    },
+    "editorial": "## Asymptotic Dominance\nAt `n = 10^5`, an `O(n^2)` scan performs `~5 * 10^9` operations (seconds/minutes), whereas an `O(n)` hash-set pass performs `10^5` operations (milliseconds). Always look for inner-loop searches replaceable by `O(1)` lookup tables.",
+    "test_cases": [
+      { "input": { "nums": [2, 7, 11, 15], "target": 9 }, "expected": true },
+      { "input": { "nums": [1, 2, 3], "target": 7 }, "expected": false },
+      { "input": { "nums": [3, 3], "target": 6 }, "expected": true }
+    ],
+    "hints": ["Track previously visited numbers in a set and check if target - x is already seen."]
+  },
+  {
+    "slug": "py-math-prefix-sums",
+    "title": "1-Indexed Prefix Sums for O(1) Range Queries",
+    "kind": "fundamental",
+    "track": "track_6_complexity_math",
+    "difficulty": "Easy",
+    "category": "Asymptotic Complexity",
+    "tags": ["prefix-sum", "range-query"],
+    "description": "Write `range_sums(nums, queries)` where each query `[L, R]` asks for the inclusive sum `sum(nums[L:R+1])`. Precompute a 1-indexed prefix sum array so each query runs in `O(1)`.",
+    "examples": [
+      { "input": "nums=[2, 4, 1, 5], queries=[[0,2],[1,3]]", "output": "[7, 10]" }
+    ],
+    "constraints": ["O(n + q) total time"],
+    "starter_codes": {
+      "python": "def range_sums(nums, queries):\n    pass\n",
+      "typescript": "export function range_sums(nums: number[], queries: [number, number][]): number[] {\n  return [];\n}\n"
+    },
+    "solutions": {
+      "python": "def range_sums(nums, queries):\n    pref = [0]\n    for x in nums:\n        pref.append(pref[-1] + x)\n    return [pref[r + 1] - pref[l] for l, r in queries]\n",
+      "typescript": "export function range_sums(nums: number[], queries: [number, number][]): number[] {\n  const pref = [0];\n  for (const x of nums) pref.push(pref[pref.length - 1] + x);\n  return queries.map(([l, r]) => pref[r + 1] - pref[l]);\n}\n"
+    },
+    "editorial": "## The Sentinel Zero\nSetting `P[0] = 0` and `P[i+1] = P[i] + nums[i]` makes every inclusive query `[L, R]` uniformly `P[R + 1] - P[L]` with zero special-casing for `L == 0`.",
+    "test_cases": [
+      { "input": { "nums": [2, 4, 1, 5], "queries": [[0, 2], [1, 3]] }, "expected": [7, 10] },
+      { "input": { "nums": [10], "queries": [[0, 0]] }, "expected": [10] }
+    ],
+    "hints": ["Start pref = [0] and answer each [l, r] with pref[r + 1] - pref[l]."]
+  },
+  {
+    "slug": "py-verify-black-glass-box-testing",
+    "title": "Black-Box & Glass-Box Boundary Handling",
+    "kind": "fundamental",
+    "track": "track_7_testing_exceptions",
+    "difficulty": "Easy",
+    "category": "Testing & Exceptions",
+    "tags": ["testing", "boundaries", "edge-cases"],
+    "description": "Write `clamp_stats(nums, lo, hi)` that clamps each value into `[lo, hi]` and returns `[min_val, max_val]`, or `[]` if `nums` is empty.",
+    "examples": [
+      { "input": "nums=[-5, 3, 20], lo=0, hi=10", "output": "[0, 10]" },
+      { "input": "nums=[], lo=0, hi=10", "output": "[]" }
+    ],
+    "constraints": ["Handle empty input, singletons, and out-of-range values"],
+    "starter_codes": {
+      "python": "def clamp_stats(nums, lo, hi):\n    pass\n",
+      "typescript": "export function clamp_stats(nums: number[], lo: number, hi: number): number[] {\n  return [];\n}\n"
+    },
+    "solutions": {
+      "python": "def clamp_stats(nums, lo, hi):\n    if not nums:\n        return []\n    clamped = [max(lo, min(hi, x)) for x in nums]\n    return [min(clamped), max(clamped)]\n",
+      "typescript": "export function clamp_stats(nums: number[], lo: number, hi: number): number[] {\n  if (!nums.length) return [];\n  const clamped = nums.map((x) => Math.max(lo, Math.min(hi, x)));\n  return [Math.min(...clamped), Math.max(...clamped)];\n}\n"
+    },
+    "editorial": "## Boundary Partitioning\n**Black-box tests** derive from the specification (empty inputs, singletons, extremes). **Glass-box tests** exercise every branch, loop 0/1/many times, and exception handler.",
+    "test_cases": [
+      { "input": { "nums": [-5, 3, 20], "lo": 0, "hi": 10 }, "expected": [0, 10] },
+      { "input": { "nums": [], "lo": 0, "hi": 10 }, "expected": [] },
+      { "input": { "nums": [4], "lo": 0, "hi": 10 }, "expected": [4, 4] }
+    ],
+    "hints": ["Check empty input first; clamp each value via max(lo, min(hi, x))."]
+  },
+  {
+    "slug": "py-verify-exceptions-assertions",
+    "title": "Defensive Validation, try/except & Assertions",
+    "kind": "fundamental",
+    "track": "track_7_testing_exceptions",
+    "difficulty": "Easy",
+    "category": "Testing & Exceptions",
+    "tags": ["exceptions", "assertions", "defensive"],
+    "description": "Write `safe_divide_all(pairs)` that divides `a / b` (rounded to 2 decimals) for each `[a, b]` pair, returning `None` for any pair where `b == 0` instead of crashing.",
+    "examples": [
+      { "input": "pairs=[[10,2],[5,0],[7,2]]", "output": "[5.0, None, 3.5]" }
+    ],
+    "constraints": ["Catch ZeroDivisionError cleanly"],
+    "starter_codes": {
+      "python": "def safe_divide_all(pairs):\n    pass\n",
+      "typescript": "export function safe_divide_all(pairs: [number, number][]): (number | null)[] {\n  return [];\n}\n"
+    },
+    "solutions": {
+      "python": "def safe_divide_all(pairs):\n    out = []\n    for a, b in pairs:\n        try:\n            out.append(round(a / b, 2))\n        except ZeroDivisionError:\n            out.append(None)\n    return out\n",
+      "typescript": "export function safe_divide_all(pairs: [number, number][]): (number | null)[] {\n  return pairs.map(([a, b]) => (b === 0 ? null : Number((a / b).toFixed(2))));\n}\n"
+    },
+    "editorial": "## Assertions vs Exceptions\nUse `assert` strictly for internal programmer invariants (they are stripped under `python -O`). Use explicit `try/except` and `raise ValueError` for untrusted user or I/O inputs.",
+    "test_cases": [
+      { "input": { "pairs": [[10, 2], [5, 0], [7, 2]] }, "expected": [5.0, null, 3.5] }
+    ],
+    "hints": ["Wrap a / b in try/except ZeroDivisionError and append None on zero divisor."]
+  },
+  {
+    "slug": "py-modules-files-with",
+    "title": "Structured Line Parsing & Resource Cleanup",
+    "kind": "fundamental",
+    "track": "track_7_testing_exceptions",
+    "difficulty": "Easy",
+    "category": "Testing & Exceptions",
+    "tags": ["parsing", "context-managers", "files"],
+    "description": "Write `parse_kv_lines(text)` that parses newline-separated `key=value` lines (ignoring blank lines and `#` comments, trimming whitespace) into a dictionary.",
+    "examples": [
+      { "input": "text='# cfg\\nhost = localhost\\nport=3000\\n'", "output": "{'host':'localhost','port':'3000'}" }
+    ],
+    "constraints": ["Ignore comments and empty lines"],
+    "starter_codes": {
+      "python": "def parse_kv_lines(text):\n    pass\n",
+      "typescript": "export function parse_kv_lines(text: string): Record<string, string> {\n  return {};\n}\n"
+    },
+    "solutions": {
+      "python": "def parse_kv_lines(text):\n    out = {}\n    for raw in text.splitlines():\n        line = raw.strip()\n        if not line or line.startswith('#') or '=' not in line:\n            continue\n        k, v = line.split('=', 1)\n        out[k.strip()] = v.strip()\n    return out\n",
+      "typescript": "export function parse_kv_lines(text: string): Record<string, string> {\n  const out: Record<string, string> = {};\n  for (const raw of text.split(/\\r?\\n/)) {\n    const line = raw.trim();\n    if (!line || line.startsWith('#') || !line.includes('=')) continue;\n    const idx = line.indexOf('=');\n    out[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();\n  }\n  return out;\n}\n"
+    },
+    "editorial": "## Context Managers (`with`)\n`with open(path) as f:` guarantees `__exit__` closes the file descriptor even on exceptions. Streaming line-by-line (`for line in f:`) keeps memory `O(1)` for gigabyte logs.",
+    "test_cases": [
+      { "input": { "text": "# cfg\nhost = localhost\nport=3000\n" }, "expected": { "host": "localhost", "port": "3000" } }
+    ],
+    "hints": ["Split on the first '=' using split('=', 1) and strip both sides."]
+  },
+  {
+    "slug": "py-graph-adjacency-build",
+    "title": "Building Sparse Graph Adjacency Lists",
+    "kind": "fundamental",
+    "track": "track_8_graphs",
+    "difficulty": "Easy",
+    "category": "Graphs & Optimization",
+    "tags": ["graphs", "adjacency-list"],
+    "description": "Write `build_undirected_adj(n, edges)` for nodes `0..n-1` returning a list of `n` sorted neighbor lists.",
+    "examples": [
+      { "input": "n=3, edges=[[0,1],[1,2]]", "output": "[[1],[0,2],[1]]" }
+    ],
+    "constraints": ["0 <= u, v < n"],
+    "starter_codes": {
+      "python": "def build_undirected_adj(n, edges):\n    pass\n",
+      "typescript": "export function build_undirected_adj(n: number, edges: [number, number][]): number[][] {\n  return [];\n}\n"
+    },
+    "solutions": {
+      "python": "def build_undirected_adj(n, edges):\n    adj = [[] for _ in range(n)]\n    for u, v in edges:\n        adj[u].append(v)\n        adj[v].append(u)\n    return [sorted(nbrs) for nbrs in adj]\n",
+      "typescript": "export function build_undirected_adj(n: number, edges: [number, number][]): number[][] {\n  const adj: number[][] = Array.from({ length: n }, () => []);\n  for (const [u, v] of edges) {\n    adj[u].push(v);\n    adj[v].push(u);\n  }\n  return adj.map((nbrs) => nbrs.sort((a, b) => a - b));\n}\n"
+    },
+    "editorial": "## Adjacency List vs Matrix\nAn adjacency list uses `O(V + E)` memory (ideal for sparse graphs), whereas an adjacency matrix uses `O(V^2)` memory regardless of edge count.",
+    "test_cases": [
+      { "input": { "n": 3, "edges": [[0, 1], [1, 2]] }, "expected": [[1], [0, 2], [1]] }
+    ],
+    "hints": ["Append both (u -> v) and (v -> u) for undirected edges, then sort each list."]
+  },
+  {
+    "slug": "py-graph-bfs-shortest-path",
+    "title": "BFS Shortest Path on Unweighted Graphs",
+    "kind": "fundamental",
+    "track": "track_8_graphs",
+    "difficulty": "Medium",
+    "category": "Graphs & Optimization",
+    "tags": ["bfs", "graphs", "shortest-path"],
+    "description": "Write `shortest_path_len(n, edges, start, target)` returning the minimum number of edges between `start` and `target` in an undirected graph, or `-1` if unreachable.",
+    "examples": [
+      { "input": "n=4, edges=[[0,1],[1,2],[2,3],[0,3]], start=0, target=2", "output": "2" }
+    ],
+    "constraints": ["O(V + E) time"],
+    "starter_codes": {
+      "python": "from collections import deque\n\ndef shortest_path_len(n, edges, start, target):\n    pass\n",
+      "typescript": "export function shortest_path_len(n: number, edges: [number, number][], start: number, target: number): number {\n  return -1;\n}\n"
+    },
+    "solutions": {
+      "python": "from collections import deque\n\ndef shortest_path_len(n, edges, start, target):\n    if start == target:\n        return 0\n    adj = [[] for _ in range(n)]\n    for u, v in edges:\n        adj[u].append(v); adj[v].append(u)\n    q = deque([(start, 0)])\n    seen = {start}\n    while q:\n        u, dist = q.popleft()\n        for v in adj[u]:\n            if v == target:\n                return dist + 1\n            if v not in seen:\n                seen.add(v)\n                q.append((v, dist + 1))\n    return -1\n",
+      "typescript": "export function shortest_path_len(n: number, edges: [number, number][], start: number, target: number): number {\n  if (start === target) return 0;\n  const adj: number[][] = Array.from({ length: n }, () => []);\n  for (const [u, v] of edges) { adj[u].push(v); adj[v].push(u); }\n  const q: [number, number][] = [[start, 0]];\n  const seen = new Set<number>([start]);\n  let head = 0;\n  while (head < q.length) {\n    const [u, dist] = q[head++];\n    for (const v of adj[u]) {\n      if (v === target) return dist + 1;\n      if (!seen.has(v)) { seen.add(v); q.push([v, dist + 1]); }\n    }\n  }\n  return -1;\n}\n"
+    },
+    "editorial": "## Frontier Expansion Invariant\nBFS explores nodes in non-decreasing order of edge distance. Always mark nodes visited **when enqueuing**, not when dequeuing, to prevent exponential duplicate enqueues.",
+    "test_cases": [
+      { "input": { "n": 4, "edges": [[0, 1], [1, 2], [2, 3], [0, 3]], "start": 0, "target": 2 }, "expected": 2 },
+      { "input": { "n": 3, "edges": [[0, 1]], "start": 0, "target": 2 }, "expected": -1 }
+    ],
+    "hints": ["Use a FIFO queue storing (node, distance) and mark neighbors visited upon enqueue."]
+  },
+  {
+    "slug": "py-graph-dfs-cycle-detect",
+    "title": "3-Color DFS Cycle Detection in Directed Graphs",
+    "kind": "fundamental",
+    "track": "track_8_graphs",
+    "difficulty": "Medium",
+    "category": "Graphs & Optimization",
+    "tags": ["dfs", "cycle-detection", "dag"],
+    "description": "Write `has_directed_cycle(n, edges)` returning `True` if the directed graph on `0..n-1` contains a cycle, and `False` if it is a DAG.",
+    "examples": [
+      { "input": "n=3, edges=[[0,1],[1,2],[2,0]]", "output": "True" },
+      { "input": "n=4, edges=[[0,1],[0,2],[1,3],[2,3]]", "output": "False", "explanation": "Diamond DAG has no cycle" }
+    ],
+    "constraints": ["O(V + E) time"],
+    "starter_codes": {
+      "python": "def has_directed_cycle(n, edges):\n    pass\n",
+      "typescript": "export function has_directed_cycle(n: number, edges: [number, number][]): boolean {\n  return false;\n}\n"
+    },
+    "solutions": {
+      "python": "def has_directed_cycle(n, edges):\n    adj = [[] for _ in range(n)]\n    for u, v in edges:\n        adj[u].append(v)\n    state = [0] * n  # 0=white, 1=grey, 2=black\n    def dfs(u):\n        state[u] = 1\n        for v in adj[u]:\n            if state[v] == 1:\n                return True\n            if state[v] == 0 and dfs(v):\n                return True\n        state[u] = 2\n        return False\n    return any(state[i] == 0 and dfs(i) for i in range(n))\n",
+      "typescript": "export function has_directed_cycle(n: number, edges: [number, number][]): boolean {\n  const adj: number[][] = Array.from({ length: n }, () => []);\n  for (const [u, v] of edges) adj[u].push(v);\n  const state = new Array(n).fill(0);\n  const dfs = (u: number): boolean => {\n    state[u] = 1;\n    for (const v of adj[u]) {\n      if (state[v] === 1) return true;\n      if (state[v] === 0 && dfs(v)) return true;\n    }\n    state[u] = 2;\n    return false;\n  };\n  for (let i = 0; i < n; i++) if (state[i] === 0 && dfs(i)) return true;\n  return false;\n}\n"
+    },
+    "editorial": "## Why 3 Colors Are Mandatory\nA 2-state visited set misclassifies diamond DAGs (`0->1->3`, `0->2->3`) as cycles. Tracking **WHITE (0)** unvisited, **GREY (1)** on active recursion stack, and **BLACK (2)** fully explored detects true back-edges exclusively.",
+    "test_cases": [
+      { "input": { "n": 3, "edges": [[0, 1], [1, 2], [2, 0]] }, "expected": true },
+      { "input": { "n": 4, "edges": [[0, 1], [0, 2], [1, 3], [2, 3]] }, "expected": false }
+    ],
+    "hints": ["Track 3 states: 0=unvisited, 1=visiting (on stack), 2=done."]
+  },
+  {
+    "slug": "py-graph-greedy-vs-optimal",
+    "title": "Greedy Scheduling vs Dynamic Programming",
+    "kind": "fundamental",
+    "track": "track_8_graphs",
+    "difficulty": "Medium",
+    "category": "Graphs & Optimization",
+    "tags": ["greedy", "intervals", "optimization"],
+    "description": "Write `max_non_overlapping(intervals)` returning the maximum number of non-overlapping `[start, end]` intervals you can select (earliest-finish greedy choice).",
+    "examples": [
+      { "input": "intervals=[[1,3],[2,4],[3,5],[0,6]]", "output": "2" }
+    ],
+    "constraints": ["Intervals touching at endpoints (e.g. [1,3] and [3,5]) do not overlap"],
+    "starter_codes": {
+      "python": "def max_non_overlapping(intervals):\n    pass\n",
+      "typescript": "export function max_non_overlapping(intervals: [number, number][]): number {\n  return 0;\n}\n"
+    },
+    "solutions": {
+      "python": "def max_non_overlapping(intervals):\n    count = 0\n    last_end = float('-inf')\n    for start, end in sorted(intervals, key=lambda x: x[1]):\n        if start >= last_end:\n            count += 1\n            last_end = end\n    return count\n",
+      "typescript": "export function max_non_overlapping(intervals: [number, number][]): number {\n  const sorted = [...intervals].sort((a, b) => a[1] - b[1]);\n  let count = 0, lastEnd = -Infinity;\n  for (const [s, e] of sorted) {\n    if (s >= lastEnd) { count++; lastEnd = e; }\n  }\n  return count;\n}\n"
+    },
+    "editorial": "## The Greedy Choice Property\nSorting by earliest finish time leaves the maximum remaining timeline for subsequent intervals—provably optimal via an exchange argument. Contrast this with 0/1 Knapsack or arbitrary-coin change, where greedy fails and DP is required.",
+    "test_cases": [
+      { "input": { "intervals": [[1, 3], [2, 4], [3, 5], [0, 6]] }, "expected": 2 },
+      { "input": { "intervals": [[1, 2], [2, 3], [3, 4]] }, "expected": 3 }
+    ],
+    "hints": ["Sort by end time ascending, then greedily pick each interval whose start >= last_end."]
+  }
+]

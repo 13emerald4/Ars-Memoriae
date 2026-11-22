@@ -1,0 +1,1498 @@
+\documentclass[10pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[letterpaper, left=0.65in, textwidth=4.7in, marginparsep=0.3in, marginparwidth=2.45in, top=0.75in, bottom=0.75in]{geometry}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage[most]{tcolorbox}
+\usepackage{multicol}
+\usepackage[titles]{tocloft}
+\usepackage{marginnote}
+\usepackage{marginfix}
+\usepackage{ragged2e}
+\usepackage{hyperref}
+
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black}
+\setlist{nosep,leftmargin=1.3em,topsep=2pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\setcounter{secnumdepth}{0}
+\setcounter{tocdepth}{1}
+
+% Heading Formats
+\titleformat{\part}[block]{\LARGE\bfseries\color{blue!40!black}}{}{0pt}{}
+\titlespacing*{\part}{0pt}{10pt}{2pt}
+\titleformat{\section}{\Large\bfseries\color{blue!50!black}}{}{0pt}{}
+\titlespacing*{\section}{0pt}{14pt}{4pt}
+\titleformat{\subsection}{\normalsize\bfseries\itshape\color{black!80}}{}{0pt}{}
+\titlespacing*{\subsection}{0pt}{7pt}{1pt}
+
+% Editorial Table of Contents (Book Style)
+\renewcommand{\contentsname}{Contents}
+\renewcommand{\cfttoctitlefont}{\hfill\Large\bfseries\color{blue!50!black}}
+\renewcommand{\cftaftertoctitle}{\hfill}
+\setlength{\cftbeforetoctitleskip}{4pt}
+\setlength{\cftaftertoctitleskip}{12pt}
+
+% Parts: Structural rubrics without page numbers or dot leaders
+\renewcommand{\cftpartfont}{\large\bfseries\color{blue!40!black}}
+\setlength{\cftbeforepartskip}{11pt}
+\setlength{\cftpartindent}{0pt}
+\cftpagenumbersoff{part}
+\renewcommand{\cftpartleader}{\hfill}
+
+% Sections/Chapters: Indented, clean whitespace, flush-right page numbers
+\renewcommand{\cftsecfont}{\normalsize\normalfont}
+\renewcommand{\cftsecpagefont}{\normalsize\normalfont\color{black!75}}
+\setlength{\cftsecindent}{1.4em}
+\setlength{\cftsecnumwidth}{1.8em}
+\setlength{\cftbeforesecskip}{4pt}
+\renewcommand{\cftsecleader}{\hfill}
+\cftsetpnumwidth{1.6em}
+\cftsetrmarg{2.0em}
+
+% Code Listing Settings (adapt language as needed)
+\lstset{basicstyle=\ttfamily\footnotesize,columns=fullflexible,keepspaces=true,
+  frame=l,framerule=1.5pt,rulecolor=\color{gray!50},xleftmargin=8pt,
+  aboveskip=4pt,belowskip=4pt,showstringspaces=false,upquote=true,breaklines=true}
+\newcommand{\code}[1]{{\ttfamily\small #1}}
+
+% Collision-Free Sidenote Engine
+\setlength{\marginparpush}{7pt}
+\newcommand{\marginnotestyle}{\scriptsize\sffamily\color{black!80}\RaggedRight}
+
+\makeatletter
+\newcommand{\safemargin}[1]{%
+  \ifinner%
+    % Suppressed inside tables/boxes to avoid collisions and "Float(s) lost" crashes
+  \else%
+    \marginpar{\marginnotestyle #1}%
+  \fi%
+}
+\makeatother
+
+\newcommand{\term}[3][]{%
+  \hypertarget{t:#2}{\textbf{#3}}%
+  \if\relax\detokenize{#1}\relax\else%
+    \safemargin{#1}%
+  \fi%
+}
+\renewcommand{\footnote}[1]{\safemargin{#1}}
+\newcommand{\ix}[3]{\hyperlink{t:#1}{#2}\dotfill #3\par}
+
+% Socratic Callout Boxes
+\newtcolorbox{corebox}{colback=blue!4,colframe=blue!45!black,boxrule=0.6pt,arc=2pt,
+  left=6pt,right=6pt,top=3pt,bottom=3pt,fontupper=\small}
+\newtcolorbox{ponder}{colback=green!3,colframe=green!35!black,boxrule=0.5pt,arc=2pt,
+  left=6pt,right=6pt,top=2pt,bottom=2pt,fontupper=\small,
+  title={\small\bfseries Think it through},coltitle=white,colbacktitle=green!35!black,
+  toptitle=1pt,bottomtitle=1pt}
+
+\newcommand{\chap}[2]{\section*{#1}\addcontentsline{toc}{section}{#1}\vspace{-2pt}\begin{corebox}\textbf{Core idea.} #2\end{corebox}}
+\newcommand{\partq}[2]{\part*{#1}{\small\itshape #2}}
+
+% ---------------------------------------------------------------------------
+% Document-specific additions
+\usepackage{lmodern}     % scalable fonts: avoids "Font ecsx0800 not found" on some TeX installs
+\usepackage{needspace}   % \Needspace before short listings
+\newcommand{\ch}[1]{{\small\color{black!55}[#1]}}   % source tag, e.g. \ch{Ch 13, p269}
+\newcommand{\mantra}[1]{\par\smallskip{\color{blue!45!black}\textbf{Rule:}~\emph{#1}}\par}
+\newcommand{\partline}[2]{\phantomsection\partq{#1}{#2}}  % titlesec adds the TOC entry
+\usepackage{amssymb}
+\setlength{\emergencystretch}{3em}  % let lines with unbreakable inline code stretch instead of overflowing
+% JavaScript and TypeScript for listings, plus the non-ASCII characters the code uses.
+\lstdefinelanguage{JavaScript}{
+  morekeywords={async,await,break,case,catch,class,const,continue,default,delete,do,else,export,extends,
+    false,finally,for,from,function,get,if,import,in,instanceof,let,new,null,of,return,set,static,super,
+    switch,this,throw,true,try,typeof,undefined,var,void,while,yield},
+  sensitive=true,morecomment=[l]{//},morecomment=[s]{/*}{*/},
+  morestring=[b]",morestring=[b]',morestring=[b]`}
+\lstdefinelanguage{TypeScript}[]{JavaScript}{
+  morekeywords={type,interface,enum,namespace,implements,private,protected,public,readonly,keyof,
+    unknown,never,any,number,string,boolean,satisfies,as,is,declare,abstract}}
+\lstset{keywordstyle=\color{blue!55!black}\bfseries,commentstyle=\color{green!35!black}\itshape,
+  stringstyle=\color{red!45!black},extendedchars=true,
+  literate={°}{{\textdegree}}1 {π}{{$\pi$}}1 {²}{{$^2$}}1 {×}{{$\times$}}1 {–}{{--}}1 {—}{{---}}1
+    {…}{{\ldots}}1 {→}{{$\rightarrow$}}1 {≥}{{$\geq$}}1}
+% Card-by-card solution guide
+\newcommand{\trap}{\par\raggedright\textbf{\color{red!70!black}Trap:}~}
+\newcommand{\core}[1]{\textit{#1}\par}
+\newcommand{\practice}{\textbf{\color{blue!50!black}Practice:}~}
+\newcommand{\deckhead}[2]{\par\ifdim\dimexpr\pagegoal-\pagetotal\relax<0.3\textheight\newpage\fi\bigskip\phantomsection\addcontentsline{toc}{section}{#1}{\Large\bfseries\color{blue!50!black}#1}\hfill{\small #2 cards}\par\nopagebreak\vspace{3pt}}
+\newcommand{\cardhead}[2]{\par\ifdim\dimexpr\pagegoal-\pagetotal\relax<0.28\textheight\newpage\fi\bigskip\noindent{\color{blue!50!black}\rule{\linewidth}{0.8pt}}\par\nopagebreak\noindent{\large\bfseries\color{blue!50!black}#1:}\enspace{\ttfamily #2}\par\nopagebreak}
+\newcommand{\cardsub}[1]{\par\medskip\noindent{\small\bfseries\scshape\color{black!70}#1}\par\nopagebreak\vspace{1pt}}
+\newcommand{\readchap}[2]{\par\medskip\noindent{\bfseries\color{blue!40!black}#1}\par\nopagebreak\noindent{\small\textit{Core idea:} #2}\par\nopagebreak}
+\newcommand{\readq}[1]{\par\smallskip\noindent{\bfseries\itshape\small #1}\par\nopagebreak}
+\newcommand{\cardend}{\par\medskip}
+\newtcolorbox{sumbox}[1]{breakable,colback=orange!3,colframe=orange!45!black,boxrule=0.5pt,arc=2pt,
+  left=6pt,right=6pt,top=3pt,bottom=3pt,fontupper=\small,title={\small\bfseries #1},coltitle=white,
+  colbacktitle=orange!45!black,toptitle=1pt,bottomtitle=1pt}
+\newlist{cardrows}{itemize}{1}
+\setlist[cardrows]{label={},leftmargin=5.3em,labelwidth=4.9em,labelsep=0.4em,labelindent=0pt,align=left,font=\small\bfseries,before={\small\raggedright},itemsep=0.5pt,topsep=2pt}
+% ---------------------------------------------------------------------------
+\begin{document}
+{\noindent\raggedright\LARGE\bfseries\color{blue!40!black} Part 3 · Intermediate TypeScript\par}
+\vspace{2pt}{\large A Socratic study guide to the 17 cards of Part 3 of “JavaScript \& TypeScript: Zero to Mastery”}\par\vspace{6pt}
+\begin{corebox}\textbf{The question this guide answers.} How do you make the compiler enforce the rules of your data, instead of checking them by hand?\par\smallskip
+Part A asks how to describe data precisely (discriminated unions and generics); B, how to derive and protect types (utility types and classes); C, which compiler checks catch the bugs that remain. Every section heading is a question, answered in its first sentence; every code sample was run or compiled. The Card-by-Card Solution Guide then works every card in the deck.\end{corebox}
+\vspace{6pt}\tableofcontents\vspace{6pt}
+\newpage
+\partline{A. How do you describe data precisely?}{Discriminated unions, generics and keyof.}
+\phantomsection\label{ch:c21}
+\chap{21. How do you model data that comes in several shapes?}{A discriminated union gives each variant a literal tag; checking the tag narrows to that variant, and assigning the leftover value to \code{never} makes the compiler catch a forgotten case.}
+
+\subsection{What is a discriminated union?}% sec:c21-tag
+A union of object types that share one property whose value is a fixed string for each variant: the \term[\textbf{Discriminant:} the shared property (such as \code{kind}) whose literal value tells the variants of a union apart. Like a coloured tag on each parcel saying what is inside.]{discriminant}{discriminant}. Checking it, as in \code{s.kind === "circle"}, narrows the value to that one variant, so its own properties become available.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Shape =
+  | { kind: "circle"; r: number }
+  | { kind: "square"; side: number };
+function area(s: Shape): number {
+  return s.kind === "circle" ? Math.PI * s.r ** 2 : s.side ** 2;
+}
+console.log(area({ kind: "square", side: 3 }));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{9}}\par
+
+\subsection{How does the compiler catch a forgotten case?}% sec:c21-never
+Through \term[\textbf{never:} the type with no possible values. Like an empty set: nothing can be put in it.]{never}{never}. In a \code{switch}, each \code{case} removes one variant; in \code{default} nothing should be left, so the value has type \code{never}. Assigning it to a \code{never} variable compiles only if every variant was handled. Add a variant without a case and that line fails.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Light = "red" | "green" | "amber";
+function next(l: Light): Light {
+  switch (l) {
+    case "red": return "green";
+    case "green": return "amber";
+    default: {
+      const unhandled: never = l;
+      return unhandled;
+    }
+  }
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 7: Type '"amber"' is not assignable to type 'never'.}\par
+
+\subsection{Why model actions as a union instead of one loose type?}% sec:c21-actions
+Because then each action carries exactly its own data, and the compiler rejects impossible actions where they are written. With one loose type such as \code{\{ type: string; amount?: number \}}, an ``add'' with no amount, or an action that doesn't exist, compiles and fails later.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Action = { type: "add"; amount: number } | { type: "reset" };
+function apply(n: number, a: Action): number {
+  return a.type === "add" ? n + a.amount : 0;
+}
+apply(1, { type: "add" });
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 5: Argument of type '\{ type: "add"; \}' is not assignable to parameter of type 'Action'.   Property 'amount' is missing in type '\{ type: "add"; \}' but required in type '\{ type: "add"; amount: number; \}'.}\par
+
+\mantra{Tag every variant; let never check you handled them all.}
+\begin{ponder}You add a \code{triangle} variant to \code{Shape}, but \code{area} uses \code{if}/\code{else} with a final \code{else} for squares instead of a \code{switch} with \code{never}. Does the compiler still warn you? Where?\end{ponder}
+
+\phantomsection\label{ch:c22}
+\chap{22. How do you write code that works for many types without losing them?}{A type parameter links the types going in to the types coming out; \code{extends} demands a minimum shape; \code{keyof T} lists the keys of \code{T}, and \code{T[K]} is the type stored under key \code{K}.}
+
+\subsection{What is a type parameter?}% sec:c22-generic
+A variable that holds a type. In \code{function first<T>(arr: T[]): T | undefined}, \code{T} is a type variable: TypeScript fills it in from the argument, so \code{first(["a"])} returns \code{string | undefined}. A function written this way is \term[\textbf{Generic:} written with type parameters, so it works for many types while keeping each one. Like a mould that takes the shape of whatever you pour in.]{generic}{generic}. With \code{any} instead, the result would lose its type.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function first<T>(arr: T[]): T | undefined {
+  return arr[0];
+}
+const word: string | undefined = first(["a", "b"]);
+console.log(word, first([]));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{a undefined}}\par
+
+\subsection{How do you require a minimum shape?}% sec:c22-constraint
+With a \term[\textbf{Constraint:} \code{T extends Shape}, requiring every type used for \code{T} to have at least that shape. Like a height bar at a ride: anything that clears it may go on.]{constraint}{constraint}: \code{T extends \{ length: number \}} lets the body use \code{.length} and makes the compiler reject arguments without it, while \code{T} still remembers the exact type passed in.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function longer<T extends { length: number }>(a: T, b: T): T {
+  return b.length > a.length ? b : a;
+}
+console.log(longer("ab", "c"), longer([1], [2, 3]).length);
+longer(1, 2);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 5: Argument of type 'number' is not assignable to parameter of type '\{ length: number; \}'.}\par
+{\small\textit{Prints:}~\code{ab 2}}\par
+
+\subsection{How do you type a property name?}% sec:c22-keyof
+With \code{keyof}. The \term[\textbf{keyof:} the operator that turns an object type into the union of its keys, e.g. \code{"id" | "name"}. Like the list of labels on a cabinet's drawers.]{keyof}{keyof} operator turns an object type into the union of its keys, and the indexed access type \code{T[K]} looks up the type stored under key \code{K}. Together, \code{K extends keyof T} allows only real keys, and \code{T[K]} gives the result the right type.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function get<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key];
+}
+const user = { id: 1, name: "Ada" };
+const userName: string = get(user, "name");
+console.log(userName);
+get(user, "age");
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 7: Argument of type '"age"' is not assignable to parameter of type '"name" | "id"'.}\par
+{\small\textit{Prints:}~\code{Ada}}\par
+
+\mantra{Name the type you don't know yet; constrain only what you use.}
+\begin{ponder}\code{function first<T>(arr: T[]): T} (without \code{| undefined}) compiles. Why is it still a lie, and which compiler option in \hyperref[ch:c25]{Ch.~25} exposes it?\end{ponder}
+
+\partline{B. How do you derive and protect types?}{Utility types and TypeScript classes.}
+\phantomsection\label{ch:c23}
+\chap{23. How do you build new types from existing ones?}{Utility types derive new types from old ones: \code{Partial} (all optional), \code{Readonly} (no reassignment, one level deep, compile time only), \code{Pick} and \code{Omit} (keep or drop keys), \code{Record} (an object with exactly these keys).}
+
+\subsection{How do you type a patch?}% sec:c23-partial
+With \code{Partial<T>}, a \term[\textbf{Utility type:} a built-in generic type that derives a new type from an existing one, such as \code{Partial<T>}. Like a stencil that turns one shape into a related one.]{utility}{utility type} that makes every property of \code{T} optional. A patch to a todo may contain any subset of its fields---and, being a fresh literal, nothing else.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+interface Todo { title: string; done: boolean }
+function update(t: Todo, changes: Partial<Todo>): Todo {
+  return { ...t, ...changes };
+}
+console.log(update({ title: "x", done: false }, { done: true }).done);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{true}}\par
+
+\subsection{How do you remove a field from a type?}% sec:c23-omit
+With \code{Omit<T, Keys>} (or keep only some with \code{Pick<T, Keys>}). Removing the field from the type does not remove it from the object: do that at run time too, for example with rest destructuring. Each alone leaves a gap.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+interface User { id: number; hash: string }
+function publicUser(u: User): Omit<User, "hash"> {
+  const { hash, ...rest } = u;
+  return rest;
+}
+console.log(Object.keys(publicUser({ id: 1, hash: "x" })).join());
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{id}}\par
+
+\subsection{How do you type an object with a fixed set of keys?}% sec:c23-record
+With \code{Record<Keys, Type>}: an object whose keys are exactly \code{Keys} and whose values are \code{Type}. Every key is required, so the compiler makes you fill in each one (for example, start every count at 0).
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Role = "admin" | "viewer";
+const counts: Record<Role, number> = { admin: 1 };
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 2: Property 'viewer' is missing in type '\{ admin: number; \}' but required in type 'Record<Role, number>'.}\par
+
+\subsection{Does Readonly make an object immutable?}% sec:c23-readonly
+No. \code{Readonly<T>} stops reassigning \code{T}'s own properties, and only while compiling. An array or object inside can still be changed, and nothing is enforced at run time.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Team = { name: string; members: string[] };
+const team: Readonly<Team> = { name: "Core", members: [] };
+team.members.push("Ada");
+console.log(team.members.length);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{1}}\par
+
+\mantra{Derive types from the source of truth instead of copying them.}
+\begin{ponder}\code{User} gains a \code{phone} field. Which keeps the public type up to date: \code{Omit<User, "hash">}, or a hand-written \code{\{ id: number; name: string \}}? Which would you rather maintain?\end{ponder}
+
+\phantomsection\label{ch:c24}
+\chap{24. What does TypeScript add to classes?}{TypeScript adds \code{public}, \code{private}, \code{protected} and \code{readonly}, parameter properties and \code{implements}. Its \code{private} is checked only by the compiler; a \code{\#field} stays private at run time.}
+
+\subsection{How do you declare fields concisely?}% sec:c24-modifiers
+With parameter properties: a constructor parameter prefixed by an \term[\textbf{Access modifier:} \code{public}, \code{private} or \code{protected} on a class member, saying who may use it. Like a sign on a door: ``staff only''.]{modifier}{access modifier} or \code{readonly} becomes a field with the same name and value, so \code{constructor(private readonly c: number) \{\}} declares and assigns \code{c} in one go. A \code{get} accessor with no setter is read-only to callers.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+class Temp {
+  constructor(private readonly c: number) {}
+  get f(): number { return (this.c * 9) / 5 + 32; }
+}
+console.log(new Temp(100).f);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{212}}\par
+
+\subsection{How private is private?}% sec:c24-private
+Only as private as the compiler is strict. TypeScript's \code{private} is checked during type checking, and bracket access (\code{obj["secret"]}) is allowed as an escape hatch. At run time the field is an ordinary property. A JavaScript \code{\#field} (Part~1, Ch.~12) cannot be reached from outside at all.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+class Box {
+  private secret = 1;
+}
+const b = new Box();
+console.log(b["secret"]);
+console.log(b.secret);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 6: Property 'secret' is private and only accessible within class 'Box'.}\par
+{\small\textit{Prints:}~\code{1}\enspace\textcolor{black!45}{|}\enspace \code{1}}\par
+
+\subsection{How do you make a class promise an interface?}% sec:c24-implements
+With \code{implements}: \code{class C implements I} makes the compiler check that the class has everything the interface lists, and report the class if it doesn't.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+interface Logger { log(m: string): void }
+class Quiet implements Logger {
+  write(m: string) {}
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 2: Class 'Quiet' incorrectly implements interface 'Logger'.   Property 'log' is missing in type 'Quiet' but required in type 'Logger'.}\par
+
+\mantra{private stops the compiler; \# stops the program.}
+\begin{ponder}A test wants to read a \code{private} field. Why does \code{obj["field"]} compile, and why is that both useful and risky?\end{ponder}
+
+\partline{C. Which checks catch what is left?}{strictNullChecks, noUncheckedIndexedAccess and satisfies.}
+\phantomsection\label{ch:c25}
+\chap{25. Which compiler checks catch the most bugs?}{\code{strict} turns on \code{strictNullChecks}, so \code{null} and \code{undefined} must be handled; \code{noUncheckedIndexedAccess} (not part of \code{strict}) adds \code{| undefined} to index lookups; \code{satisfies} checks a value without widening its type.}
+
+\subsection{What does strictNullChecks change?}% sec:c25-null
+It makes \code{null} and \code{undefined} their own types. With \term[\textbf{strict mode:} the \code{strict} compiler option, which turns on a group of checks including \code{strictNullChecks} and \code{noImplicitAny}. Like the strictest proofreading setting.]{strict}{strict mode} on, a value that may be \code{null} must be tested before you use its methods or properties; \code{?.} and \code{??} are the short ways to do it.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function initial(name: string | null): string {
+  return name[0];
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 2: 'name' is possibly 'null'.}\par
+
+\subsection{Why might arr[0] be undefined when its type says number?}% sec:c25-index
+Because an index can be past the end of the array, and by default TypeScript types \code{arr[0]} as the element type anyway. Turning on \code{noUncheckedIndexedAccess} adds \code{undefined} to every index lookup, so you must handle the missing case. Without it, this code compiles and then crashes on an empty array.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+const scores: number[] = [];
+const first = scores[0];
+console.log(first.toFixed(1));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 3: 'first' is possibly 'undefined'.}\par
+{\small\textit{Prints:}}
+\begin{lstlisting}
+TypeError: Cannot read properties of undefined (reading 'toFixed')
+\end{lstlisting}
+
+\subsection{How do you check a value against a type without losing its exact type?}% sec:c25-satisfies
+With \code{satisfies}. An annotation replaces the value's type with the annotated one; \code{satisfies} checks that the value matches the type and keeps the more precise type TypeScript inferred.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Colors = Record<"red" | "blue", string | number[]>;
+const palette = { red: "#f00", blue: [0, 0, 255] } satisfies Colors;
+console.log(palette.red.toUpperCase());
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{\#F00}}\par
+
+\mantra{Turn the checks on; let the compiler find the null before your users do.}
+\begin{ponder}With \code{noUncheckedIndexedAccess}, \code{arr[0]} is \code{number | undefined} even right after \code{if (arr.length > 0)}. Why can't TypeScript connect the two, and what would you write instead?\end{ponder}
+
+\phantomsection\label{synthesis}
+\section*{How the Parts Answer the Question}\addcontentsline{toc}{section}{How the Parts Answer the Question}
+
+The compiler can only enforce rules it can see. Each Part is a way of writing a rule down so that it can.
+
+\textbf{Precise descriptions (A).} A discriminated union writes down ``a shape is one of these, and nothing else'', so a missing case fails at the \code{never} line and an impossible action fails where it is written. A generic writes down ``what comes out has the type of what went in'', and \code{keyof} writes down ``only these keys''. Without them, the same rules live only in comments and your memory.
+
+\textbf{Derived and protected types (B).} Utility types derive one type from another, so a change to the source (a new field) flows into every derived type. Access modifiers and \code{implements} write down who may touch what and what a class promises---checked by the compiler, though TypeScript's \code{private}, unlike \code{\#}, is gone at run time.
+
+\textbf{The remaining holes (C).} Even precise types can lie: \code{arr[0]} claims a value that may not exist, and a nullable value is easy to use unchecked. \code{strictNullChecks} and \code{noUncheckedIndexedAccess} close those holes; \code{satisfies} checks without losing precision.
+
+\textbf{The strongest objection} is that these types grow more complex than the code they describe. The answer: each one replaces a check you would otherwise write and test by hand at every call site---and unlike a hand check, the compiler never forgets one.
+
+\section*{Test Yourself}\addcontentsline{toc}{section}{Test Yourself}
+Answer without looking; the link after each question points to the chapter that holds the answer.
+\begin{enumerate}[leftmargin=1.6em,itemsep=3pt]
+\item What makes a union ``discriminated'', and what does checking the discriminant do? \hfill{\small\hyperref[ch:c21]{$\rightarrow$ Ch.~ 21}}
+\item How does assigning to a \code{never} variable catch a forgotten case? \hfill{\small\hyperref[ch:c21]{$\rightarrow$ Ch.~ 21}}
+\item What does the \code{T} in \code{first\textless{}T\textgreater{}(arr: T[])} capture that \code{any} would lose? \hfill{\small\hyperref[ch:c22]{$\rightarrow$ Ch.~ 22}}
+\item What does \code{K extends keyof T} allow, and what is \code{T[K]}? \hfill{\small\hyperref[ch:c22]{$\rightarrow$ Ch.~ 22}}
+\item Why must you remove a field at run time as well as with \code{Omit}? \hfill{\small\hyperref[ch:c23]{$\rightarrow$ Ch.~ 23}}
+\item Does \code{Readonly\textless{}T\textgreater{}} stop \code{team.members.push(...)}? Why? \hfill{\small\hyperref[ch:c23]{$\rightarrow$ Ch.~ 23}}
+\item How private is TypeScript's \code{private} at run time, compared with \code{\#}? \hfill{\small\hyperref[ch:c24]{$\rightarrow$ Ch.~ 24}}
+\item What does \code{noUncheckedIndexedAccess} change about \code{arr[0]}? \hfill{\small\hyperref[ch:c25]{$\rightarrow$ Ch.~ 25}}
+\item How does \code{satisfies} differ from a type annotation? \hfill{\small\hyperref[ch:c25]{$\rightarrow$ Ch.~ 25}}
+\end{enumerate}
+\newpage\phantomsection\partline{Card-by-Card Solution Guide}{One entry for every card in this Part's decks.}
+\begin{corebox}\textbf{How this part works.} Each entry is self-contained: it repeats the card, the terms it needs and the chapter sections it drills, so you can study a card without turning back. That repetition is deliberate (the one exception to saying each thing once). For each card: the card as it appears in your deck; how to solve it (approach, what must stay true, what lives in memory, the types involved, how it fails, how to test it) and the trap that most often costs it; the solution, checked by actually running it; and the readings from the chapters.\end{corebox}
+\subsection*{Which card drills which chapters?}
+{\footnotesize\begin{tabularx}{\linewidth}{@{}rXl@{}}\toprule
+\textbf{\#} & \textbf{Card} & \textbf{Chapters it drills}\\\midrule
+1 & \code{area(shape)} & Ch.~\hyperref[ch:c21]{21}\\
+2 & Does it compile? (ts21-exhaustive) & Ch.~\hyperref[ch:c21]{21}\\
+3 & \code{Type the counter\textquotesingle{}s actions} & Ch.~\hyperref[ch:c21]{21}\\
+4 & \code{firstElement\textless{}T\textgreater{}(arr)} & Ch.~\hyperref[ch:c22]{22}\\
+5 & \code{longest\textless{}T\textgreater{}(a, b)} & Ch.~\hyperref[ch:c22]{22}\\
+6 & \code{getProperty(obj, key)} & Ch.~\hyperref[ch:c22]{22}\\
+7 & \code{pluck(items, key)} & Ch.~\hyperref[ch:c22]{22}\\
+8 & \code{updateTodo(todo, changes)} & Ch.~\hyperref[ch:c23]{23}\\
+9 & \code{toPublicUser(user)} & Ch.~\hyperref[ch:c23]{23}\\
+10 & \code{countByRole(roles)} & Ch.~\hyperref[ch:c23]{23}\\
+11 & Does it compile? (ts23-readonly-shallow) & Ch.~\hyperref[ch:c23]{23}\\
+12 & \code{class Temperature} & Ch.~\hyperref[ch:c24]{24}\\
+13 & Does it compile? (ts24-private-vs-hash) & Ch.~\hyperref[ch:c24]{24}\\
+14 & \code{class MemoryLogger implements Logger} & Ch.~\hyperref[ch:c24]{24}\\
+15 & Does it compile? (ts25-strict-null) & Ch.~\hyperref[ch:c25]{25}\\
+16 & Does it compile? (ts25-unchecked-index) & Ch.~\hyperref[ch:c25]{25}\\
+17 & Does it compile? (ts25-satisfies) & Ch.~\hyperref[ch:c25]{25}\\
+\bottomrule\end{tabularx}}\par
+\deckhead{21 · Discriminated Unions \& Exhaustiveness}{3}
+\begin{corebox}\textbf{Core idea.} A discriminated union gives each variant a literal tag; checking the tag narrows to that variant, and assigning the leftover value to \code{never} makes the compiler catch a forgotten case.\end{corebox}
+\begin{sumbox}{Deck summary sheet --- 21 · Discriminated Unions \& Exhaustiveness}
+Give each variant of a union a literal tag (\code{kind: \textquotedbl{}circle\textquotedbl{}}) and checking the tag narrows to that variant. Assigning the leftover value to \code{never} in the \code{default} branch makes the compiler flag any variant you forgot.\par
+\smallskip{\footnotesize Read more: \href{https://www.typescriptlang.org/docs/handbook/2/narrowing.html}{TypeScript Handbook — Narrowing: discriminated unions}}\end{sumbox}
+\cardhead{Card 1 --- area(shape)}{write · typescript · Easy}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Discriminant:} the shared property (such as \code{kind}) whose literal value tells the variants of a union apart. Like a coloured tag on each parcel saying what is inside.\par\smallskip \textbf{never:} the type with no possible values. Like an empty set: nothing can be put in it.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c21]{Ch.~21} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/narrowing.html}{TypeScript Handbook — Narrowing}.}\par
+\cardsub{The card}
+\textbf{area(shape)}\par
+Finish \code{area} for every \code{Shape}, switching on \code{kind}, and add a \code{default} branch that assigns \code{shape} to a \code{never} variable so a new shape can't be forgotten.\par
+\begin{lstlisting}[language=TypeScript]
+type Shape =
+  | { kind: "circle"; radius: number }
+  | { kind: "square"; side: number }
+  | { kind: "rect"; width: number; height: number };
+
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case "circle":
+      return Math.PI * shape.radius ** 2;
+    // TODO: square, rect, and a never check
+  }
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Switch on \code{shape.kind} with a case per variant, and in \code{default} assign \code{shape} to a \code{never} variable.
+\item[Invariants] Each case sees exactly one variant; \code{default} sees none.
+\item[Memory] No state.
+\item[Types] Shape in; number out.
+\item[Failure] A missing case returns undefined at run time and fails to compile with the never check.
+\item[Tests] One shape of each kind; a type test rejects a triangle.
+\end{cardrows}
+\trap Without the never line, a new variant fails silently.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+type Shape =
+  | { kind: "circle"; radius: number }
+  | { kind: "square"; side: number }
+  | { kind: "rect"; width: number; height: number };
+
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case "circle":
+      return Math.PI * shape.radius ** 2;
+    case "square":
+      return shape.side ** 2;
+    case "rect":
+      return shape.width * shape.height;
+    default: {
+      const unreachable: never = shape;
+      throw new Error(`unknown shape: ${JSON.stringify(unreachable)}`);
+    }
+  }
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 3 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} Inside \code{case \textquotedbl{}rect\textquotedbl{}}, TypeScript knows shape has width and height. In default every variant has been handled, so shape is \code{never}; add a variant without a case and that assignment stops compiling.}\par
+\cardsub{From the readings}
+\readchap{21. How do you model data that comes in several shapes?}{A discriminated union gives each variant a literal tag; checking the tag narrows to that variant, and assigning the leftover value to \code{never} makes the compiler catch a forgotten case.}
+\readq{What is a discriminated union?}
+A union of object types that share one property whose value is a fixed string for each variant: the \textbf{discriminant}. Checking it, as in \code{s.kind === "circle"}, narrows the value to that one variant, so its own properties become available.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Shape =
+  | { kind: "circle"; r: number }
+  | { kind: "square"; side: number };
+function area(s: Shape): number {
+  return s.kind === "circle" ? Math.PI * s.r ** 2 : s.side ** 2;
+}
+console.log(area({ kind: "square", side: 3 }));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{9}}\par
+
+\readq{How does the compiler catch a forgotten case?}
+Through \textbf{never}. In a \code{switch}, each \code{case} removes one variant; in \code{default} nothing should be left, so the value has type \code{never}. Assigning it to a \code{never} variable compiles only if every variant was handled. Add a variant without a case and that line fails.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Light = "red" | "green" | "amber";
+function next(l: Light): Light {
+  switch (l) {
+    case "red": return "green";
+    case "green": return "amber";
+    default: {
+      const unhandled: never = l;
+      return unhandled;
+    }
+  }
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 7: Type '"amber"' is not assignable to type 'never'.}\par
+
+\cardend
+\cardhead{Card 2 --- Does it compile?}{compile · ts21-exhaustive}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{never:} the type with no possible values. Like an empty set: nothing can be put in it.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c21]{Ch.~21} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/narrowing.html}{TypeScript Handbook — Narrowing}.}\par
+\cardsub{The card}
+Does this compile with \code{tsc --strict}? If not, which statement fails, and why?\par
+\begin{lstlisting}[language=TypeScript]
+type Shape =
+  | { kind: "circle"; radius: number }
+  | { kind: "square"; side: number }
+  | { kind: "triangle"; base: number; height: number };
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case "circle":
+      return Math.PI * shape.radius ** 2;
+    case "square":
+      return shape.side ** 2;
+    default: {
+      const unreachable: never = shape;
+      throw new Error(`unknown shape: ${JSON.stringify(unreachable)}`);
+    }
+  }
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] After the circle and square cases, a triangle can still reach \code{default}, so \code{shape} isn't \code{never} there.
+\item[Invariants] In \code{default}, only unhandled variants remain.
+\item[Memory] No state.
+\item[Types] Shape, never.
+\item[Failure] Expecting the error at the type definition or at the switch.
+\item[Tests] Paste it into the TypeScript Playground (or run \code{tsc --strict}) and read the error.
+\end{cardrows}
+\trap The never assignment is where the compiler reports the missing case.\par
+\cardsub{Solution}
+No. \code{const unreachable: never = shape} fails: the triangle type is not assignable to type 'never' — there is no case for "triangle".\par
+{\small\textit{Verified: tsc 5.9.3 (strict) reports: line 12: Type '\{ kind: "triangle"; base: number; height: number; \}' is not assignable to type 'never'..}}\par
+\smallskip{\small\textbf{Why:} After the circle and square cases, the only thing shape can still be is a triangle, so it isn't never. Add the missing case and it compiles.}\par
+\cardsub{From the readings}
+\readchap{21. How do you model data that comes in several shapes?}{A discriminated union gives each variant a literal tag; checking the tag narrows to that variant, and assigning the leftover value to \code{never} makes the compiler catch a forgotten case.}
+\readq{How does the compiler catch a forgotten case?}
+Through \textbf{never}. In a \code{switch}, each \code{case} removes one variant; in \code{default} nothing should be left, so the value has type \code{never}. Assigning it to a \code{never} variable compiles only if every variant was handled. Add a variant without a case and that line fails.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Light = "red" | "green" | "amber";
+function next(l: Light): Light {
+  switch (l) {
+    case "red": return "green";
+    case "green": return "amber";
+    default: {
+      const unhandled: never = l;
+      return unhandled;
+    }
+  }
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 7: Type '"amber"' is not assignable to type 'never'.}\par
+
+\cardend
+\cardhead{Card 3 --- Type the counter's actions}{types · typescript · Medium}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Discriminant:} the shared property (such as \code{kind}) whose literal value tells the variants of a union apart. Like a coloured tag on each parcel saying what is inside.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c21]{Ch.~21} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/narrowing.html}{TypeScript Handbook — Narrowing}.}\par
+\cardsub{The card}
+\textbf{Type the counter's actions}\par
+\code{Action} is too loose: the compiler accepts \code{\{ type: \textquotedbl{}add\textquotedbl{} \}} with no amount, and actions that don't exist. Replace it with a discriminated union of the three real actions.\par
+\begin{lstlisting}[language=TypeScript]
+type Action = { type: string; amount?: number };
+
+function counter(state: number, action: Action): number {
+  switch (action.type) {
+    case "increment":
+      return state + 1;
+    case "add":
+      return state + (action.amount ?? 0);
+    case "reset":
+      return 0;
+    default:
+      return state;
+  }
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Replace \code{Action} with a union of three object types, one per \code{type}, with \code{amount} only on "add".
+\item[Invariants] "add" always carries an amount; no other \code{type} is possible.
+\item[Memory] No state.
+\item[Types] number and Action in; number out.
+\item[Failure] A single type with \code{type: \textquotedbl{}increment\textquotedbl{} | \textquotedbl{}add\textquotedbl{} | \textquotedbl{}reset\textquotedbl{}} and an optional amount still accepts an "add" with no amount.
+\item[Tests] Each action; type tests reject an "add" without amount and a "jump".
+\end{cardrows}
+\trap One loose object type can't tie data to its action.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+type Action =
+  | { type: "increment" }
+  | { type: "add"; amount: number }
+  | { type: "reset" };
+
+function counter(state: number, action: Action): number {
+  switch (action.type) {
+    case "increment":
+      return state + 1;
+    case "add":
+      return state + action.amount;
+    case "reset":
+      return 0;
+  }
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 3 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} With one object type per action, "add" must carry an amount and unknown types are rejected where the action is created — and the switch needs no default.}\par
+\cardsub{From the readings}
+\readchap{21. How do you model data that comes in several shapes?}{A discriminated union gives each variant a literal tag; checking the tag narrows to that variant, and assigning the leftover value to \code{never} makes the compiler catch a forgotten case.}
+\readq{Why model actions as a union instead of one loose type?}
+Because then each action carries exactly its own data, and the compiler rejects impossible actions where they are written. With one loose type such as \code{\{ type: string; amount?: number \}}, an ``add'' with no amount, or an action that doesn't exist, compiles and fails later.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Action = { type: "add"; amount: number } | { type: "reset" };
+function apply(n: number, a: Action): number {
+  return a.type === "add" ? n + a.amount : 0;
+}
+apply(1, { type: "add" });
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 5: Argument of type '\{ type: "add"; \}' is not assignable to parameter of type 'Action'.   Property 'amount' is missing in type '\{ type: "add"; \}' but required in type '\{ type: "add"; amount: number; \}'.}\par
+
+\readq{What is a discriminated union?}
+A union of object types that share one property whose value is a fixed string for each variant: the \textbf{discriminant}. Checking it, as in \code{s.kind === "circle"}, narrows the value to that one variant, so its own properties become available.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Shape =
+  | { kind: "circle"; r: number }
+  | { kind: "square"; side: number };
+function area(s: Shape): number {
+  return s.kind === "circle" ? Math.PI * s.r ** 2 : s.side ** 2;
+}
+console.log(area({ kind: "square", side: 3 }));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{9}}\par
+
+\cardend
+\deckhead{22 · Generics, Constraints \& keyof}{4}
+\begin{corebox}\textbf{Core idea.} A type parameter links the types going in to the types coming out; \code{extends} demands a minimum shape; \code{keyof T} lists the keys of \code{T}, and \code{T[K]} is the type stored under key \code{K}.\end{corebox}
+\begin{sumbox}{Deck summary sheet --- 22 · Generics, Constraints \& keyof}
+A type parameter (\code{\textless{}T\textgreater{}}) links the types going in to the types coming out, instead of losing them to \code{any}. \code{T extends Something} requires a minimum shape. \code{keyof T} is the union of T's keys, and \code{T[K]} the type stored under key K.\par
+\smallskip{\footnotesize Read more: \href{https://www.typescriptlang.org/docs/handbook/2/generics.html}{TypeScript Handbook — Generics}; \href{https://www.typescriptlang.org/docs/handbook/2/keyof-types.html}{TypeScript Handbook — Keyof Type Operator}}\end{sumbox}
+\cardhead{Card 4 --- firstElement<T>(arr)}{types · typescript · Easy}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Generic:} written with type parameters, so it works for many types while keeping each one. Like a mould that takes the shape of whatever you pour in.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c22]{Ch.~22} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/generics.html}{TypeScript Handbook — Generics}.}\par
+\cardsub{The card}
+\textbf{firstElement<T>(arr)}\par
+Write the generic \code{firstElement\textless{}T\textgreater{}(arr: T[]): T | undefined}: the first item, or \code{undefined} for an empty array. Callers must keep the item type and be told it might be missing.\par
+\begin{lstlisting}[language=TypeScript]
+function firstElement(arr: any[]): any {
+  return undefined;
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Declare \code{\textless{}T\textgreater{}}, take \code{arr: T[]}, return \code{arr[0]} typed \code{T | undefined}.
+\item[Invariants] The result has the array's element type, or undefined.
+\item[Memory] No state.
+\item[Types] \code{T[]} in; \code{T | undefined} out.
+\item[Failure] Returning \code{T} claims a value even for empty arrays; \code{any} loses the type; \code{null} is the wrong "missing".
+\item[Tests] A string array, a number array, an empty array; type tests require \code{| undefined}.
+\end{cardrows}
+\trap \code{arr[0]} on an empty array is undefined, whatever the type says.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+function firstElement<T>(arr: T[]): T | undefined {
+  return arr[0];
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 3 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} T is filled in from the argument (string[] gives T = string). The \code{| undefined} is honest about empty arrays: arr[0] has type T, but at run time it can be undefined.}\par
+\cardsub{From the readings}
+\readchap{22. How do you write code that works for many types without losing them?}{A type parameter links the types going in to the types coming out; \code{extends} demands a minimum shape; \code{keyof T} lists the keys of \code{T}, and \code{T[K]} is the type stored under key \code{K}.}
+\readq{What is a type parameter?}
+A variable that holds a type. In \code{function first<T>(arr: T[]): T | undefined}, \code{T} is a type variable: TypeScript fills it in from the argument, so \code{first(["a"])} returns \code{string | undefined}. A function written this way is \textbf{generic}. With \code{any} instead, the result would lose its type.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function first<T>(arr: T[]): T | undefined {
+  return arr[0];
+}
+const word: string | undefined = first(["a", "b"]);
+console.log(word, first([]));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{a undefined}}\par
+
+\cardend
+\cardhead{Card 5 --- longest<T>(a, b)}{types · typescript · Easy}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Constraint:} \code{T extends Shape}, requiring every type used for \code{T} to have at least that shape. Like a height bar at a ride: anything that clears it may go on.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c22]{Ch.~22} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/generics.html}{TypeScript Handbook — Generics}.}\par
+\cardsub{The card}
+\textbf{longest<T>(a, b)}\par
+Write \code{longest(a, b)}: return whichever argument is longer (the first on a tie). It must accept anything with a numeric \code{length} — strings, arrays — keep the argument type, and reject numbers.\par
+\begin{lstlisting}[language=TypeScript]
+function longest(a: any, b: any): any {
+  return a.length > b.length ? a : b;
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Constrain \code{T extends \{ length: number \}} and return \code{b} only when it is strictly longer.
+\item[Invariants] Both arguments have the same type \code{T}, which has a numeric length.
+\item[Memory] No state.
+\item[Types] two \code{T}s in; \code{T} out.
+\item[Failure] An unconstrained \code{T} with casts compiles for numbers; \code{\textgreater{}=} returns the second on a tie.
+\item[Tests] Two strings, two arrays, a tie; a type test rejects numbers.
+\end{cardrows}
+\trap On a tie, return the first argument.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+function longest<T extends { length: number }>(a: T, b: T): T {
+  return b.length > a.length ? b : a;
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 3 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} \code{T extends \{ length: number \}} lets the body use .length and makes the compiler reject arguments without it, while T still remembers the exact type passed in.}\par
+\cardsub{From the readings}
+\readchap{22. How do you write code that works for many types without losing them?}{A type parameter links the types going in to the types coming out; \code{extends} demands a minimum shape; \code{keyof T} lists the keys of \code{T}, and \code{T[K]} is the type stored under key \code{K}.}
+\readq{How do you require a minimum shape?}
+With a \textbf{constraint}: \code{T extends \{ length: number \}} lets the body use \code{.length} and makes the compiler reject arguments without it, while \code{T} still remembers the exact type passed in.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function longer<T extends { length: number }>(a: T, b: T): T {
+  return b.length > a.length ? b : a;
+}
+console.log(longer("ab", "c"), longer([1], [2, 3]).length);
+longer(1, 2);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 5: Argument of type 'number' is not assignable to parameter of type '\{ length: number; \}'.}\par
+{\small\textit{Prints:}~\code{ab 2}}\par
+
+\cardend
+\cardhead{Card 6 --- getProperty(obj, key)}{types · typescript · Easy}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{keyof:} the operator that turns an object type into the union of its keys, e.g. \code{"id" | "name"}. Like the list of labels on a cabinet's drawers.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c22]{Ch.~22} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/keyof-types.html}{TypeScript Handbook — Keyof Type Operator}.}\par
+\cardsub{The card}
+\textbf{getProperty(obj, key)}\par
+Write \code{getProperty(obj, key)} so the key must be one of \code{obj}'s keys and the result has that property's type.\par
+\begin{lstlisting}[language=TypeScript]
+function getProperty(obj: any, key: string): any {
+  return obj[key];
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Declare \code{\textless{}T, K extends keyof T\textgreater{}} and return \code{obj[key]} typed \code{T[K]}.
+\item[Invariants] Only real keys are accepted, and the result has that key's type.
+\item[Memory] No state.
+\item[Types] \code{T} and \code{K} in; \code{T[K]} out.
+\item[Failure] \code{key: string} and an \code{any} result accept missing keys and lose the type.
+\item[Tests] A string property and a number property; a type test rejects "age".
+\end{cardrows}
+\trap \code{keyof T} is the union of T's keys.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key];
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 2 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} keyof T is the union of T's keys ("id" | "name"); K extends it, so only real keys are allowed, and T[K] is the type stored under that key.}\par
+\cardsub{From the readings}
+\readchap{22. How do you write code that works for many types without losing them?}{A type parameter links the types going in to the types coming out; \code{extends} demands a minimum shape; \code{keyof T} lists the keys of \code{T}, and \code{T[K]} is the type stored under key \code{K}.}
+\readq{How do you type a property name?}
+With \code{keyof}. The \textbf{keyof} operator turns an object type into the union of its keys, and the indexed access type \code{T[K]} looks up the type stored under key \code{K}. Together, \code{K extends keyof T} allows only real keys, and \code{T[K]} gives the result the right type.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function get<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key];
+}
+const user = { id: 1, name: "Ada" };
+const userName: string = get(user, "name");
+console.log(userName);
+get(user, "age");
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 7: Argument of type '"age"' is not assignable to parameter of type '"name" | "id"'.}\par
+{\small\textit{Prints:}~\code{Ada}}\par
+
+\cardend
+\cardhead{Card 7 --- pluck(items, key)}{types · typescript · Medium}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{keyof:} the operator that turns an object type into the union of its keys, e.g. \code{"id" | "name"}. Like the list of labels on a cabinet's drawers.\par\smallskip \textbf{Generic:} written with type parameters, so it works for many types while keeping each one. Like a mould that takes the shape of whatever you pour in.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c22]{Ch.~22} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/indexed-access-types.html}{TypeScript Handbook — Indexed Access Types}.}\par
+\cardsub{The card}
+\textbf{pluck(items, key)}\par
+Write \code{pluck(items, key)}: the value of \code{key} from every item, as an array. Type it so the key must exist on the items and the result has the right element type.\par
+\begin{lstlisting}[language=TypeScript]
+function pluck(items: any[], key: string): any[] {
+  return [];
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Same pattern as getProperty, mapped over the items: return \code{items.map((item) =\textgreater{} item[key])} typed \code{T[K][]}.
+\item[Invariants] Every element of the result has the type stored under \code{key}.
+\item[Memory] One new array.
+\item[Types] \code{T[]} and \code{K} in; \code{T[K][]} out.
+\item[Failure] Hard-coding two items passes a two-item test only; \code{any} types let a missing key through.
+\item[Tests] Empty, one, two and three items; a type test rejects "age".
+\end{cardrows}
+\trap Test 0, 1 and 3 items, not just 2.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+function pluck<T, K extends keyof T>(items: T[], key: K): T[K][] {
+  return items.map((item) => item[key]);
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 4 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} The same keyof pattern as getProperty, applied to every item: T[K][] is "an array of whatever is under K".}\par
+\cardsub{From the readings}
+\readchap{22. How do you write code that works for many types without losing them?}{A type parameter links the types going in to the types coming out; \code{extends} demands a minimum shape; \code{keyof T} lists the keys of \code{T}, and \code{T[K]} is the type stored under key \code{K}.}
+\readq{How do you type a property name?}
+With \code{keyof}. The \textbf{keyof} operator turns an object type into the union of its keys, and the indexed access type \code{T[K]} looks up the type stored under key \code{K}. Together, \code{K extends keyof T} allows only real keys, and \code{T[K]} gives the result the right type.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function get<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key];
+}
+const user = { id: 1, name: "Ada" };
+const userName: string = get(user, "name");
+console.log(userName);
+get(user, "age");
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 7: Argument of type '"age"' is not assignable to parameter of type '"name" | "id"'.}\par
+{\small\textit{Prints:}~\code{Ada}}\par
+
+\readq{What is a type parameter?}
+A variable that holds a type. In \code{function first<T>(arr: T[]): T | undefined}, \code{T} is a type variable: TypeScript fills it in from the argument, so \code{first(["a"])} returns \code{string | undefined}. A function written this way is \textbf{generic}. With \code{any} instead, the result would lose its type.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function first<T>(arr: T[]): T | undefined {
+  return arr[0];
+}
+const word: string | undefined = first(["a", "b"]);
+console.log(word, first([]));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{a undefined}}\par
+
+\cardend
+\deckhead{23 · Utility Types}{4}
+\begin{corebox}\textbf{Core idea.} Utility types derive new types from old ones: \code{Partial} (all optional), \code{Readonly} (no reassignment, one level deep, compile time only), \code{Pick} and \code{Omit} (keep or drop keys), \code{Record} (an object with exactly these keys).\end{corebox}
+\begin{sumbox}{Deck summary sheet --- 23 · Utility Types}
+Built-in generic types derive new types from old ones: \code{Partial\textless{}T\textgreater{}} (all optional), \code{Readonly\textless{}T\textgreater{}} (no reassignment, one level deep, compile time only), \code{Pick\textless{}T, K\textgreater{}} and \code{Omit\textless{}T, K\textgreater{}} (keep or drop keys), \code{Record\textless{}K, V\textgreater{}} (an object with exactly those keys).\par
+\smallskip{\footnotesize Read more: \href{https://www.typescriptlang.org/docs/handbook/utility-types.html}{TypeScript Handbook — Utility Types}}\end{sumbox}
+\cardhead{Card 8 --- updateTodo(todo, changes)}{types · typescript · Easy}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Utility type:} a built-in generic type that derives a new type from an existing one, such as \code{Partial<T>}. Like a stencil that turns one shape into a related one.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c23]{Ch.~23} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/utility-types.html}{TypeScript Handbook — Utility Types}.}\par
+\cardsub{The card}
+\textbf{updateTodo(todo, changes)}\par
+Write \code{updateTodo(todo, changes)}: return a new todo with \code{changes} applied. \code{changes} may contain any subset of a todo's fields — and nothing else.\par
+\begin{lstlisting}[language=TypeScript]
+interface Todo {
+  title: string;
+  done: boolean;
+  priority: number;
+}
+
+function updateTodo(todo: Todo, changes: Todo): Todo {
+  return todo;
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Type \code{changes} as \code{Partial\textless{}Todo\textgreater{}} and return \code{\{ ...todo, ...changes \}}.
+\item[Invariants] The result is a full Todo with the changes applied.
+\item[Memory] One new object.
+\item[Types] \code{Todo} and \code{Partial\textless{}Todo\textgreater{}} in; \code{Todo} out.
+\item[Failure] \code{changes: any} accepts unknown fields; spreading in the wrong order ignores the changes.
+\item[Tests] A one-field change, no change, two fields; type tests reject an unknown field and a wrong type.
+\end{cardrows}
+\trap Spread the changes last.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+interface Todo {
+  title: string;
+  done: boolean;
+  priority: number;
+}
+
+function updateTodo(todo: Todo, changes: Partial<Todo>): Todo {
+  return { ...todo, ...changes };
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 3 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} Partial<Todo> is Todo with every property optional, which is exactly what a patch is.}\par
+\cardsub{From the readings}
+\readchap{23. How do you build new types from existing ones?}{Utility types derive new types from old ones: \code{Partial} (all optional), \code{Readonly} (no reassignment, one level deep, compile time only), \code{Pick} and \code{Omit} (keep or drop keys), \code{Record} (an object with exactly these keys).}
+\readq{How do you type a patch?}
+With \code{Partial<T>}, a \textbf{utility type} that makes every property of \code{T} optional. A patch to a todo may contain any subset of its fields---and, being a fresh literal, nothing else.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+interface Todo { title: string; done: boolean }
+function update(t: Todo, changes: Partial<Todo>): Todo {
+  return { ...t, ...changes };
+}
+console.log(update({ title: "x", done: false }, { done: true }).done);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{true}}\par
+
+\cardend
+\cardhead{Card 9 --- toPublicUser(user)}{types · typescript · Easy}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c23]{Ch.~23} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/utility-types.html}{TypeScript Handbook — Utility Types}.}\par
+\cardsub{The card}
+\textbf{toPublicUser(user)}\par
+Write \code{toPublicUser(user)}: return the user without \code{passwordHash}, typed with \code{Omit} so the compiler also knows the hash is gone.\par
+\begin{lstlisting}[language=TypeScript]
+interface User {
+  id: number;
+  name: string;
+  passwordHash: string;
+}
+
+function toPublicUser(user: User): User {
+  return user;
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Take \code{passwordHash} out with rest destructuring and type the result \code{Omit\textless{}User, \textquotedbl{}passwordHash\textquotedbl{}\textgreater{}}.
+\item[Invariants] Neither the object nor its type contains the hash.
+\item[Memory] One new object without the hash.
+\item[Types] \code{User} in; \code{Omit\textless{}User, \textquotedbl{}passwordHash\textquotedbl{}\textgreater{}} out.
+\item[Failure] Keeping the return type \code{User} (with a cast) leaves the hash readable to the compiler.
+\item[Tests] Run-time output has no hash; a type test requires reading it to be an error.
+\end{cardrows}
+\trap Remove the field in both the value and the type.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+interface User {
+  id: number;
+  name: string;
+  passwordHash: string;
+}
+
+function toPublicUser(user: User): Omit<User, "passwordHash"> {
+  const { passwordHash, ...rest } = user;
+  return rest;
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 1 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} Removing the property at run time (rest destructuring) and in the type (Omit) go together: either one alone leaves a gap.}\par
+\cardsub{From the readings}
+\readchap{23. How do you build new types from existing ones?}{Utility types derive new types from old ones: \code{Partial} (all optional), \code{Readonly} (no reassignment, one level deep, compile time only), \code{Pick} and \code{Omit} (keep or drop keys), \code{Record} (an object with exactly these keys).}
+\readq{How do you remove a field from a type?}
+With \code{Omit<T, Keys>} (or keep only some with \code{Pick<T, Keys>}). Removing the field from the type does not remove it from the object: do that at run time too, for example with rest destructuring. Each alone leaves a gap.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+interface User { id: number; hash: string }
+function publicUser(u: User): Omit<User, "hash"> {
+  const { hash, ...rest } = u;
+  return rest;
+}
+console.log(Object.keys(publicUser({ id: 1, hash: "x" })).join());
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{id}}\par
+
+\cardend
+\cardhead{Card 10 --- countByRole(roles)}{types · typescript · Easy}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c23]{Ch.~23} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/utility-types.html}{TypeScript Handbook — Utility Types}.}\par
+\cardsub{The card}
+\textbf{countByRole(roles)}\par
+Write \code{countByRole(roles)}: how many times each role appears, with every role present (0 if absent). Type the result as \code{Record\textless{}Role, number\textgreater{}}.\par
+\begin{lstlisting}[language=TypeScript]
+type Role = "admin" | "editor" | "viewer";
+
+function countByRole(roles: string[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const role of roles) counts[role] = (counts[role] ?? 0) + 1;
+  return counts;
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Start \code{counts: Record\textless{}Role, number\textgreater{}} with every role at 0, then increment for each role in the list.
+\item[Invariants] Every role is a key, even with count 0.
+\item[Memory] One object with three counters.
+\item[Types] \code{Role[]} in; \code{Record\textless{}Role, number\textgreater{}} out.
+\item[Failure] Counting into an empty object misses roles that never appear; \code{string[]} accepts roles that don't exist.
+\item[Tests] Some roles, no roles; a type test rejects "owner".
+\end{cardrows}
+\trap Record requires every key, so initialise every key.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+type Role = "admin" | "editor" | "viewer";
+
+function countByRole(roles: Role[]): Record<Role, number> {
+  const counts: Record<Role, number> = { admin: 0, editor: 0, viewer: 0 };
+  for (const role of roles) counts[role]++;
+  return counts;
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 2 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} Record<Role, number> requires every key of Role, so the compiler makes you start each count at 0 — and rejects roles that don't exist.}\par
+\cardsub{From the readings}
+\readchap{23. How do you build new types from existing ones?}{Utility types derive new types from old ones: \code{Partial} (all optional), \code{Readonly} (no reassignment, one level deep, compile time only), \code{Pick} and \code{Omit} (keep or drop keys), \code{Record} (an object with exactly these keys).}
+\readq{How do you type an object with a fixed set of keys?}
+With \code{Record<Keys, Type>}: an object whose keys are exactly \code{Keys} and whose values are \code{Type}. Every key is required, so the compiler makes you fill in each one (for example, start every count at 0).
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Role = "admin" | "viewer";
+const counts: Record<Role, number> = { admin: 1 };
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 2: Property 'viewer' is missing in type '\{ admin: number; \}' but required in type 'Record<Role, number>'.}\par
+
+\cardend
+\cardhead{Card 11 --- Does it compile?}{compile · ts23-readonly-shallow}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c23]{Ch.~23} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/objects.html}{TypeScript Handbook — Object Types}.}\par
+\cardsub{The card}
+Does this compile with \code{tsc --strict}? If not, which statement fails, and why?\par
+\begin{lstlisting}[language=TypeScript]
+interface Team {
+  name: string;
+  members: string[];
+}
+const team: Readonly<Team> = { name: "Core", members: ["Ada"] };
+team.members.push("Grace");
+team.name = "Platform";
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] \code{Readonly} blocks reassigning \code{team.name}; pushing onto \code{team.members} changes the array, not the property.
+\item[Invariants] Readonly applies to the object's own properties only.
+\item[Memory] One object holding one array.
+\item[Types] \code{Readonly\textless{}Team\textgreater{}}.
+\item[Failure] Expecting the \code{push} line to fail too.
+\item[Tests] Paste it into the TypeScript Playground (or run \code{tsc --strict}) and read the error.
+\end{cardrows}
+\trap Readonly is shallow.\par
+\cardsub{Solution}
+No. \code{team.name = \textquotedbl{}Platform\textquotedbl{}} fails: name is a read-only property. \code{team.members.push(...)} compiles.\par
+{\small\textit{Verified: tsc 5.9.3 (strict) reports: line 7: Cannot assign to 'name' because it is a read-only property..}}\par
+\smallskip{\small\textbf{Why:} Readonly only stops reassigning the object's own properties. The array inside can still be changed, and nothing is enforced at run time.}\par
+\cardsub{From the readings}
+\readchap{23. How do you build new types from existing ones?}{Utility types derive new types from old ones: \code{Partial} (all optional), \code{Readonly} (no reassignment, one level deep, compile time only), \code{Pick} and \code{Omit} (keep or drop keys), \code{Record} (an object with exactly these keys).}
+\readq{Does Readonly make an object immutable?}
+No. \code{Readonly<T>} stops reassigning \code{T}'s own properties, and only while compiling. An array or object inside can still be changed, and nothing is enforced at run time.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Team = { name: string; members: string[] };
+const team: Readonly<Team> = { name: "Core", members: [] };
+team.members.push("Ada");
+console.log(team.members.length);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{1}}\par
+
+\cardend
+\deckhead{24 · Classes in TypeScript}{3}
+\begin{corebox}\textbf{Core idea.} TypeScript adds \code{public}, \code{private}, \code{protected} and \code{readonly}, parameter properties and \code{implements}. Its \code{private} is checked only by the compiler; a \code{\#field} stays private at run time.\end{corebox}
+\begin{sumbox}{Deck summary sheet --- 24 · Classes in TypeScript}
+TypeScript adds \code{public}, \code{private}, \code{protected} and \code{readonly} to classes, parameter properties (\code{constructor(private x: number)}) and \code{implements}. Its \code{private} is checked by the compiler only; JavaScript's \code{\#field} is private at run time.\par
+\smallskip{\footnotesize Read more: \href{https://www.typescriptlang.org/docs/handbook/2/classes.html}{TypeScript Handbook — Classes}}\end{sumbox}
+\cardhead{Card 12 --- class Temperature}{write · typescript · Medium}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{Access modifier:} \code{public}, \code{private} or \code{protected} on a class member, saying who may use it. Like a sign on a door: ``staff only''.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c24]{Ch.~24} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/classes.html}{TypeScript Handbook — Classes}.}\par
+\cardsub{The card}
+\textbf{class Temperature}\par
+Rewrite \code{Temperature} with a private, readonly parameter property \code{celsius}, a \code{fahrenheit} getter, and \code{describe()} returning e.g. \code{\textquotedbl{}100\textdegree{}C\textquotedbl{}}. Don't change \code{check}.\par
+\begin{lstlisting}[language=TypeScript]
+// Test driver: don't change.
+function check(celsius: number): [number, string] {
+  const t = new Temperature(celsius);
+  return [t.fahrenheit, t.describe()];
+}
+
+class Temperature {
+  celsius: number;
+  constructor(celsius: number) {
+    this.celsius = celsius;
+  }
+  // TODO
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Use \code{constructor(private readonly celsius: number) \{\}}, a \code{get fahrenheit()} and \code{describe()}.
+\item[Invariants] celsius is set once and hidden from callers; fahrenheit has no setter.
+\item[Memory] One private number per instance.
+\item[Types] number in; number and string out.
+\item[Failure] \code{public celsius} lets callers read it, which a type test forbids.
+\item[Tests] 100, 0 and -40; type tests forbid reading celsius and assigning fahrenheit.
+\end{cardrows}
+\trap A getter without a setter is read-only to callers.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+// Test driver: don't change.
+function check(celsius: number): [number, string] {
+  const t = new Temperature(celsius);
+  return [t.fahrenheit, t.describe()];
+}
+
+class Temperature {
+  constructor(private readonly celsius: number) {}
+
+  get fahrenheit(): number {
+    return (this.celsius * 9) / 5 + 32;
+  }
+
+  describe(): string {
+    return `${this.celsius}°C`;
+  }
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 3 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} \code{constructor(private readonly celsius: number) \{\}} declares and assigns the field in one go. A getter with no setter is read-only to callers.}\par
+\cardsub{From the readings}
+\readchap{24. What does TypeScript add to classes?}{TypeScript adds \code{public}, \code{private}, \code{protected} and \code{readonly}, parameter properties and \code{implements}. Its \code{private} is checked only by the compiler; a \code{\#field} stays private at run time.}
+\readq{How do you declare fields concisely?}
+With parameter properties: a constructor parameter prefixed by an \textbf{access modifier} or \code{readonly} becomes a field with the same name and value, so \code{constructor(private readonly c: number) \{\}} declares and assigns \code{c} in one go. A \code{get} accessor with no setter is read-only to callers.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+class Temp {
+  constructor(private readonly c: number) {}
+  get f(): number { return (this.c * 9) / 5 + 32; }
+}
+console.log(new Temp(100).f);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{212}}\par
+
+\readq{How private is private?}
+Only as private as the compiler is strict. TypeScript's \code{private} is checked during type checking, and bracket access (\code{obj["secret"]}) is allowed as an escape hatch. At run time the field is an ordinary property. A JavaScript \code{\#field} (Part~1, Ch.~12) cannot be reached from outside at all.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+class Box {
+  private secret = 1;
+}
+const b = new Box();
+console.log(b["secret"]);
+console.log(b.secret);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 6: Property 'secret' is private and only accessible within class 'Box'.}\par
+{\small\textit{Prints:}~\code{1}\enspace\textcolor{black!45}{|}\enspace \code{1}}\par
+
+\cardend
+\cardhead{Card 13 --- Does it compile?}{compile · ts24-private-vs-hash}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c24]{Ch.~24} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/classes.html}{TypeScript Handbook — Classes}.}\par
+\cardsub{The card}
+Does this compile with \code{tsc --strict}? If not, which statement fails, and why?\par
+\begin{lstlisting}[language=TypeScript]
+class Account {
+  private pin = 1234;
+  #secret = "s3cret";
+}
+const account = new Account();
+console.log(account["pin"]);
+console.log(account.pin);
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Dot access to a \code{private} member fails; bracket access is TypeScript's escape hatch and compiles.
+\item[Invariants] private is enforced only by the compiler.
+\item[Memory] One instance with two fields.
+\item[Types] Account.
+\item[Failure] Expecting the bracket access to fail as well.
+\item[Tests] Paste it into the TypeScript Playground (or run \code{tsc --strict}) and read the error.
+\end{cardrows}
+\trap TypeScript's private is soft: brackets get through.\par
+\cardsub{Solution}
+No. \code{account.pin} fails: Property 'pin' is private. \code{account[\textquotedbl{}pin\textquotedbl{}]} compiles.\par
+{\small\textit{Verified: tsc 5.9.3 (strict) reports: line 7: Property 'pin' is private and only accessible within class 'Account'..}}\par
+\smallskip{\small\textbf{Why:} TypeScript's private is only checked by the compiler, and bracket access is allowed as an escape hatch. At run time pin is an ordinary property. A \#field can't be reached from outside at all.}\par
+\cardsub{From the readings}
+\readchap{24. What does TypeScript add to classes?}{TypeScript adds \code{public}, \code{private}, \code{protected} and \code{readonly}, parameter properties and \code{implements}. Its \code{private} is checked only by the compiler; a \code{\#field} stays private at run time.}
+\readq{How private is private?}
+Only as private as the compiler is strict. TypeScript's \code{private} is checked during type checking, and bracket access (\code{obj["secret"]}) is allowed as an escape hatch. At run time the field is an ordinary property. A JavaScript \code{\#field} (Part~1, Ch.~12) cannot be reached from outside at all.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+class Box {
+  private secret = 1;
+}
+const b = new Box();
+console.log(b["secret"]);
+console.log(b.secret);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 6: Property 'secret' is private and only accessible within class 'Box'.}\par
+{\small\textit{Prints:}~\code{1}\enspace\textcolor{black!45}{|}\enspace \code{1}}\par
+
+\cardend
+\cardhead{Card 14 --- class MemoryLogger implements Logger}{write · typescript · Medium}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c24]{Ch.~24} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/classes.html}{TypeScript Handbook — Classes}.}\par
+\cardsub{The card}
+\textbf{class MemoryLogger implements Logger}\par
+Write \code{MemoryLogger} so it \code{implements Logger}: \code{log} stores messages in a private array and \code{history()} returns a copy, so callers can't change the stored log. Don't change \code{check} or \code{Logger}.\par
+\begin{lstlisting}[language=TypeScript]
+// Test driver: don't change.
+function check(messages: string[]): string[] {
+  const logger: Logger = new MemoryLogger();
+  messages.forEach((m) => logger.log(m));
+  logger.history().push("tampered");
+  return logger.history();
+}
+
+interface Logger {
+  log(message: string): void;
+  history(): string[];
+}
+
+class MemoryLogger {
+  // TODO
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] Write \code{class MemoryLogger implements Logger} with a private array; \code{history()} returns a copy.
+\item[Invariants] The stored log can only change through \code{log}.
+\item[Memory] One private array of messages.
+\item[Types] strings in; string array out.
+\item[Failure] Returning the private array itself lets the caller's push change the log.
+\item[Tests] Two messages then a tampering push; no messages.
+\end{cardrows}
+\trap Return copies of private arrays.\par
+\cardsub{Solution}
+\begin{lstlisting}[language=TypeScript]
+// Test driver: don't change.
+function check(messages: string[]): string[] {
+  const logger: Logger = new MemoryLogger();
+  messages.forEach((m) => logger.log(m));
+  logger.history().push("tampered");
+  return logger.history();
+}
+
+interface Logger {
+  log(message: string): void;
+  history(): string[];
+}
+
+class MemoryLogger implements Logger {
+  private messages: string[] = [];
+
+  log(message: string): void {
+    this.messages.push(message);
+  }
+
+  history(): string[] {
+    return [...this.messages];
+  }
+}
+\end{lstlisting}
+{\small \textit{Verified: passes all 2 test cases on the card in the app's code runner and type-checked by the TypeScript compiler (strict); the starter code fails them.}}\par
+\smallskip{\small\textbf{Why:} \code{implements} makes the compiler check the class against the interface. Returning the private array itself would let any caller change it; return a copy.}\par
+\cardsub{From the readings}
+\readchap{24. What does TypeScript add to classes?}{TypeScript adds \code{public}, \code{private}, \code{protected} and \code{readonly}, parameter properties and \code{implements}. Its \code{private} is checked only by the compiler; a \code{\#field} stays private at run time.}
+\readq{How do you make a class promise an interface?}
+With \code{implements}: \code{class C implements I} makes the compiler check that the class has everything the interface lists, and report the class if it doesn't.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+interface Logger { log(m: string): void }
+class Quiet implements Logger {
+  write(m: string) {}
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 2: Class 'Quiet' incorrectly implements interface 'Logger'.   Property 'log' is missing in type 'Quiet' but required in type 'Logger'.}\par
+
+\readq{How private is private?}
+Only as private as the compiler is strict. TypeScript's \code{private} is checked during type checking, and bracket access (\code{obj["secret"]}) is allowed as an escape hatch. At run time the field is an ordinary property. A JavaScript \code{\#field} (Part~1, Ch.~12) cannot be reached from outside at all.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+class Box {
+  private secret = 1;
+}
+const b = new Box();
+console.log(b["secret"]);
+console.log(b.secret);
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 6: Property 'secret' is private and only accessible within class 'Box'.}\par
+{\small\textit{Prints:}~\code{1}\enspace\textcolor{black!45}{|}\enspace \code{1}}\par
+
+\cardend
+\deckhead{25 · Strict Checks \& satisfies}{3}
+\begin{corebox}\textbf{Core idea.} \code{strict} turns on \code{strictNullChecks}, so \code{null} and \code{undefined} must be handled; \code{noUncheckedIndexedAccess} (not part of \code{strict}) adds \code{| undefined} to index lookups; \code{satisfies} checks a value without widening its type.\end{corebox}
+\begin{sumbox}{Deck summary sheet --- 25 · Strict Checks \& satisfies}
+\code{strict} turns on \code{strictNullChecks}: null and undefined must be handled before use. \code{noUncheckedIndexedAccess} (not part of strict) adds \code{| undefined} to index lookups. \code{satisfies} checks a value against a type without widening the value's own type.\par
+\smallskip{\footnotesize Read more: \href{https://www.typescriptlang.org/docs/handbook/2/everyday-types.html}{TypeScript Handbook — Everyday Types: null and undefined}; \href{https://www.typescriptlang.org/tsconfig/\#noUncheckedIndexedAccess}{TSConfig reference — noUncheckedIndexedAccess}; \href{https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-9.html}{TypeScript 4.9 release notes — satisfies}}\end{sumbox}
+\cardhead{Card 15 --- Does it compile?}{compile · ts25-strict-null}
+\safemargin{\textbf{Terms for this card}\par\smallskip \textbf{strict mode:} the \code{strict} compiler option, which turns on a group of checks including \code{strictNullChecks} and \code{noImplicitAny}. Like the strictest proofreading setting.}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c25]{Ch.~25} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/2/everyday-types.html}{TypeScript Handbook — Everyday Types}.}\par
+\cardsub{The card}
+Does this compile with \code{tsc --strict}? If not, which statement fails, and why?\par
+\begin{lstlisting}[language=TypeScript]
+function initial(name: string | null): string {
+  return name[0];
+}
+function initialSafe(name: string | null): string {
+  return name?.[0] ?? "?";
+}
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] \code{name} may be null, so \code{name[0]} fails; \code{name?.[0] ?? \textquotedbl{}?\textquotedbl{}} handles null and returns a string.
+\item[Invariants] Under strictNullChecks, null must be ruled out before use.
+\item[Memory] No state.
+\item[Types] \code{string | null}.
+\item[Failure] Expecting the \code{?.} version to fail too.
+\item[Tests] Paste it into the TypeScript Playground (or run \code{tsc --strict}) and read the error.
+\end{cardrows}
+\trap \code{?.} plus \code{??} handles null in one expression.\par
+\cardsub{Solution}
+No. \code{return name[0]} fails: 'name' is possibly 'null'. initialSafe compiles.\par
+{\small\textit{Verified: tsc 5.9.3 (strict) reports: line 2: 'name' is possibly 'null'..}}\par
+\smallskip{\small\textbf{Why:} With strictNullChecks, string | null must be narrowed before use. ?. stops at null and ?? supplies the fallback, so every path returns a string.}\par
+\cardsub{From the readings}
+\readchap{25. Which compiler checks catch the most bugs?}{\code{strict} turns on \code{strictNullChecks}, so \code{null} and \code{undefined} must be handled; \code{noUncheckedIndexedAccess} (not part of \code{strict}) adds \code{| undefined} to index lookups; \code{satisfies} checks a value without widening its type.}
+\readq{What does strictNullChecks change?}
+It makes \code{null} and \code{undefined} their own types. With \textbf{strict mode} on, a value that may be \code{null} must be tested before you use its methods or properties; \code{?.} and \code{??} are the short ways to do it.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+function initial(name: string | null): string {
+  return name[0];
+}
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 2: 'name' is possibly 'null'.}\par
+
+\cardend
+\cardhead{Card 16 --- Does it compile?}{compile · ts25-unchecked-index}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c25]{Ch.~25} of this guide; documentation: \href{https://www.typescriptlang.org/tsconfig/\#noUncheckedIndexedAccess}{TSConfig reference — noUncheckedIndexedAccess}.}\par
+\cardsub{The card}
+Does this compile with \code{tsc --strict} \code{--noUncheckedIndexedAccess}? If not, which statement fails, and why?\par
+\begin{lstlisting}[language=TypeScript]
+const scores = [90, 85];
+const first = scores[0];
+console.log(first.toFixed(1));
+const safe = scores[0] ?? 0;
+console.log(safe.toFixed(1));
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] With the option on, \code{scores[0]} is \code{number | undefined}, so \code{first.toFixed} fails; the \code{??} line is safe.
+\item[Invariants] Every index lookup may be undefined.
+\item[Memory] One array of two numbers.
+\item[Types] number | undefined.
+\item[Failure] Expecting it to compile because the array clearly has two items.
+\item[Tests] Paste it into the TypeScript Playground (or run \code{tsc --strict}) and read the error.
+\end{cardrows}
+\trap The compiler doesn't track array lengths.\par
+\cardsub{Solution}
+No. \code{first.toFixed(1)} fails: 'first' is possibly 'undefined'. The \code{safe} lines compile.\par
+{\small\textit{Verified: tsc 5.9.3 (strict) reports: line 3: 'first' is possibly 'undefined'..}}\par
+\smallskip{\small\textbf{Why:} With noUncheckedIndexedAccess, scores[0] is number | undefined, because an index may be past the end. Without the flag the same code compiles and would crash on an empty array.}\par
+\cardsub{From the readings}
+\readchap{25. Which compiler checks catch the most bugs?}{\code{strict} turns on \code{strictNullChecks}, so \code{null} and \code{undefined} must be handled; \code{noUncheckedIndexedAccess} (not part of \code{strict}) adds \code{| undefined} to index lookups; \code{satisfies} checks a value without widening its type.}
+\readq{Why might arr[0] be undefined when its type says number?}
+Because an index can be past the end of the array, and by default TypeScript types \code{arr[0]} as the element type anyway. Turning on \code{noUncheckedIndexedAccess} adds \code{undefined} to every index lookup, so you must handle the missing case. Without it, this code compiles and then crashes on an empty array.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+const scores: number[] = [];
+const first = scores[0];
+console.log(first.toFixed(1));
+\end{lstlisting}
+{\small\textit{tsc --strict:}~line 3: 'first' is possibly 'undefined'.}\par
+{\small\textit{Prints:}}
+\begin{lstlisting}
+TypeError: Cannot read properties of undefined (reading 'toFixed')
+\end{lstlisting}
+
+\cardend
+\cardhead{Card 17 --- Does it compile?}{compile · ts25-satisfies}
+\noindent{\small\textbf{Covered in:} \hyperref[ch:c25]{Ch.~25} of this guide; documentation: \href{https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-9.html}{TypeScript 4.9 release notes}.}\par
+\cardsub{The card}
+Does this compile with \code{tsc --strict}? If not, which statement fails, and why?\par
+\begin{lstlisting}[language=TypeScript]
+type Color = string | [number, number, number];
+const annotated: Record<"red" | "green", Color> = { red: "#f00", green: [0, 255, 0] };
+const checked = { red: "#f00", green: [0, 255, 0] } satisfies Record<"red" | "green", Color>;
+annotated.red.toUpperCase();
+checked.red.toUpperCase();
+\end{lstlisting}
+\cardsub{How to solve it}
+\begin{cardrows}
+\item[Solve] The annotation widens \code{annotated.red} to \code{Color}, which may be a tuple; \code{satisfies} keeps \code{checked.red} a string.
+\item[Invariants] satisfies checks without replacing the inferred type.
+\item[Memory] Two objects with the same data.
+\item[Types] Record, string, tuple.
+\item[Failure] Expecting \code{checked.red.toUpperCase()} to fail too.
+\item[Tests] Paste it into the TypeScript Playground (or run \code{tsc --strict}) and read the error.
+\end{cardrows}
+\trap An annotation replaces the type; satisfies keeps it.\par
+\cardsub{Solution}
+No. \code{annotated.red.toUpperCase()} fails: toUpperCase does not exist on the tuple type. \code{checked.red.toUpperCase()} compiles.\par
+{\small\textit{Verified: tsc 5.9.3 (strict) reports: line 4: Property 'toUpperCase' does not exist on type 'Color'.   Property 'toUpperCase' does not exist on type '[number, number, number]'..}}\par
+\smallskip{\small\textbf{Why:} An annotation replaces the value's type, so annotated.red is just Color. satisfies checks the object against the type but keeps what it inferred: checked.red is a string.}\par
+\cardsub{From the readings}
+\readchap{25. Which compiler checks catch the most bugs?}{\code{strict} turns on \code{strictNullChecks}, so \code{null} and \code{undefined} must be handled; \code{noUncheckedIndexedAccess} (not part of \code{strict}) adds \code{| undefined} to index lookups; \code{satisfies} checks a value without widening its type.}
+\readq{How do you check a value against a type without losing its exact type?}
+With \code{satisfies}. An annotation replaces the value's type with the annotated one; \code{satisfies} checks that the value matches the type and keeps the more precise type TypeScript inferred.
+\Needspace{6\baselineskip}
+\begin{lstlisting}[language=TypeScript]
+type Colors = Record<"red" | "blue", string | number[]>;
+const palette = { red: "#f00", blue: [0, 0, 255] } satisfies Colors;
+console.log(palette.red.toUpperCase());
+\end{lstlisting}
+{\small\textit{tsc --strict:}~compiles with no errors}\par
+{\small\textit{Prints:}~\code{\#F00}}\par
+
+\cardend
+\addtocontents{toc}{\vspace{6pt}}
+\Needspace{14\baselineskip}\phantomsection\section*{Appendix: Audit Trail}\addcontentsline{toc}{section}{Appendix: Audit Trail}
+\subsection*{Sources}
+{\footnotesize\begin{tabularx}{\linewidth}{@{}p{1.6in}p{0.9in}X@{}}\toprule
+\textbf{Source} & \textbf{How much read} & \textbf{Used for}\\\midrule
+Course deck: \path{backend/app/content/js_ts_course/part3.py}, \path{quotes.py} & In full & Cards, tests, type tests, solutions, quotes, deck summaries\\
+TypeScript Handbook (source text): Narrowing; Generics; Keyof Type Operator; Indexed Access Types; Utility Types; Object Types; Classes; Everyday Types & Searched by keyword; relevant sections read & Chapter facts; card quotes\\
+TypeScript 4.9 release notes (satisfies); TSConfig reference: noUncheckedIndexedAccess, strict & Relevant sections & Ch.~25; card quotes\\
+\bottomrule\end{tabularx}}
+
+{\footnotesize\textbf{Not read:} Handbook chapters on conditional and mapped types beyond what Part 3 uses, declaration files, modules and decorators; the TypeScript specification.}
+\subsection*{Claim ledger}
+{\footnotesize Each card's explanation rests on the documentation excerpt shown with it; the table lists, per source page, the cards whose claim it backs. Code behaviour claimed in the chapters and solutions was established by running it (see Checks run).}
+{\footnotesize\begin{tabularx}{\linewidth}{@{}p{2.2in}X@{}}\toprule
+\textbf{Source (all quoted, checked word for word)} & \textbf{Cards whose claim it backs}\\\midrule
+TSConfig reference — noUncheckedIndexedAccess (\href{https://www.typescriptlang.org/tsconfig/\#noUncheckedIndexedAccess}{page}) & ts25-unchecked-index\\
+TypeScript 4.9 release notes (\href{https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-9.html}{page}) & ts25-satisfies\\
+TypeScript Handbook — Classes (\href{https://www.typescriptlang.org/docs/handbook/2/classes.html}{page}) & ts24-temperature, ts24-private-vs-hash, ts24-implements\\
+TypeScript Handbook — Everyday Types (\href{https://www.typescriptlang.org/docs/handbook/2/everyday-types.html}{page}) & ts25-strict-null\\
+TypeScript Handbook — Generics (\href{https://www.typescriptlang.org/docs/handbook/2/generics.html}{page}) & ts22-first-element, ts22-longest\\
+TypeScript Handbook — Indexed Access Types (\href{https://www.typescriptlang.org/docs/handbook/2/indexed-access-types.html}{page}) & ts22-pluck\\
+TypeScript Handbook — Keyof Type Operator (\href{https://www.typescriptlang.org/docs/handbook/2/keyof-types.html}{page}) & ts22-get-property\\
+TypeScript Handbook — Narrowing (\href{https://www.typescriptlang.org/docs/handbook/2/narrowing.html}{page}) & ts21-area, ts21-exhaustive, ts21-counter-actions\\
+TypeScript Handbook — Object Types (\href{https://www.typescriptlang.org/docs/handbook/2/objects.html}{page}) & ts23-readonly-shallow\\
+TypeScript Handbook — Utility Types (\href{https://www.typescriptlang.org/docs/handbook/utility-types.html}{page}) & ts23-update-todo, ts23-public-user, ts23-count-by-role\\
+\bottomrule\end{tabularx}}
+{\footnotesize\textbf{Authored, not sourced:} every analogy in a term definition (8 terms), every rule of thumb, every Think-it-through box, the chapter prose that connects the sourced facts, the How-to-solve rows and traps, and all chapter code snippets (their behaviour was run, see below). The cards themselves (tasks, tests, solutions) were written for this course earlier in this session and are verified, not sourced.}
+\subsection*{Flags}
+{\footnotesize\begin{itemize}
+\item Outside the material: compiler messages come from running tsc 5.9.3; the run-time TypeError message in Ch.~25 comes from running Node, not from the documentation.
+\item Conflicts: none found between the deck and the documentation.
+\item Analogies are authored and simplify; for example, a generic's type parameter can be inferred from several arguments at once, which the mould image does not show.
+\end{itemize}}
+\subsection*{Checks run}
+{\footnotesize\begin{itemize}
+\item Code cards: 11 reference answers run in the app's own code runner against the cards' 29 test cases: all pass. Every starter fails. 11 TypeScript answers also type-checked (strict) with their type tests: all pass.
+\item Compile cards: 6 snippets checked with tsc 5.9.3 (strict): errors on exactly the stated lines.
+\item Chapter snippets: 11 run in Node v22.23.4; every \textit{Prints} line is the captured output. 16 checked with tsc 5.9.3.
+\item Quotes: every card's quote found word for word (ignoring markdown) in the documentation source text (MDN content and TypeScript-Website repositories, fetched on 2026-11-16).
+\item The course's own test suite (\code{tests/test\_js\_ts\_course.py}) passes, including planted wrong answers that each card must reject.
+\item Deck files: \path{study-guides/js-ts/decks/part-3-intermediate-typescript/} holds the 5 decks of this Part as JSON (a plain array and a wrapped copy each): 11 code cards and 6 qa cards, each with its verified quote. They are written by \path{export\_decks.py} from the same course data the checks above ran on. All 27 deck files of the course were imported through the app's \code{POST /api/import/json} into a fresh test database: no warnings, every quote became a citation, and every code card's answer passed all its test cases (and its type check) through the imported card's run-code endpoint.
+\item Not run: the cards in your own app with the local 3B grading model (grading of typed answers is not verified here).
+\item Not run: Node 24 on Windows; checks used Node v22.23.4 on Linux.
+\item Not checked: the live web pages (the quotes were checked against the pages' source files, which can lag or lead the site).
+\end{itemize}}
+\subsection*{Deviations}
+{\footnotesize\begin{itemize}
+\item Summary sheets: the course has no separate summary sheets, so each deck's own documentation (the summary stored with the deck in the app) is copied in its box instead.
+\item \emph{From the readings} copies only the chapter sections each card drills (listed per card), not every section of its chapters, to keep the guide usable.
+\item The card decks were not generated anew: the guide uses the 105-card deck built earlier in this session (the same material), exported as JSON deck files alongside this guide.
+\item The skill requires a quote on every card; 68 cards had none, so verified quotes were added to the course itself (\code{quotes.py}), where the app shows them too.
+\item Read-only cards (what does this print? / does it compile?) are typed-answer cards in the app; their \emph{Solution} shows the verified output or compiler verdict, and their How-to-solve rows read: Solve = how to trace it, Tests = how to check it by running.
+\item Chapters follow the deck's subdeck order rather than a strict stasis order, so card and chapter numbers match the app.
+\item Snippets that exist to show a compiler error were checked with tsc but not run, except where the run itself makes the point (Ch.~24's bracket access and Ch.~25's crash on an empty array).
+\end{itemize}}
+\subsection*{Revision log}
+{\footnotesize\begin{itemize}
+\item 2026-11-16: first version.
+\end{itemize}}
+\addtocontents{toc}{\vspace{6pt}}
+\phantomsection\section*{Index of Terms}\addcontentsline{toc}{section}{Index of Terms}
+{\small\begin{multicols}{2}
+\ix{modifier}{access modifier}{Ch.~24}
+\ix{constraint}{constraint}{Ch.~22}
+\ix{discriminant}{discriminant}{Ch.~21}
+\ix{generic}{generic}{Ch.~22}
+\ix{keyof}{keyof}{Ch.~22}
+\ix{never}{never}{Ch.~21}
+\ix{strict}{strict mode}{Ch.~25}
+\ix{utility}{utility type}{Ch.~23}
+\end{multicols}}
+\end{document}
