@@ -2,8 +2,10 @@
 
 import json
 import re
+
 from app.content.js_ts_course import COURSE
-from app.content.js_ts_course.model import CodeCard, PredictCard, CompileCard
+from app.content.js_ts_course.model import CodeCard, CompileCard, PredictCard
+
 
 def clean_sentences(text: str) -> list[str]:
     # Split text into clean sentences
@@ -19,13 +21,13 @@ for part in COURSE:
             subdeck_name = sub.name
             why = card.why.strip()
             sentences = clean_sentences(why)
-            
+
             # Construct Socratic Lesson based on card kind and content
             if isinstance(card, CodeCard):
                 title = card.title
                 task = card.task
                 lang = "TypeScript" if card.language == "typescript" else "JavaScript"
-                
+
                 body = (
                     f"When implementing `{title}` in {lang}, what core invariants must you satisfy?\n\n"
                     f"{task}\n\n"
@@ -33,32 +35,32 @@ for part in COURSE:
                     f"Ask yourself: What edge cases or false assumptions cause naive solutions to fail?\n\n"
                     f"{why}"
                 )
-                
+
                 points = []
                 for s in sentences:
                     points.append(s)
                 if not points:
                     points.append(f"Satisfy the core contract for `{title}` without violating boundary conditions.")
                 points.append("Check edge cases (empty inputs, null/undefined, unexpected types) gracefully.")
-                
+
             elif isinstance(card, PredictCard):
                 prompt = card.prompt or "What does this print?"
                 lang = "TypeScript" if card.language == "typescript" else "JavaScript"
-                
+
                 body = (
                     f"Before predicting the runtime outcome, trace execution step-by-step through the {lang} engine:\n\n"
                     f"Ask yourself: How does the runtime resolve binding, scope, or evaluation in this scenario? "
                     f"Where might intuition differ from the ECMAScript specification?\n\n"
                     f"{why}"
                 )
-                
+
                 points = []
                 for s in sentences:
                     points.append(s)
                 if not points:
-                    points.append(f"Trace runtime evaluation step-by-step.")
+                    points.append("Trace runtime evaluation step-by-step.")
                 points.append("Verify language evaluation order and object identity rather than assumptions.")
-                
+
             elif isinstance(card, CompileCard):
                 body = (
                     f"When the TypeScript compiler checks this code under `--strict`, what safety invariants does it verify?\n\n"
@@ -66,7 +68,7 @@ for part in COURSE:
                     f"Ask yourself: Where does a potential type hole or unproven contract trigger a compile diagnostic?\n\n"
                     f"{why}"
                 )
-                
+
                 points = []
                 for s in sentences:
                     points.append(s)
