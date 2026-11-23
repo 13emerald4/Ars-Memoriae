@@ -145,6 +145,10 @@ export default function Decks() {
           if (id === '__root__') navigate('/review')
           else navigate(`/review?deck=${id}`)
         }}
+        onStartAllCardsRun={(id) => {
+          if (id === '__root__') navigate('/review?run=all')
+          else navigate(`/review?deck=${id}&run=all`)
+        }}
         onOpenDeckViewer={() => {
           if (selectedDeck) {
             setViewerDeck({ id: selectedDeck.id, name: selectedDeck.name })
