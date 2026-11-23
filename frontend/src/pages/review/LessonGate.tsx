@@ -761,6 +761,52 @@ export function LessonGate({
   )
 }
 
+/** The card's Socratic Lesson after the reveal, shown under the reference
+ *  answer. Adds loading, failure and collapse handling around
+ *  SocraticLessonPanel; renders nothing when there is no lesson to teach.
+ */
+export function RevealedLesson({
+  lesson,
+  loading,
+  error,
+  codeLanguage,
+  deckId,
+}: {
+  lesson: Lesson | null
+  loading: boolean
+  error: string | null
+  codeLanguage?: string
+  deckId?: string | null
+}) {
+  const [open, setOpen] = useState(true)
+
+  if (!loading && !error && (!lesson || !lesson.available)) return null
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="label !mb-0">Learn &amp; Practice</p>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="text-xs text-slate-500 underline hover:text-slate-300"
+          aria-expanded={open}
+        >
+          {open ? 'Hide lesson' : 'Show lesson'}
+        </button>
+      </div>
+      {open &&
+        (lesson && lesson.available ? (
+          <SocraticLessonPanel lesson={lesson} codeLanguage={codeLanguage} deckId={deckId} />
+        ) : loading ? (
+          <Spinner label="Loading Socratic lesson…" />
+        ) : (
+          <p className="text-xs text-amber-300">Lesson unavailable: {error}</p>
+        ))}
+    </div>
+  )
+}
+
 /** Structured, non-spoiling Socratic Lesson renderer shared by Learn & Practice and PrimerDrawer. */
 export function SocraticLessonPanel({
   lesson,

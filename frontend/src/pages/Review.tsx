@@ -55,7 +55,7 @@ import { getAllCardsRunProgress, saveAllCardsRunProgress, clearAllCardsRunProgre
 import { isCodeCard as checkIsCodeCard, extractCleanCode } from '../utils/codeUtils'
 import { storage } from '../utils/storage'
 import { StuckBanner, BreakOverlay, SocraticGuide, ExtractCard, BlitzScorecardModal } from './review/Panels'
-import { LessonGate, ReferenceReadings, ThematicDocumentationCard, PrimerDrawer } from './review/LessonGate'
+import { LessonGate, ReferenceReadings, RevealedLesson, ThematicDocumentationCard, PrimerDrawer } from './review/LessonGate'
 import { VramConstraintPrompt, DiscreteModelSelector } from './review/ModelControls'
 import { LiveGradingStatusStrip, LlmErrorDiagnosticBanner } from './review/LlmActivityBanner'
 import { LlmDiagnosticsModal } from '../components/LlmDiagnosticsModal'
@@ -590,6 +590,7 @@ export default function Review() {
   const reviewAttemptIdRef = useRef(newReviewAttemptId())
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [lessonLoading, setLessonLoading] = useState(false)
+  const [lessonError, setLessonError] = useState<string | null>(null)
   const [taught, setTaught] = useState(false)
 
   // Pre-answer Related Content Primer: User option to review related source
@@ -905,6 +906,7 @@ export default function Review() {
     setSkipReviewRecording(false)
     setConfidence(null)
     setLesson(null)
+    setLessonError(null)
     setTaught(false)
     setShowPrimer(false)
     setPrimerLesson(null)
@@ -1385,6 +1387,34 @@ export default function Review() {
       cancelled = true
     }
   }, [learnMode, itemId, itemKind, taught])
+
+  // After the reveal, the Socratic Lesson is shown under the reference answer
+  // whether or not Learn & Practice gated the question. Reuses the gate's
+  // lesson when it was already fetched. A failure is shown in the panel, not
+  // as a page error — the grade still has to be confirmed.
+  useEffect(() => {
+    if (!revealed || !itemId || itemKind !== 'card' || lesson) return
+    let cancelled = false
+    setLessonLoading(true)
+    setLessonError(null)
+    api
+      .lesson(itemId)
+      // Loading is cleared alongside the result, not in a `finally`: setting
+      // `lesson` re-runs this effect, whose cleanup would cancel that update.
+      .then((l) => {
+        if (cancelled) return
+        setLessonLoading(false)
+        setLesson(l)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setLessonLoading(false)
+        setLessonError(err instanceof Error ? err.message : 'request failed')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [revealed, itemId, itemKind, lesson])
 
   function toggleLearnMode() {
     setLearnMode((prev) => {
@@ -4646,6 +4676,14 @@ export default function Review() {
                     />
                   )}
 
+                  <RevealedLesson
+                    lesson={lesson}
+                    loading={lessonLoading}
+                    error={lessonError}
+                    codeLanguage={codeLanguage}
+                    deckId={item.deck_or_source_id}
+                  />
+
                   {result?.latency_note && (
                     <p className="text-xs text-slate-600" title="Informational only — never affects the grade">
                       {formatLatencyNote(result.latency_note)}
@@ -6297,6 +6335,14 @@ export default function Review() {
                     matchedPhrases={matchedTerms}
                   />
                 )}
+
+                <RevealedLesson
+                  lesson={lesson}
+                  loading={lessonLoading}
+                  error={lessonError}
+                  codeLanguage={codeLanguage}
+                  deckId={item.deck_or_source_id}
+                />
 
                 {result?.latency_note && (
                   <p className="text-xs text-slate-600" title="Informational only — never affects the grade">
