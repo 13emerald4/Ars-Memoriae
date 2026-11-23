@@ -5,7 +5,9 @@ import tailwindcss from '@tailwindcss/vite'
 // The dev server proxies everything the backend owns, so the app talks to its
 // own origin in development exactly as it does in production (where FastAPI
 // serves the build). That keeps it working from a phone on the LAN too.
-const backend = 'http://127.0.0.1:3000'
+// The backend's port (uvicorn --port 8000, as the launchers use) — not the
+// dev server's own port below, or every /api request proxies to itself.
+const backend = 'http://127.0.0.1:8000'
 
 export default defineConfig({
   plugins: [
