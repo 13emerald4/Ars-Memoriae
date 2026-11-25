@@ -4537,6 +4537,11 @@ export default function Review() {
                           hasAnswer={Boolean(answer.trim())}
                           onSelectModel={(m) => void handleSwitchModel(m)}
                           onGradeWithModel={(m) => void handleGradeWithModel(m)}
+                          onModelsUpdated={(models) =>
+                            setInstalledModels(
+                              models.filter((m) => isAllowedGradingModel(m) && (canUseAntigravity || !isAntigravityModel(m))),
+                            )
+                          }
                           onOpenDiagnostics={() => openDiagnostics()}
                           hasRecentIssue={hasRecentLlmIssue}
                         />
@@ -6189,6 +6194,11 @@ export default function Review() {
                       hasAnswer={Boolean(answer.trim())}
                       onSelectModel={(m) => void handleSwitchModel(m)}
                       onGradeWithModel={(m) => void handleGradeWithModel(m)}
+                      onModelsUpdated={(models) =>
+                        setInstalledModels(
+                          models.filter((m) => isAllowedGradingModel(m) && (canUseAntigravity || !isAntigravityModel(m))),
+                        )
+                      }
                       onOpenDiagnostics={() => openDiagnostics()}
                       hasRecentIssue={hasRecentLlmIssue}
                     />

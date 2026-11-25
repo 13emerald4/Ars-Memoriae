@@ -272,6 +272,10 @@ export const api = {
   vramStatus: (model?: string) =>
     request<VramMetrics>(`/api/llm/vram${model ? `?model=${encodeURIComponent(model)}` : ''}`),
   hardwareSpecs: () => request<HardwareProfile>('/api/llm/hardware'),
+  pullModel: (model: string) =>
+    post<{ ok: boolean; model: string; status: string; models_installed: string[] }>('/api/llm/pull', {
+      model,
+    }),
 
   // ── queue (§9) ──────────────────────────────────────────────────────────
   // `branch` scopes the session to one knowledge-tree subtree;

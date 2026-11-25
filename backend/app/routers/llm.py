@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 
 from app.models import User
 from app.routers.deps import current_user
@@ -116,4 +118,62 @@ async def hardware_specs(_user: User = Depends(current_user)) -> dict:
     from app.services.hardware_service import detect_hardware
 
     return (await asyncio.to_thread(detect_hardware)).to_dict()
+
+
+class PullModelRequest(BaseModel):
+    model: str
+
+
+@router.post("/llm/pull")
+async def pull_model(body: PullModelRequest, user: User = Depends(current_user)) -> dict:
+    """Pull an approved local Ollama model via Ollama's /api/pull endpoint."""
+    from app.core.config import settings
+
+    model_name = body.model.strip()
+    if not is_allowed_qwen_coder_model(model_name):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Model '{model_name}' is not an allowed local Ollama model.",
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=600.0) as client:
+            resp = await client.post(
+                f"{settings.ollama_base_url}/api/pull",
+                json={"name": model_name, "stream": False},
+            )
+    except httpx.ConnectError as exc:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            f"Could not connect to Ollama at {settings.ollama_base_url}. Make sure Ollama is running.",
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            f"Failed to pull '{model_name}' from Ollama: {exc}",
+        ) from exc
+
+    err_detail = ""
+    data: dict = {}
+    try:
+        data = resp.json()
+        err_detail = data.get("error") or ""
+    except Exception:
+        err_detail = resp.text
+
+    if resp.status_code >= 400 or err_detail:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            f"Ollama pull failed for '{model_name}': {err_detail or f'HTTP {resp.status_code}'}",
+        )
+
+    service = GradingService.for_user(user)
+    engines = await service.verify_all_engines()
+    combined = list(dict.fromkeys([*engines["ollama"]["models"], *engines["antigravity"]["models"]]))
+    return {
+        "ok": True,
+        "model": model_name,
+        "status": data.get("status", "success"),
+        "models_installed": combined,
+    }
 

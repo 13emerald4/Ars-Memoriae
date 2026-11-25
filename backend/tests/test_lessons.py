@@ -215,3 +215,63 @@ class TestTenantIsolation:
 
         client.headers["Authorization"] = f"Bearer {bob}"
         assert (await client.get(f"/api/review/{card_id}/lesson")).status_code == 404
+
+
+class TestKeyPointsRobustness:
+    async def test_generate_lesson_enriches_sparse_key_points(self, monkeypatch):
+        import json
+        from app.services.grading_service import GradingService
+
+        calls: list[str] = []
+
+        async def fake_generate(self, prompt, model=None, schema=None, **kwargs):
+            calls.append(prompt)
+            if len(calls) == 1:
+                return json.dumps(
+                    {
+                        "lesson": "El Islam respetaba otras religiones a cambio de tributos. Los muladíes se convirtieron y los mozárabes mantuvieron su fe.",
+                        "key_points": ["El Islam permitía otras religiones a cambio de tributos."],
+                    }
+                )
+            return json.dumps(
+                {
+                    "key_points": [
+                        "El Islam respetaba otras religiones a cambio de tributos.",
+                        "Muladíes: hispanovisigodos convertidos al Islam por ventajas y cultura superior.",
+                        "Mozárabes: cristianos arabizados con libertad religiosa.",
+                        "Judíos: perseguidos con los visigodos, integrados en Al-Ándalus (siglo X de oro).",
+                    ]
+                }
+            )
+
+        monkeypatch.setattr(GradingService, "_generate", fake_generate)
+        svc = GradingService("qwen3.5:9b")
+        out = await svc.generate_lesson(
+            front="ENSAYO: Explica la convivencia religiosa en Al-Ándalus",
+            back="Introducción: tributos\nPárrafo 1: muladíes\nPárrafo 2: mozárabes\nPárrafo 3: judíos",
+            passages=["Respecto por la pluralidad religiosa."],
+        )
+        assert len(calls) == 2
+        assert len(out["key_points"]) == 4
+
+    async def test_generate_lesson_deterministic_fallback_when_retry_still_sparse(self, monkeypatch):
+        import json
+        from app.services.grading_service import GradingService
+
+        async def fake_generate(self, prompt, model=None, schema=None, **kwargs):
+            return json.dumps(
+                {
+                    "lesson": "Resumen breve de la convivencia.",
+                    "key_points": ["Solo un punto."],
+                }
+            )
+
+        monkeypatch.setattr(GradingService, "_generate", fake_generate)
+        svc = GradingService("qwen3.5:9b")
+        out = await svc.generate_lesson(
+            front="Pregunta",
+            back="├── Rama uno: primer concepto clave\n├── Rama dos: segundo concepto clave\n└── Rama tres: tercer concepto clave",
+            passages=["Texto fuente."],
+        )
+        assert len(out["key_points"]) >= 3
+

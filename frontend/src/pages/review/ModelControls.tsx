@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '../../api/client'
 import type { SubmitAnswerResponse, VramMetrics } from '../../api/types'
-import { ANTIGRAVITY_MODELS, getModelDisplayInfo, isAllowedGradingModel, isAntigravityModel } from '../../api/types'
-import { useAuth } from '../../hooks/useAuth'
+import { getModelDisplayInfo, isAllowedGradingModel, isAntigravityModel } from '../../api/types'
+
+const LOCAL_MODEL_OPTIONS = ['qwen3.5:9b', 'qwen2.5-coder:7b', 'qwen3.5:4b'] as const
 
 export interface VramConstraintPromptProps {
   result: SubmitAnswerResponse
@@ -142,13 +143,14 @@ export interface DiscreteModelSelectorProps {
   isRevealed?: boolean
   onSelectModel: (model: string) => void
   onGradeWithModel: (model: string) => void
+  onModelsUpdated?: (models: string[]) => void
   onOpenDiagnostics?: () => void
   hasRecentIssue?: boolean
   className?: string
 }
 
 /** Discrete model switcher positioned adjacent to grading button.
- *  Allows switching between Antigravity Subscription models and local Ollama archetypes.
+ *  Allows switching between the local Ollama grading model archetypes.
  */
 export function DiscreteModelSelector({
   activeModel,
@@ -158,16 +160,43 @@ export function DiscreteModelSelector({
   isRevealed = false,
   onSelectModel,
   onGradeWithModel,
+  onModelsUpdated,
   onOpenDiagnostics,
   hasRecentIssue = false,
   className = '',
 }: DiscreteModelSelectorProps) {
-  const { user } = useAuth()
-  const canUseAntigravity = Boolean(user?.can_use_antigravity)
   const [open, setOpen] = useState(false)
   const [vram, setVram] = useState<VramMetrics | null>(null)
+  const [pullingModel, setPullingModel] = useState<string | null>(null)
+  const [pullError, setPullError] = useState<string | null>(null)
+  const [extraInstalled, setExtraInstalled] = useState<string[]>([])
   const menuRef = useRef<HTMLDivElement>(null)
-  const isAgyActive = canUseAntigravity && isAntigravityModel(activeModel)
+  const isAgyActive = isAntigravityModel(activeModel)
+
+  const effectiveInstalled =
+    extraInstalled.length > 0
+      ? Array.from(new Set([...installedModels, ...extraInstalled]))
+      : installedModels
+
+  const handlePullModel = async (modelToPull: string) => {
+    if (pullingModel) return
+    setPullError(null)
+    setPullingModel(modelToPull)
+    try {
+      const res = await api.pullModel(modelToPull)
+      if (res.models_installed && res.models_installed.length > 0) {
+        setExtraInstalled(res.models_installed)
+        onModelsUpdated?.(res.models_installed)
+      } else {
+        setExtraInstalled((prev) => Array.from(new Set([...prev, modelToPull])))
+      }
+      onSelectModel(modelToPull)
+    } catch (err) {
+      setPullError(err instanceof Error ? err.message : `Failed to pull ${modelToPull}`)
+    } finally {
+      setPullingModel(null)
+    }
+  }
 
   useEffect(() => {
     if (!open) return
@@ -192,14 +221,7 @@ export function DiscreteModelSelector({
     }
   }, [open, activeModel, isAgyActive])
 
-  const models = useMemo<string[]>(() => {
-    if (!canUseAntigravity) {
-      return ['qwen3.5:9b', 'qwen2.5-coder:7b', 'qwen3.5:4b']
-    }
-    const agyInstalled = installedModels.filter(isAntigravityModel)
-    const agyList = agyInstalled.length > 0 ? agyInstalled : ANTIGRAVITY_MODELS.map((a) => a.id)
-    return [...agyList, 'qwen3.5:9b', 'qwen2.5-coder:7b', 'qwen3.5:4b']
-  }, [installedModels, canUseAntigravity])
+  const models = LOCAL_MODEL_OPTIONS
 
   const currentInfo = getModelInfo(activeModel)
   const isFast = currentInfo.badge?.toLowerCase().includes('fast') || currentInfo.badge?.toLowerCase().includes('speed')
@@ -242,7 +264,7 @@ export function DiscreteModelSelector({
           <div className="flex items-center justify-between pb-2 border-b border-slate-800">
             <div className="flex items-center gap-1.5">
               <span className="font-semibold text-slate-100">AI Grading Engine</span>
-              <span className="text-[0.625rem] text-slate-400 font-mono">AGY &amp; Local</span>
+              <span className="text-[0.625rem] text-slate-400 font-mono">Local Ollama</span>
             </div>
             <span className="flex items-center gap-1 text-[0.625rem] text-emerald-400 font-medium">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -292,19 +314,19 @@ export function DiscreteModelSelector({
           <div className="my-2 space-y-1.5 max-h-64 overflow-y-auto pr-1">
             {models.map((m) => {
               const isAgyItem = isAntigravityModel(m)
+              const activeLower = (activeModel || '').toLowerCase()
+              const mLower = m.toLowerCase()
               const isCurrent = isAgyItem
-                ? m.toLowerCase() === activeModel.toLowerCase()
-                : m === activeModel ||
-                  (!isAntigravityModel(activeModel) &&
-                    Boolean(activeModel) &&
-                    activeModel.toLowerCase().includes(m.split(':')[0]))
+                ? mLower === activeLower
+                : activeLower === mLower || activeLower.startsWith(`${mLower}-`)
               const info = getModelInfo(m)
-              const isInstalled = installedModels.some(
+              const isInstalled = effectiveInstalled.some(
                 (im) =>
-                  im.toLowerCase() === m.toLowerCase() ||
-                  (!isAgyItem && im.toLowerCase().startsWith(m.toLowerCase())),
+                  im.toLowerCase() === mLower ||
+                  (!isAgyItem && im.toLowerCase().startsWith(mLower)),
               )
               const isSelectable = isInstalled || isAgyItem
+              const isPulling = pullingModel === m
               return (
                 <div
                   key={m}
@@ -319,8 +341,8 @@ export function DiscreteModelSelector({
                     if (isSelectable) {
                       onSelectModel(m)
                       setOpen(false)
-                    } else {
-                      void navigator.clipboard.writeText(`ollama pull ${m}`)
+                    } else if (!pullingModel) {
+                      void handlePullModel(m)
                     }
                   }}
                 >
@@ -345,7 +367,16 @@ export function DiscreteModelSelector({
                         </span>
                       )}
                       {isCurrent && (
-                        <span className="text-[0.625rem] text-sky-400 font-bold ml-auto shrink-0">Active</span>
+                        <div className="ml-auto shrink-0 text-right leading-tight">
+                          <div className="text-[0.625rem] text-sky-400 font-bold">Active</div>
+                          {vram && (
+                            <div className="text-[0.5625rem] font-mono text-sky-200/80">
+                              {vram.model_loaded && vram.model_vram_gb
+                                ? `Using ${vram.model_vram_gb.toFixed(1)} GB VRAM`
+                                : '0 GB in VRAM'}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                     <div className="text-[0.625rem] font-medium italic text-sky-300/90 mt-0.5">
@@ -356,7 +387,7 @@ export function DiscreteModelSelector({
                     )}
                   </div>
 
-                  {/* Immediate Action: Grade if selectable, or Pull prompt if local model missing */}
+                  {/* Immediate Action: Grade if selectable, or Pull button if local model missing */}
                   {isSelectable ? (
                     hasAnswer && (
                       <button
@@ -375,14 +406,15 @@ export function DiscreteModelSelector({
                   ) : (
                     <button
                       type="button"
-                      className="shrink-0 text-[0.625rem] font-mono text-sky-400 hover:text-sky-200 underline cursor-pointer"
+                      disabled={Boolean(pullingModel)}
+                      className="shrink-0 rounded px-2 py-1 text-[0.625rem] font-mono border border-sky-500/40 bg-sky-500/10 text-sky-300 hover:bg-sky-500/20 hover:text-sky-100 disabled:opacity-50 cursor-pointer transition"
                       onClick={(e) => {
                         e.stopPropagation()
-                        void navigator.clipboard.writeText(`ollama pull ${m}`)
+                        void handlePullModel(m)
                       }}
-                      title={`Copy pull command: ollama pull ${m}`}
+                      title={`Download ${m} via Ollama`}
                     >
-                      Pull
+                      {isPulling ? 'Pulling…' : 'Pull'}
                     </button>
                   )}
                 </div>
@@ -390,9 +422,19 @@ export function DiscreteModelSelector({
             })}
           </div>
 
+          {pullError && (
+            <div className="mb-2 rounded border border-rose-500/40 bg-rose-950/50 px-2 py-1.5 text-[0.625rem] text-rose-200">
+              {pullError}
+            </div>
+          )}
+
           <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[0.6875rem]">
             <span className="text-slate-400">
-              {grading ? (
+              {pullingModel ? (
+                <span className="text-sky-300 flex items-center gap-1">
+                  <span className="animate-spin text-xs">↻</span> Downloading {pullingModel}…
+                </span>
+              ) : grading ? (
                 <span className="text-amber-300 flex items-center gap-1">
                   <span className="animate-spin text-xs">↻</span> Grading in progress…
                 </span>

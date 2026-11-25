@@ -243,7 +243,14 @@ Teach the underlying idea — what it means, and why it holds — rather than on
 asserting the answer. Do include the answer: the student reads this first and is
 then asked to recall it, so withholding it would defeat the exercise.
 
-Write plainly, in the second person, with no heading and no preamble.
+Write plainly, in the second person, in the SAME language as the question/answer,
+with no heading and no preamble.
+
+For "key_points": you MUST provide 3 to 6 concrete, self-contained takeaways (never
+just 1). Cover EVERY major concept, branch, term, period, or exception in the
+expected answer and source passages (for multi-part outlines or comparisons, give
+at least one takeaway per part). Never write vague placeholders like "it has a
+specific name" — state the actual fact or concept.
 
 The question they will face: {front}
 The expected answer: {back}
@@ -253,7 +260,11 @@ Source passage(s):
 
 Respond with ONLY a JSON object, no prose and no code fences:
 {{"lesson": "2-4 short paragraphs of plain text",
-  "key_points": ["3-5 short takeaways, each one line"]}}
+  "key_points": [
+    "First concrete takeaway covering a core concept or part",
+    "Second concrete takeaway covering the next key concept or contrast",
+    "Third concrete takeaway covering remaining details, dates, or exceptions"
+  ]}}
 """
 
 SOCRATIC_PROMPT = """You are a Socratic tutor helping a student who is stuck on a

@@ -45,6 +45,12 @@ class TestParsing:
         with pytest.raises(GradingUnavailable):
             parse_json("")
 
+    def test_missing_trailing_brace_is_repaired(self):
+        raw = '{"lesson": "Texto.", "key_points": ["Punto 1", "Punto 2", "Punto 3"]'
+        parsed = parse_json(raw)
+        assert parsed["lesson"] == "Texto."
+        assert len(parsed["key_points"]) == 3
+
 
 class TestHeuristicSanityCheck:
     """§4.3 — the cheap keyword check that runs alongside the model."""
@@ -248,7 +254,8 @@ class TestEscalation:
         sent = []
 
         async def fake_post(self, url, json=None, **kwargs):
-            sent.append(json)
+            if json and "prompt" in json:
+                sent.append(json)
             return httpx.Response(
                 200,
                 json={"response": '{"score":80,"confidence":0.9,"reasoning":"ok"}'},
@@ -699,7 +706,8 @@ class TestPromptSanitization:
         sent = []
 
         async def fake_post(self, url, json=None, **kwargs):
-            sent.append(json)
+            if json and "prompt" in json:
+                sent.append(json)
             return httpx.Response(
                 200,
                 json={"response": '{"score":100,"confidence":1.0,"reasoning":"great"}'},
@@ -822,3 +830,210 @@ class TestSandboxReviewGrounding:
         assert "Wrong Answer (0/2 test cases passed)" in captured[1]["execution_summary"]
         assert fail_resp.json()["score"] == 39
         assert fail_resp.json()["suggested_grade"] == "again"
+
+
+class TestOllamaGenerate:
+    """Verify Ollama payload options (disabling thinking tokens & 400 fallback)."""
+
+    @pytest.mark.asyncio
+    async def test_generate_ollama_disables_thinking_and_falls_back_on_400(self, monkeypatch):
+        import httpx
+
+        sent_payloads: list[dict] = []
+
+        class FakeAsyncClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def post(self, url, json):
+                sent_payloads.append(dict(json))
+                req = httpx.Request("POST", url)
+                if len(sent_payloads) == 1:
+                    return httpx.Response(
+                        400,
+                        json={"error": "model does not support think"},
+                        request=req,
+                    )
+                return httpx.Response(
+                    200,
+                    json={"response": '{"score": 90}'},
+                    request=req,
+                )
+
+        monkeypatch.setattr(httpx, "AsyncClient", FakeAsyncClient)
+        svc = GradingService(base_url="http://localhost:11434", model="qwen3.5:4b")
+        out = await svc._generate_ollama("grade this", "qwen3.5:4b")
+        assert out == '{"score": 90}'
+        assert len(sent_payloads) == 2
+        assert sent_payloads[0]["think"] is False
+        assert "think" not in sent_payloads[1]
+
+    @pytest.mark.asyncio
+    async def test_generate_ollama_evicts_other_loaded_models(self, monkeypatch):
+        import httpx
+
+        get_urls: list[str] = []
+        post_payloads: list[dict] = []
+
+        class FakeAsyncClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def get(self, url):
+                get_urls.append(url)
+                req = httpx.Request("GET", url)
+                return httpx.Response(
+                    200,
+                    json={
+                        "models": [
+                            {"name": "qwen2.5-coder:7b"},
+                            {"name": "qwen3.5:4b"},
+                        ]
+                    },
+                    request=req,
+                )
+
+            async def post(self, url, json):
+                post_payloads.append(dict(json))
+                req = httpx.Request("POST", url)
+                return httpx.Response(200, json={"response": '{"score": 88}'}, request=req)
+
+        monkeypatch.setattr(httpx, "AsyncClient", FakeAsyncClient)
+        svc = GradingService(base_url="http://localhost:11434", model="qwen3.5:4b")
+        out = await svc._generate_ollama("grade this", "qwen3.5:4b")
+        assert out == '{"score": 88}'
+        assert get_urls == ["http://localhost:11434/api/ps"]
+        assert post_payloads[0] == {"model": "qwen2.5-coder:7b", "keep_alive": 0}
+        assert post_payloads[1]["model"] == "qwen3.5:4b"
+        assert post_payloads[1]["keep_alive"] != 0
+
+
+class TestAntigravityGenerate:
+    """Verify Antigravity CLI retries once on transient conversation-start failures."""
+
+    @pytest.mark.asyncio
+    async def test_generate_antigravity_retries_on_empty_conversation_id(self, monkeypatch):
+        import asyncio
+        import json
+        from app.services import grading_service
+
+        calls = 0
+
+        class FakeProc:
+            def __init__(self, rc: int, stdout_bytes: bytes, stderr_bytes: bytes = b""):
+                self.returncode = rc
+                self._stdout = stdout_bytes
+                self._stderr = stderr_bytes
+
+            async def communicate(self):
+                return self._stdout, self._stderr
+
+        async def fake_create_subprocess_exec(*cmd, **kwargs):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return FakeProc(
+                    1,
+                    json.dumps(
+                        {
+                            "status": "ERROR",
+                            "error": "failed to start conversation: backend returned an empty conversation id",
+                        }
+                    ).encode(),
+                )
+            return FakeProc(
+                0,
+                json.dumps(
+                    {
+                        "status": "SUCCESS",
+                        "response": '{"score": 95}',
+                    }
+                ).encode(),
+            )
+
+        async def noop_sleep(_):
+            return None
+
+        monkeypatch.setattr(grading_service, "resolve_antigravity_executable", lambda: "agy")
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+        monkeypatch.setattr(asyncio, "sleep", noop_sleep)
+
+        svc = GradingService(
+            base_url="http://localhost:11434",
+            model="antigravity:gpt-oss-120b-medium",
+            allow_antigravity=True,
+        )
+        out = await svc._generate_antigravity("grade this", "antigravity:gpt-oss-120b-medium")
+        assert out == '{"score": 95}'
+        assert calls == 2
+
+
+class TestLlmPullEndpoint:
+    """Verify POST /api/llm/pull validates allowed local models and proxies Ollama pull."""
+
+    @pytest.mark.asyncio
+    async def test_pull_rejects_disallowed_model(self, auth_client):
+        resp = await auth_client.post("/api/llm/pull", json={"model": "llama3:70b"})
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_pull_succeeds_for_allowed_model(self, auth_client, monkeypatch):
+        import httpx
+        from app.routers import llm as llm_router
+
+        pull_calls: list[dict] = []
+
+        class FakeAsyncClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def post(self, url, json):
+                pull_calls.append({"url": url, "json": json})
+                return httpx.Response(
+                    200,
+                    json={"status": "success"},
+                    request=httpx.Request("POST", url),
+                )
+
+        async def fake_verify_all_engines(self):
+            return {
+                "ollama": {"connected": True, "models": ["qwen3.5:9b", "qwen3.5:4b"], "error": None},
+                "antigravity": {"connected": False, "models": [], "error": None},
+            }
+
+        monkeypatch.setattr(httpx, "AsyncClient", FakeAsyncClient)
+        monkeypatch.setattr(
+            llm_router.GradingService,
+            "verify_all_engines",
+            fake_verify_all_engines,
+            raising=True,
+        )
+
+        resp = await auth_client.post("/api/llm/pull", json={"model": "qwen3.5:9b"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        assert body["model"] == "qwen3.5:9b"
+        assert "qwen3.5:9b" in body["models_installed"]
+        assert pull_calls[0]["json"] == {"name": "qwen3.5:9b", "stream": False}
+
+
+

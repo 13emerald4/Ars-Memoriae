@@ -117,9 +117,18 @@ async def get_lesson(db: AsyncSession, user: User, card: Card) -> dict:
     )
 
     passages = _teaching_text(citations)
-    if not passages:
+    note_excerpts = [p for p in [why, doc, thematic] if p]
+    if passages:
+        # Citations can be a single-line slide quote while the card's notes/back
+        # hold the full structured outline; include non-duplicate context so the
+        # lesson covers every core point.
+        seen_norm = {p.strip().lower() for p in passages}
+        for extra in [*note_excerpts, back.strip() if back else ""]:
+            if extra and extra.strip().lower() not in seen_norm:
+                passages.append(extra.strip())
+                seen_norm.add(extra.strip().lower())
+    else:
         # Fallback to note context (why, documentation, back) when citations are missing
-        note_excerpts = [p for p in [why, doc, thematic] if p]
         if note_excerpts:
             passages = note_excerpts
         elif back and back.strip():

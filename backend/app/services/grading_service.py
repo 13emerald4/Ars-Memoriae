@@ -498,6 +498,12 @@ def sanitize_prompt_for_ollama(text: str) -> str:
     return text
 
 
+def _normalize_ollama_tag(name: str) -> str:
+    """Normalize an Ollama model name so implicit `:latest` tags compare equal."""
+    n = name.strip().lower()
+    return n if ":" in n else f"{n}:latest"
+
+
 class GradingService:
     def __init__(
         self,
@@ -547,6 +553,27 @@ class GradingService:
 
     # ── transport ───────────────────────────────────────────────────────────
 
+    async def _evict_other_ollama_models(self, target_model: str) -> None:
+        """Unload any other Ollama models currently in VRAM before loading target_model."""
+        target_norm = _normalize_ollama_tag(target_model)
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                ps_resp = await client.get(f"{self.base_url}/api/ps")
+                if ps_resp.status_code != 200:
+                    return
+                ps_models = ps_resp.json().get("models", [])
+                for pm in ps_models:
+                    pm_name = pm.get("name") or pm.get("model") or ""
+                    if not pm_name or _normalize_ollama_tag(pm_name) == target_norm:
+                        continue
+                    with contextlib.suppress(Exception):
+                        await client.post(
+                            f"{self.base_url}/api/generate",
+                            json={"model": pm_name, "keep_alive": 0},
+                        )
+        except Exception:
+            return
+
     async def _generate_ollama(
         self,
         prompt: str,
@@ -554,6 +581,7 @@ class GradingService:
         schema: dict | None = None,
         **kwargs: Any,
     ) -> str:
+        await self._evict_other_ollama_models(model)
         num_ctx = kwargs.get("num_ctx") or settings.ollama_num_ctx
         keep_alive = kwargs.get("keep_alive") or settings.ollama_keep_alive
         clean_prompt = sanitize_prompt_for_ollama(prompt)
@@ -562,6 +590,10 @@ class GradingService:
             "prompt": clean_prompt,
             "stream": False,
             "keep_alive": keep_alive,
+            # Disable hidden thinking tokens for reasoning-capable models (e.g. Qwen 3.5):
+            # with greedy decoding (temperature=0), small thinking models can enter
+            # repetitive <think> loops and abort with "prediction aborted, token repeat limit reached".
+            "think": False,
             "options": {
                 # Ollama silently drops the *start* of an over-long prompt —
                 # the instructions — so this must fit the longest prompt.
@@ -611,6 +643,12 @@ class GradingService:
                     err_detail = err_body.get("error") or exc.response.text
                 except Exception:
                     err_detail = exc.response.text
+
+                # If an older Ollama version or model rejects the `think` parameter, drop it and retry immediately
+                if exc.response.status_code == 400 and "think" in (err_detail or "").lower() and "think" in payload:
+                    payload.pop("think", None)
+                    last_exc = exc
+                    continue
 
                 # If this is a VRAM / out of memory error, don't sleep & retry the exact same failing model
                 if is_memory_or_vram_error(err_detail or exc):
@@ -684,71 +722,78 @@ class GradingService:
         if norm_schema is not None:
             cmd.extend(["--json-schema", json.dumps(norm_schema, separators=(",", ":"))])
 
-        proc: asyncio.subprocess.Process | None = None
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                cwd=str(_antigravity_sandbox_dir()),
-                stdin=asyncio.subprocess.DEVNULL,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout_b, stderr_b = await asyncio.wait_for(
-                proc.communicate(),
-                timeout=timeout_sec + 10.0,
-            )
-        except asyncio.CancelledError:
-            if proc is not None and proc.returncode is None:
-                with contextlib.suppress(ProcessLookupError, OSError):
-                    proc.kill()
-            raise
-        except TimeoutError as exc:
-            if proc is not None and proc.returncode is None:
-                with contextlib.suppress(ProcessLookupError, OSError):
-                    proc.kill()
-            raise GradingUnavailable(
-                f"Antigravity CLI timed out after {int(timeout_sec)}s on '{cli_slug}'."
-            ) from exc
-        except OSError as exc:
-            raise GradingUnavailable(f"Failed to launch Antigravity CLI ('{exe}'): {exc}") from exc
-
-        stdout = stdout_b.decode("utf-8", errors="replace").strip()
-        stderr = stderr_b.decode("utf-8", errors="replace").strip()
-
         envelope: dict[str, Any] | None = None
-        for line in reversed(stdout.splitlines()):
-            line = line.strip()
-            if not line.startswith("{"):
-                continue
+        for attempt in range(2):
+            proc: asyncio.subprocess.Process | None = None
             try:
-                candidate = json.loads(line)
-                if isinstance(candidate, dict) and ("status" in candidate or "response" in candidate):
-                    envelope = candidate
-                    break
-            except json.JSONDecodeError:
-                continue
-
-        if envelope is None and stdout:
-            try:
-                candidate = json.loads(stdout)
-                if isinstance(candidate, dict):
-                    envelope = candidate
-            except json.JSONDecodeError:
-                envelope = None
-
-        if proc.returncode != 0 or (envelope is not None and envelope.get("status") != "SUCCESS"):
-            err_msg = (
-                (envelope.get("error") if isinstance(envelope, dict) else None)
-                or stderr
-                or stdout
-                or f"agy exited with code {proc.returncode}"
-            )
-            lowered = str(err_msg).lower()
-            if any(tok in lowered for tok in ("auth", "login", "sign in", "credential", "unauthenticated")):
-                raise GradingUnavailable(
-                    f"Antigravity CLI requires sign-in ({err_msg}). Run `agy` in a terminal once with your Antigravity subscription."
+                proc = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    cwd=str(_antigravity_sandbox_dir()),
+                    stdin=asyncio.subprocess.DEVNULL,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
                 )
-            raise GradingUnavailable(f"Antigravity CLI generation failed: {err_msg}")
+                stdout_b, stderr_b = await asyncio.wait_for(
+                    proc.communicate(),
+                    timeout=timeout_sec + 10.0,
+                )
+            except asyncio.CancelledError:
+                if proc is not None and proc.returncode is None:
+                    with contextlib.suppress(ProcessLookupError, OSError):
+                        proc.kill()
+                raise
+            except TimeoutError as exc:
+                if proc is not None and proc.returncode is None:
+                    with contextlib.suppress(ProcessLookupError, OSError):
+                        proc.kill()
+                raise GradingUnavailable(
+                    f"Antigravity CLI timed out after {int(timeout_sec)}s on '{cli_slug}'."
+                ) from exc
+            except OSError as exc:
+                raise GradingUnavailable(f"Failed to launch Antigravity CLI ('{exe}'): {exc}") from exc
+
+            stdout = stdout_b.decode("utf-8", errors="replace").strip()
+            stderr = stderr_b.decode("utf-8", errors="replace").strip()
+
+            envelope = None
+            for line in reversed(stdout.splitlines()):
+                line = line.strip()
+                if not line.startswith("{"):
+                    continue
+                try:
+                    candidate = json.loads(line)
+                    if isinstance(candidate, dict) and ("status" in candidate or "response" in candidate):
+                        envelope = candidate
+                        break
+                except json.JSONDecodeError:
+                    continue
+
+            if envelope is None and stdout:
+                try:
+                    candidate = json.loads(stdout)
+                    if isinstance(candidate, dict):
+                        envelope = candidate
+                except json.JSONDecodeError:
+                    envelope = None
+
+            if proc.returncode != 0 or (envelope is not None and envelope.get("status") != "SUCCESS"):
+                err_msg = (
+                    (envelope.get("error") if isinstance(envelope, dict) else None)
+                    or stderr
+                    or stdout
+                    or f"agy exited with code {proc.returncode}"
+                )
+                lowered = str(err_msg).lower()
+                if any(tok in lowered for tok in ("auth", "login", "sign in", "credential", "unauthenticated")):
+                    raise GradingUnavailable(
+                        f"Antigravity CLI requires sign-in ({err_msg}). Run `agy` in a terminal once with your Antigravity subscription."
+                    )
+                is_non_retryable = "invalid model" in lowered or "not recognized as a known model" in lowered
+                if attempt == 0 and not is_non_retryable:
+                    await asyncio.sleep(1.0)
+                    continue
+                raise GradingUnavailable(f"Antigravity CLI generation failed: {err_msg}")
+            break
 
         self.last_used_model = model
         if envelope is not None:
@@ -997,14 +1042,75 @@ class GradingService:
             ),
             model or self.model,
         )
-        data = parse_json(raw)
+        try:
+            data = parse_json(raw)
+        except GradingUnavailable:
+            # Retry once if the model returned truncated/unparseable JSON
+            raw = await self._generate(
+                LESSON_PROMPT.format(
+                    front=front, back=back, passages=joined, max_words=max_words
+                ),
+                model or self.model,
+            )
+            data = parse_json(raw)
         lesson = str(data.get("lesson", "")).strip() if isinstance(data, dict) else ""
         if not lesson:
             raise GradingUnavailable("lesson generation returned nothing")
-        points = data.get("key_points") or []
+        points = [str(p).strip() for p in (data.get("key_points") or []) if str(p).strip()]
+
+        # Guard against small local models returning only 1-2 takeaways by requesting
+        # a fuller breakdown when fewer than 3 key points are produced.
+        if len(points) < 3:
+            enrich_prompt = (
+                "Extract 3 to 6 concise, distinct, concrete key takeaways (each one line) "
+                "covering EVERY major concept, branch, term, and exception in the material below. "
+                "Write in the same language as the question/answer. Never return fewer than 3 items "
+                "if multiple facts or parts are present.\n\n"
+                f"Question: {front}\n"
+                f"Expected answer: {back}\n"
+                f"Lesson:\n{lesson}\n\n"
+                f"Source passage(s):\n{joined[:4000]}\n\n"
+                'Respond with ONLY a JSON object: {"key_points": ["point 1", "point 2", "point 3"]}'
+            )
+            try:
+                raw_kp = await self._generate(enrich_prompt, model or self.model)
+                kp_data = parse_json(raw_kp)
+                if isinstance(kp_data, dict):
+                    enriched = [
+                        str(p).strip()
+                        for p in (kp_data.get("key_points") or [])
+                        if str(p).strip()
+                    ]
+                    if len(enriched) > len(points):
+                        points = enriched
+            except Exception:
+                pass
+
+        # Deterministic fallback: if still < 3 points, supplement from structured lines
+        # in the expected answer or distinct sentences from the generated lesson.
+        if len(points) < 3:
+            seen_lower = {p.lower() for p in points}
+            candidates: list[str] = []
+            for raw_line in back.splitlines():
+                cleaned = re.sub(r"^[├└│─\s•*\-]+", "", raw_line).strip()
+                if cleaned and len(cleaned) >= 12:
+                    candidates.append(cleaned)
+            for sent in re.split(r"(?<=[.!?])\s+", lesson):
+                s_clean = sent.strip()
+                if s_clean and len(s_clean) >= 20:
+                    candidates.append(s_clean)
+            for cand in candidates:
+                if len(points) >= 4:
+                    break
+                if cand.lower() not in seen_lower and not any(
+                    cand.lower() in ex or ex in cand.lower() for ex in seen_lower
+                ):
+                    points.append(cand)
+                    seen_lower.add(cand.lower())
+
         return {
             "lesson": lesson,
-            "key_points": [str(p).strip() for p in points if str(p).strip()][:6],
+            "key_points": points[:8],
         }
 
     # ── Socratic AI Guide & Targeted Weakness Hint ───────────────────────────
@@ -1361,6 +1467,39 @@ def _normalize_generated_card(c: dict) -> dict:
     return item
 
 
+def _close_unterminated_json(text: str) -> str | None:
+    """Append missing closing `]` / `}` when a local model omits the trailing brace."""
+    s = text.strip()
+    start = s.find("{")
+    if start == -1:
+        return None
+    s = s[start:]
+    stack: list[str] = []
+    in_str = False
+    escaped = False
+    for ch in s:
+        if in_str:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            stack.append("}")
+        elif ch == "[":
+            stack.append("]")
+        elif ch in ("}", "]"):
+            if stack and stack[-1] == ch:
+                stack.pop()
+    if in_str or not stack:
+        return None
+    return s.rstrip().rstrip(",") + "".join(reversed(stack))
+
+
 def parse_json(raw: str) -> dict:
     """Tolerant JSON extraction — models wrap output in prose, think blocks, or code fences
     when structured output isn't enforced by the schema path."""
@@ -1379,6 +1518,12 @@ def parse_json(raw: str) -> dict:
     if start != -1 and end > start:
         try:
             return json.loads(text[start : end + 1])
+        except json.JSONDecodeError:
+            pass
+    repaired = _close_unterminated_json(text)
+    if repaired:
+        try:
+            return json.loads(repaired)
         except json.JSONDecodeError:
             pass
     raise GradingUnavailable("unparseable grading response")

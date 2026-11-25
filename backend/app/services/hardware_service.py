@@ -443,8 +443,13 @@ def get_vram_metrics(
                 for pm in ps_models:
                     pm_name = (pm.get("name") or pm.get("model") or "").lower()
                     if model_name:
-                        mn_clean = model_name.lower().split(":")[0]
-                        if mn_clean in pm_name or pm_name in model_name.lower():
+                        mn_lower = model_name.lower().strip()
+                        if ":" in mn_lower:
+                            pm_norm = pm_name if ":" in pm_name else f"{pm_name}:latest"
+                            matched = pm_norm == mn_lower or pm_name.startswith(f"{mn_lower}-")
+                        else:
+                            matched = mn_lower in pm_name or pm_name in mn_lower
+                        if matched:
                             model_loaded = True
                             model_vram_bytes = pm.get("size_vram") or pm.get("size") or 0
                             break
